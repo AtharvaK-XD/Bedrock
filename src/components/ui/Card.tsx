@@ -5,8 +5,8 @@ export function Card({ className, children, ...props }: React.HTMLAttributes<HTM
   return (
     <div 
       className={cn(
-        "bg-basalt-800/60 backdrop-blur-2xl border border-white/5 rounded-2xl shadow-strata relative overflow-hidden transition-all duration-300",
-        "before:absolute before:inset-0 before:rounded-2xl before:border before:border-white/10 before:pointer-events-none",
+        "bg-white/60 backdrop-blur-2xl border border-basalt-900/10 rounded-2xl shadow-strata relative overflow-hidden transition-all duration-300",
+        "before:absolute before:inset-0 before:rounded-2xl before:border before:border-basalt-900/10 before:pointer-events-none",
         className
       )} 
       {...props}
@@ -22,11 +22,11 @@ export function CardHeader({ className, children, ...props }: React.HTMLAttribut
 }
 
 export function CardTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn("font-display text-2xl md:text-3xl font-semibold leading-none tracking-tight text-white", className)} {...props}>{children}</h3>;
+  return <h3 className={cn("font-display text-2xl md:text-3xl font-semibold leading-none tracking-tight text-basalt-900", className)} {...props}>{children}</h3>;
 }
 
 export function CardDescription({ className, children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn("text-base text-sandstone-200/80 leading-relaxed", className)} {...props}>{children}</p>;
+  return <p className={cn("text-base text-basalt-700/80 leading-relaxed", className)} {...props}>{children}</p>;
 }
 
 export function CardContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
