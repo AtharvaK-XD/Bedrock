@@ -4,9 +4,9 @@ import { Link, useLocation } from 'react-router-dom';
 
 const navItems = [
   { icon: Sparkles, label: 'Generator', path: '/app' },
-  { icon: Wand2, label: 'Optimizer', path: '#' },
-  { icon: FlaskConical, label: 'Prompt Tester', path: '#' },
-  { icon: BookOpen, label: 'Library', path: '#' },
+  { icon: Wand2, label: 'Optimizer', path: '/app/optimizer' },
+  { icon: FlaskConical, label: 'Prompt Tester', path: '/app/tester' },
+  { icon: BookOpen, label: 'Library', path: '/app/library' },
 ];
 
 export function Topbar() {
