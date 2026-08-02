@@ -5,6 +5,9 @@ import Lenis from 'lenis';
 import Landing from './pages/Landing';
 import Wizard from './pages/Wizard';
 import Result from './pages/Result';
+import Optimizer from './pages/Optimizer';
+import PromptTester from './pages/PromptTester';
+import Library from './pages/Library';
 import { AppLayout } from './components/layout/AppLayout';
 
 const queryClient = new QueryClient();
@@ -46,6 +49,9 @@ function App() {
               <AppLayout>
                 <Routes>
                   <Route path="/" element={<Wizard />} />
+                  <Route path="/optimizer" element={<Optimizer />} />
+                  <Route path="/tester" element={<PromptTester />} />
+                  <Route path="/library" element={<Library />} />
                   <Route path="/result" element={<Result />} />
                 </Routes>
               </AppLayout>

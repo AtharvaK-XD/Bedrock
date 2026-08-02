@@ -111,9 +111,14 @@ export function RichInput({
   const selectedTarget = targetOptions.find(t => t.id === targetType) || targetOptions[0];
 
   return (
-    <div className="bg-white/60 backdrop-blur-md border border-basalt-900/10 rounded-2xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-copper-500/50 focus-within:border-copper-500/50 flex flex-col relative">
-      {/* Top Toolbar */}
-      <div className="flex items-center gap-2 p-3 border-b border-basalt-900/5">
+    <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl transition-all focus-within:ring-4 focus-within:ring-copper-500/20 focus-within:border-copper-500/30 flex flex-col relative overflow-hidden group">
+      {/* Subtle gradient overlay for extra glass texture */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/5 pointer-events-none z-0"></div>
+      
+      {/* Content wrapper to stay above background effects */}
+      <div className="relative z-10 flex flex-col h-full">
+        {/* Top Toolbar */}
+        <div className="flex items-center gap-2 p-3 border-b border-basalt-900/5 bg-white/20">
         <div className="relative">
           <button
             type="button"
@@ -211,7 +216,7 @@ export function RichInput({
       />
 
       {/* Bottom Toolbar */}
-      <div className="flex items-center justify-between p-3 border-t border-basalt-900/5 bg-basalt-900/5 rounded-b-2xl">
+      <div className="flex items-center justify-between p-4 border-t border-white/20 bg-white/30 rounded-b-3xl">
         <div className="flex items-center gap-1">
           <button type="button" className="p-2 text-basalt-500 hover:text-basalt-900 hover:bg-white rounded-lg transition-colors tooltip-trigger">
             <Mic className="w-5 h-5" />
@@ -236,6 +241,7 @@ export function RichInput({
           )}
           Generate
         </button>
+      </div>
       </div>
     </div>
   );
