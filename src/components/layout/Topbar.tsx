@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 
 const navItems = [
-  { icon: Sparkles, label: 'Generator', path: '/' },
+  { icon: Sparkles, label: 'Generator', path: '/app' },
   { icon: Wand2, label: 'Optimizer', path: '#' },
   { icon: FlaskConical, label: 'Prompt Tester', path: '#' },
   { icon: BookOpen, label: 'Library', path: '#' },
@@ -17,7 +17,7 @@ export function Topbar() {
       <div className="max-w-[1400px] mx-auto px-6 h-full flex items-center justify-between">
         
         {/* Brand */}
-        <Link to="/" className="flex items-center gap-3 text-basalt-900 group">
+        <Link to="/app" className="flex items-center gap-3 text-basalt-900 group">
           <div className="p-1.5 bg-copper-500/10 rounded-lg group-hover:bg-copper-500/20 transition-colors">
             <Layers className="w-6 h-6 text-copper-500" />
           </div>
