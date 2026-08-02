@@ -30,6 +30,7 @@ export default {
         sans: ['Inter', 'sans-serif'],
         display: ['Space Grotesk', 'sans-serif'],
         mono: ['Fira Code', 'monospace'],
+        editorial: ['"Bodoni Moda"', 'serif'],
       },
       boxShadow: {
         'strata': '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.25)',
