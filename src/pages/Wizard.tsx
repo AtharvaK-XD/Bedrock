@@ -76,7 +76,6 @@ export default function Wizard() {
               isLoading={isGenerating}
               targetType={targetType}
               onTargetTypeChange={setTargetType}
-              placeholder="Describe what you want to accomplish..."
             />
           </motion.div>
         </div>

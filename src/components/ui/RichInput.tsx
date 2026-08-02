@@ -10,7 +10,6 @@ interface RichInputProps {
   isLoading?: boolean;
   targetType: IdeaPayload['targetType'];
   onTargetTypeChange: (type: IdeaPayload['targetType']) => void;
-  placeholder?: string;
 }
 
 const targetOptions: { id: IdeaPayload['targetType']; label: string; icon: any }[] = [
@@ -27,10 +26,47 @@ export function RichInput({
   isLoading,
   targetType,
   onTargetTypeChange,
-  placeholder = "Describe what you want to build...",
 }: RichInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const defaultPlaceholders = [
+    "Help me review a tricky pull request in a legacy codebase...",
+    "Write a landing page headline that converts...",
+    "Explain quantum computing to a 5-year-old...",
+    "Create a detailed brief for a UX designer..."
+  ];
+
+  const [placeholderText, setPlaceholderText] = useState("");
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    
+    if (isTyping) {
+      if (placeholderText.length < defaultPlaceholders[placeholderIndex].length) {
+        timeout = setTimeout(() => {
+          setPlaceholderText(defaultPlaceholders[placeholderIndex].slice(0, placeholderText.length + 1));
+        }, 40);
+      } else {
+        timeout = setTimeout(() => {
+          setIsTyping(false);
+        }, 2000);
+      }
+    } else {
+      if (placeholderText.length > 0) {
+        timeout = setTimeout(() => {
+          setPlaceholderText(placeholderText.slice(0, -1));
+        }, 20);
+      } else {
+        setPlaceholderIndex((prev) => (prev + 1) % defaultPlaceholders.length);
+        setIsTyping(true);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [placeholderText, isTyping, placeholderIndex]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -104,7 +140,7 @@ export function RichInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder}
+        placeholder={placeholderText}
         className="w-full min-h-[120px] max-h-[400px] resize-none bg-transparent p-5 text-basalt-900 placeholder:text-basalt-400 focus:outline-none"
       />
 
