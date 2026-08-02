@@ -55,7 +55,7 @@ export default function Wizard() {
       <div className={cn(
         "transition-all duration-500",
         (!idea.trim() && step === 1) 
-          ? "max-w-5xl mx-auto"
+          ? "max-w-4xl mx-auto"
           : "grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-start"
       )}>
         
