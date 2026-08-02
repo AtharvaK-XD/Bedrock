@@ -49,8 +49,8 @@ export default function Result() {
           <CardContent>
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-copper-500/20 to-copper-400/20 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
-              <div className="relative bg-[#131518]/80 backdrop-blur-sm border border-basalt-900/10 rounded-xl p-8 overflow-auto max-h-[50vh] custom-scrollbar">
-                <pre className="whitespace-pre-wrap font-mono text-[13px] sm:text-sm text-basalt-900/90 leading-relaxed">
+              <div className="relative bg-white/80 backdrop-blur-sm border border-basalt-900/10 rounded-xl p-8 overflow-auto max-h-[50vh] custom-scrollbar">
+                <pre className="whitespace-pre-wrap font-mono text-[13px] sm:text-sm text-basalt-900 leading-relaxed">
                   {promptText}
                 </pre>
               </div>
