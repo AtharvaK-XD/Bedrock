@@ -11,7 +11,7 @@ export default function Result() {
 
   if (!promptText) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-sandstone-300">
+      <div className="flex items-center justify-center min-h-screen text-basalt-700">
         <p>No prompt found. <button onClick={() => navigate('/')} className="text-copper-400 hover:text-copper-300 underline ml-1 transition-colors">Start over</button></p>
       </div>
     );
@@ -49,15 +49,15 @@ export default function Result() {
           <CardContent>
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-copper-500/20 to-copper-400/20 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
-              <div className="relative bg-[#131518]/80 backdrop-blur-sm border border-white/10 rounded-xl p-8 overflow-auto max-h-[50vh] custom-scrollbar">
-                <pre className="whitespace-pre-wrap font-mono text-[13px] sm:text-sm text-sandstone-100/90 leading-relaxed">
+              <div className="relative bg-[#131518]/80 backdrop-blur-sm border border-basalt-900/10 rounded-xl p-8 overflow-auto max-h-[50vh] custom-scrollbar">
+                <pre className="whitespace-pre-wrap font-mono text-[13px] sm:text-sm text-basalt-900/90 leading-relaxed">
                   {promptText}
                 </pre>
               </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
-            <Button variant="ghost" onClick={() => navigate('/')} className="text-sandstone-300">
+            <Button variant="ghost" onClick={() => navigate('/')} className="text-basalt-700">
               <RefreshCcw className="w-4 h-4 mr-2" /> Start Over
             </Button>
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">

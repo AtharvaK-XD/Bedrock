@@ -1,0 +1,140 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { cn } from '../../lib/utils';
+import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings } from 'lucide-react';
+import type { IdeaPayload } from '../../lib/mockApi';
+
+interface RichInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  isLoading?: boolean;
+  targetType: IdeaPayload['targetType'];
+  onTargetTypeChange: (type: IdeaPayload['targetType']) => void;
+  placeholder?: string;
+}
+
+const targetOptions: { id: IdeaPayload['targetType']; label: string; icon: any }[] = [
+  { id: 'coding_agent', label: 'Coding Agent', icon: Code },
+  { id: 'freelancer_brief', label: 'Freelancer', icon: Bot },
+  { id: 'hackathon_pitch', label: 'Hackathon', icon: Sparkles },
+  { id: 'no_code', label: 'No-Code', icon: Edit3 },
+];
+
+export function RichInput({
+  value,
+  onChange,
+  onSubmit,
+  isLoading,
+  targetType,
+  onTargetTypeChange,
+  placeholder = "Describe what you want to build...",
+}: RichInputProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [value]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (value.trim() && !isLoading) {
+        onSubmit();
+      }
+    }
+  };
+
+  const selectedTarget = targetOptions.find(t => t.id === targetType) || targetOptions[0];
+
+  return (
+    <div className="bg-white/60 backdrop-blur-md border border-basalt-900/10 rounded-2xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-copper-500/50 focus-within:border-copper-500/50 flex flex-col relative">
+      {/* Top Toolbar */}
+      <div className="flex items-center gap-2 p-3 border-b border-basalt-900/5">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-basalt-700 hover:bg-basalt-900/5 transition-colors"
+          >
+            <selectedTarget.icon className="w-4 h-4 text-basalt-500" />
+            {selectedTarget.label}
+            <ChevronDown className="w-4 h-4 text-basalt-400" />
+          </button>
+          
+          {isDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-basalt-900/10 rounded-xl shadow-xl z-20 py-1 overflow-hidden">
+              {targetOptions.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    onTargetTypeChange(opt.id);
+                    setIsDropdownOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors",
+                    targetType === opt.id ? "bg-basalt-900/5 text-basalt-900 font-medium" : "text-basalt-700 hover:bg-basalt-900/5 hover:text-basalt-900"
+                  )}
+                >
+                  <opt.icon className="w-4 h-4 text-basalt-500" />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="w-px h-4 bg-basalt-900/10"></div>
+        
+        <button type="button" className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-basalt-700 hover:bg-basalt-900/5 transition-colors">
+          <Settings className="w-4 h-4 text-basalt-500" />
+          Advanced
+        </button>
+      </div>
+
+      {/* Main Textarea */}
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        className="w-full min-h-[120px] max-h-[400px] resize-none bg-transparent p-5 text-basalt-900 placeholder:text-basalt-400 focus:outline-none"
+      />
+
+      {/* Bottom Toolbar */}
+      <div className="flex items-center justify-between p-3 border-t border-basalt-900/5 bg-basalt-900/5 rounded-b-2xl">
+        <div className="flex items-center gap-1">
+          <button type="button" className="p-2 text-basalt-500 hover:text-basalt-900 hover:bg-white rounded-lg transition-colors tooltip-trigger">
+            <Mic className="w-5 h-5" />
+          </button>
+          <button type="button" className="p-2 text-basalt-500 hover:text-basalt-900 hover:bg-white rounded-lg transition-colors">
+            <Paperclip className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <button
+          type="button"
+          onClick={() => {
+            if (value.trim() && !isLoading) onSubmit();
+          }}
+          disabled={!value.trim() || isLoading}
+          className="flex items-center gap-2 px-5 py-2 bg-basalt-900 text-white rounded-xl font-medium transition-all hover:bg-basalt-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+        >
+          {isLoading ? (
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+          ) : (
+            <Sparkles className="w-5 h-5 text-copper-400" />
+          )}
+          Generate
+        </button>
+      </div>
+    </div>
+  );
+}

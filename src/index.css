@@ -6,16 +6,16 @@
 
 @layer base {
   body {
-    @apply bg-basalt-800 text-sandstone-100 font-sans antialiased;
+    @apply bg-sandstone-50 text-basalt-900 font-sans antialiased;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight text-white;
+    @apply font-display tracking-tight text-basalt-900;
   }
 }
 
 @layer utilities {
   .bg-strata {
-    background-image: linear-gradient(to bottom, theme('colors.basalt.800'), theme('colors.basalt.900'));
+    background-image: linear-gradient(to bottom, theme('colors.sandstone.50'), theme('colors.white'));
   }
 }
