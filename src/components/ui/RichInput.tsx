@@ -111,9 +111,9 @@ export function RichInput({
   const selectedTarget = targetOptions.find(t => t.id === targetType) || targetOptions[0];
 
   return (
-    <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl transition-all focus-within:ring-4 focus-within:ring-copper-500/20 focus-within:border-copper-500/30 flex flex-col relative overflow-hidden group">
+    <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl transition-all focus-within:ring-4 focus-within:ring-copper-500/20 focus-within:border-copper-500/30 flex flex-col relative group">
       {/* Subtle gradient overlay for extra glass texture */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/5 pointer-events-none z-0"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/5 pointer-events-none z-0 rounded-3xl"></div>
       
       {/* Content wrapper to stay above background effects */}
       <div className="relative z-10 flex flex-col h-full">
@@ -131,7 +131,7 @@ export function RichInput({
           </button>
           
           {isDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-basalt-900/10 rounded-xl shadow-xl z-20 py-1 overflow-hidden">
+            <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-basalt-900/10 rounded-xl shadow-xl z-50 py-1">
               {targetOptions.map((opt) => (
                 <button
                   key={opt.id}
@@ -167,8 +167,8 @@ export function RichInput({
           </button>
           
           {isModelDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-basalt-900/10 rounded-xl shadow-xl z-20 py-2 overflow-hidden">
-              <div className="max-h-[300px] overflow-y-auto px-2">
+            <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-basalt-900/10 rounded-xl shadow-xl z-50 py-2">
+              <div className="max-h-[300px] overflow-y-auto px-2 custom-scrollbar">
                 {AI_MODELS.map((provider) => (
                   <div key={provider.provider} className="mb-2 last:mb-0">
                     <div className="px-2 py-1 text-xs font-semibold text-basalt-400 uppercase tracking-wider">
