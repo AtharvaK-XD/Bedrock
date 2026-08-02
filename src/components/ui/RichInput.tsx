@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
-import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings } from 'lucide-react';
+import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings, Cpu } from 'lucide-react';
 import type { IdeaPayload } from '../../lib/mockApi';
 
 interface RichInputProps {
@@ -18,6 +18,26 @@ const targetOptions: { id: IdeaPayload['targetType']; label: string; icon: any }
   { id: 'hackathon_pitch', label: 'Hackathon', icon: Sparkles },
   { id: 'no_code', label: 'No-Code', icon: Edit3 },
 ];
+export const AI_MODELS = [
+  { provider: 'Groq', models: [
+      { id: 'llama3-8b-8192', name: 'Llama 3 8B' },
+      { id: 'llama3-70b-8192', name: 'Llama 3 70B' },
+      { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B' },
+      { id: 'gemma-7b-it', name: 'Gemma 7B' }
+  ]},
+  { provider: 'Gemini', models: [
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' }
+  ]},
+  { provider: 'Mistral', models: [
+      { id: 'open-mistral-7b', name: 'Mistral 7B' },
+      { id: 'open-mixtral-8x7b', name: 'Mixtral 8x7B' }
+  ]},
+  { provider: 'Nvidia', models: [
+      { id: 'meta/llama3-70b-instruct', name: 'Llama 3 70B Instruct' },
+      { id: 'mistralai/mixtral-8x22b-instruct-v0.1', name: 'Mixtral 8x22B' }
+  ]}
+];
 
 export function RichInput({
   value,
@@ -29,6 +49,8 @@ export function RichInput({
 }: RichInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState('llama3-8b-8192');
 
   const defaultPlaceholders = [
     "Help me review a tricky pull request in a legacy codebase...",
@@ -125,7 +147,51 @@ export function RichInput({
             </div>
           )}
         </div>
+        <div className="w-px h-4 bg-basalt-900/10"></div>
         
+        {/* Model Selection Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-basalt-700 hover:bg-basalt-900/5 transition-colors"
+          >
+            <Cpu className="w-4 h-4 text-basalt-500" />
+            {AI_MODELS.flatMap(p => p.models).find(m => m.id === selectedModelId)?.name || 'Select Model'}
+            <ChevronDown className="w-4 h-4 text-basalt-400" />
+          </button>
+          
+          {isModelDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-basalt-900/10 rounded-xl shadow-xl z-20 py-2 overflow-hidden">
+              <div className="max-h-[300px] overflow-y-auto px-2">
+                {AI_MODELS.map((provider) => (
+                  <div key={provider.provider} className="mb-2 last:mb-0">
+                    <div className="px-2 py-1 text-xs font-semibold text-basalt-400 uppercase tracking-wider">
+                      {provider.provider}
+                    </div>
+                    {provider.models.map((model) => (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedModelId(model.id);
+                          setIsModelDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2 py-1.5 text-sm text-left rounded-lg transition-colors",
+                          selectedModelId === model.id ? "bg-basalt-900/5 text-basalt-900 font-medium" : "text-basalt-700 hover:bg-basalt-900/5 hover:text-basalt-900"
+                        )}
+                      >
+                        {model.name}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="w-px h-4 bg-basalt-900/10"></div>
         
         <button type="button" className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-basalt-700 hover:bg-basalt-900/5 transition-colors">
