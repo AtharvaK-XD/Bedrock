@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Lenis from 'lenis';
+import Landing from './pages/Landing';
 import Wizard from './pages/Wizard';
 import Result from './pages/Result';
 import { AppLayout } from './components/layout/AppLayout';
@@ -34,12 +35,23 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <AppLayout>
-          <Routes>
-            <Route path="/" element={<Wizard />} />
-            <Route path="/result" element={<Result />} />
-          </Routes>
-        </AppLayout>
+        <Routes>
+          {/* Public Route (No AppLayout) */}
+          <Route path="/" element={<Landing />} />
+          
+          {/* App Routes (Wrapped in AppLayout) */}
+          <Route 
+            path="/app/*" 
+            element={
+              <AppLayout>
+                <Routes>
+                  <Route path="/" element={<Wizard />} />
+                  <Route path="/result" element={<Result />} />
+                </Routes>
+              </AppLayout>
+            } 
+          />
+        </Routes>
       </Router>
     </QueryClientProvider>
   );
