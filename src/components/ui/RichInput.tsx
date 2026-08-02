@@ -212,7 +212,7 @@ export function RichInput({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholderText}
-        className="w-full min-h-[250px] max-h-[500px] resize-none bg-transparent p-6 text-lg text-basalt-900 placeholder:text-basalt-400 focus:outline-none"
+        className="w-full min-h-[100px] max-h-[500px] resize-none bg-transparent p-6 text-lg text-basalt-900 placeholder:text-basalt-400 focus:outline-none"
       />
 
       {/* Bottom Toolbar */}
