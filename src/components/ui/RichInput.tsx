@@ -50,7 +50,7 @@ export function RichInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState('llama3-8b-8192');
+  const [selectedModelId, setSelectedModelId] = useState('');
 
   const defaultPlaceholders = [
     "Help me review a tricky pull request in a legacy codebase...",
@@ -162,7 +162,7 @@ export function RichInput({
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-basalt-700 hover:bg-basalt-900/5 transition-colors"
           >
             <Cpu className="w-4 h-4 text-basalt-500" />
-            {AI_MODELS.flatMap(p => p.models).find(m => m.id === selectedModelId)?.name || 'Select Model'}
+            {AI_MODELS.flatMap(p => p.models).find(m => m.id === selectedModelId)?.name || 'AI model'}
             <ChevronDown className="w-4 h-4 text-basalt-400" />
           </button>
           

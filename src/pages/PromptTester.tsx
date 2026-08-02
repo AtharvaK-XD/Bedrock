@@ -10,7 +10,7 @@ export default function PromptTester() {
   const [result, setResult] = useState('');
   
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState('llama3-8b-8192');
+  const [selectedModelId, setSelectedModelId] = useState('');
 
   const handleTest = () => {
     if (!prompt.trim()) return;
@@ -66,7 +66,7 @@ export default function PromptTester() {
               >
                 <div className="flex items-center gap-2">
                   <Cpu className="w-5 h-5 text-basalt-500" />
-                  {AI_MODELS.flatMap(p => p.models).find(m => m.id === selectedModelId)?.name || 'Select Model'}
+                  {AI_MODELS.flatMap(p => p.models).find(m => m.id === selectedModelId)?.name || 'AI model'}
                 </div>
                 <ChevronDown className="w-5 h-5 text-basalt-400" />
               </button>

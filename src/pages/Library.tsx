@@ -41,7 +41,7 @@ export default function Library() {
             Prompt Library.
           </h1>
         </div>
-        
+
         <div className="w-full md:w-auto flex items-center gap-4">
           <div className="relative flex-1 md:w-80">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -92,7 +92,7 @@ export default function Library() {
                 <MoreVertical className="w-5 h-5" />
               </button>
             </div>
-            
+
             <p className="text-basalt-600 text-sm line-clamp-3 mb-6 flex-1">
               {prompt.snippet}
             </p>
@@ -106,7 +106,7 @@ export default function Library() {
                   </span>
                 ))}
               </div>
-              
+
               <div className="flex items-center justify-between pt-4 border-t border-basalt-900/5">
                 <span className="text-xs text-basalt-400">{prompt.date}</span>
                 <button
