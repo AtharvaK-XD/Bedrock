@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FlaskConical, Play, ChevronDown, Settings } from 'lucide-react';
 import { AI_AGENTS } from '../components/ui/RichInput';
 import { cn } from '../lib/utils';
@@ -9,10 +9,20 @@ export default function PromptTester() {
   const [isTesting, setIsTesting] = useState(false);
   const [result, setResult] = useState('');
   
-  const [isAgentDropdownOpen, setIsAgentDropdownOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [activeDropdown, setActiveDropdown] = useState<'agent' | 'model' | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState(AI_AGENTS[0].id);
-  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState(AI_AGENTS[0].models[0].id);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleTest = () => {
     if (!prompt.trim()) return;
@@ -64,11 +74,11 @@ export default function PromptTester() {
             />
           </div>
 
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4">
+          <div ref={containerRef} className="flex flex-wrap sm:flex-nowrap items-center gap-4">
             <div className="relative flex-1">
               <button
                 type="button"
-                onClick={() => setIsAgentDropdownOpen(!isAgentDropdownOpen)}
+                onClick={() => setActiveDropdown(activeDropdown === 'agent' ? null : 'agent')}
                 className="w-full flex items-center justify-between gap-2 px-4 py-4 bg-white border border-basalt-900/10 rounded-xl text-base font-medium text-basalt-900 hover:bg-basalt-900/5 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-2 truncate">
@@ -78,7 +88,7 @@ export default function PromptTester() {
                 <ChevronDown className="w-5 h-5 text-basalt-400 shrink-0" />
               </button>
               
-              {isAgentDropdownOpen && (
+              {activeDropdown === 'agent' && (
                 <div className="absolute bottom-full mb-2 left-0 w-72 bg-white border border-basalt-900/10 rounded-xl shadow-xl z-20 py-2 overflow-hidden">
                   <div className="max-h-[300px] overflow-y-auto px-1 custom-scrollbar" data-lenis-prevent="true">
                     {AI_AGENTS.map((agent) => (
@@ -88,7 +98,7 @@ export default function PromptTester() {
                         onClick={() => {
                           setSelectedAgentId(agent.id);
                           setSelectedModelId(agent.models[0].id);
-                          setIsAgentDropdownOpen(false);
+                          setActiveDropdown(null);
                         }}
                         className={cn(
                           "w-full flex items-start gap-3 px-3 py-2.5 text-left rounded-lg transition-colors",
@@ -110,7 +120,7 @@ export default function PromptTester() {
             <div className="relative flex-1">
               <button
                 type="button"
-                onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                onClick={() => setActiveDropdown(activeDropdown === 'model' ? null : 'model')}
                 className="w-full flex items-center justify-between gap-2 px-4 py-4 bg-white border border-basalt-900/10 rounded-xl text-base font-medium text-basalt-900 hover:bg-basalt-900/5 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-2 truncate">
@@ -120,7 +130,7 @@ export default function PromptTester() {
                 <ChevronDown className="w-5 h-5 text-basalt-400 shrink-0" />
               </button>
 
-              {isModelDropdownOpen && (
+              {activeDropdown === 'model' && (
                 <div className="absolute bottom-full mb-2 left-0 w-full bg-white border border-basalt-900/10 rounded-xl shadow-xl z-20 py-2">
                   <div className="px-3 py-2 text-xs font-semibold text-basalt-400 uppercase tracking-wider border-b border-basalt-900/5 mb-2">
                     {selectedAgent.name} Models
@@ -132,7 +142,7 @@ export default function PromptTester() {
                         type="button"
                         onClick={() => {
                           setSelectedModelId(model.id);
-                          setIsModelDropdownOpen(false);
+                          setActiveDropdown(null);
                         }}
                         className={cn(
                           "w-full flex items-center gap-2 px-2 py-2 text-sm text-left rounded-lg transition-colors",
