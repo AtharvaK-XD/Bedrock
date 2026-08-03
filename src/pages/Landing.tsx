@@ -23,7 +23,7 @@ export default function Landing() {
       {/* Hero Section (100vh) */}
       <section className="relative z-10 min-h-screen flex items-center pt-24 pb-12">
         <div className="w-full px-6 lg:px-12 mx-auto">
-          <div className="flex flex-col lg:flex-row gap-12 lg:gap-8 items-center justify-between max-w-[1400px] mx-auto">
+          <div className="flex flex-col lg:flex-row gap-12 lg:gap-8 items-center justify-between w-full mx-auto">
             
             {/* Left Column: Massive Typography */}
             <div className="w-full lg:w-[55%] flex flex-col justify-center">
@@ -69,7 +69,7 @@ export default function Landing() {
 
       {/* Features Section to make page longer */}
       <section className="relative z-10 py-32 bg-white/40 border-t border-basalt-900/5 backdrop-blur-sm">
-        <div className="max-w-[1400px] mx-auto px-6">
+        <div className="w-full mx-auto px-6 lg:px-12">
           <div className="text-center mb-20">
             <h2 className="text-[clamp(2.5rem,5vw,5rem)] font-display font-black leading-none tracking-tighter uppercase mb-6 text-basalt-900">
               Why use Bedrock?

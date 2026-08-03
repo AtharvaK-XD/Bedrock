@@ -53,10 +53,10 @@ Format your response clearly using markdown.`);
         <div className="inline-flex items-center justify-center p-3 bg-copper-500/10 rounded-2xl mb-6 text-copper-500 shadow-inner">
           <Wand2 className="w-8 h-8" />
         </div>
-        <h1 className="text-4xl md:text-5xl font-display font-bold text-basalt-900 mb-4 tracking-tight">
+        <h1 className="text-5xl md:text-6xl font-display font-bold text-basalt-900 mb-6 tracking-tight">
           Prompt Optimizer.
         </h1>
-        <p className="text-lg text-basalt-600 max-w-2xl mx-auto">
+        <p className="text-xl text-basalt-600 max-w-2xl mx-auto">
           Paste your existing, messy prompt below. Select the optimization rules you want to apply, and let our engine rewrite it into a highly effective instruction set.
         </p>
       </div>
