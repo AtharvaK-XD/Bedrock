@@ -72,10 +72,10 @@ export default function Wizard() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className={cn("transition-all duration-500", (!idea.trim() && step === 1) && "text-center mb-12")}>
-              <h1 className="text-4xl md:text-5xl font-display font-bold text-basalt-900 mb-4 tracking-tight leading-[1.1]">
+              <h1 className="text-5xl md:text-6xl font-display font-bold text-basalt-900 mb-6 tracking-tight leading-[1.1]">
                 Craft the Perfect Prompt.
               </h1>
-              <p className={cn("text-lg text-basalt-600 leading-relaxed max-w-md", (!idea.trim() && step === 1) ? "mx-auto mb-0" : "mb-10")}>
+              <p className={cn("text-xl text-basalt-600 leading-relaxed max-w-2xl", (!idea.trim() && step === 1) ? "mx-auto mb-0" : "mb-10")}>
                 Turn a vague idea into a solid, build-ready prompt. Select your target output, type what you want, and let us refine it.
               </p>
             </div>

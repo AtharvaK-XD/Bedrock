@@ -37,7 +37,7 @@ export default function Library() {
           <div className="inline-flex items-center justify-center p-3 bg-copper-500/10 rounded-2xl mb-4 text-copper-500 shadow-inner">
             <BookOpen className="w-8 h-8" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-basalt-900 tracking-tight">
+          <h1 className="text-5xl md:text-6xl font-display font-bold text-basalt-900 tracking-tight mb-2">
             Prompt Library.
           </h1>
         </div>
