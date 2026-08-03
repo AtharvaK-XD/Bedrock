@@ -75,6 +75,7 @@ Format your response clearly using markdown.`);
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Paste the prompt you want to improve here..."
+                data-lenis-prevent="true"
                 className="w-full flex-1 resize-none bg-transparent text-base text-basalt-900 placeholder:text-basalt-400 focus:outline-none custom-scrollbar"
               />
             </div>
@@ -94,7 +95,7 @@ Format your response clearly using markdown.`);
               >
                 <h3 className="text-xl font-display font-bold text-basalt-900 mb-6">Optimization Rules</h3>
                 
-                <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2" data-lenis-prevent="true">
                   {rules.map(rule => (
                     <button
                       key={rule.id}
@@ -158,7 +159,7 @@ Format your response clearly using markdown.`);
                   </div>
                 </div>
 
-                <div className="flex-1 bg-[#131518] rounded-xl p-6 overflow-auto custom-scrollbar relative z-10">
+                <div className="flex-1 bg-[#131518] rounded-xl p-6 overflow-auto custom-scrollbar relative z-10" data-lenis-prevent="true">
                   <pre className="whitespace-pre-wrap font-mono text-[13px] sm:text-sm text-basalt-100 leading-relaxed">
                     {optimizedResult}
                   </pre>
