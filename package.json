@@ -1,11 +1,16 @@
 {
-  "name": "temp-vite",
+  "name": "bedrock-desktop",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Bedrock Prompt Engineering App",
+  "author": "Bedrock Inc",
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:electron": "tsc -b && vite build && electron-builder",
+    "start:desktop": "tsc -b && vite build && electron .",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -31,11 +36,39 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "autoprefixer": "^10.5.4",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
     "oxlint": "^1.75.0",
     "postcss": "^8.5.25",
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
+    "vite-plugin-electron": "^1.1.1",
+    "vite-plugin-electron-renderer": "^1.0.0",
     "vitest": "^4.1.10"
+  },
+  "build": {
+    "appId": "com.bedrock.app",
+    "productName": "Bedrock",
+    "asar": false,
+    "directories": {
+      "output": "release/${version}"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "dist",
+      "dist-electron"
+    ]
   }
 }

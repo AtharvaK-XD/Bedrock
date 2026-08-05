@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { AuthCard } from '../components/auth/AuthCard';
-import { Layers, Zap, Shield, Sparkles } from 'lucide-react';
+import { Zap, Shield, Sparkles } from 'lucide-react';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 
 export default function Landing() {
@@ -69,9 +69,23 @@ export default function Landing() {
                   </motion.span>
                 </h1>
                 
-                <p className="text-lg lg:text-2xl text-basalt-600 leading-relaxed max-w-2xl font-medium">
+                <p className="text-lg lg:text-2xl text-basalt-600 leading-relaxed max-w-2xl font-medium mb-10">
                   Stop struggling with AI outputs. Turn your vague ideas into precise, high-fidelity prompts in seconds using our guided refinement engine.
                 </p>
+
+                <div className="flex flex-wrap items-center gap-4">
+                  <a 
+                    href="/Bedrock Setup 1.0.0.exe" 
+                    download
+                    className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-basalt-900 text-white rounded-2xl font-semibold text-lg hover:bg-basalt-800 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1"
+                  >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download for Windows (.exe)
+                  </a>
+                  <p className="text-sm text-basalt-500 font-medium">Native Desktop App</p>
+                </div>
               </motion.div>
             </div>
 
