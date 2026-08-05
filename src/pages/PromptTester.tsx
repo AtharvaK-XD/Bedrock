@@ -44,7 +44,7 @@ export default function PromptTester() {
         <div className="inline-flex items-center justify-center p-3 bg-copper-500/10 rounded-2xl mb-6 text-copper-500 shadow-inner">
           <FlaskConical className="w-8 h-8" />
         </div>
-        <h1 className="text-5xl md:text-6xl font-display font-bold text-basalt-900 mb-6 tracking-tight">
+        <h1 className="text-5xl md:text-6xl font-editorial font-bold text-basalt-900 mb-6 tracking-tight leading-[1.1]">
           Prompt Tester.
         </h1>
         <p className="text-xl text-basalt-600 max-w-2xl mx-auto">
