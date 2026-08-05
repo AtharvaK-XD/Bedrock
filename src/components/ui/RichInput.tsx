@@ -32,6 +32,7 @@ export const AI_AGENTS = [
     name: 'ChatGPT',
     description: 'Versatile all-rounder for most tasks',
     icon: BotMessageSquare,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=openai.com&sz=128',
     models: [
       { id: 'gpt-4o', name: 'GPT-4o' },
       { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
@@ -43,6 +44,7 @@ export const AI_AGENTS = [
     name: 'Claude',
     description: 'Long documents and careful writing',
     icon: Feather,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=anthropic.com&sz=128',
     models: [
       { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
       { id: 'claude-3-opus', name: 'Claude 3 Opus' },
@@ -54,6 +56,7 @@ export const AI_AGENTS = [
     name: 'Gemini',
     description: 'Multimodal and tight Google integration',
     icon: Sparkles,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=gemini.google.com&sz=128',
     models: [
       { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
       { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' }
@@ -64,6 +67,7 @@ export const AI_AGENTS = [
     name: 'Llama',
     description: 'Open-weight and self-hosting friendly',
     icon: Network,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=meta.com&sz=128',
     models: [
       { id: 'llama-3-70b', name: 'Llama 3 70B' },
       { id: 'llama-3-8b', name: 'Llama 3 8B' }
@@ -74,6 +78,7 @@ export const AI_AGENTS = [
     name: 'Mistral',
     description: 'Fast, lightweight, and efficient',
     icon: Wind,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=mistral.ai&sz=128',
     models: [
       { id: 'mistral-large', name: 'Mistral Large' },
       { id: 'mixtral-8x22b', name: 'Mixtral 8x22B' }
@@ -84,6 +89,7 @@ export const AI_AGENTS = [
     name: 'DeepSeek',
     description: 'Strong reasoning and coding',
     icon: Code,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=deepseek.com&sz=128',
     models: [
       { id: 'deepseek-coder-v2', name: 'DeepSeek Coder V2' },
       { id: 'deepseek-chat', name: 'DeepSeek Chat' }
@@ -94,6 +100,7 @@ export const AI_AGENTS = [
     name: 'Perplexity',
     description: 'Web search with cited answers',
     icon: Compass,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=perplexity.ai&sz=128',
     models: [
       { id: 'sonar-huge', name: 'Sonar Huge' },
       { id: 'sonar-large', name: 'Sonar Large' }
@@ -104,6 +111,7 @@ export const AI_AGENTS = [
     name: 'Grok',
     description: 'Real-time, X-aware responses',
     icon: Zap,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=x.ai&sz=128',
     models: [
       { id: 'grok-1.5', name: 'Grok-1.5' }
     ]
@@ -113,21 +121,79 @@ export const AI_AGENTS = [
     name: 'Cohere',
     description: 'Retrieval and enterprise search',
     icon: Database,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=cohere.com&sz=128',
     models: [
       { id: 'command-r-plus', name: 'Command R+' },
       { id: 'command-r', name: 'Command R' }
     ]
   },
   {
-    id: 'nvidia',
-    name: 'Nvidia',
-    description: 'High-performance AI computing',
+    id: 'copilot',
+    name: 'Copilot',
+    description: 'Microsoft ecosystem integration',
+    icon: Sparkles,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=copilot.microsoft.com&sz=128',
+    models: [{ id: 'copilot-pro', name: 'Copilot Pro' }]
+  },
+  {
+    id: 'stability',
+    name: 'Stability AI',
+    description: 'Open source generative models',
+    icon: Sparkles,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=stability.ai&sz=128',
+    models: [{ id: 'sd3', name: 'Stable Diffusion 3' }]
+  },
+  {
+    id: 'poe',
+    name: 'Poe',
+    description: 'Access multiple AI bots',
+    icon: Bot,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=poe.com&sz=128',
+    models: [{ id: 'poe-assistant', name: 'Assistant' }]
+  },
+  {
+    id: 'jasper',
+    name: 'Jasper',
+    description: 'AI content generation',
+    icon: Feather,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=jasper.ai&sz=128',
+    models: [{ id: 'jasper-brand', name: 'Brand Voice' }]
+  },
+  {
+    id: 'apple',
+    name: 'Apple Intelligence',
+    description: 'Personal intelligence system',
     icon: Cpu,
-    models: [
-      { id: 'nemotron-4', name: 'Nemotron-4 340B' }
-    ]
+    iconUrl: 'https://www.google.com/s2/favicons?domain=apple.com&sz=128',
+    models: [{ id: 'apple-local', name: 'Local Model' }]
+  },
+  {
+    id: 'zapier',
+    name: 'Zapier',
+    description: 'Automated workflows',
+    icon: Network,
+    iconUrl: 'https://www.google.com/s2/favicons?domain=zapier.com&sz=128',
+    models: [{ id: 'zapier-ai', name: 'Zapier Central' }]
   }
 ];
+
+export const AgentIcon = ({ agent, className }: { agent: any, className?: string }) => {
+  const [error, setError] = useState(false);
+  
+  if (agent.iconUrl && !error) {
+    return (
+      <img 
+        src={agent.iconUrl} 
+        alt={agent.name} 
+        className={cn("object-contain rounded-[4px] shrink-0", className)}
+        onError={() => setError(true)}
+      />
+    );
+  }
+  
+  const Icon = agent.icon;
+  return <Icon className={cn("shrink-0", className)} />;
+};
 
 export function RichInput({
   value,
@@ -266,7 +332,7 @@ export function RichInput({
               onClick={() => setActiveDropdown(activeDropdown === 'agent' ? null : 'agent')}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-basalt-700 hover:bg-basalt-900/5 transition-colors"
             >
-              <selectedAgent.icon className="w-4 h-4 text-basalt-500" />
+              <AgentIcon agent={selectedAgent} className="w-4 h-4 text-basalt-500" />
               {selectedAgent.name}
               <ChevronDown className="w-4 h-4 text-basalt-400" />
             </button>
@@ -288,7 +354,7 @@ export function RichInput({
                         selectedAgentId === agent.id ? "bg-basalt-900/5" : "hover:bg-basalt-900/5"
                       )}
                     >
-                      <agent.icon className={cn("w-5 h-5 mt-0.5", selectedAgentId === agent.id ? "text-copper-600" : "text-basalt-500")} />
+                      <AgentIcon agent={agent} className={cn("w-5 h-5 mt-0.5", selectedAgentId === agent.id ? "" : "opacity-70 grayscale")} />
                       <div>
                         <div className={cn("text-sm font-medium", selectedAgentId === agent.id ? "text-basalt-900" : "text-basalt-800")}>{agent.name}</div>
                         <div className="text-xs text-basalt-500 mt-0.5">{agent.description}</div>

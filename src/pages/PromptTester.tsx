@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { FlaskConical, Play, ChevronDown, Settings } from 'lucide-react';
-import { AI_AGENTS } from '../components/ui/RichInput';
+import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { cn } from '../lib/utils';
 
 export default function PromptTester() {
@@ -82,7 +82,7 @@ export default function PromptTester() {
                 className="w-full flex items-center justify-between gap-2 px-4 py-4 bg-white border border-basalt-900/10 rounded-xl text-base font-medium text-basalt-900 hover:bg-basalt-900/5 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-2 truncate">
-                  <selectedAgent.icon className="w-5 h-5 text-basalt-500 shrink-0" />
+                  <AgentIcon agent={selectedAgent} className="w-5 h-5 text-basalt-500 shrink-0" />
                   <span className="truncate">{selectedAgent.name}</span>
                 </div>
                 <ChevronDown className="w-5 h-5 text-basalt-400 shrink-0" />
@@ -105,7 +105,7 @@ export default function PromptTester() {
                           selectedAgentId === agent.id ? "bg-basalt-900/5" : "hover:bg-basalt-900/5"
                         )}
                       >
-                        <agent.icon className={cn("w-5 h-5 mt-0.5 shrink-0", selectedAgentId === agent.id ? "text-copper-600" : "text-basalt-500")} />
+                        <AgentIcon agent={agent} className={cn("w-5 h-5 mt-0.5 shrink-0", selectedAgentId === agent.id ? "" : "opacity-70 grayscale")} />
                         <div className="min-w-0">
                           <div className={cn("text-sm font-medium truncate", selectedAgentId === agent.id ? "text-basalt-900" : "text-basalt-800")}>{agent.name}</div>
                           <div className="text-xs text-basalt-500 mt-0.5 truncate">{agent.description}</div>
