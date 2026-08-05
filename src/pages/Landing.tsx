@@ -6,19 +6,46 @@ export default function Landing() {
   return (
     <div className="bg-sandstone-50 text-basalt-900 font-sans selection:bg-copper-500 selection:text-white relative overflow-hidden flex flex-col">
       {/* Immersive Background Effects */}
-      <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-copper-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-basalt-900/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+      <motion.div 
+        animate={{ 
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.5, 0.3],
+          x: [0, 50, 0],
+          y: [0, 30, 0]
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-copper-500/20 rounded-full blur-[120px] pointer-events-none z-0"
+      />
+      <motion.div 
+        animate={{ 
+          scale: [1, 1.3, 1],
+          opacity: [0.2, 0.4, 0.2],
+          x: [0, -60, 0],
+          y: [0, -40, 0]
+        }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-basalt-900/20 rounded-full blur-[120px] pointer-events-none z-0"
+      />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay z-0"></div>
 
       {/* Header */}
-      <header className="absolute top-0 left-0 right-0 z-50 p-6 lg:p-8 flex items-center justify-between">
-        <div className="flex items-center gap-3 text-basalt-900 group">
-          <div className="p-1.5 bg-copper-500/10 rounded-lg">
+      <motion.header 
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="absolute top-0 left-0 right-0 z-50 p-6 lg:p-8 flex items-center justify-between"
+      >
+        <div className="flex items-center gap-3 text-basalt-900 group cursor-pointer">
+          <motion.div 
+            whileHover={{ rotate: 180, scale: 1.1 }}
+            transition={{ duration: 0.3 }}
+            className="p-1.5 bg-copper-500/10 rounded-lg"
+          >
             <Layers className="w-6 h-6 text-copper-500" />
-          </div>
+          </motion.div>
           <span className="font-display font-bold text-2xl tracking-tight">Bedrock</span>
         </div>
-      </header>
+      </motion.header>
 
       {/* Hero Section (100vh) */}
       <section className="relative z-10 min-h-screen flex items-center pt-24 pb-12">
@@ -38,12 +65,25 @@ export default function Landing() {
                 </div>
                 
                 {/* Dynamically scaling massive font */}
-                <h1 className="font-editorial font-bold leading-[0.85] tracking-tighter mb-6 lg:mb-8 uppercase text-[clamp(4rem,9vw,11rem)] text-basalt-900">
-                  BUILD <br />
-                  THE <br />
-                  <span className="text-copper-600 italic font-medium">
+                <h1 className="font-editorial font-bold leading-[0.85] tracking-tighter mb-6 lg:mb-8 uppercase text-[clamp(4rem,9vw,11rem)] text-basalt-900 flex flex-col">
+                  <motion.span
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  >BUILD</motion.span>
+                  <motion.span
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  >THE</motion.span>
+                  <motion.span 
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.8, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    className="text-copper-600 italic font-medium"
+                  >
                     PROMPT.
-                  </span>
+                  </motion.span>
                 </h1>
                 
                 <p className="text-lg lg:text-2xl text-basalt-600 leading-relaxed max-w-2xl font-medium">
@@ -70,45 +110,58 @@ export default function Landing() {
       {/* Features Section to make page longer */}
       <section className="relative z-10 py-32 bg-white/40 border-t border-basalt-900/5 backdrop-blur-sm">
         <div className="w-full mx-auto px-6 lg:px-12">
-          <div className="text-center mb-20">
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-20"
+          >
             <h2 className="text-[clamp(2.5rem,5vw,5rem)] font-display font-black leading-none tracking-tighter uppercase mb-6 text-basalt-900">
               Why use Bedrock?
             </h2>
             <p className="text-xl text-basalt-600 max-w-2xl mx-auto">
               We built the ultimate toolset to help you communicate perfectly with large language models.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white/60 p-10 rounded-[2rem] border border-basalt-900/5 shadow-sm">
-              <div className="w-14 h-14 bg-copper-500/10 rounded-2xl flex items-center justify-center text-copper-500 mb-6">
-                <Zap className="w-7 h-7" />
-              </div>
-              <h3 className="text-2xl font-display font-bold mb-4 tracking-tight">Instant Generation</h3>
-              <p className="text-basalt-600 leading-relaxed">
-                Type a one-liner and watch as Bedrock instantly expands it into a fully structured, multi-shot prompt ready for any AI model.
-              </p>
-            </div>
-
-            <div className="bg-white/60 p-10 rounded-[2rem] border border-basalt-900/5 shadow-sm">
-              <div className="w-14 h-14 bg-copper-500/10 rounded-2xl flex items-center justify-center text-copper-500 mb-6">
-                <Shield className="w-7 h-7" />
-              </div>
-              <h3 className="text-2xl font-display font-bold mb-4 tracking-tight">Enterprise Ready</h3>
-              <p className="text-basalt-600 leading-relaxed">
-                Secure, private, and built for teams. Keep your proprietary prompts and frameworks organized in one centralized library.
-              </p>
-            </div>
-
-            <div className="bg-white/60 p-10 rounded-[2rem] border border-basalt-900/5 shadow-sm">
-              <div className="w-14 h-14 bg-copper-500/10 rounded-2xl flex items-center justify-center text-copper-500 mb-6">
-                <Sparkles className="w-7 h-7" />
-              </div>
-              <h3 className="text-2xl font-display font-bold mb-4 tracking-tight">Context Aware</h3>
-              <p className="text-basalt-600 leading-relaxed">
-                Our engine asks you the right clarifying questions to ensure every edge case is covered before generating the final output.
-              </p>
-            </div>
+            {[
+              {
+                icon: <Zap className="w-7 h-7" />,
+                title: "Instant Generation",
+                desc: "Type a one-liner and watch as Bedrock instantly expands it into a fully structured, multi-shot prompt ready for any AI model."
+              },
+              {
+                icon: <Shield className="w-7 h-7" />,
+                title: "Enterprise Ready",
+                desc: "Secure, private, and built for teams. Keep your proprietary prompts and frameworks organized in one centralized library."
+              },
+              {
+                icon: <Sparkles className="w-7 h-7" />,
+                title: "Context Aware",
+                desc: "Our engine asks you the right clarifying questions to ensure every edge case is covered before generating the final output."
+              }
+            ].map((feature, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.7, delay: idx * 0.2 }}
+                whileHover={{ y: -10, transition: { duration: 0.2 } }}
+                className="bg-white/60 p-10 rounded-[2rem] border border-basalt-900/5 shadow-sm hover:shadow-xl hover:shadow-copper-500/10 transition-all duration-300 relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-copper-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="w-14 h-14 bg-copper-500/10 rounded-2xl flex items-center justify-center text-copper-500 mb-6 relative z-10 group-hover:scale-110 group-hover:bg-copper-500/20 transition-all duration-300">
+                  {feature.icon}
+                </div>
+                <h3 className="text-2xl font-display font-bold mb-4 tracking-tight relative z-10">{feature.title}</h3>
+                <p className="text-basalt-600 leading-relaxed relative z-10">
+                  {feature.desc}
+                </p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
