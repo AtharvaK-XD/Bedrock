@@ -11,6 +11,7 @@ import Optimizer from './pages/Optimizer';
 import PromptTester from './pages/PromptTester';
 import Library from './pages/Library';
 import { AppLayout } from './components/layout/AppLayout';
+import { Topbar } from './components/layout/Topbar';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -48,6 +49,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
+        <Topbar />
         <Routes>
           {/* Public Route (No AppLayout) */}
           <Route path="/" element={<Landing />} />

@@ -28,24 +28,6 @@ export default function Landing() {
       />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay z-0"></div>
 
-      {/* Header */}
-      <motion.header 
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="absolute top-0 left-0 right-0 z-50 p-6 lg:p-8 flex items-center justify-between"
-      >
-        <div className="flex items-center gap-3 text-basalt-900 group cursor-pointer">
-          <motion.div 
-            whileHover={{ rotate: 180, scale: 1.1 }}
-            transition={{ duration: 0.3 }}
-            className="p-1.5 bg-copper-500/10 rounded-lg"
-          >
-            <Layers className="w-6 h-6 text-copper-500" />
-          </motion.div>
-          <span className="font-display font-bold text-2xl tracking-tight">Bedrock</span>
-        </div>
-      </motion.header>
 
       {/* Hero Section (100vh) */}
       <section className="relative z-10 min-h-screen flex items-center pt-24 pb-12">
