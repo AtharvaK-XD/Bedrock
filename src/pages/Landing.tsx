@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { AuthCard } from '../components/auth/AuthCard';
 import { Layers, Zap, Shield, Sparkles } from 'lucide-react';
+import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 
 export default function Landing() {
   return (
@@ -85,6 +86,34 @@ export default function Landing() {
               </motion.div>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* AI Models Marquee Section */}
+      <section className="relative z-10 py-12 border-y border-basalt-900/5 bg-white/30 backdrop-blur-md overflow-hidden">
+        <div className="text-center mb-8 px-6">
+          <p className="text-sm font-semibold tracking-widest uppercase text-basalt-500">
+            Powered by the world's best models. Use whatever you need.
+          </p>
+        </div>
+        
+        {/* Infinite Marquee Container */}
+        <div className="relative flex overflow-hidden w-full group">
+          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#F4F3EF] to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#F4F3EF] to-transparent z-10 pointer-events-none"></div>
+          
+          <div className="flex w-max animate-marquee hover:[animation-play-state:paused]">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="flex items-center gap-16 px-8">
+                {AI_AGENTS.filter(a => a.id !== 'universal').map((agent) => (
+                  <div key={agent.id} className="flex flex-col items-center gap-3 opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
+                    <AgentIcon agent={agent} className="w-10 h-10 grayscale-0 filter drop-shadow-sm" />
+                    <span className="text-xs font-semibold text-basalt-600 uppercase tracking-wider">{agent.name}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
       </section>
