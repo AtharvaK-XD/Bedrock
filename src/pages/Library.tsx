@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Search, Copy, MoreVertical, Filter, Tag } from 'lucide-react';
+import { Search, Copy, MoreVertical, Filter, Tag } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
 

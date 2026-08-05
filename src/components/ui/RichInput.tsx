@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
-import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings, Cpu, Globe, BotMessageSquare, Feather, Network, Wind, Compass, Zap, Database } from 'lucide-react';
+import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings, Globe, BotMessageSquare, Feather, Network, Wind, Compass, Zap, Database } from 'lucide-react';
 import type { IdeaPayload } from '../../lib/mockApi';
 
 interface RichInputProps {

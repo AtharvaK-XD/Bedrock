@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { FlaskConical, Play, ChevronDown, Settings } from 'lucide-react';
+import { Play, ChevronDown, Settings } from 'lucide-react';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { cn } from '../lib/utils';
 
