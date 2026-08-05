@@ -39,11 +39,9 @@ export default function PromptTester() {
   const selectedModel = selectedAgent.models.find(m => m.id === selectedModelId) || selectedAgent.models[0];
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-12 lg:py-20 min-h-[calc(100vh-80px)]">
+    <div className="max-w-[1400px] mx-auto px-6 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-12">
-        <div className="inline-flex items-center justify-center p-3 bg-copper-500/10 rounded-2xl mb-6 text-copper-500 shadow-inner">
-          <FlaskConical className="w-8 h-8" />
-        </div>
+
         <h1 className="text-5xl md:text-6xl font-editorial font-bold text-basalt-900 mb-6 tracking-tight leading-[1.1]">
           Prompt Tester.
         </h1>
@@ -105,7 +103,7 @@ export default function PromptTester() {
                           selectedAgentId === agent.id ? "bg-basalt-900/5" : "hover:bg-basalt-900/5"
                         )}
                       >
-                        <AgentIcon agent={agent} className={cn("w-5 h-5 mt-0.5 shrink-0", selectedAgentId === agent.id ? "" : "opacity-70 grayscale")} />
+                        <AgentIcon agent={agent} className="w-5 h-5 mt-0.5 shrink-0" />
                         <div className="min-w-0">
                           <div className={cn("text-sm font-medium truncate", selectedAgentId === agent.id ? "text-basalt-900" : "text-basalt-800")}>{agent.name}</div>
                           <div className="text-xs text-basalt-500 mt-0.5 truncate">{agent.description}</div>
