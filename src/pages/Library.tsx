@@ -31,12 +31,10 @@ export default function Library() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-12 lg:py-20 min-h-[calc(100vh-80px)]">
+    <div className="max-w-[1400px] mx-auto px-6 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
         <div>
-          <div className="inline-flex items-center justify-center p-3 bg-copper-500/10 rounded-2xl mb-4 text-copper-500 shadow-inner">
-            <BookOpen className="w-8 h-8" />
-          </div>
+
           <h1 className="text-5xl md:text-6xl font-editorial font-bold text-basalt-900 tracking-tight mb-2 leading-[1.1]">
             Prompt Library.
           </h1>

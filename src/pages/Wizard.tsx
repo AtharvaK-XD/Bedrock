@@ -51,7 +51,7 @@ export default function Wizard() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-12 lg:py-20 min-h-[calc(100vh-80px)]">
+    <div className="max-w-[1400px] mx-auto px-6 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className={cn(
         "transition-all duration-500",
         (!idea.trim() && step === 1) 

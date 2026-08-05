@@ -134,46 +134,6 @@ export const AI_AGENTS = [
     icon: Sparkles,
     iconUrl: 'https://www.google.com/s2/favicons?domain=copilot.microsoft.com&sz=128',
     models: [{ id: 'copilot-pro', name: 'Copilot Pro' }]
-  },
-  {
-    id: 'stability',
-    name: 'Stability AI',
-    description: 'Open source generative models',
-    icon: Sparkles,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=stability.ai&sz=128',
-    models: [{ id: 'sd3', name: 'Stable Diffusion 3' }]
-  },
-  {
-    id: 'poe',
-    name: 'Poe',
-    description: 'Access multiple AI bots',
-    icon: Bot,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=poe.com&sz=128',
-    models: [{ id: 'poe-assistant', name: 'Assistant' }]
-  },
-  {
-    id: 'jasper',
-    name: 'Jasper',
-    description: 'AI content generation',
-    icon: Feather,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=jasper.ai&sz=128',
-    models: [{ id: 'jasper-brand', name: 'Brand Voice' }]
-  },
-  {
-    id: 'apple',
-    name: 'Apple Intelligence',
-    description: 'Personal intelligence system',
-    icon: Cpu,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=apple.com&sz=128',
-    models: [{ id: 'apple-local', name: 'Local Model' }]
-  },
-  {
-    id: 'zapier',
-    name: 'Zapier',
-    description: 'Automated workflows',
-    icon: Network,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=zapier.com&sz=128',
-    models: [{ id: 'zapier-ai', name: 'Zapier Central' }]
   }
 ];
 
@@ -354,7 +314,7 @@ export function RichInput({
                         selectedAgentId === agent.id ? "bg-basalt-900/5" : "hover:bg-basalt-900/5"
                       )}
                     >
-                      <AgentIcon agent={agent} className={cn("w-5 h-5 mt-0.5", selectedAgentId === agent.id ? "" : "opacity-70 grayscale")} />
+                      <AgentIcon agent={agent} className="w-5 h-5 mt-0.5 shrink-0" />
                       <div>
                         <div className={cn("text-sm font-medium", selectedAgentId === agent.id ? "text-basalt-900" : "text-basalt-800")}>{agent.name}</div>
                         <div className="text-xs text-basalt-500 mt-0.5">{agent.description}</div>
