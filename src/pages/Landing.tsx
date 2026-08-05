@@ -103,18 +103,22 @@ export default function Landing() {
           <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#F4F3EF] to-transparent z-10 pointer-events-none"></div>
           <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#F4F3EF] to-transparent z-10 pointer-events-none"></div>
           
-          <div className="flex w-max animate-marquee hover:[animation-play-state:paused]">
+          <motion.div 
+            className="flex w-max"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ ease: "linear", duration: 30, repeat: Infinity }}
+          >
             {[...Array(2)].map((_, i) => (
-              <div key={i} className="flex items-center gap-16 px-8">
+              <div key={i} className="flex items-center gap-32 px-16">
                 {AI_AGENTS.filter(a => a.id !== 'universal').map((agent) => (
-                  <div key={agent.id} className="flex flex-col items-center gap-3 opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
-                    <AgentIcon agent={agent} className="w-10 h-10 grayscale-0 filter drop-shadow-sm" />
-                    <span className="text-xs font-semibold text-basalt-600 uppercase tracking-wider">{agent.name}</span>
+                  <div key={agent.id} className="flex flex-col items-center gap-6 opacity-80 hover:opacity-100 transition-opacity">
+                    <AgentIcon agent={agent} className="w-32 h-32 drop-shadow-md" />
+                    <span className="text-xl font-bold text-basalt-700 uppercase tracking-widest">{agent.name}</span>
                   </div>
                 ))}
               </div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
