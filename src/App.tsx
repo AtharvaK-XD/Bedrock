@@ -12,6 +12,7 @@ import PromptTester from './pages/PromptTester';
 import Library from './pages/Library';
 import { AppLayout } from './components/layout/AppLayout';
 import { Topbar } from './components/layout/Topbar';
+import { checkForUpdates } from './lib/updater';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -19,6 +20,9 @@ const queryClient = new QueryClient();
 
 function App() {
   useEffect(() => {
+    // Check for Tauri updates
+    checkForUpdates();
+    
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -55,7 +59,7 @@ function App() {
           <Route 
             path="/" 
             element={
-              (window as any).IS_ELECTRON ? <Navigate to="/app" replace /> : <Landing />
+              ('__TAURI_INTERNALS__' in window) ? <Navigate to="/app" replace /> : <Landing />
             } 
           />
           
