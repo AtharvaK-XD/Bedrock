@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Bedrock",
   "version": "1.0.0",
-  "identifier": "com.bedrock.app",
+  "identifier": "com.bedrock.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -37,14 +37,6 @@
       "nsis": {
         "installMode": "perMachine"
       }
-    }
-  },
-  "plugins": {
-    "updater": {
-      "endpoints": [
-        "https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/updater.json"
-      ],
-      "pubkey": ""
     }
   }
 }
