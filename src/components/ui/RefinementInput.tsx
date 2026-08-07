@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, AppWindow, Palette, Sparkles, ArrowUp, ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { AI_AGENTS } from './RichInput';
 
 interface RefinementInputProps {
   onSubmit?: (text: string, model: string) => void;
@@ -9,8 +10,20 @@ interface RefinementInputProps {
 
 export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
   const [input, setInput] = useState('');
-  const [model, setModel] = useState('3 Flash');
+  const [model, setModel] = useState('GPT-4o');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsModelDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const defaultPlaceholders = [
     "What would you like to change or create?",
@@ -70,20 +83,20 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         }
       }}
       className={cn(
-        "relative flex flex-col w-full mx-auto bg-white/90 backdrop-blur-md border border-basalt-900/10 rounded-3xl shadow-xl transition-all duration-500 ease-[0.22,1,0.36,1] focus-within:ring-2 focus-within:ring-copper-500/30 overflow-hidden",
+        "relative flex flex-col w-full mx-auto bg-white/90 backdrop-blur-md border border-basalt-900/10 rounded-3xl shadow-xl transition-all duration-500 ease-[0.22,1,0.36,1] focus-within:ring-2 focus-within:ring-copper-500/30",
         expanded ? "max-w-[700px] min-h-[140px]" : "max-w-[340px] min-h-[60px]",
         className
       )}
     >
       {/* Input area */}
-      <div className={cn("flex w-full px-5 transition-all duration-500", expanded ? "pt-4" : "py-[18px]")}>
+      <div className={cn("flex w-full px-5 transition-all duration-500 flex-1", expanded ? "pt-5 items-start" : "pt-0 items-center")}>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={placeholderText}
           className={cn(
-            "w-full bg-transparent text-basalt-900 placeholder:text-basalt-400 text-[15px] focus:outline-none resize-none leading-relaxed transition-all duration-500",
-            expanded ? "min-h-[44px]" : "h-[24px]"
+            "w-full bg-transparent text-basalt-900 placeholder:text-basalt-400 text-[15px] resize-none leading-relaxed transition-all duration-500 border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent p-0 m-0",
+            expanded ? "min-h-[44px]" : "h-[22px] overflow-hidden"
           )}
           rows={expanded ? 2 : 1}
         />
@@ -104,18 +117,43 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         {/* Right tools */}
         <div className="flex items-center gap-2">
           {/* Model Selector */}
-          <div className="relative group flex items-center bg-basalt-900/5 hover:bg-basalt-900/10 transition-colors rounded-full px-4 py-1.5 cursor-pointer border border-basalt-900/5 whitespace-nowrap">
-            <span className="text-basalt-900 text-[13px] font-medium mr-1.5">{model}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-basalt-500 group-hover:text-basalt-700 transition-colors" />
-            <select 
-              className="absolute inset-0 opacity-0 cursor-pointer w-full"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
+          <div className="relative group flex items-center" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+              className="flex items-center bg-basalt-900/5 hover:bg-basalt-900/10 transition-colors rounded-full px-4 py-1.5 border border-basalt-900/5 whitespace-nowrap"
             >
-              <option value="3 Flash">3 Flash</option>
-              <option value="4o">4o</option>
-              <option value="Claude 3.5 Sonnet">Claude 3.5 Sonnet</option>
-            </select>
+              <span className="text-basalt-900 text-[13px] font-medium mr-1.5">{model}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-basalt-500 transition-colors" />
+            </button>
+
+            {isModelDropdownOpen && (
+              <div className="absolute bottom-full right-0 mb-2 w-56 max-h-[300px] overflow-y-auto custom-scrollbar bg-white/90 backdrop-blur-xl border border-basalt-900/10 rounded-2xl shadow-xl z-50 py-2">
+                {AI_AGENTS.map((agent) => (
+                  <div key={agent.id} className="mb-2">
+                    <div className="px-3 py-1 text-[10px] font-bold text-basalt-400 uppercase tracking-wider">
+                      {agent.name}
+                    </div>
+                    {agent.models.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setModel(m.name);
+                          setIsModelDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "w-full flex items-center px-4 py-1.5 text-[13px] text-left transition-colors",
+                          model === m.name ? "bg-copper-500/10 text-copper-700 font-medium" : "text-basalt-700 hover:bg-basalt-900/5 hover:text-basalt-900"
+                        )}
+                      >
+                        {m.name}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <button type="button" className="text-basalt-400 hover:text-basalt-700 transition-colors p-2 rounded-xl hover:bg-basalt-900/5 whitespace-nowrap">
