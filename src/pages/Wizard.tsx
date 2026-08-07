@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
@@ -11,6 +11,7 @@ import { Label } from '../components/ui/Label';
 
 export default function Wizard() {
   const navigate = useNavigate();
+  const questionsRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<1 | 2>(1);
   const [idea, setIdea] = useState('');
   const [targetType, setTargetType] = useState<IdeaPayload['targetType']>('coding_agent');
@@ -34,6 +35,14 @@ export default function Wizard() {
     }
   };
 
+  useEffect(() => {
+    if (step === 2 && questionsRef.current) {
+      setTimeout(() => {
+        questionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [step]);
+
   const handleSynthesize = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsSynthesizing(true);
@@ -52,30 +61,20 @@ export default function Wizard() {
 
   return (
     <div className="max-w-[1400px] mx-auto px-6 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
-      <div className={cn(
-        "transition-all duration-500",
-        (!idea.trim() && step === 1) 
-          ? "max-w-5xl mx-auto"
-          : "grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-start"
-      )}>
+      <div className="max-w-5xl mx-auto flex flex-col gap-12 transition-all duration-500">
         
-        {/* Left Column (Sticky) */}
-        <div className={cn(
-          "relative z-20 transition-all duration-500",
-          (!idea.trim() && step === 1)
-            ? "w-full"
-            : "lg:col-span-5 xl:col-span-5 lg:sticky lg:top-32"
-        )}>
+        {/* Top Section (Input) */}
+        <div className="w-full relative z-20 transition-all duration-500">
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className={cn("transition-all duration-500", (!idea.trim() && step === 1) && "text-center mb-12")}>
+            <div className="text-center mb-12 transition-all duration-500">
               <h1 className="text-5xl md:text-6xl font-editorial font-bold text-basalt-900 mb-6 tracking-tight leading-[1.1]">
                 Craft the Perfect Prompt.
               </h1>
-              <p className={cn("text-xl text-basalt-600 leading-relaxed max-w-2xl", (!idea.trim() && step === 1) ? "mx-auto mb-0" : "mb-10")}>
+              <p className="text-xl text-basalt-600 leading-relaxed max-w-2xl mx-auto mb-0">
                 Turn a vague idea into a solid, build-ready prompt. Select your target output, type what you want, and let us refine it.
               </p>
             </div>
@@ -91,27 +90,10 @@ export default function Wizard() {
           </motion.div>
         </div>
 
-        {/* Right Column (Scrollable Context) */}
-        {(idea.trim() || step === 2) && (
-          <div className="lg:col-span-7 xl:col-span-7 relative z-10 transition-all duration-500">
-            <AnimatePresence mode="wait">
-              {step === 1 && (
-                <motion.div
-                  key="suggestions"
-                  initial={{ opacity: 0, x: 30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
-                  transition={{ duration: 0.4 }}
-                  className="lg:pt-4"
-                >
-                  <div className="bg-basalt-900/5 rounded-3xl p-8 border border-basalt-900/5">
-                    <h3 className="text-xl font-display font-bold text-basalt-900 mb-2">Analyzing your idea...</h3>
-                    <p className="text-basalt-600 mb-6">Keep typing, or click Generate to get clarifying questions.</p>
-                  </div>
-                </motion.div>
-              )}
-
-              {step === 2 && (
+        {/* Bottom Section (Questions) */}
+        <div className="w-full relative z-10 transition-all duration-500" ref={questionsRef}>
+          <AnimatePresence mode="wait">
+            {step === 2 && (
                 <motion.div
                   key="questions"
                   initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
@@ -216,7 +198,6 @@ export default function Wizard() {
               )}
             </AnimatePresence>
           </div>
-        )}
       </div>
     </div>
   );

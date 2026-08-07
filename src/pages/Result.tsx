@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Copy, Download, RefreshCcw } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { RefinementInput } from '../components/ui/RefinementInput';
 
 export default function Result() {
   const location = useLocation();
@@ -70,6 +71,23 @@ export default function Result() {
             </div>
           </CardFooter>
         </Card>
+      </motion.div>
+
+      {/* Floating Refinement Input */}
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="fixed bottom-0 left-0 right-0 p-6 z-50 pointer-events-none"
+      >
+        <div className="max-w-4xl mx-auto pointer-events-auto">
+          <RefinementInput 
+            onSubmit={(text, model) => {
+              console.log("Refinement submitted:", text, "with model:", model);
+              // Handle logic here later
+            }}
+          />
+        </div>
       </motion.div>
     </div>
   );
