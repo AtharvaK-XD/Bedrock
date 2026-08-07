@@ -3,6 +3,36 @@ import { motion } from 'framer-motion';
 import { Copy, Download, RefreshCcw, FileText, Sparkles, Terminal } from 'lucide-react';
 import { RefinementInput } from '../components/ui/RefinementInput';
 
+const TypewriterText = ({ text }: { text: string }) => {
+  const words = text.split(' ');
+
+  return (
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={{
+        visible: {
+          transition: { staggerChildren: 0.04 }
+        }
+      }}
+      className="inline"
+    >
+      {words.map((word, index) => (
+        <motion.span
+          key={index}
+          variants={{
+            hidden: { opacity: 0, filter: 'blur(4px)', y: 2 },
+            visible: { opacity: 1, filter: 'blur(0px)', y: 0, transition: { duration: 0.2, ease: 'easeOut' } }
+          }}
+          className="inline-block mr-[0.25em] align-top"
+        >
+          {word}
+        </motion.span>
+      ))}
+    </motion.div>
+  );
+};
+
 export default function Result() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -85,7 +115,7 @@ export default function Result() {
               
               {/* AI Text */}
               <div className="text-[15.5px] leading-relaxed text-basalt-800">
-                Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist.
+                <TypewriterText text="Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist." />
               </div>
 
               {/* Attachment Block */}
