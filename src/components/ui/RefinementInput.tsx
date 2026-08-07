@@ -116,7 +116,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
       }}
       className={cn(
         "relative flex flex-col w-full mx-auto bg-white/90 backdrop-blur-md border border-basalt-900/10 rounded-3xl shadow-xl transition-all duration-500 ease-[0.22,1,0.36,1] focus-within:ring-2 focus-within:ring-copper-500/30",
-        expanded ? "max-w-[700px] min-h-[250px]" : "max-w-[340px] min-h-[60px]",
+        expanded ? "max-w-[700px] min-h-[140px]" : "max-w-[340px] min-h-[60px]",
         className
       )}
     >
@@ -141,9 +141,9 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
           placeholder={placeholderText}
           className={cn(
             "w-full bg-transparent text-basalt-900 placeholder:text-basalt-400 text-[15px] resize-none leading-relaxed transition-all duration-500 border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent p-0 m-0",
-            expanded ? "min-h-[150px]" : "h-[22px] overflow-hidden"
+            expanded ? "min-h-[44px]" : "h-[22px] overflow-hidden"
           )}
-          rows={expanded ? 6 : 1}
+          rows={expanded ? 2 : 1}
         />
       </div>
 
