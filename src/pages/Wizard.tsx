@@ -51,7 +51,7 @@ export default function Wizard() {
     }));
     try {
       const promptText = await mockSynthesizePrompt({ ideaText: idea, targetType }, answersArray, questions);
-      navigate('/app/result', { state: { promptText } });
+      navigate('/app/result', { state: { promptText, idea } });
     } catch (err) {
       console.error(err);
     } finally {

@@ -1,19 +1,18 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Copy, Download, RefreshCcw } from 'lucide-react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
+import { Copy, Download, RefreshCcw, FileText, Sparkles, Terminal } from 'lucide-react';
 import { RefinementInput } from '../components/ui/RefinementInput';
 
 export default function Result() {
   const location = useLocation();
   const navigate = useNavigate();
   const promptText = location.state?.promptText as string | undefined;
+  const idea = location.state?.idea as string | undefined;
 
   if (!promptText) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-basalt-700">
-        <p>No prompt found. <button onClick={() => navigate('/')} className="text-copper-400 hover:text-copper-300 underline ml-1 transition-colors">Start over</button></p>
+      <div className="flex items-center justify-center min-h-screen text-basalt-900">
+        <p>No prompt found. <button onClick={() => navigate('/')} className="text-copper-500 hover:text-copper-600 underline ml-1 transition-colors">Start over</button></p>
       </div>
     );
   }
@@ -36,59 +35,102 @@ export default function Result() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto pt-24 px-4 pb-32">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 20, filter: 'blur(10px)' }}
-        animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <Card className="border-copper-500/20 shadow-[0_0_40px_rgba(44,154,139,0.1)]">
-          <CardHeader>
-            <CardTitle className="text-3xl">Your Bedrock Prompt</CardTitle>
-            <CardDescription>Ready to be pasted into your AI coding agent.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-copper-500/20 to-copper-400/20 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
-              <div className="relative bg-white/80 backdrop-blur-sm border border-basalt-900/10 rounded-xl p-8 overflow-auto max-h-[50vh] custom-scrollbar">
-                <pre className="whitespace-pre-wrap font-mono text-[13px] sm:text-sm text-basalt-900 leading-relaxed">
-                  {promptText}
-                </pre>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
-            <Button variant="ghost" onClick={() => navigate('/')} className="text-basalt-700">
-              <RefreshCcw className="w-4 h-4 mr-2" /> Start Over
-            </Button>
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <Button variant="secondary" onClick={handleDownload} className="flex-1 sm:flex-none">
-                <Download className="w-4 h-4 mr-2" /> Download .md
-              </Button>
-              <Button onClick={handleCopy} className="flex-1 sm:flex-none w-full sm:w-40">
-                <Copy className="w-4 h-4 mr-2" /> Copy
-              </Button>
-            </div>
-          </CardFooter>
-        </Card>
-      </motion.div>
+    <div className="flex flex-col min-h-[calc(100vh-80px)] text-basalt-900 font-sans selection:bg-copper-500/30 pt-6">
+      
+      {/* Header / Top Nav */}
+      <div className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-basalt-900/10 mb-6">
+        <div className="flex items-center gap-2 text-sm font-medium text-basalt-700">
+          <Terminal className="w-5 h-5 text-copper-500" />
+          <span>Bedrock Agent</span>
+        </div>
+        <button 
+          onClick={() => navigate('/')} 
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-basalt-600 hover:text-basalt-900 transition-colors rounded-lg hover:bg-basalt-900/5"
+        >
+          <RefreshCcw className="w-4 h-4" /> Start Over
+        </button>
+      </div>
 
-      {/* Floating Refinement Input */}
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed bottom-0 left-0 right-0 p-6 z-50 pointer-events-none"
-      >
-        <div className="max-w-4xl mx-auto pointer-events-auto">
+      {/* Chat Area */}
+      <div className="flex-1 overflow-y-auto pb-40 px-4 custom-scrollbar">
+        <div className="max-w-3xl mx-auto flex flex-col gap-10">
+          
+          {/* User Message */}
+          {idea && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-end"
+            >
+              <div className="bg-basalt-900/5 border border-basalt-900/10 text-basalt-900 px-5 py-3.5 rounded-3xl rounded-tr-sm max-w-[85%] text-[15px] leading-relaxed shadow-sm">
+                {idea}
+              </div>
+            </motion.div>
+          )}
+
+          {/* AI Response */}
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex justify-start"
+          >
+            <div className="flex flex-col gap-4 max-w-[95%] md:max-w-[85%]">
+              
+              {/* Status / Metadata */}
+              <div className="flex items-center gap-2 text-basalt-500 text-sm font-medium">
+                <Sparkles className="w-4 h-4 text-copper-500" />
+                Synthesized your prompt
+              </div>
+              
+              {/* AI Text */}
+              <div className="text-[15.5px] leading-relaxed text-basalt-800">
+                Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist.
+              </div>
+
+              {/* Attachment Block */}
+              <div className="mt-2 flex flex-col sm:flex-row items-center justify-between bg-white border border-basalt-900/10 rounded-2xl p-4 gap-4 hover:border-basalt-900/20 transition-colors shadow-sm">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className="bg-basalt-900/5 p-3.5 rounded-xl flex-shrink-0 flex items-center justify-center">
+                    <FileText className="w-6 h-6 text-basalt-500" />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <div className="font-medium text-basalt-900 truncate text-[15px]">Bedrock prompt</div>
+                    <div className="text-[13px] text-basalt-500 mt-0.5">Document • MD</div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button 
+                    onClick={handleCopy} 
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-basalt-900/10 hover:bg-basalt-900/5 transition-colors rounded-xl text-sm font-medium text-basalt-900 shadow-sm"
+                  >
+                    <Copy className="w-4 h-4" /> Copy
+                  </button>
+                  <button 
+                    onClick={handleDownload} 
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-basalt-900/10 hover:bg-basalt-900/5 transition-colors rounded-xl text-sm font-medium text-basalt-900 shadow-sm"
+                  >
+                    <Download className="w-4 h-4" /> Download
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Fixed Input Area */}
+      <div className="fixed bottom-0 left-0 right-0 p-6 z-50 pointer-events-none">
+        <div className="max-w-3xl mx-auto pointer-events-auto drop-shadow-2xl">
           <RefinementInput 
             onSubmit={(text, model) => {
               console.log("Refinement submitted:", text, "with model:", model);
-              // Handle logic here later
             }}
           />
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
