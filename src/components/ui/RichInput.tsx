@@ -411,7 +411,7 @@ export function RichInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholderText}
           data-lenis-prevent="true"
-          className="w-full min-h-[100px] max-h-[500px] resize-none bg-transparent p-6 text-lg text-basalt-900 placeholder:text-basalt-400 focus:outline-none"
+          className="w-full min-h-[160px] max-h-[500px] resize-none bg-transparent p-6 text-lg text-basalt-900 placeholder:text-basalt-400 focus:outline-none"
         />
 
         {/* Bottom Toolbar */}
