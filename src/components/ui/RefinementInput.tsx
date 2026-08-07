@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, AppWindow, Palette, Sparkles, ArrowUp, ChevronDown } from 'lucide-react';
+import { Plus, AppWindow, Palette, Sparkles, ArrowUp, ChevronDown, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AI_AGENTS } from './RichInput';
 
@@ -14,6 +14,29 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      const validFiles = selectedFiles.filter(file => {
+        if (file.size > MAX_FILE_SIZE) {
+          alert(`File ${file.name} is too large. Max size is 5MB.`);
+          return false;
+        }
+        return true;
+      });
+      setFiles(prev => [...prev, ...validFiles]);
+      e.target.value = '';
+    }
+  };
+
+  const removeFile = (indexToRemove: number) => {
+    setFiles(files.filter((_, index) => index !== indexToRemove));
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -63,13 +86,22 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
     return () => clearTimeout(timeout);
   }, [placeholderText, isTyping, placeholderIndex]);
 
-  const expanded = isExpanded || input.trim().length > 0;
+  const expanded = isExpanded || input.trim().length > 0 || files.length > 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (input.trim() && onSubmit) {
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if ((input.trim() || files.length > 0) && onSubmit) {
+      // In a real app, you would pass files to onSubmit too
       onSubmit(input, model);
       setInput('');
+      setFiles([]);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
@@ -89,10 +121,23 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
       )}
     >
       {/* Input area */}
-      <div className={cn("flex w-full px-5 transition-all duration-500 flex-1", expanded ? "pt-5 items-start" : "pt-0 items-center")}>
+      <div className={cn("flex flex-col w-full px-5 transition-all duration-500 flex-1", expanded ? "pt-5 justify-start" : "pt-0 justify-center")}>
+        {files.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {files.map((file, idx) => (
+              <div key={idx} className="flex items-center gap-1 bg-basalt-900/5 border border-basalt-900/10 px-2 py-1 rounded-md text-xs text-basalt-700">
+                <span className="truncate max-w-[150px]">{file.name}</span>
+                <button type="button" onClick={() => removeFile(idx)} className="text-basalt-400 hover:text-basalt-900">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder={placeholderText}
           className={cn(
             "w-full bg-transparent text-basalt-900 placeholder:text-basalt-400 text-[15px] resize-none leading-relaxed transition-all duration-500 border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent p-0 m-0",
@@ -109,7 +154,19 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
       )}>
         {/* Left tools (+) */}
         <div className="flex items-center">
-          <button type="button" className="text-basalt-400 hover:text-basalt-700 transition-colors p-2 rounded-xl hover:bg-basalt-900/5">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            multiple 
+            onChange={handleFileChange} 
+          />
+          <button 
+            type="button" 
+            onClick={() => fileInputRef.current?.click()}
+            className="text-basalt-400 hover:text-basalt-700 transition-colors p-2 rounded-xl hover:bg-basalt-900/5"
+            title="Attach files (Max 5MB)"
+          >
             <Plus className="w-5 h-5" strokeWidth={2.5} />
           </button>
         </div>
@@ -128,7 +185,10 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
             </button>
 
             {isModelDropdownOpen && (
-              <div className="absolute bottom-full right-0 mb-2 w-56 max-h-[300px] overflow-y-auto custom-scrollbar bg-white/90 backdrop-blur-xl border border-basalt-900/10 rounded-2xl shadow-xl z-50 py-2">
+              <div 
+                className="absolute bottom-full right-0 mb-2 w-56 max-h-[300px] overflow-y-auto custom-scrollbar bg-white/90 backdrop-blur-xl border border-basalt-900/10 rounded-2xl shadow-xl z-50 py-2"
+                data-lenis-prevent="true"
+              >
                 {AI_AGENTS.map((agent) => (
                   <div key={agent.id} className="mb-2">
                     <div className="px-3 py-1 text-[10px] font-bold text-basalt-400 uppercase tracking-wider">
@@ -162,7 +222,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
 
           <button 
             type="submit"
-            disabled={!input.trim()}
+            disabled={!input.trim() && files.length === 0}
             className="ml-1 bg-copper-500 text-white p-2 rounded-full hover:bg-copper-600 disabled:opacity-50 disabled:bg-basalt-900/10 disabled:text-basalt-400 transition-all flex items-center justify-center"
           >
             <ArrowUp className="w-[18px] h-[18px]" strokeWidth={2.5} />

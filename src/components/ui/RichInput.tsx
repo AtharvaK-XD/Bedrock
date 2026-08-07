@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
-import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings, Globe, BotMessageSquare, Feather, Network, Wind, Compass, Zap, Database } from 'lucide-react';
+import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings, Globe, BotMessageSquare, Feather, Network, Wind, Compass, Zap, Database, X } from 'lucide-react';
 import type { IdeaPayload } from '../../lib/mockApi';
 
 interface RichInputProps {
@@ -165,6 +165,29 @@ export function RichInput({
 }: RichInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      const validFiles = selectedFiles.filter(file => {
+        if (file.size > MAX_FILE_SIZE) {
+          alert(`File ${file.name} is too large. Max size is 5MB.`);
+          return false;
+        }
+        return true;
+      });
+      setFiles(prev => [...prev, ...validFiles]);
+      e.target.value = '';
+    }
+  };
+
+  const removeFile = (indexToRemove: number) => {
+    setFiles(files.filter((_, index) => index !== indexToRemove));
+  };
   
   const [activeDropdown, setActiveDropdown] = useState<'target' | 'agent' | 'model' | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState(AI_AGENTS[0].id);
@@ -369,6 +392,18 @@ export function RichInput({
         </div>
 
         {/* Main Textarea */}
+        {files.length > 0 && (
+          <div className="px-6 pt-4 flex flex-wrap gap-2">
+            {files.map((file, idx) => (
+              <div key={idx} className="flex items-center gap-1 bg-basalt-900/5 border border-basalt-900/10 px-2 py-1 rounded-md text-xs text-basalt-700">
+                <span className="truncate max-w-[150px]">{file.name}</span>
+                <button type="button" onClick={() => removeFile(idx)} className="text-basalt-400 hover:text-basalt-900">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           value={value}
@@ -385,7 +420,19 @@ export function RichInput({
             <button type="button" className="p-2 text-basalt-500 hover:text-basalt-900 hover:bg-white rounded-lg transition-colors tooltip-trigger">
               <Mic className="w-5 h-5" />
             </button>
-            <button type="button" className="p-2 text-basalt-500 hover:text-basalt-900 hover:bg-white rounded-lg transition-colors">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              multiple 
+              onChange={handleFileChange} 
+            />
+            <button 
+              type="button" 
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 text-basalt-500 hover:text-basalt-900 hover:bg-white rounded-lg transition-colors tooltip-trigger"
+              title="Attach files (Max 5MB)"
+            >
               <Paperclip className="w-5 h-5" />
             </button>
           </div>
