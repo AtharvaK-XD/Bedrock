@@ -91,13 +91,13 @@ export default function Pricing() {
             className={cn(
               "relative flex flex-col p-8 rounded-3xl transition-all duration-300",
               tier.isPopular 
-                ? "bg-blue-50/50 backdrop-blur-xl text-basalt-900 shadow-2xl scale-[1.02] border border-blue-200/60 z-10" 
+                ? "bg-copper-50/50 backdrop-blur-xl text-basalt-900 shadow-2xl scale-[1.02] border border-copper-200/60 z-10" 
                 : "bg-white/80 backdrop-blur-xl text-basalt-900 border border-basalt-900/10 hover:border-basalt-900/20 shadow-sm"
             )}
           >
             {tier.isPopular && (
               <div className="absolute top-6 right-6">
-                <span className="bg-blue-500/10 text-blue-700 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-blue-500/20">
+                <span className="bg-copper-500/10 text-copper-700 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-copper-500/20">
                   Recommended
                 </span>
               </div>
@@ -121,7 +121,7 @@ export default function Pricing() {
                 tier.buttonVariant === 'outline' 
                   ? "bg-transparent border border-basalt-900/20 text-basalt-700 hover:bg-basalt-900/5 hover:border-basalt-900/30"
                   : tier.buttonVariant === 'primary'
-                    ? "bg-blue-500 hover:bg-blue-600 text-white border border-transparent shadow-lg shadow-blue-500/20"
+                    ? "bg-copper-500 hover:bg-copper-600 text-white border border-transparent shadow-lg shadow-copper-500/20"
                     : "bg-basalt-900 text-white hover:bg-basalt-800 border border-transparent shadow-md"
               )}
             >
@@ -134,9 +134,9 @@ export default function Pricing() {
                 {tier.features.map((feature, fIdx) => (
                   <li key={fIdx} className="flex items-start gap-3 text-sm">
                     {feature.active ? (
-                      <Check className={cn("w-5 h-5 shrink-0 mt-0.5", tier.isPopular ? "text-blue-500" : "text-copper-500")} />
+                      <Check className={cn("w-5 h-5 shrink-0 mt-0.5", tier.isPopular ? "text-copper-500" : "text-copper-500")} />
                     ) : (
-                      <X className={cn("w-5 h-5 shrink-0 mt-0.5 opacity-40", tier.isPopular ? "text-blue-900/50" : "text-basalt-400")} />
+                      <X className={cn("w-5 h-5 shrink-0 mt-0.5 opacity-40", tier.isPopular ? "text-copper-900/50" : "text-basalt-400")} />
                     )}
                     <span className={cn(
                       feature.bold && "font-semibold",
