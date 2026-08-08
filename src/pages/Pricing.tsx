@@ -21,23 +21,7 @@ const TIERS = [
       { text: 'Zero wait times', active: false },
     ],
   },
-  {
-    name: 'Core',
-    description: 'Explore topics in depth with longer conversations',
-    price: '499',
-    buttonText: 'Upgrade to Core',
-    buttonVariant: 'secondary',
-    features: [
-      { text: 'Core model', active: true },
-      { text: 'More messages and uploads', active: true },
-      { text: 'Extended prompt memory', active: true },
-      { text: 'Faster generation speed', active: true },
-      { text: 'Standard image creation', active: true },
-      { text: 'Expanded memory across chats', active: false },
-      { text: 'Work agent for multi-step tasks', active: false },
-      { text: 'Zero wait times', active: false },
-    ],
-  },
+
   {
     name: 'Advanced',
     description: 'Save personal context with an AI assistant for ongoing work',
@@ -116,7 +100,7 @@ export default function Pricing() {
         </motion.div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
         {TIERS.map((tier, idx) => (
           <motion.div
             key={tier.name}
