@@ -48,6 +48,9 @@ export function Topbar() {
 
         {/* Right User Actions */}
         <div className="flex items-center gap-4">
+          <Link to="/app/pricing" className="hidden md:flex items-center gap-2 px-4 py-1.5 bg-copper-500 hover:bg-copper-600 text-white text-sm font-semibold rounded-full shadow-sm shadow-copper-500/20 transition-all">
+            <Sparkles className="w-4 h-4" /> Upgrade
+          </Link>
           <button className="p-2 text-basalt-500 hover:bg-basalt-900/5 rounded-full transition-colors">
             <Settings className="w-5 h-5" />
           </button>
