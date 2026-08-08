@@ -10,6 +10,7 @@ import Result from './pages/Result';
 import Optimizer from './pages/Optimizer';
 import PromptTester from './pages/PromptTester';
 import Library from './pages/Library';
+import Pricing from './pages/Pricing';
 import { AppLayout } from './components/layout/AppLayout';
 import { Topbar } from './components/layout/Topbar';
 import { checkForUpdates } from './lib/updater';
@@ -74,6 +75,7 @@ function App() {
                   <Route path="/tester" element={<PromptTester />} />
                   <Route path="/library" element={<Library />} />
                   <Route path="/result" element={<Result />} />
+                  <Route path="/pricing" element={<Pricing />} />
                 </Routes>
               </AppLayout>
             } 
