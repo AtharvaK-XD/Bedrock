@@ -25,7 +25,7 @@ const TIERS = [
   {
     name: 'Advanced',
     description: 'Save personal context with an AI assistant for ongoing work',
-    price: '1,999',
+    price: '400',
     buttonText: 'Upgrade to Advanced',
     buttonVariant: 'primary',
     isPopular: true,
@@ -42,7 +42,7 @@ const TIERS = [
   {
     name: 'Ultimate',
     description: 'State-of-the-art intelligence to automate your most ambitious work',
-    price: '4,999',
+    price: '1,000',
     buttonText: 'Upgrade to Ultimate',
     buttonVariant: 'secondary',
     features: [
