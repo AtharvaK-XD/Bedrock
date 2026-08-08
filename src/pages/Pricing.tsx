@@ -78,26 +78,7 @@ export default function Pricing() {
           Find your best fit.
         </motion.p>
         
-        {/* Toggle (Personal vs Business or Monthly vs Yearly) */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="inline-flex bg-basalt-900/5 p-1 rounded-full"
-        >
-          <button 
-            onClick={() => setBillingCycle('monthly')}
-            className={cn("px-6 py-2 rounded-full text-sm font-medium transition-all", billingCycle === 'monthly' ? "bg-basalt-900 text-white shadow-md" : "text-basalt-700 hover:text-basalt-900")}
-          >
-            Personal
-          </button>
-          <button 
-            onClick={() => setBillingCycle('yearly')}
-            className={cn("px-6 py-2 rounded-full text-sm font-medium transition-all", billingCycle === 'yearly' ? "bg-basalt-900 text-white shadow-md" : "text-basalt-700 hover:text-basalt-900")}
-          >
-            Business
-          </button>
-        </motion.div>
+
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
