@@ -41,7 +41,7 @@ export default function Result() {
 
   if (!promptText) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-basalt-900">
+      <div className="flex items-center justify-center min-h-screen text-white">
         <p>No prompt found. <button onClick={() => navigate('/')} className="text-copper-500 hover:text-copper-600 underline ml-1 transition-colors">Start over</button></p>
       </div>
     );
@@ -65,17 +65,17 @@ export default function Result() {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-80px)] text-basalt-900 font-sans selection:bg-copper-500/30 pt-6">
+    <div className="flex flex-col min-h-[calc(100vh-80px)] text-white font-sans selection:bg-copper-500/30 pt-6">
       
       {/* Header / Top Nav */}
-      <div className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-basalt-900/10 mb-6">
-        <div className="flex items-center gap-2 text-sm font-medium text-basalt-700">
+      <div className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 bg-black/80 backdrop-blur-md border-b border-white/5 mb-6">
+        <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
           <Terminal className="w-5 h-5 text-copper-500" />
           <span>Bedrock Agent</span>
         </div>
         <button 
           onClick={() => navigate('/')} 
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-basalt-600 hover:text-basalt-900 transition-colors rounded-lg hover:bg-basalt-900/5"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
         >
           <RefreshCcw className="w-4 h-4" /> Start Over
         </button>
@@ -92,7 +92,7 @@ export default function Result() {
               animate={{ opacity: 1, y: 0 }}
               className="flex justify-end"
             >
-              <div className="bg-basalt-900/5 border border-basalt-900/10 text-basalt-900 px-5 py-3.5 rounded-3xl rounded-tr-sm max-w-[85%] text-[15px] leading-relaxed shadow-sm">
+              <div className="bg-white/5 border border-white/10 text-gray-300 px-5 py-3.5 rounded-3xl rounded-tr-sm max-w-[85%] text-[15px] leading-relaxed shadow-sm">
                 {idea}
               </div>
             </motion.div>
@@ -108,38 +108,38 @@ export default function Result() {
             <div className="flex flex-col gap-4 max-w-[95%] md:max-w-[85%]">
               
               {/* Status / Metadata */}
-              <div className="flex items-center gap-2 text-basalt-500 text-sm font-medium">
+              <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
                 <Sparkles className="w-4 h-4 text-copper-500" />
                 Synthesized your prompt
               </div>
               
               {/* AI Text */}
-              <div className="text-[15.5px] leading-relaxed text-basalt-800">
+              <div className="text-[15.5px] leading-relaxed text-gray-300">
                 <TypewriterText text="Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist." />
               </div>
 
               {/* Attachment Block */}
-              <div className="mt-2 flex flex-col sm:flex-row items-center justify-between bg-white border border-basalt-900/10 rounded-2xl p-4 gap-4 hover:border-basalt-900/20 transition-colors shadow-sm">
+              <div className="mt-2 flex flex-col sm:flex-row items-center justify-between bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 gap-4 hover:border-white/20 transition-colors shadow-sm">
                 <div className="flex items-center gap-4 w-full sm:w-auto">
-                  <div className="bg-basalt-900/5 p-3.5 rounded-xl flex-shrink-0 flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-basalt-500" />
+                  <div className="bg-white/5 p-3.5 rounded-xl flex-shrink-0 flex items-center justify-center">
+                    <FileText className="w-6 h-6 text-gray-400" />
                   </div>
                   <div className="min-w-0 text-left">
-                    <div className="font-medium text-basalt-900 truncate text-[15px]">Bedrock prompt</div>
-                    <div className="text-[13px] text-basalt-500 mt-0.5">Document • MD</div>
+                    <div className="font-medium text-white truncate text-[15px]">Bedrock prompt</div>
+                    <div className="text-[13px] text-gray-500 mt-0.5">Document • MD</div>
                   </div>
                 </div>
                 
                 <div className="flex gap-2 w-full sm:w-auto">
                   <button 
                     onClick={handleCopy} 
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-basalt-900/10 hover:bg-basalt-900/5 transition-colors rounded-xl text-sm font-medium text-basalt-900 shadow-sm"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-[#1a1a1a] border border-white/10 hover:bg-white/5 transition-colors rounded-xl text-sm font-medium text-white shadow-sm"
                   >
                     <Copy className="w-4 h-4" /> Copy
                   </button>
                   <button 
                     onClick={handleDownload} 
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-basalt-900/10 hover:bg-basalt-900/5 transition-colors rounded-xl text-sm font-medium text-basalt-900 shadow-sm"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-[#1a1a1a] border border-white/10 hover:bg-white/5 transition-colors rounded-xl text-sm font-medium text-white shadow-sm"
                   >
                     <Download className="w-4 h-4" /> Download
                   </button>

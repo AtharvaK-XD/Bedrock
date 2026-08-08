@@ -71,10 +71,10 @@ export default function Wizard() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="text-center mb-12 transition-all duration-500">
-              <h1 className="text-5xl md:text-6xl font-editorial font-bold text-basalt-900 mb-6 tracking-tight leading-[1.1]">
+              <h1 className="text-5xl md:text-6xl font-editorial font-bold text-white mb-6 tracking-tight leading-[1.1]">
                 Craft the Perfect Prompt.
               </h1>
-              <p className="text-xl text-basalt-600 leading-relaxed max-w-2xl mx-auto mb-0">
+              <p className="text-xl text-gray-400 leading-relaxed max-w-2xl mx-auto mb-0">
                 Turn a vague idea into a solid, build-ready prompt. Select your target output, type what you want, and let us refine it.
               </p>
             </div>
@@ -100,22 +100,22 @@ export default function Wizard() {
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  <div className="bg-white/60 backdrop-blur-xl border border-basalt-900/10 rounded-[32px] p-8 md:p-10 shadow-sm relative overflow-hidden">
+                  <div className="bg-[#1a1a1a]/60 backdrop-blur-xl border border-white/10 rounded-[32px] p-8 md:p-10 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-copper-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
                     
                     <div className="relative z-10 mb-10">
                       <div className="inline-flex items-center justify-center p-2 bg-copper-500/10 rounded-xl mb-4 text-copper-500">
                         <Sparkles className="w-5 h-5" />
                       </div>
-                      <h3 className="text-3xl font-display font-bold text-basalt-900">Clarifying Questions</h3>
-                      <p className="text-lg text-basalt-600 mt-2">Let's refine your idea to generate the best possible prompt.</p>
+                      <h3 className="text-3xl font-display font-bold text-white">Clarifying Questions</h3>
+                      <p className="text-lg text-gray-400 mt-2">Let's refine your idea to generate the best possible prompt.</p>
                     </div>
                     
                     <form onSubmit={handleSynthesize} className="space-y-12 relative z-10">
                       {questions.map((q, idx) => (
                         <div key={q.id} className="space-y-5">
-                          <Label className="text-lg font-medium text-basalt-900 block flex items-start gap-4">
-                            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-basalt-900/5 flex items-center justify-center text-sm font-bold text-basalt-500">
+                          <Label className="text-lg font-medium text-white block flex items-start gap-4">
+                            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold text-gray-400">
                               {idx + 1}
                             </span>
                             <span className="pt-1">{q.questionText}</span>
@@ -133,7 +133,7 @@ export default function Wizard() {
                             {q.questionType === 'single_select' && (
                               <div className="relative">
                                 <select 
-                                  className="flex h-12 w-full appearance-none rounded-xl border border-basalt-900/10 bg-white/50 px-4 py-2 text-base text-basalt-900 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500/50 hover:border-basalt-900/20"
+                                  className="flex h-12 w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-base text-white transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500/50 hover:border-white/20"
                                   value={answers[q.id] as string || ''}
                                   onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
                                   required
@@ -143,7 +143,7 @@ export default function Wizard() {
                                     <option key={opt} value={opt}>{opt}</option>
                                   ))}
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-basalt-600">
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
                                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                                 </div>
                               </div>
@@ -167,7 +167,7 @@ export default function Wizard() {
                                         "px-5 py-3 text-sm rounded-xl border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500 font-medium",
                                         isSelected 
                                           ? "bg-copper-500 border-copper-500 text-white shadow-md shadow-copper-500/20" 
-                                          : "bg-white border-basalt-900/10 text-basalt-700 hover:border-basalt-900/20 hover:bg-basalt-900/5 hover:text-basalt-900"
+                                          : "bg-[#111] border-white/10 text-gray-300 hover:border-white/20 hover:bg-white/5 hover:text-white"
                                       )}
                                     >
                                       {opt}
@@ -180,11 +180,11 @@ export default function Wizard() {
                         </div>
                       ))}
 
-                      <div className="pt-8 border-t border-basalt-900/5 flex justify-end pl-12">
+                      <div className="pt-8 border-t border-white/5 flex justify-end pl-12">
                         <button
                           type="submit"
                           disabled={isSynthesizing}
-                          className="inline-flex items-center justify-center rounded-xl bg-basalt-900 text-white hover:bg-basalt-800 px-8 py-4 text-lg font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-basalt-900 disabled:opacity-50 w-full sm:w-auto"
+                          className="inline-flex items-center justify-center rounded-xl bg-white text-black hover:bg-gray-200 px-8 py-4 text-lg font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-50 w-full sm:w-auto"
                         >
                           {isSynthesizing ? (
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-3"></div>

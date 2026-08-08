@@ -40,8 +40,8 @@ export default function Settings() {
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-10 lg:py-16 min-h-[calc(100vh-80px)]">
       <div className="mb-10">
-        <h1 className="text-3xl md:text-4xl font-editorial font-bold text-basalt-900">Settings</h1>
-        <p className="text-basalt-500 mt-2">Manage your account, API keys, and app preferences.</p>
+        <h1 className="text-3xl md:text-4xl font-editorial font-bold text-white">Settings</h1>
+        <p className="text-gray-400 mt-2">Manage your account, API keys, and app preferences.</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
@@ -57,19 +57,19 @@ export default function Settings() {
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 text-left",
                     isActive 
-                      ? "bg-basalt-900 text-white shadow-md" 
-                      : "text-basalt-600 hover:text-basalt-900 hover:bg-basalt-900/5"
+                      ? "bg-white/10 text-white shadow-md" 
+                      : "text-gray-400 hover:text-white hover:bg-white/5"
                   )}
                 >
-                  <tab.icon className={cn("w-4 h-4", isActive ? "text-copper-400" : "text-basalt-400")} />
+                  <tab.icon className={cn("w-4 h-4", isActive ? "text-copper-400" : "text-gray-500")} />
                   {tab.label}
                 </button>
               );
             })}
             
-            <div className="h-px bg-basalt-900/10 my-4 mx-4"></div>
+            <div className="h-px bg-white/10 my-4 mx-4"></div>
             
-            <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 transition-all duration-200 text-left">
+            <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-900/20 transition-all duration-200 text-left">
               <LogOut className="w-4 h-4" />
               Sign Out
             </button>
@@ -77,7 +77,7 @@ export default function Settings() {
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 bg-white/60 backdrop-blur-xl border border-basalt-900/10 rounded-3xl p-6 md:p-10 shadow-sm min-h-[500px] relative overflow-hidden">
+        <main className="flex-1 bg-[#1a1a1a]/60 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-sm min-h-[500px] relative overflow-hidden">
           <AnimatePresence mode="wait">
             {activeTab === 'account' && (
               <motion.div
@@ -88,51 +88,51 @@ export default function Settings() {
                 className="space-y-8"
               >
                 <div>
-                  <h2 className="text-xl font-bold text-basalt-900 mb-6">Account Profile</h2>
+                  <h2 className="text-xl font-bold text-white mb-6">Account Profile</h2>
                   
                   <div className="flex items-center gap-6 mb-8">
                     <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold text-2xl shadow-md">
                       AK
                     </div>
                     <div>
-                      <button className="px-4 py-2 bg-basalt-900/5 hover:bg-basalt-900/10 text-basalt-900 text-sm font-semibold rounded-lg transition-colors">
+                      <button className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-lg transition-colors">
                         Change Avatar
                       </button>
-                      <p className="text-xs text-basalt-400 mt-2">JPG, GIF or PNG. Max size of 800K</p>
+                      <p className="text-xs text-gray-500 mt-2">JPG, GIF or PNG. Max size of 800K</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-basalt-700">Full Name</label>
+                      <label className="text-sm font-semibold text-gray-300">Full Name</label>
                       <input 
                         type="text" 
                         defaultValue="Atharva K."
-                        className="w-full px-4 py-3 bg-white border border-basalt-900/10 rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all"
+                        className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-basalt-700">Email Address</label>
+                      <label className="text-sm font-semibold text-gray-300">Email Address</label>
                       <input 
                         type="email" 
                         defaultValue="atharva@example.com"
-                        className="w-full px-4 py-3 bg-white border border-basalt-900/10 rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all"
+                        className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="h-px bg-basalt-900/5"></div>
+                <div className="h-px bg-white/10"></div>
 
                 <div>
-                  <h3 className="text-lg font-bold text-basalt-900 mb-4 flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-basalt-400" />
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-gray-400" />
                     Subscription Plan
                   </h3>
-                  <div className="flex items-center justify-between p-5 bg-basalt-900/5 rounded-2xl border border-basalt-900/10">
+                  <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/10">
                     <div>
-                      <p className="font-semibold text-basalt-900">Free Tier</p>
-                      <p className="text-sm text-basalt-500">Core model access, limited messages</p>
+                      <p className="font-semibold text-white">Free Tier</p>
+                      <p className="text-sm text-gray-400">Core model access, limited messages</p>
                     </div>
                     <button className="px-4 py-2 bg-copper-500 hover:bg-copper-600 text-white text-sm font-semibold rounded-lg shadow-sm shadow-copper-500/20 transition-all">
                       Upgrade
@@ -151,15 +151,15 @@ export default function Settings() {
                 className="space-y-8"
               >
                 <div>
-                  <h2 className="text-xl font-bold text-basalt-900 mb-2">Models & API Keys</h2>
-                  <p className="text-sm text-basalt-500 mb-6">Provide your own API keys to use proprietary and open-source models directly.</p>
+                  <h2 className="text-xl font-bold text-white mb-2">Models & API Keys</h2>
+                  <p className="text-sm text-gray-400 mb-6">Provide your own API keys to use proprietary and open-source models directly.</p>
 
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm font-semibold text-basalt-900">Default Model</label>
+                        <label className="text-sm font-semibold text-white">Default Model</label>
                       </div>
-                      <select className="w-full px-4 py-3 bg-white border border-basalt-900/10 rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all appearance-none">
+                      <select className="w-full px-4 py-3 bg-[#111] border border-white/10 text-white rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all appearance-none">
                         <option>Gemini 1.5 Pro (Free API)</option>
                         <option>Llama 3 70B (via Groq)</option>
                         <option>OpenAI GPT-4o (BYOK)</option>
@@ -167,34 +167,34 @@ export default function Settings() {
                       </select>
                     </div>
 
-                    <div className="h-px bg-basalt-900/5 my-2"></div>
+                    <div className="h-px bg-white/10 my-2"></div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-basalt-900">Google Gemini API Key</label>
+                      <label className="text-sm font-semibold text-white">Google Gemini API Key</label>
                       <input 
                         type="password" 
                         placeholder="AIzaSy..."
-                        className="w-full px-4 py-3 bg-white border border-basalt-900/10 rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
+                        className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
                       />
-                      <p className="text-xs text-basalt-400">Get a free key from Google AI Studio.</p>
+                      <p className="text-xs text-gray-500">Get a free key from Google AI Studio.</p>
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-basalt-900">Groq API Key</label>
+                      <label className="text-sm font-semibold text-white">Groq API Key</label>
                       <input 
                         type="password" 
                         placeholder="gsk_..."
-                        className="w-full px-4 py-3 bg-white border border-basalt-900/10 rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
+                        className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
                       />
-                      <p className="text-xs text-basalt-400">Get a free key from Groq Cloud to run open-source models lightning fast.</p>
+                      <p className="text-xs text-gray-500">Get a free key from Groq Cloud to run open-source models lightning fast.</p>
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-basalt-900">OpenAI API Key</label>
+                      <label className="text-sm font-semibold text-white">OpenAI API Key</label>
                       <input 
                         type="password" 
                         placeholder="sk-..."
-                        className="w-full px-4 py-3 bg-white border border-basalt-900/10 rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
+                        className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
                       />
                     </div>
                   </div>
@@ -211,21 +211,21 @@ export default function Settings() {
                 className="space-y-8"
               >
                 <div>
-                  <h2 className="text-xl font-bold text-basalt-900 mb-6">Appearance</h2>
+                  <h2 className="text-xl font-bold text-white mb-6">Appearance</h2>
                   
                   <div className="space-y-4">
-                    <label className="text-sm font-semibold text-basalt-900">Theme</label>
+                    <label className="text-sm font-semibold text-white">Theme</label>
                     <div className="grid grid-cols-3 gap-4">
                       {['Light', 'Dark', 'System'].map((theme, i) => (
                         <button 
                           key={theme}
                           className={cn(
                             "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all",
-                            i === 0 ? "border-copper-500 bg-copper-500/5 ring-1 ring-copper-500" : "border-basalt-900/10 bg-white hover:bg-basalt-50"
+                            i === 0 ? "border-copper-500 bg-copper-500/5 ring-1 ring-copper-500" : "border-white/10 bg-transparent hover:bg-white/5 text-white"
                           )}
                         >
-                          <div className={cn("w-12 h-8 rounded-md mb-3 border border-basalt-200", i === 1 ? "bg-basalt-900" : "bg-white")}></div>
-                          <span className={cn("text-sm font-semibold", i === 0 ? "text-copper-700" : "text-basalt-700")}>{theme}</span>
+                          <div className={cn("w-12 h-8 rounded-md mb-3 border", i === 1 ? "bg-[#111] border-white/10" : "bg-transparent border-white/20")}></div>
+                          <span className={cn("text-sm font-semibold", i === 0 ? "text-copper-400" : "text-gray-300")}>{theme}</span>
                         </button>
                       ))}
                     </div>
@@ -241,7 +241,7 @@ export default function Settings() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="flex items-center justify-center h-[300px] text-basalt-400 text-sm"
+                className="flex items-center justify-center h-[300px] text-gray-500 text-sm"
               >
                 {activeTab === 'notifications' ? 'Notification settings coming soon.' : 'Privacy settings coming soon.'}
               </motion.div>
@@ -249,15 +249,15 @@ export default function Settings() {
           </AnimatePresence>
 
           {/* Floating Save Button */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white to-transparent flex justify-end">
+          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-[#111] to-transparent flex justify-end">
             <button 
               onClick={handleSave}
               disabled={isSaving || saved}
               className={cn(
-                "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md transition-all duration-300",
+                "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-black shadow-md transition-all duration-300",
                 saved 
-                  ? "bg-green-500 shadow-green-500/20" 
-                  : "bg-basalt-900 hover:bg-basalt-800 hover:-translate-y-0.5",
+                  ? "bg-green-500 shadow-green-500/20 text-white" 
+                  : "bg-white hover:bg-gray-200 hover:-translate-y-0.5",
                 isSaving && "opacity-80"
               )}
             >

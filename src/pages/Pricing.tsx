@@ -65,7 +65,7 @@ export default function Pricing() {
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-4xl md:text-5xl font-editorial font-bold text-basalt-900 mb-6"
+          className="text-4xl md:text-5xl font-editorial font-bold text-white mb-6"
         >
           Upgrade your plan
         </motion.h1>
@@ -73,7 +73,7 @@ export default function Pricing() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-lg text-basalt-600 max-w-xl mx-auto mb-8"
+          className="text-lg text-gray-400 max-w-xl mx-auto mb-8"
         >
           Find your best fit.
         </motion.p>
@@ -91,13 +91,13 @@ export default function Pricing() {
             className={cn(
               "relative flex flex-col p-8 rounded-3xl transition-all duration-300",
               tier.isPopular 
-                ? "bg-copper-50/50 backdrop-blur-xl text-basalt-900 shadow-2xl scale-[1.02] border border-copper-200/60 z-10" 
-                : "bg-white/80 backdrop-blur-xl text-basalt-900 border border-basalt-900/10 hover:border-basalt-900/20 shadow-sm"
+                ? "bg-teal-500/10 backdrop-blur-xl text-white shadow-2xl scale-[1.02] border border-teal-500/30 z-10" 
+                : "bg-[#1a1a1a]/80 backdrop-blur-xl text-white border border-white/10 hover:border-white/20 shadow-sm"
             )}
           >
             {tier.isPopular && (
               <div className="absolute top-6 right-6">
-                <span className="bg-copper-500/10 text-copper-700 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-copper-500/20">
+                <span className="bg-teal-500/10 text-teal-400 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-teal-500/20">
                   Recommended
                 </span>
               </div>
@@ -105,24 +105,24 @@ export default function Pricing() {
             
             <div className="mb-8 mt-2">
               <h3 className="text-xl font-bold mb-2">{tier.name}</h3>
-              <p className={cn("text-sm min-h-[40px]", tier.isPopular ? "text-basalt-700" : "text-basalt-500")}>
+              <p className={cn("text-sm min-h-[40px]", tier.isPopular ? "text-gray-300" : "text-gray-400")}>
                 {tier.description}
               </p>
             </div>
             
             <div className="mb-8 flex items-baseline gap-1">
-              <span className="text-4xl font-bold text-basalt-900">₹{tier.price}</span>
-              <span className={cn("text-sm", tier.isPopular ? "text-basalt-600" : "text-basalt-500")}>/ month</span>
+              <span className="text-4xl font-bold text-white">₹{tier.price}</span>
+              <span className={cn("text-sm", tier.isPopular ? "text-gray-400" : "text-gray-500")}>/ month</span>
             </div>
 
             <button 
               className={cn(
                 "w-full py-3 px-4 rounded-xl font-semibold transition-colors mb-8 flex items-center justify-center gap-2",
                 tier.buttonVariant === 'outline' 
-                  ? "bg-transparent border border-basalt-900/20 text-basalt-700 hover:bg-basalt-900/5 hover:border-basalt-900/30"
+                  ? "bg-transparent border border-white/20 text-gray-300 hover:bg-white/10 hover:border-white/30"
                   : tier.buttonVariant === 'primary'
-                    ? "bg-copper-500 hover:bg-copper-600 text-white border border-transparent shadow-lg shadow-copper-500/20"
-                    : "bg-basalt-900 text-white hover:bg-basalt-800 border border-transparent shadow-md"
+                    ? "bg-teal-500 hover:bg-teal-600 text-white border border-transparent shadow-lg shadow-teal-500/20"
+                    : "bg-white text-black hover:bg-gray-200 border border-transparent shadow-md"
               )}
             >
               {tier.isPopular && <Sparkles className="w-4 h-4" />}
@@ -134,13 +134,13 @@ export default function Pricing() {
                 {tier.features.map((feature, fIdx) => (
                   <li key={fIdx} className="flex items-start gap-3 text-sm">
                     {feature.active ? (
-                      <Check className={cn("w-5 h-5 shrink-0 mt-0.5", tier.isPopular ? "text-copper-500" : "text-copper-500")} />
+                      <Check className={cn("w-5 h-5 shrink-0 mt-0.5", tier.isPopular ? "text-teal-400" : "text-copper-500")} />
                     ) : (
-                      <X className={cn("w-5 h-5 shrink-0 mt-0.5 opacity-40", tier.isPopular ? "text-copper-900/50" : "text-basalt-400")} />
+                      <X className={cn("w-5 h-5 shrink-0 mt-0.5 opacity-40", tier.isPopular ? "text-teal-500/50" : "text-gray-600")} />
                     )}
                     <span className={cn(
                       feature.bold && "font-semibold",
-                      !feature.active && (tier.isPopular ? "text-basalt-600 opacity-80" : "text-basalt-400")
+                      !feature.active && (tier.isPopular ? "text-gray-400 opacity-80" : "text-gray-500")
                     )}>
                       {feature.text}
                     </span>

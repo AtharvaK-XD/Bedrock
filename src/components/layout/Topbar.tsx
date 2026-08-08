@@ -13,11 +13,11 @@ export function Topbar() {
   const location = useLocation();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-20 border-b border-basalt-900/5 bg-white/40 backdrop-blur-xl">
+    <header className="fixed top-0 left-0 right-0 z-50 h-20 border-b border-white/5 bg-black/60 backdrop-blur-xl">
       <div className="max-w-[1400px] mx-auto px-6 h-full flex items-center justify-between">
         
         {/* Brand */}
-        <Link to="/app" className="flex items-center gap-3 text-basalt-900 group">
+        <Link to="/app" className="flex items-center gap-3 text-white group">
           <div className="p-1.5 bg-copper-500/10 rounded-lg group-hover:bg-copper-500/20 transition-colors">
             <Layers className="w-6 h-6 text-copper-500" />
           </div>
@@ -25,7 +25,7 @@ export function Topbar() {
         </Link>
 
         {/* Center Nav */}
-        <nav className="hidden md:flex items-center gap-1 bg-white/60 p-1.5 rounded-2xl border border-basalt-900/10 shadow-sm">
+        <nav className="hidden md:flex items-center gap-1 bg-[#111] p-1.5 rounded-2xl border border-white/5 shadow-sm">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -35,8 +35,8 @@ export function Topbar() {
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300",
                   isActive 
-                    ? "bg-basalt-900 text-white shadow-md" 
-                    : "text-basalt-600 hover:text-basalt-900 hover:bg-basalt-900/5"
+                    ? "bg-white/10 text-white shadow-md" 
+                    : "text-gray-400 hover:text-white hover:bg-white/5"
                 )}
               >
                 <item.icon className={cn("w-4 h-4", isActive ? "text-copper-400" : "")} />
@@ -51,14 +51,14 @@ export function Topbar() {
           <Link to="/app/pricing" className="hidden md:flex items-center gap-2 px-4 py-1.5 bg-copper-500 hover:bg-copper-600 text-white text-sm font-semibold rounded-full shadow-sm shadow-copper-500/20 transition-all">
             <Sparkles className="w-4 h-4" /> Upgrade
           </Link>
-          <Link to="/app/settings" className="p-2 text-basalt-500 hover:bg-basalt-900/5 rounded-full transition-colors">
+          <Link to="/app/settings" className="p-2 text-gray-400 hover:bg-white/5 rounded-full transition-colors">
             <Settings className="w-5 h-5" />
           </Link>
-          <div className="h-8 w-px bg-basalt-900/10"></div>
+          <div className="h-8 w-px bg-white/10"></div>
           <button className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-basalt-900 leading-none">Atharva K.</p>
-              <p className="text-xs text-basalt-500 mt-1">Free Plan</p>
+              <p className="text-sm font-semibold text-white leading-none">Atharva K.</p>
+              <p className="text-xs text-gray-400 mt-1">Free Plan</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold shadow-md">
               AK

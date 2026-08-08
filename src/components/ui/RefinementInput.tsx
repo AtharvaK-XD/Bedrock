@@ -115,7 +115,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         }
       }}
       className={cn(
-        "relative flex flex-col w-full mx-auto bg-white/90 backdrop-blur-md border border-basalt-900/10 rounded-3xl shadow-xl transition-all duration-500 ease-[0.22,1,0.36,1] focus-within:ring-2 focus-within:ring-copper-500/30",
+        "relative flex flex-col w-full mx-auto bg-[#111] backdrop-blur-md border border-white/10 rounded-3xl shadow-xl transition-all duration-500 ease-[0.22,1,0.36,1] focus-within:ring-2 focus-within:ring-copper-500/30",
         expanded ? "max-w-[700px] min-h-[140px]" : "max-w-[340px] min-h-[60px]",
         className
       )}
@@ -125,9 +125,9 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         {files.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {files.map((file, idx) => (
-              <div key={idx} className="flex items-center gap-1 bg-basalt-900/5 border border-basalt-900/10 px-2 py-1 rounded-md text-xs text-basalt-700">
+              <div key={idx} className="flex items-center gap-1 bg-white/5 border border-white/10 px-2 py-1 rounded-md text-xs text-gray-300">
                 <span className="truncate max-w-[150px]">{file.name}</span>
-                <button type="button" onClick={() => removeFile(idx)} className="text-basalt-400 hover:text-basalt-900">
+                <button type="button" onClick={() => removeFile(idx)} className="text-gray-500 hover:text-white">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -140,7 +140,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
           onKeyDown={handleKeyDown}
           placeholder={placeholderText}
           className={cn(
-            "w-full bg-transparent text-basalt-900 placeholder:text-basalt-400 text-[15px] resize-none leading-relaxed transition-all duration-500 border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent p-0 m-0",
+            "w-full bg-transparent text-white placeholder:text-gray-500 text-[15px] resize-none leading-relaxed transition-all duration-500 border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent p-0 m-0",
             expanded ? "min-h-[44px]" : "h-[22px] overflow-hidden"
           )}
           rows={expanded ? 2 : 1}
@@ -164,7 +164,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
           <button 
             type="button" 
             onClick={() => fileInputRef.current?.click()}
-            className="text-basalt-400 hover:text-basalt-700 transition-colors p-2 rounded-xl hover:bg-basalt-900/5"
+            className="text-gray-500 hover:text-gray-300 transition-colors p-2 rounded-xl hover:bg-white/10"
             title="Attach files (Max 5MB)"
           >
             <Plus className="w-5 h-5" strokeWidth={2.5} />
@@ -178,20 +178,20 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
             <button
               type="button"
               onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-              className="flex items-center bg-basalt-900/5 hover:bg-basalt-900/10 transition-colors rounded-full px-4 py-1.5 border border-basalt-900/5 whitespace-nowrap"
+              className="flex items-center bg-white/10 hover:bg-white/20 transition-colors rounded-full px-4 py-1.5 border border-white/5 whitespace-nowrap"
             >
-              <span className="text-basalt-900 text-[13px] font-medium mr-1.5">{model}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-basalt-500 transition-colors" />
+              <span className="text-white text-[13px] font-medium mr-1.5">{model}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-gray-400 transition-colors" />
             </button>
 
             {isModelDropdownOpen && (
               <div 
-                className="absolute bottom-full right-0 mb-2 w-56 max-h-[300px] overflow-y-auto custom-scrollbar bg-white/90 backdrop-blur-xl border border-basalt-900/10 rounded-2xl shadow-xl z-50 py-2"
+                className="absolute bottom-full right-0 mb-2 w-56 max-h-[300px] overflow-y-auto custom-scrollbar bg-[#1a1a1a]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl z-50 py-2"
                 data-lenis-prevent="true"
               >
                 {AI_AGENTS.map((agent) => (
                   <div key={agent.id} className="mb-2">
-                    <div className="px-3 py-1 text-[10px] font-bold text-basalt-400 uppercase tracking-wider">
+                    <div className="px-3 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                       {agent.name}
                     </div>
                     {agent.models.map((m) => (
@@ -204,7 +204,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                         }}
                         className={cn(
                           "w-full flex items-center px-4 py-1.5 text-[13px] text-left transition-colors",
-                          model === m.name ? "bg-copper-500/10 text-copper-700 font-medium" : "text-basalt-700 hover:bg-basalt-900/5 hover:text-basalt-900"
+                          model === m.name ? "bg-copper-500/10 text-copper-700 font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
                         )}
                       >
                         {m.name}
@@ -216,14 +216,14 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
             )}
           </div>
 
-          <button type="button" className="text-basalt-400 hover:text-basalt-700 transition-colors p-2 rounded-xl hover:bg-basalt-900/5 whitespace-nowrap">
+          <button type="button" className="text-gray-500 hover:text-gray-300 transition-colors p-2 rounded-xl hover:bg-white/10 whitespace-nowrap">
             <Sparkles className="w-[18px] h-[18px]" strokeWidth={2} />
           </button>
 
           <button 
             type="submit"
             disabled={!input.trim() && files.length === 0}
-            className="ml-1 bg-copper-500 text-white p-2 rounded-full hover:bg-copper-600 disabled:opacity-50 disabled:bg-basalt-900/10 disabled:text-basalt-400 transition-all flex items-center justify-center"
+            className="ml-1 bg-copper-500 text-white p-2 rounded-full hover:bg-copper-600 disabled:opacity-50 disabled:bg-white/10 disabled:text-gray-500 transition-all flex items-center justify-center"
           >
             <ArrowUp className="w-[18px] h-[18px]" strokeWidth={2.5} />
           </button>
