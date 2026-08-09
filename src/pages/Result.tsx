@@ -69,7 +69,7 @@ export default function Result() {
       
       {/* Header / Top Nav */}
       <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/5 mb-6 w-full">
-        <div className="max-w-[1400px] w-full mx-auto px-6 lg:px-12 flex items-center justify-between py-4">
+        <div className="w-full px-6 lg:px-12 2xl:px-24 flex items-center justify-between py-4">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
             <Terminal className="w-5 h-5 text-copper-500" />
             <span>Bedrock Agent</span>

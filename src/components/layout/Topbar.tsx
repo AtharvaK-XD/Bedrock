@@ -14,7 +14,7 @@ export function Topbar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-20 border-b border-white/5 bg-black/60 backdrop-blur-xl">
-      <div className="max-w-[1400px] w-full mx-auto px-6 lg:px-12 h-full flex items-center justify-between">
+      <div className="w-full px-6 lg:px-12 2xl:px-24 h-full flex items-center justify-between">
         
         {/* Brand */}
         <Link to="/app" className="flex items-center gap-3 text-white group">

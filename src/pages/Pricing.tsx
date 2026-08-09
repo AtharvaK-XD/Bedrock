@@ -57,7 +57,7 @@ const TIERS = [
 
 export default function Pricing() {
   return (
-    <div className="max-w-[1400px] w-full mx-auto px-6 lg:px-12 py-12 lg:py-16 min-h-[calc(100vh-80px)]">
+    <div className="w-full px-6 lg:px-12 2xl:px-24 py-12 lg:py-16 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-16">
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
