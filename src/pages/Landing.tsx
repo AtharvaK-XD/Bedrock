@@ -75,13 +75,14 @@ export default function Landing() {
 
                 <div className="flex flex-wrap items-center gap-4">
                   <a 
-                    href="https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/Bedrock_1.0.0_x64-setup.exe" 
+                    href="/Bedrock-Windows.zip" 
+                    download
                     className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-2xl font-semibold text-lg hover:bg-gray-200 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1"
                   >
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Download for Windows (.exe)
+                    Download for Windows (.zip)
                   </a>
                   <p className="text-sm text-gray-500 font-medium">Native Desktop App • ~10MB • Windows 10+</p>
                 </div>

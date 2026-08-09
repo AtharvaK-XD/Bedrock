@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, AppWindow, Palette, Sparkles, ArrowUp, ChevronDown, X } from 'lucide-react';
+import { Plus, Sparkles, ArrowUp, ChevronDown, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AI_AGENTS } from './RichInput';
 

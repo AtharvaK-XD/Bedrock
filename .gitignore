@@ -24,3 +24,7 @@ release
 *.njsproj
 *.sln
 *.sw?
+
+# Build Artifacts
+public/*.zip
+public/*.exe
