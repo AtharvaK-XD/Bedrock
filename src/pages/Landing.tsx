@@ -32,7 +32,7 @@ export default function Landing() {
 
       {/* Hero Section (100vh) */}
       <section className="relative z-10 min-h-screen flex items-center pt-24 pb-12">
-        <div className="max-w-[1400px] w-full px-6 lg:px-12 mx-auto">
+        <div className="w-full px-6 lg:px-12 2xl:px-24">
           <div className="flex flex-col lg:flex-row gap-12 lg:gap-8 items-center justify-between w-full mx-auto">
             
             {/* Left Column: Massive Typography */}
@@ -138,7 +138,7 @@ export default function Landing() {
 
       {/* Features Section to make page longer */}
       <section className="relative z-10 py-32 bg-[#111] border-t border-white/5 backdrop-blur-sm">
-        <div className="max-w-[1400px] w-full mx-auto px-6 lg:px-12">
+        <div className="w-full px-6 lg:px-12 2xl:px-24">
           <motion.div 
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
