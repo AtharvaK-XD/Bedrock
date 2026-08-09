@@ -48,7 +48,7 @@ Format your response clearly using markdown.`);
   };
 
   return (
-    <div className="w-full px-6 lg:px-12 2xl:px-24 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
+    <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-12">
 
         <h1 className="text-5xl md:text-6xl font-editorial font-bold text-white mb-6 tracking-tight leading-[1.1]">
