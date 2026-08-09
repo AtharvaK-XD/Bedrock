@@ -92,7 +92,7 @@ export default function Result() {
           </div>
 
           {/* Chat History */}
-          <div className="flex-1 overflow-y-auto px-6 py-8 custom-scrollbar space-y-10">
+          <div className="flex-1 overflow-y-auto px-6 py-8 custom-scrollbar space-y-10" data-lenis-prevent="true">
             {chatHistory.map((msg, idx) => (
               <div key={idx}>
                 {msg.role === 'user' && msg.content && (
@@ -172,7 +172,7 @@ export default function Result() {
           </div>
 
           {/* Document Content */}
-          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar" data-lenis-prevent="true">
             <div className="max-w-4xl mx-auto prose prose-invert prose-copper prose-p:leading-relaxed prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-white/10 prose-headings:font-display">
               <ReactMarkdown>{promptText}</ReactMarkdown>
             </div>
