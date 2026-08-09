@@ -79,14 +79,16 @@ export default function Wizard() {
               </p>
             </div>
 
-            <RichInput
-              value={idea}
-              onChange={setIdea}
-              onSubmit={handleGenerateQuestions}
-              isLoading={isGenerating}
-              targetType={targetType}
-              onTargetTypeChange={setTargetType}
-            />
+            <div className="max-w-4xl mx-auto w-full">
+              <RichInput
+                value={idea}
+                onChange={setIdea}
+                onSubmit={handleGenerateQuestions}
+                isLoading={isGenerating}
+                targetType={targetType}
+                onTargetTypeChange={setTargetType}
+              />
+            </div>
           </motion.div>
         </div>
 
