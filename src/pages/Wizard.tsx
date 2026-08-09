@@ -60,7 +60,7 @@ export default function Wizard() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
+    <div className="max-w-[1400px] w-full mx-auto px-6 lg:px-12 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="max-w-5xl mx-auto flex flex-col gap-12 transition-all duration-500">
         
         {/* Top Section (Input) */}

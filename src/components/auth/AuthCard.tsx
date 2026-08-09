@@ -28,8 +28,8 @@ export function AuthCard() {
   );
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="bg-[#1a1a1a]/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-8 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] relative overflow-hidden">
+    <div className="w-full max-w-lg mx-auto">
+      <div className="bg-[#1a1a1a]/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-10 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] relative overflow-hidden">
         
         {/* Animated Background Elements inside the card */}
         <div className="absolute -top-20 -right-20 w-40 h-40 bg-copper-500/10 rounded-full blur-3xl"></div>

@@ -31,7 +31,7 @@ export default function Library() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
+    <div className="max-w-[1400px] w-full mx-auto px-6 lg:px-12 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
         <div>
 

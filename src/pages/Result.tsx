@@ -68,17 +68,19 @@ export default function Result() {
     <div className="flex flex-col min-h-[calc(100vh-80px)] text-white font-sans selection:bg-copper-500/30 pt-6">
       
       {/* Header / Top Nav */}
-      <div className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 bg-black/80 backdrop-blur-md border-b border-white/5 mb-6">
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-          <Terminal className="w-5 h-5 text-copper-500" />
-          <span>Bedrock Agent</span>
+      <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/5 mb-6 w-full">
+        <div className="max-w-[1400px] w-full mx-auto px-6 lg:px-12 flex items-center justify-between py-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+            <Terminal className="w-5 h-5 text-copper-500" />
+            <span>Bedrock Agent</span>
+          </div>
+          <button 
+            onClick={() => navigate('/')} 
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+          >
+            <RefreshCcw className="w-4 h-4" /> Start Over
+          </button>
         </div>
-        <button 
-          onClick={() => navigate('/')} 
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-        >
-          <RefreshCcw className="w-4 h-4" /> Start Over
-        </button>
       </div>
 
       {/* Chat Area */}

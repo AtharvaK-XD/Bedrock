@@ -415,7 +415,7 @@ export function RichInput({
         />
 
         {/* Bottom Toolbar */}
-        <div className="flex items-center justify-between p-4 border-t border-white/5 bg-[#1a1a1a]/50 rounded-b-3xl">
+        <div className="flex items-center justify-between p-4 bg-[#1a1a1a]/50 rounded-b-3xl">
           <div className="flex items-center gap-1">
             <button type="button" className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors tooltip-trigger">
               <Mic className="w-5 h-5" />
