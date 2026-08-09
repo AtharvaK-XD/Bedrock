@@ -38,7 +38,7 @@ export default function Settings() {
   ];
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-10 lg:py-16 min-h-[calc(100vh-80px)]">
+    <div className="max-w-[1400px] w-full mx-auto px-6 lg:px-12 py-10 lg:py-16 min-h-[calc(100vh-80px)]">
       <div className="mb-10">
         <h1 className="text-3xl md:text-4xl font-editorial font-bold text-white">Settings</h1>
         <p className="text-gray-400 mt-2">Manage your account, API keys, and app preferences.</p>
