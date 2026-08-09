@@ -5,8 +5,32 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
   body {
     @apply bg-black text-white font-sans antialiased;
+  }
+
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #000000;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #222222;
+    border: 3px solid #000000;
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #333333;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #222222 #000000;
   }
   
   h1, h2, h3, h4, h5, h6 {

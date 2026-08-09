@@ -1,20 +1,18 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Copy, Download, RefreshCcw, FileText, Sparkles, Terminal } from 'lucide-react';
+import { Copy, Download, RefreshCcw, FileText, Sparkles, Terminal, ChevronDown } from 'lucide-react';
 import { RefinementInput } from '../components/ui/RefinementInput';
+import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
+import ReactMarkdown from 'react-markdown';
+import { useState } from 'react';
 
 const TypewriterText = ({ text }: { text: string }) => {
   const words = text.split(' ');
-
   return (
     <motion.div
       initial="hidden"
       animate="visible"
-      variants={{
-        visible: {
-          transition: { staggerChildren: 0.04 }
-        }
-      }}
+      variants={{ visible: { transition: { staggerChildren: 0.04 } } }}
       className="inline"
     >
       {words.map((word, index) => (
@@ -38,6 +36,11 @@ export default function Result() {
   const navigate = useNavigate();
   const promptText = location.state?.promptText as string | undefined;
   const idea = location.state?.idea as string | undefined;
+
+  const [chatHistory, setChatHistory] = useState([
+    { role: 'user', content: idea },
+    { role: 'ai', content: "Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist." }
+  ]);
 
   if (!promptText) {
     return (
@@ -65,104 +68,119 @@ export default function Result() {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-80px)] text-white font-sans selection:bg-copper-500/30 pt-6">
+    <div className="flex flex-col h-[calc(100vh-80px)] text-white font-sans selection:bg-copper-500/30 overflow-hidden">
       
-      {/* Header / Top Nav */}
-      <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/5 mb-6 w-full">
-        <div className="w-full px-4 sm:px-8 flex items-center justify-between py-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-            <Terminal className="w-5 h-5 text-copper-500" />
-            <span>Bedrock Agent</span>
-          </div>
-          <button 
-            onClick={() => navigate('/')} 
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-          >
-            <RefreshCcw className="w-4 h-4" /> Start Over
-          </button>
-        </div>
-      </div>
-
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto pb-40 px-4 custom-scrollbar">
-        <div className="w-full flex flex-col gap-10">
+      {/* Split Pane Workspace */}
+      <PanelGroup orientation="horizontal" className="w-full h-full">
+        
+        {/* LEFT PANE: Chat & Refinement */}
+        <Panel defaultSize={45} minSize={25} className="flex flex-col h-full bg-[#0a0a0a] relative">
           
-          {/* User Message */}
-          {idea && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex justify-end"
-            >
-              <div className="bg-white/5 border border-white/10 text-gray-300 px-5 py-3.5 rounded-3xl rounded-tr-sm max-w-[85%] text-[15px] leading-relaxed shadow-sm">
-                {idea}
-              </div>
-            </motion.div>
-          )}
-
-          {/* AI Response */}
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex justify-start"
-          >
-            <div className="flex flex-col gap-4 max-w-[95%] md:max-w-[85%]">
-              
-              {/* Status / Metadata */}
-              <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
-                <Sparkles className="w-4 h-4 text-copper-500" />
-                Synthesized your prompt
-              </div>
-              
-              {/* AI Text */}
-              <div className="text-[15.5px] leading-relaxed text-gray-300">
-                <TypewriterText text="Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist." />
-              </div>
-
-              {/* Attachment Block */}
-              <div className="mt-2 flex flex-col sm:flex-row items-center justify-between bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 gap-4 hover:border-white/20 transition-colors shadow-sm">
-                <div className="flex items-center gap-4 w-full sm:w-auto">
-                  <div className="bg-white/5 p-3.5 rounded-xl flex-shrink-0 flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <div className="min-w-0 text-left">
-                    <div className="font-medium text-white truncate text-[15px]">Bedrock prompt</div>
-                    <div className="text-[13px] text-gray-500 mt-0.5">Document • MD</div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button 
-                    onClick={handleCopy} 
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-[#1a1a1a] border border-white/10 hover:bg-white/5 transition-colors rounded-xl text-sm font-medium text-white shadow-sm"
-                  >
-                    <Copy className="w-4 h-4" /> Copy
-                  </button>
-                  <button 
-                    onClick={handleDownload} 
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-[#1a1a1a] border border-white/10 hover:bg-white/5 transition-colors rounded-xl text-sm font-medium text-white shadow-sm"
-                  >
-                    <Download className="w-4 h-4" /> Download
-                  </button>
-                </div>
-              </div>
-
+          {/* Header */}
+          <div className="flex-none p-4 border-b border-white/5 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+              <Terminal className="w-5 h-5 text-copper-500" />
+              <span>Interactive prompt refinement</span>
+              <ChevronDown className="w-4 h-4 text-gray-500" />
             </div>
-          </motion.div>
-        </div>
-      </div>
+            <button 
+              onClick={() => navigate('/')} 
+              className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            >
+              <RefreshCcw className="w-3.5 h-3.5" /> Start Over
+            </button>
+          </div>
 
-      {/* Fixed Input Area */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 z-50 pointer-events-none">
-        <div className="max-w-3xl mx-auto pointer-events-auto drop-shadow-2xl">
-          <RefinementInput 
-            onSubmit={(text, model) => {
-              console.log("Refinement submitted:", text, "with model:", model);
-            }}
-          />
-        </div>
-      </div>
+          {/* Chat History */}
+          <div className="flex-1 overflow-y-auto px-6 py-8 custom-scrollbar space-y-10">
+            {chatHistory.map((msg, idx) => (
+              <div key={idx}>
+                {msg.role === 'user' && msg.content && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-end">
+                    <div className="bg-white/5 border border-white/10 text-gray-300 px-5 py-3.5 rounded-3xl rounded-tr-sm max-w-[85%] text-[15px] leading-relaxed shadow-sm">
+                      {msg.content}
+                    </div>
+                  </motion.div>
+                )}
+                
+                {msg.role === 'ai' && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start">
+                    <div className="flex flex-col gap-4 max-w-[95%]">
+                      <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
+                        <Sparkles className="w-4 h-4 text-copper-500" />
+                        Synthesized your prompt
+                      </div>
+                      <div className="text-[15.5px] leading-relaxed text-gray-300">
+                        <TypewriterText text={msg.content || ""} />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            ))}
+            {/* Spacer for bottom input */}
+            <div className="h-32"></div>
+          </div>
+
+          {/* Bottom Chat Input */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent">
+            <RefinementInput 
+              onSubmit={(text) => {
+                setChatHistory(prev => [...prev, { role: 'user', content: text }]);
+                setTimeout(() => {
+                  setChatHistory(prev => [...prev, { role: 'ai', content: "I've noted that refinement. The document has been updated!" }]);
+                }, 1000);
+              }}
+            />
+          </div>
+
+        </Panel>
+
+        {/* RESIZER HANDLE */}
+        <PanelResizeHandle className="w-2 bg-[#0a0a0a] border-x border-white/5 flex items-center justify-center hover:bg-copper-500/20 active:bg-copper-500/40 transition-colors cursor-col-resize group z-10">
+          <div className="w-1 h-12 bg-white/10 group-hover:bg-copper-500 rounded-full transition-colors" />
+        </PanelResizeHandle>
+
+        {/* RIGHT PANE: Markdown Document Viewer */}
+        <Panel defaultSize={55} minSize={30} className="flex flex-col h-full bg-[#161616]">
+          
+          {/* Document Header */}
+          <div className="flex-none p-4 border-b border-white/5 bg-[#1a1a1a] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/10 p-2 rounded-lg flex items-center justify-center">
+                <FileText className="w-5 h-5 text-gray-300" />
+              </div>
+              <div className="font-medium text-white text-[15px]">
+                Bedrock desktop app prompt <span className="text-gray-500 font-normal ml-1">MD</span>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <button 
+                onClick={handleCopy} 
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-sm font-medium text-gray-200"
+              >
+                <Copy className="w-4 h-4" /> Copy
+              </button>
+              <button 
+                onClick={handleDownload} 
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-sm font-medium text-gray-200"
+              >
+                <Download className="w-4 h-4" /> Download
+              </button>
+            </div>
+          </div>
+
+          {/* Document Content */}
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div className="max-w-4xl mx-auto prose prose-invert prose-copper prose-p:leading-relaxed prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-white/10 prose-headings:font-display">
+              <ReactMarkdown>{promptText}</ReactMarkdown>
+            </div>
+          </div>
+          
+        </Panel>
+
+      </PanelGroup>
     </div>
   );
 }
