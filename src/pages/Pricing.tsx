@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { Check, X, Info, Sparkles, Zap, Shield, Crown } from 'lucide-react';
+import { Check, X, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
 
@@ -57,8 +56,6 @@ const TIERS = [
 ];
 
 export default function Pricing() {
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-
   return (
     <div className="max-w-[1400px] mx-auto px-6 py-12 lg:py-16 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-16">
@@ -139,7 +136,7 @@ export default function Pricing() {
                       <X className={cn("w-5 h-5 shrink-0 mt-0.5 opacity-40", tier.isPopular ? "text-teal-500/50" : "text-gray-600")} />
                     )}
                     <span className={cn(
-                      feature.bold && "font-semibold",
+                      (feature as any).bold && "font-semibold",
                       !feature.active && (tier.isPopular ? "text-gray-400 opacity-80" : "text-gray-500")
                     )}>
                       {feature.text}

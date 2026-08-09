@@ -35,7 +35,7 @@ export default function Library() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
         <div>
 
-          <h1 className="text-5xl md:text-6xl font-editorial font-bold text-basalt-900 tracking-tight mb-2 leading-[1.1]">
+          <h1 className="text-5xl md:text-6xl font-editorial font-bold text-white tracking-tight mb-2 leading-[1.1]">
             Prompt Library.
           </h1>
         </div>
@@ -43,17 +43,17 @@ export default function Library() {
         <div className="w-full md:w-auto flex items-center gap-4">
           <div className="relative flex-1 md:w-80">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-basalt-400" />
+              <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search prompts..."
-              className="w-full pl-11 pr-4 py-3 bg-white/60 backdrop-blur-sm border border-basalt-900/10 rounded-xl text-basalt-900 placeholder:text-basalt-400 focus:outline-none focus:ring-2 focus:ring-copper-500/50 shadow-sm"
+              className="w-full pl-11 pr-4 py-3 bg-[#1a1a1a]/60 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 shadow-sm"
             />
           </div>
-          <Button variant="secondary" className="h-[50px] px-4 bg-white/60 backdrop-blur-sm">
+          <Button variant="secondary" className="h-[50px] px-4 bg-[#1a1a1a]/60 text-white border-white/10 hover:bg-white/10 backdrop-blur-sm">
             <Filter className="w-5 h-5 mr-2" /> Filter
           </Button>
         </div>
@@ -67,8 +67,8 @@ export default function Library() {
             className={cn(
               "whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all",
               activeTag === tag
-                ? "bg-basalt-900 text-white shadow-md"
-                : "bg-white/60 border border-basalt-900/10 text-basalt-600 hover:bg-white hover:text-basalt-900 shadow-sm"
+                ? "bg-white text-black shadow-md"
+                : "bg-[#1a1a1a]/60 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white shadow-sm"
             )}
           >
             {tag}
@@ -82,34 +82,34 @@ export default function Library() {
             key={prompt.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_4px_24px_rgba(0,0,0,0.03)] rounded-3xl p-6 flex flex-col group hover:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:bg-white/60 transition-all duration-300"
+            className="bg-[#1a1a1a]/40 backdrop-blur-xl border border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.03)] rounded-3xl p-6 flex flex-col group hover:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:bg-white/10 transition-all duration-300"
           >
             <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-bold text-basalt-900 line-clamp-1">{prompt.title}</h3>
-              <button className="text-basalt-400 hover:text-basalt-900 transition-colors">
+              <h3 className="text-xl font-bold text-white line-clamp-1">{prompt.title}</h3>
+              <button className="text-gray-500 hover:text-white transition-colors">
                 <MoreVertical className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-basalt-600 text-sm line-clamp-3 mb-6 flex-1">
+            <p className="text-gray-400 text-sm line-clamp-3 mb-6 flex-1">
               {prompt.snippet}
             </p>
 
             <div className="flex flex-col gap-4 mt-auto">
               <div className="flex items-center gap-2 flex-wrap">
                 {prompt.tags.map(tag => (
-                  <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-md bg-basalt-900/5 text-xs font-semibold text-basalt-600">
+                  <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-md bg-white/10 text-xs font-semibold text-gray-300">
                     <Tag className="w-3 h-3 mr-1 opacity-50" />
                     {tag}
                   </span>
                 ))}
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-basalt-900/5">
-                <span className="text-xs text-basalt-400">{prompt.date}</span>
+              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                <span className="text-xs text-gray-500">{prompt.date}</span>
                 <button
                   onClick={() => handleCopy(prompt.snippet)}
-                  className="flex items-center gap-2 text-sm font-semibold text-copper-600 hover:text-copper-500 transition-colors"
+                  className="flex items-center gap-2 text-sm font-semibold text-teal-500 hover:text-teal-400 transition-colors"
                 >
                   <Copy className="w-4 h-4" /> Copy
                 </button>
@@ -119,10 +119,10 @@ export default function Library() {
         ))}
 
         {filteredPrompts.length === 0 && (
-          <div className="col-span-full py-20 flex flex-col items-center justify-center text-basalt-500">
+          <div className="col-span-full py-20 flex flex-col items-center justify-center text-gray-400">
             <Search className="w-12 h-12 mb-4 opacity-20" />
             <p className="text-lg font-medium">No prompts found matching your criteria.</p>
-            <Button variant="ghost" className="mt-4 text-copper-600" onClick={() => { setSearch(''); setActiveTag('All'); }}>
+            <Button variant="ghost" className="mt-4 text-teal-500" onClick={() => { setSearch(''); setActiveTag('All'); }}>
               Clear filters
             </Button>
           </div>

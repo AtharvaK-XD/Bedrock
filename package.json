@@ -5,6 +5,21 @@
   "description": "Bedrock Prompt Engineering App",
   "author": "Bedrock Inc",
   "type": "module",
+  "main": "dist-electron/main.js",
+  "build": {
+    "appId": "com.bedrock.desktop",
+    "productName": "Bedrock",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -38,6 +53,10 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "autoprefixer": "^10.5.4",
+    "bestzip": "^3.0.2",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
+    "electron-packager": "^17.1.2",
     "oxlint": "^1.75.0",
     "postcss": "^8.5.25",
     "tailwindcss": "^3.4.19",
