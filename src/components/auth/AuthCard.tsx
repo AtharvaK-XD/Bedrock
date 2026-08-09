@@ -29,7 +29,7 @@ export function AuthCard() {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white/80 backdrop-blur-2xl border border-white/20 rounded-[2rem] p-8 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] relative overflow-hidden">
+      <div className="bg-[#1a1a1a]/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-8 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] relative overflow-hidden">
         
         {/* Animated Background Elements inside the card */}
         <div className="absolute -top-20 -right-20 w-40 h-40 bg-copper-500/10 rounded-full blur-3xl"></div>
@@ -37,10 +37,10 @@ export function AuthCard() {
 
         <div className="relative z-10">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-display font-bold text-basalt-900 tracking-tight">
+            <h2 className="text-3xl font-display font-bold text-white tracking-tight">
               {mode === 'login' ? 'Welcome back' : 'Create account'}
             </h2>
-            <p className="text-basalt-500 mt-2">
+            <p className="text-gray-400 mt-2">
               {mode === 'login' ? 'Enter your details to sign in.' : 'Start building perfect prompts today.'}
             </p>
           </div>
@@ -55,12 +55,12 @@ export function AuthCard() {
                   transition={{ duration: 0.3 }}
                 >
                   <div className="relative">
-                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-basalt-400" />
+                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <input 
                       type="text" 
                       placeholder="Full Name" 
                       required
-                      className="w-full bg-white border border-basalt-900/10 rounded-xl py-3 pl-12 pr-4 text-basalt-900 placeholder:text-basalt-400 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                      className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
                     />
                   </div>
                 </motion.div>
@@ -68,28 +68,28 @@ export function AuthCard() {
             </AnimatePresence>
 
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-basalt-400" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input 
                 type="email" 
                 placeholder="Email address" 
                 required
-                className="w-full bg-white border border-basalt-900/10 rounded-xl py-3 pl-12 pr-4 text-basalt-900 placeholder:text-basalt-400 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
               />
             </div>
 
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-basalt-400" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input 
                 type="password" 
                 placeholder="Password" 
                 required
-                className="w-full bg-white border border-basalt-900/10 rounded-xl py-3 pl-12 pr-4 text-basalt-900 placeholder:text-basalt-400 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
               />
             </div>
 
             {mode === 'login' && (
               <div className="flex justify-end">
-                <button type="button" className="text-sm font-medium text-copper-600 hover:text-copper-700 transition-colors">
+                <button type="button" className="text-sm font-medium text-teal-500 hover:text-teal-400 transition-colors">
                   Forgot password?
                 </button>
               </div>
@@ -98,7 +98,7 @@ export function AuthCard() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 bg-basalt-900 text-white rounded-xl py-3.5 font-semibold hover:bg-basalt-800 transition-all focus:outline-none focus:ring-2 focus:ring-basalt-900/50 disabled:opacity-70 mt-4 group"
+              className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-4 group"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -113,28 +113,28 @@ export function AuthCard() {
 
           <div className="mt-8 relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-basalt-900/10"></div>
+              <div className="w-full border-t border-white/10"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-[#fbfaf8] text-basalt-500">Or continue with</span>
+              <span className="px-4 bg-[#1a1a1a] text-gray-500">Or continue with</span>
             </div>
           </div>
 
           <button
             type="button"
             onClick={() => navigate('/app')}
-            className="mt-6 w-full flex items-center justify-center gap-3 bg-white border border-basalt-900/10 rounded-xl py-3.5 font-medium text-basalt-900 hover:bg-basalt-50 transition-all focus:outline-none focus:ring-2 focus:ring-basalt-900/20 shadow-sm"
+            className="mt-6 w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm"
           >
             <GoogleIcon />
             Sign in with Google
           </button>
 
-          <div className="mt-8 text-center text-sm text-basalt-600">
+          <div className="mt-8 text-center text-sm text-gray-400">
             {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
             <button 
               type="button"
               onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-              className="font-semibold text-copper-600 hover:text-copper-700 transition-colors"
+              className="font-semibold text-teal-500 hover:text-teal-400 transition-colors"
             >
               {mode === 'login' ? 'Sign up' : 'Sign in'}
             </button>

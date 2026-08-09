@@ -51,10 +51,10 @@ Format your response clearly using markdown.`);
     <div className="max-w-[1400px] mx-auto px-6 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-12">
 
-        <h1 className="text-5xl md:text-6xl font-editorial font-bold text-basalt-900 mb-6 tracking-tight leading-[1.1]">
+        <h1 className="text-5xl md:text-6xl font-editorial font-bold text-white mb-6 tracking-tight leading-[1.1]">
           Prompt Optimizer.
         </h1>
-        <p className="text-xl text-basalt-600 max-w-2xl mx-auto">
+        <p className="text-xl text-gray-400 max-w-2xl mx-auto">
           Paste your existing, messy prompt below. Select the optimization rules you want to apply, and let our engine rewrite it into a highly effective instruction set.
         </p>
       </div>
@@ -62,11 +62,11 @@ Format your response clearly using markdown.`);
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
         {/* Left Column - Input */}
         <div className="lg:col-span-7 flex flex-col h-[600px]">
-          <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 flex flex-col flex-1 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/5 pointer-events-none z-0"></div>
+          <div className="bg-[#1a1a1a]/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 flex flex-col flex-1 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none z-0"></div>
             
             <div className="relative z-10 flex flex-col flex-1">
-              <h3 className="text-lg font-semibold text-basalt-900 mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 Original Prompt
               </h3>
               <textarea
@@ -74,7 +74,7 @@ Format your response clearly using markdown.`);
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Paste the prompt you want to improve here..."
                 data-lenis-prevent="true"
-                className="w-full flex-1 resize-none bg-transparent text-base text-basalt-900 placeholder:text-basalt-400 focus:outline-none custom-scrollbar"
+                className="w-full flex-1 resize-none bg-transparent text-base text-white placeholder:text-gray-500 focus:outline-none custom-scrollbar"
               />
             </div>
           </div>
@@ -89,9 +89,9 @@ Format your response clearly using markdown.`);
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
-                className="bg-white/60 backdrop-blur-xl border border-basalt-900/10 rounded-3xl p-8 shadow-sm flex flex-col h-full"
+                className="bg-[#1a1a1a]/60 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-sm flex flex-col h-full"
               >
-                <h3 className="text-xl font-display font-bold text-basalt-900 mb-6">Optimization Rules</h3>
+                <h3 className="text-xl font-display font-bold text-white mb-6">Optimization Rules</h3>
                 
                 <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2" data-lenis-prevent="true">
                   {rules.map(rule => (
@@ -101,19 +101,19 @@ Format your response clearly using markdown.`);
                       className={cn(
                         "w-full flex items-center justify-between p-4 rounded-xl border text-left transition-all duration-200",
                         rule.active
-                          ? "bg-copper-500/5 border-copper-500/30 shadow-[inset_0_0_0_1px_rgba(207,117,75,0.2)]"
-                          : "bg-white border-basalt-900/10 hover:border-basalt-900/20 hover:bg-basalt-900/5"
+                          ? "bg-teal-500/10 border-teal-500/30 shadow-[inset_0_0_0_1px_rgba(20,184,166,0.2)]"
+                          : "bg-[#111] border-white/10 hover:border-white/20 hover:bg-white/5 text-gray-300"
                       )}
                     >
                       <span className={cn(
                         "font-medium",
-                        rule.active ? "text-copper-700" : "text-basalt-700"
+                        rule.active ? "text-teal-400" : "text-gray-400"
                       )}>
                         {rule.label}
                       </span>
                       <div className={cn(
                         "w-5 h-5 rounded-full flex items-center justify-center transition-colors",
-                        rule.active ? "bg-copper-500 text-white" : "border-2 border-basalt-900/20"
+                        rule.active ? "bg-teal-500 text-white" : "border-2 border-white/20"
                       )}>
                         {rule.active && <CheckCircle2 className="w-3.5 h-3.5" />}
                       </div>
@@ -121,16 +121,16 @@ Format your response clearly using markdown.`);
                   ))}
                 </div>
 
-                <div className="pt-6 mt-4 border-t border-basalt-900/5">
+                <div className="pt-6 mt-4 border-t border-white/10">
                   <button
                     onClick={handleOptimize}
                     disabled={!prompt.trim() || isOptimizing}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-basalt-900 text-white rounded-xl font-medium transition-all hover:bg-basalt-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white text-black rounded-xl font-medium transition-all hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                   >
                     {isOptimizing ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     ) : (
-                      <Sparkles className="w-5 h-5 text-copper-400" />
+                      <Sparkles className="w-5 h-5 text-black" />
                     )}
                     {isOptimizing ? 'Optimizing...' : 'Optimize Prompt'}
                   </button>
@@ -141,12 +141,12 @@ Format your response clearly using markdown.`);
                 key="result"
                 initial={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-                className="bg-white/80 backdrop-blur-xl border border-basalt-900/10 rounded-3xl p-8 shadow-lg flex flex-col h-full relative overflow-hidden"
+                className="bg-[#1a1a1a]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-lg flex flex-col h-full relative overflow-hidden"
               >
-                <div className="absolute top-0 right-0 w-64 h-64 bg-copper-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
                 
                 <div className="flex justify-between items-start mb-6 relative z-10">
-                  <h3 className="text-xl font-display font-bold text-basalt-900">Optimized Result</h3>
+                  <h3 className="text-xl font-display font-bold text-white">Optimized Result</h3>
                   <div className="flex gap-2">
                     <Button variant="ghost" onClick={() => setOptimizedResult('')}>
                       <RefreshCcw className="w-4 h-4" />
