@@ -79,7 +79,7 @@ export default function Wizard() {
               </p>
             </div>
 
-            <div className="max-w-4xl mx-auto w-full">
+            <div className="max-w-5xl mx-auto w-full">
               <RichInput
                 value={idea}
                 onChange={setIdea}
