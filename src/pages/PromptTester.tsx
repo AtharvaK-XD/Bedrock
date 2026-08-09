@@ -42,10 +42,10 @@ export default function PromptTester() {
     <div className="max-w-[1400px] mx-auto px-6 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-12">
 
-        <h1 className="text-5xl md:text-6xl font-editorial font-bold text-basalt-900 mb-6 tracking-tight leading-[1.1]">
+        <h1 className="text-5xl md:text-6xl font-editorial font-bold text-white mb-6 tracking-tight leading-[1.1]">
           Prompt Tester.
         </h1>
-        <p className="text-xl text-basalt-600 max-w-2xl mx-auto">
+        <p className="text-xl text-gray-400 max-w-2xl mx-auto">
           Test your prompts instantly against multiple LLMs to see how they perform before deploying them to production.
         </p>
       </div>
@@ -53,22 +53,22 @@ export default function PromptTester() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         {/* Left: Input */}
         <div className="flex flex-col h-[650px] gap-6">
-          <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 flex flex-col flex-1 relative overflow-hidden group">
-            <h3 className="text-sm font-semibold text-basalt-500 mb-2 uppercase tracking-wider">System Prompt (Optional)</h3>
+          <div className="bg-[#1a1a1a]/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 flex flex-col flex-1 relative overflow-hidden group">
+            <h3 className="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider">System Prompt (Optional)</h3>
             <textarea
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               data-lenis-prevent="true"
-              className="w-full h-24 resize-none bg-white/50 border border-basalt-900/10 rounded-xl p-4 text-sm text-basalt-900 focus:outline-none focus:ring-2 focus:ring-copper-500/50 mb-6 custom-scrollbar"
+              className="w-full h-24 resize-none bg-[#111] border border-white/10 rounded-xl p-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 mb-6 custom-scrollbar"
             />
             
-            <h3 className="text-sm font-semibold text-basalt-500 mb-2 uppercase tracking-wider">User Prompt</h3>
+            <h3 className="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider">User Prompt</h3>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Enter the prompt you want to test..."
               data-lenis-prevent="true"
-              className="w-full flex-1 resize-none bg-transparent text-base text-basalt-900 placeholder:text-basalt-400 focus:outline-none custom-scrollbar"
+              className="w-full flex-1 resize-none bg-transparent text-base text-white placeholder:text-gray-500 focus:outline-none custom-scrollbar"
             />
           </div>
 
@@ -77,17 +77,17 @@ export default function PromptTester() {
               <button
                 type="button"
                 onClick={() => setActiveDropdown(activeDropdown === 'agent' ? null : 'agent')}
-                className="w-full flex items-center justify-between gap-2 px-4 py-4 bg-white border border-basalt-900/10 rounded-xl text-base font-medium text-basalt-900 hover:bg-basalt-900/5 transition-colors shadow-sm"
+                className="w-full flex items-center justify-between gap-2 px-4 py-4 bg-[#1a1a1a] border border-white/10 rounded-xl text-base font-medium text-white hover:bg-white/10 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-2 truncate">
-                  <AgentIcon agent={selectedAgent} className="w-5 h-5 text-basalt-500 shrink-0" />
+                  <AgentIcon agent={selectedAgent} className="w-5 h-5 text-gray-400 shrink-0" />
                   <span className="truncate">{selectedAgent.name}</span>
                 </div>
-                <ChevronDown className="w-5 h-5 text-basalt-400 shrink-0" />
+                <ChevronDown className="w-5 h-5 text-gray-500 shrink-0" />
               </button>
               
               {activeDropdown === 'agent' && (
-                <div className="absolute bottom-full mb-2 left-0 w-72 bg-white border border-basalt-900/10 rounded-xl shadow-xl z-20 py-2 overflow-hidden">
+                <div className="absolute bottom-full mb-2 left-0 w-72 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-20 py-2 overflow-hidden">
                   <div className="max-h-[300px] overflow-y-auto px-1 custom-scrollbar" data-lenis-prevent="true">
                     {AI_AGENTS.map((agent) => (
                       <button
@@ -100,13 +100,13 @@ export default function PromptTester() {
                         }}
                         className={cn(
                           "w-full flex items-start gap-3 px-3 py-2.5 text-left rounded-lg transition-colors",
-                          selectedAgentId === agent.id ? "bg-basalt-900/5" : "hover:bg-basalt-900/5"
+                          selectedAgentId === agent.id ? "bg-white/10" : "hover:bg-white/10"
                         )}
                       >
                         <AgentIcon agent={agent} className="w-5 h-5 mt-0.5 shrink-0" />
                         <div className="min-w-0">
-                          <div className={cn("text-sm font-medium truncate", selectedAgentId === agent.id ? "text-basalt-900" : "text-basalt-800")}>{agent.name}</div>
-                          <div className="text-xs text-basalt-500 mt-0.5 truncate">{agent.description}</div>
+                          <div className={cn("text-sm font-medium truncate", selectedAgentId === agent.id ? "text-white" : "text-gray-300")}>{agent.name}</div>
+                          <div className="text-xs text-gray-500 mt-0.5 truncate">{agent.description}</div>
                         </div>
                       </button>
                     ))}
@@ -119,18 +119,18 @@ export default function PromptTester() {
               <button
                 type="button"
                 onClick={() => setActiveDropdown(activeDropdown === 'model' ? null : 'model')}
-                className="w-full flex items-center justify-between gap-2 px-4 py-4 bg-white border border-basalt-900/10 rounded-xl text-base font-medium text-basalt-900 hover:bg-basalt-900/5 transition-colors shadow-sm"
+                className="w-full flex items-center justify-between gap-2 px-4 py-4 bg-[#1a1a1a] border border-white/10 rounded-xl text-base font-medium text-white hover:bg-white/10 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-2 truncate">
-                  <Settings className="w-5 h-5 text-basalt-500 shrink-0" />
+                  <Settings className="w-5 h-5 text-gray-400 shrink-0" />
                   <span className="truncate">{selectedModel.name}</span>
                 </div>
-                <ChevronDown className="w-5 h-5 text-basalt-400 shrink-0" />
+                <ChevronDown className="w-5 h-5 text-gray-500 shrink-0" />
               </button>
 
               {activeDropdown === 'model' && (
-                <div className="absolute bottom-full mb-2 left-0 w-full bg-white border border-basalt-900/10 rounded-xl shadow-xl z-20 py-2">
-                  <div className="px-3 py-2 text-xs font-semibold text-basalt-400 uppercase tracking-wider border-b border-basalt-900/5 mb-2">
+                <div className="absolute bottom-full mb-2 left-0 w-full bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-20 py-2">
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-white/10 mb-2">
                     {selectedAgent.name} Models
                   </div>
                   <div className="max-h-[300px] overflow-y-auto px-2 custom-scrollbar" data-lenis-prevent="true">
@@ -144,7 +144,7 @@ export default function PromptTester() {
                         }}
                         className={cn(
                           "w-full flex items-center gap-2 px-2 py-2 text-sm text-left rounded-lg transition-colors",
-                          selectedModelId === model.id ? "bg-basalt-900/5 text-basalt-900 font-medium" : "text-basalt-700 hover:bg-basalt-900/5 hover:text-basalt-900"
+                          selectedModelId === model.id ? "bg-white/10 text-white font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
                         )}
                       >
                         {model.name}
@@ -158,7 +158,7 @@ export default function PromptTester() {
             <button
               onClick={handleTest}
               disabled={!prompt.trim() || isTesting}
-              className="flex items-center justify-center gap-2 px-8 py-4 bg-copper-500 text-white rounded-xl font-medium transition-all hover:bg-copper-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-copper-500/20 w-full sm:w-auto shrink-0"
+              className="flex items-center justify-center gap-2 px-8 py-4 bg-teal-500 text-white rounded-xl font-medium transition-all hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-teal-500/20 w-full sm:w-auto shrink-0"
             >
               {isTesting ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -186,9 +186,9 @@ export default function PromptTester() {
 
             <div className="flex-1 overflow-auto custom-scrollbar relative z-10" data-lenis-prevent="true">
               {isTesting ? (
-                <div className="h-full flex items-center justify-center text-basalt-500">
+                <div className="h-full flex items-center justify-center text-gray-400">
                   <div className="flex flex-col items-center gap-4">
-                    <div className="w-8 h-8 border-4 border-basalt-700 border-t-copper-500 rounded-full animate-spin"></div>
+                    <div className="w-8 h-8 border-4 border-gray-700 border-t-teal-500 rounded-full animate-spin"></div>
                     <p>Awaiting response from {selectedModel.name}...</p>
                   </div>
                 </div>
@@ -197,7 +197,7 @@ export default function PromptTester() {
                   {result}
                 </pre>
               ) : (
-                <div className="h-full flex items-center justify-center text-basalt-600 italic">
+                <div className="h-full flex items-center justify-center text-gray-500 italic">
                   Run a test to see the model's output here.
                 </div>
               )}
