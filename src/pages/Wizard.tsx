@@ -60,8 +60,8 @@ export default function Wizard() {
   };
 
   return (
-    <div className="w-full px-6 lg:px-12 2xl:px-24 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
-      <div className="w-full max-w-7xl mx-auto flex flex-col gap-12 transition-all duration-500">
+    <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
+      <div className="w-full flex flex-col gap-12 transition-all duration-500">
         
         {/* Top Section (Input) */}
         <div className="w-full relative z-20 transition-all duration-500">
