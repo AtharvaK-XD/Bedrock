@@ -170,6 +170,114 @@ export function RichInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
 
+  // Token Tracking State
+  const SESSION_LIMIT = 50000;
+  const WEEKLY_LIMIT = 200000;
+  const [sessionTokens, setSessionTokens] = useState(0);
+  const [weeklyTokens, setWeeklyTokens] = useState(0);
+  const [sessionResetTime, setSessionResetTime] = useState<Date | null>(null);
+  const [weeklyResetTime, setWeeklyResetTime] = useState<Date | null>(null);
+  const [timeUntilWeekly, setTimeUntilWeekly] = useState("");
+
+  useEffect(() => {
+    // Load from local storage and handle resets
+    const loadTokens = () => {
+      const now = new Date();
+      
+      // Calculate next 5-hour reset
+      const nextSessionReset = new Date(now);
+      const currentHour = now.getHours();
+      const nextResetHour = Math.floor(currentHour / 5) * 5 + 5;
+      nextSessionReset.setHours(nextResetHour, 0, 0, 0);
+      setSessionResetTime(nextSessionReset);
+
+      // Calculate next weekly reset (Sunday midnight)
+      const nextWeeklyReset = new Date(now);
+      nextWeeklyReset.setDate(now.getDate() + ((7 - now.getDay()) % 7));
+      if (now.getDay() === 0 && now.getHours() > 0) {
+        nextWeeklyReset.setDate(nextWeeklyReset.getDate() + 7);
+      }
+      nextWeeklyReset.setHours(0, 0, 0, 0);
+      setWeeklyResetTime(nextWeeklyReset);
+
+      // Check if we need to reset
+      const lastSessionResetStr = localStorage.getItem('lastSessionReset');
+      const lastWeeklyResetStr = localStorage.getItem('lastWeeklyReset');
+      
+      let currentSessionTokens = parseInt(localStorage.getItem('sessionTokens') || '0', 10);
+      let currentWeeklyTokens = parseInt(localStorage.getItem('weeklyTokens') || '0', 10);
+
+      // If we passed the reset time, reset tokens
+      if (lastSessionResetStr) {
+        const lastSessionReset = new Date(lastSessionResetStr);
+        if (now > lastSessionReset) {
+          currentSessionTokens = 0;
+          localStorage.setItem('lastSessionReset', nextSessionReset.toISOString());
+        }
+      } else {
+        localStorage.setItem('lastSessionReset', nextSessionReset.toISOString());
+      }
+
+      if (lastWeeklyResetStr) {
+        const lastWeeklyReset = new Date(lastWeeklyResetStr);
+        if (now > lastWeeklyReset) {
+          currentWeeklyTokens = 0;
+          localStorage.setItem('lastWeeklyReset', nextWeeklyReset.toISOString());
+        }
+      } else {
+        localStorage.setItem('lastWeeklyReset', nextWeeklyReset.toISOString());
+      }
+
+      setSessionTokens(currentSessionTokens);
+      setWeeklyTokens(currentWeeklyTokens);
+      localStorage.setItem('sessionTokens', currentSessionTokens.toString());
+      localStorage.setItem('weeklyTokens', currentWeeklyTokens.toString());
+    };
+
+    loadTokens();
+    const interval = setInterval(loadTokens, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  // Update countdown string
+  useEffect(() => {
+    if (!weeklyResetTime) return;
+    
+    const updateCountdown = () => {
+      const now = new Date();
+      const diffMs = weeklyResetTime.getTime() - now.getTime();
+      
+      if (diffMs <= 0) {
+        setTimeUntilWeekly("0h 0m");
+        return;
+      }
+      
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      setTimeUntilWeekly(`${hours}h ${minutes}m`);
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [weeklyResetTime]);
+
+  const handleActionSubmit = () => {
+    if (value.trim() && !isLoading) {
+      // Simulate token usage based on length (1 char ~ 0.25 tokens)
+      const usedTokens = Math.max(1, Math.floor(value.length * 0.25));
+      const newSessionTokens = Math.min(sessionTokens + usedTokens, SESSION_LIMIT);
+      const newWeeklyTokens = Math.min(weeklyTokens + usedTokens, WEEKLY_LIMIT);
+      
+      setSessionTokens(newSessionTokens);
+      setWeeklyTokens(newWeeklyTokens);
+      localStorage.setItem('sessionTokens', newSessionTokens.toString());
+      localStorage.setItem('weeklyTokens', newWeeklyTokens.toString());
+      
+      onSubmit();
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
@@ -253,9 +361,7 @@ export function RichInput({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (value.trim() && !isLoading) {
-        onSubmit();
-      }
+      handleActionSubmit();
     }
   };
 
@@ -271,7 +377,7 @@ export function RichInput({
       {/* Content wrapper to stay above background effects */}
       <div className="relative z-10 flex flex-col h-full">
         {/* Top Toolbar */}
-        <div className="flex items-center gap-2 p-3 border-b border-white/5 bg-transparent">
+        <div className="flex items-center gap-2 p-3 bg-transparent">
           <div className="relative">
             <button
               type="button"
@@ -439,9 +545,7 @@ export function RichInput({
           
           <button
             type="button"
-            onClick={() => {
-              if (value.trim() && !isLoading) onSubmit();
-            }}
+            onClick={handleActionSubmit}
             disabled={!value.trim() || isLoading}
             className="flex items-center gap-2 px-5 py-2 bg-white text-black rounded-xl font-medium transition-all hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
@@ -452,6 +556,30 @@ export function RichInput({
             )}
             Generate
           </button>
+        </div>
+
+        {/* Token Quota Progress */}
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 pb-4 pt-1 text-[11px] text-gray-500 gap-4 sm:gap-8">
+          <div className="flex items-center gap-3 flex-1 w-full">
+            <span className="whitespace-nowrap w-20">Session: {Math.round((sessionTokens / SESSION_LIMIT) * 100)}%</span>
+            <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
+              <div 
+                className="h-full bg-blue-500/80 rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, (sessionTokens / SESSION_LIMIT) * 100)}%` }} 
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 flex-1 w-full justify-end">
+            <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
+              <div 
+                className="h-full bg-blue-500/80 rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, (weeklyTokens / WEEKLY_LIMIT) * 100)}%` }} 
+              />
+            </div>
+            <span className="whitespace-nowrap text-right">
+              Weekly: {Math.round((weeklyTokens / WEEKLY_LIMIT) * 100)}% · resets in {timeUntilWeekly}
+            </span>
+          </div>
         </div>
       </div>
     </div>
