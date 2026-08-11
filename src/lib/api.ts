@@ -30,7 +30,7 @@ Respond ONLY with a valid JSON array of objects. Each object must have:
 
 Do not include any markdown formatting, just the raw JSON array.`;
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetch('/api/groq/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${GROQ_API_KEY}`,
@@ -44,7 +44,9 @@ Do not include any markdown formatting, just the raw JSON array.`;
   });
 
   if (!response.ok) {
-    throw new Error('Failed to generate questions');
+    const errText = await response.text();
+    console.error('Groq API Error:', errText);
+    throw new Error('Failed to generate questions: ' + errText);
   }
 
   const data = await response.json();
@@ -86,7 +88,7 @@ Include sections for:
 - Potential challenges.
 Format this entirely in beautiful Markdown.`;
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetch('/api/groq/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${GROQ_API_KEY}`,
@@ -100,7 +102,9 @@ Format this entirely in beautiful Markdown.`;
   });
 
   if (!response.ok) {
-    throw new Error('Failed to synthesize prompt');
+    const errText = await response.text();
+    console.error('Groq API Error:', errText);
+    throw new Error('Failed to synthesize prompt: ' + errText);
   }
 
   const data = await response.json();
