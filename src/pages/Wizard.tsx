@@ -30,6 +30,7 @@ export default function Wizard() {
       setStep(2);
     } catch (err) {
       console.error(err);
+      alert(err instanceof Error ? err.message : 'An error occurred while generating questions.');
     } finally {
       setIsGenerating(false);
     }
