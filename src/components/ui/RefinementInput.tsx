@@ -15,6 +15,97 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Token Tracking State
+  const SESSION_LIMIT = 50000;
+  const WEEKLY_LIMIT = 200000;
+  const [sessionTokens, setSessionTokens] = useState(0);
+  const [weeklyTokens, setWeeklyTokens] = useState(0);
+  const [sessionResetTime, setSessionResetTime] = useState<Date | null>(null);
+  const [weeklyResetTime, setWeeklyResetTime] = useState<Date | null>(null);
+  const [timeUntilWeekly, setTimeUntilWeekly] = useState("");
+
+  useEffect(() => {
+    // Load from local storage and handle resets
+    const loadTokens = () => {
+      const now = new Date();
+      
+      // Calculate next 5-hour reset
+      const nextSessionReset = new Date(now);
+      const currentHour = now.getHours();
+      const nextResetHour = Math.floor(currentHour / 5) * 5 + 5;
+      nextSessionReset.setHours(nextResetHour, 0, 0, 0);
+      setSessionResetTime(nextSessionReset);
+
+      // Calculate next weekly reset (Sunday midnight)
+      const nextWeeklyReset = new Date(now);
+      nextWeeklyReset.setDate(now.getDate() + ((7 - now.getDay()) % 7));
+      if (now.getDay() === 0 && now.getHours() > 0) {
+        nextWeeklyReset.setDate(nextWeeklyReset.getDate() + 7);
+      }
+      nextWeeklyReset.setHours(0, 0, 0, 0);
+      setWeeklyResetTime(nextWeeklyReset);
+
+      // Check if we need to reset
+      const lastSessionResetStr = localStorage.getItem('lastSessionReset');
+      const lastWeeklyResetStr = localStorage.getItem('lastWeeklyReset');
+      
+      let currentSessionTokens = parseInt(localStorage.getItem('sessionTokens') || '0', 10);
+      let currentWeeklyTokens = parseInt(localStorage.getItem('weeklyTokens') || '0', 10);
+
+      // If we passed the reset time, reset tokens
+      if (lastSessionResetStr) {
+        const lastSessionReset = new Date(lastSessionResetStr);
+        if (now > lastSessionReset) {
+          currentSessionTokens = 0;
+          localStorage.setItem('lastSessionReset', nextSessionReset.toISOString());
+        }
+      } else {
+        localStorage.setItem('lastSessionReset', nextSessionReset.toISOString());
+      }
+
+      if (lastWeeklyResetStr) {
+        const lastWeeklyReset = new Date(lastWeeklyResetStr);
+        if (now > lastWeeklyReset) {
+          currentWeeklyTokens = 0;
+          localStorage.setItem('lastWeeklyReset', nextWeeklyReset.toISOString());
+        }
+      } else {
+        localStorage.setItem('lastWeeklyReset', nextWeeklyReset.toISOString());
+      }
+
+      setSessionTokens(currentSessionTokens);
+      setWeeklyTokens(currentWeeklyTokens);
+      localStorage.setItem('sessionTokens', currentSessionTokens.toString());
+      localStorage.setItem('weeklyTokens', currentWeeklyTokens.toString());
+    };
+
+    loadTokens();
+    const interval = setInterval(loadTokens, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!weeklyResetTime) return;
+    
+    const updateCountdown = () => {
+      const now = new Date();
+      const diffMs = weeklyResetTime.getTime() - now.getTime();
+      
+      if (diffMs <= 0) {
+        setTimeUntilWeekly("0h 0m");
+        return;
+      }
+      
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      setTimeUntilWeekly(`${hours}h ${minutes}m`);
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000);
+    return () => clearInterval(interval);
+  }, [weeklyResetTime]);
+
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -91,6 +182,16 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if ((input.trim() || files.length > 0) && onSubmit) {
+      // Token deduction
+      const usedTokens = Math.max(1, Math.floor(input.length * 0.25));
+      const newSessionTokens = Math.min(sessionTokens + usedTokens, SESSION_LIMIT);
+      const newWeeklyTokens = Math.min(weeklyTokens + usedTokens, WEEKLY_LIMIT);
+      
+      setSessionTokens(newSessionTokens);
+      setWeeklyTokens(newWeeklyTokens);
+      localStorage.setItem('sessionTokens', newSessionTokens.toString());
+      localStorage.setItem('weeklyTokens', newWeeklyTokens.toString());
+
       // In a real app, you would pass files to onSubmit too
       onSubmit(input, model);
       setInput('');
@@ -227,6 +328,33 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
           >
             <ArrowUp className="w-[18px] h-[18px]" strokeWidth={2.5} />
           </button>
+        </div>
+      </div>
+      
+      {/* Token Quota Progress */}
+      <div className={cn(
+        "flex flex-col sm:flex-row items-center justify-between px-5 pb-3 text-[10px] text-gray-500 gap-4 sm:gap-6 transition-all duration-500 ease-[0.22,1,0.36,1]",
+        expanded ? "opacity-100 max-h-[30px] translate-y-0" : "opacity-0 max-h-0 translate-y-4 pointer-events-none"
+      )}>
+        <div className="flex items-center gap-2 flex-1 w-full">
+          <span className="whitespace-nowrap">Session: {Math.round((sessionTokens / SESSION_LIMIT) * 100)}%</span>
+          <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
+            <div 
+              className="h-full bg-blue-500/80 rounded-full transition-all duration-500" 
+              style={{ width: `${Math.min(100, (sessionTokens / SESSION_LIMIT) * 100)}%` }} 
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-1 w-full justify-end">
+          <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
+            <div 
+              className="h-full bg-blue-500/80 rounded-full transition-all duration-500" 
+              style={{ width: `${Math.min(100, (weeklyTokens / WEEKLY_LIMIT) * 100)}%` }} 
+            />
+          </div>
+          <span className="whitespace-nowrap text-right">
+            Weekly: {Math.round((weeklyTokens / WEEKLY_LIMIT) * 100)}% · resets in {timeUntilWeekly}
+          </span>
         </div>
       </div>
     </form>
