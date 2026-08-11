@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { RichInput } from '../components/ui/RichInput';
-import { mockGenerateQuestions, mockSynthesizePrompt } from '../lib/mockApi';
-import type { Question, Answer, IdeaPayload } from '../lib/mockApi';
+import { generateQuestions, synthesizePrompt } from '../lib/api';
+import type { Question, Answer, IdeaPayload } from '../lib/api';
 import { cn } from '../lib/utils';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
@@ -25,7 +25,7 @@ export default function Wizard() {
     if (!idea) return;
     setIsGenerating(true);
     try {
-      const q = await mockGenerateQuestions({ ideaText: idea, targetType });
+      const q = await generateQuestions({ ideaText: idea, targetType });
       setQuestions(q);
       setStep(2);
     } catch (err) {
@@ -50,7 +50,7 @@ export default function Wizard() {
       questionId, value
     }));
     try {
-      const promptText = await mockSynthesizePrompt({ ideaText: idea, targetType }, answersArray, questions);
+      const promptText = await synthesizePrompt({ ideaText: idea, targetType }, answersArray, questions);
       navigate('/app/result', { state: { promptText, idea } });
     } catch (err) {
       console.error(err);
