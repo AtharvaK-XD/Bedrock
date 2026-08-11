@@ -141,9 +141,9 @@ export default function Wizard() {
                                   onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
                                   required
                                 >
-                                  <option value="" disabled>Select an option</option>
+                                  <option value="" disabled className="bg-[#1a1a1a] text-white">Select an option</option>
                                   {q.options?.map(opt => (
-                                    <option key={opt} value={opt}>{opt}</option>
+                                    <option key={opt} value={opt} className="bg-[#1a1a1a] text-white">{opt}</option>
                                   ))}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
