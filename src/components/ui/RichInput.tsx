@@ -32,7 +32,7 @@ export const AI_AGENTS = [
     name: 'ChatGPT',
     description: 'Versatile all-rounder for most tasks',
     icon: BotMessageSquare,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=openai.com&sz=128',
+    iconUrl: 'https://icon.horse/icon/openai.com',
     models: [
       { id: 'gpt-4o', name: 'GPT-4o' },
       { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
@@ -44,7 +44,7 @@ export const AI_AGENTS = [
     name: 'Claude',
     description: 'Long documents and careful writing',
     icon: Feather,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=anthropic.com&sz=128',
+    iconUrl: 'https://icon.horse/icon/anthropic.com',
     models: [
       { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
       { id: 'claude-3-opus', name: 'Claude 3 Opus' },
@@ -56,7 +56,7 @@ export const AI_AGENTS = [
     name: 'Gemini',
     description: 'Multimodal and tight Google integration',
     icon: Sparkles,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=gemini.google.com&sz=128',
+    iconUrl: 'https://icon.horse/icon/gemini.google.com',
     models: [
       { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
       { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' }
@@ -67,7 +67,7 @@ export const AI_AGENTS = [
     name: 'Llama',
     description: 'Open-weight and self-hosting friendly',
     icon: Network,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=meta.com&sz=128',
+    iconUrl: 'https://icon.horse/icon/meta.com',
     models: [
       { id: 'llama-3-70b', name: 'Llama 3 70B' },
       { id: 'llama-3-8b', name: 'Llama 3 8B' }
@@ -78,7 +78,7 @@ export const AI_AGENTS = [
     name: 'Mistral',
     description: 'Fast, lightweight, and efficient',
     icon: Wind,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=mistral.ai&sz=128',
+    iconUrl: 'https://icon.horse/icon/mistral.ai',
     models: [
       { id: 'mistral-large', name: 'Mistral Large' },
       { id: 'mixtral-8x22b', name: 'Mixtral 8x22B' }
@@ -89,7 +89,7 @@ export const AI_AGENTS = [
     name: 'DeepSeek',
     description: 'Strong reasoning and coding',
     icon: Code,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=deepseek.com&sz=128',
+    iconUrl: 'https://icon.horse/icon/deepseek.com',
     models: [
       { id: 'deepseek-coder-v2', name: 'DeepSeek Coder V2' },
       { id: 'deepseek-chat', name: 'DeepSeek Chat' }
@@ -100,7 +100,7 @@ export const AI_AGENTS = [
     name: 'Perplexity',
     description: 'Web search with cited answers',
     icon: Compass,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=perplexity.ai&sz=128',
+    iconUrl: 'https://icon.horse/icon/perplexity.ai',
     models: [
       { id: 'sonar-huge', name: 'Sonar Huge' },
       { id: 'sonar-large', name: 'Sonar Large' }
@@ -111,7 +111,7 @@ export const AI_AGENTS = [
     name: 'Grok',
     description: 'Real-time, X-aware responses',
     icon: Zap,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=x.ai&sz=128',
+    iconUrl: 'https://icon.horse/icon/x.ai',
     models: [
       { id: 'grok-1.5', name: 'Grok-1.5' }
     ]
@@ -121,7 +121,7 @@ export const AI_AGENTS = [
     name: 'Cohere',
     description: 'Retrieval and enterprise search',
     icon: Database,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=cohere.com&sz=128',
+    iconUrl: 'https://icon.horse/icon/cohere.com',
     models: [
       { id: 'command-r-plus', name: 'Command R+' },
       { id: 'command-r', name: 'Command R' }
@@ -132,7 +132,7 @@ export const AI_AGENTS = [
     name: 'Copilot',
     description: 'Microsoft ecosystem integration',
     icon: Sparkles,
-    iconUrl: 'https://www.google.com/s2/favicons?domain=copilot.microsoft.com&sz=128',
+    iconUrl: 'https://icon.horse/icon/copilot.microsoft.com',
     models: [{ id: 'copilot-pro', name: 'Copilot Pro' }]
   }
 ];
@@ -377,7 +377,7 @@ export function RichInput({
       {/* Content wrapper to stay above background effects */}
       <div className="relative z-10 flex flex-col h-full">
         {/* Top Toolbar */}
-        <div className="flex items-center gap-2 p-3 bg-transparent">
+        <div className="flex items-center gap-2 p-3 border-b border-white/5 bg-transparent">
           <div className="relative">
             <button
               type="button"
