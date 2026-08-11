@@ -130,6 +130,7 @@ export default function Wizard() {
                                 value={answers[q.id] as string || ''}
                                 onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
                                 placeholder="Your answer..."
+                                className="bg-[#111] border-white/10 text-white placeholder:text-gray-500 hover:border-white/20 focus-visible:bg-white/5 focus-visible:border-copper-500/50"
                                 required
                               />
                             )}
