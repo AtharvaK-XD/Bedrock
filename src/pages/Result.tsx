@@ -70,15 +70,8 @@ export default function Result() {
     URL.revokeObjectURL(url);
   };
 
-  const chatPane = (
-    <motion.div 
-      key="chatPane"
-      initial={{ opacity: 0, scale: 0.92, filter: "blur(8px)" }}
-      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-      exit={{ opacity: 0, scale: 0.92, filter: "blur(8px)" }}
-      transition={{ type: "spring", stiffness: 260, damping: 25 }}
-      className="flex flex-col h-full w-full relative bg-[#0a0a0a]"
-    >
+  const chatPaneContent = (
+    <>
       {/* Header */}
       <div className="flex-none p-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
@@ -171,18 +164,11 @@ export default function Result() {
           }}
         />
       </div>
-    </motion.div>
+    </>
   );
 
-  const docPane = (
-    <motion.div 
-      key="docPane"
-      initial={{ opacity: 0, scale: 0.92, filter: "blur(8px)" }}
-      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-      exit={{ opacity: 0, scale: 0.92, filter: "blur(8px)" }}
-      transition={{ type: "spring", stiffness: 260, damping: 25 }}
-      className="flex flex-col h-full w-full relative bg-[#161616]"
-    >
+  const docPaneContent = (
+    <>
       {/* Document Header */}
       <div className="flex-none p-4 border-b border-white/5 bg-[#1a1a1a] flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -227,7 +213,7 @@ export default function Result() {
           <ReactMarkdown>{promptText}</ReactMarkdown>
         </div>
       </div>
-    </motion.div>
+    </>
   );
 
   return (
@@ -239,7 +225,16 @@ export default function Result() {
         {/* LEFT PANE */}
         <Panel id="left-panel" defaultSize={45} minSize={25} className="relative overflow-hidden bg-[#0a0a0a]">
           <AnimatePresence mode="popLayout" initial={false}>
-            {isSwapped ? docPane : chatPane}
+            <motion.div
+              key={isSwapped ? "doc" : "chat"}
+              initial={{ x: "100%", scale: 0.95, opacity: 0, filter: "blur(4px)" }}
+              animate={{ x: 0, scale: 1, opacity: 1, filter: "blur(0px)" }}
+              exit={{ x: "100%", scale: 0.95, opacity: 0, filter: "blur(4px)" }}
+              transition={{ type: "spring", stiffness: 350, damping: 35 }}
+              className={`absolute inset-0 flex flex-col w-full h-full ${isSwapped ? 'bg-[#161616]' : 'bg-[#0a0a0a]'}`}
+            >
+              {isSwapped ? docPaneContent : chatPaneContent}
+            </motion.div>
           </AnimatePresence>
         </Panel>
 
@@ -251,7 +246,16 @@ export default function Result() {
         {/* RIGHT PANE */}
         <Panel id="right-panel" defaultSize={55} minSize={30} className="relative overflow-hidden bg-[#161616]">
           <AnimatePresence mode="popLayout" initial={false}>
-            {isSwapped ? chatPane : docPane}
+            <motion.div
+              key={isSwapped ? "chat" : "doc"}
+              initial={{ x: "-100%", scale: 0.95, opacity: 0, filter: "blur(4px)" }}
+              animate={{ x: 0, scale: 1, opacity: 1, filter: "blur(0px)" }}
+              exit={{ x: "-100%", scale: 0.95, opacity: 0, filter: "blur(4px)" }}
+              transition={{ type: "spring", stiffness: 350, damping: 35 }}
+              className={`absolute inset-0 flex flex-col w-full h-full ${isSwapped ? 'bg-[#0a0a0a]' : 'bg-[#161616]'}`}
+            >
+              {isSwapped ? chatPaneContent : docPaneContent}
+            </motion.div>
           </AnimatePresence>
         </Panel>
 
