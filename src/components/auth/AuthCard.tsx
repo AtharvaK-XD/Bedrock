@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { ArrowRight, Mail, Lock, User as UserIcon, Github } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function AuthCard() {
@@ -120,14 +120,24 @@ export function AuthCard() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate('/app')}
-            className="mt-6 w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm"
-          >
-            <GoogleIcon />
-            Sign in with Google
-          </button>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/app')}
+              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm"
+            >
+              <GoogleIcon />
+              {mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/app')}
+              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm"
+            >
+              <Github className="w-5 h-5" />
+              {mode === 'login' ? 'Sign in with GitHub' : 'Sign up with GitHub'}
+            </button>
+          </div>
 
           <div className="mt-8 text-center text-sm text-gray-400">
             {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
