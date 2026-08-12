@@ -28,6 +28,33 @@ export const AI_AGENTS = [
     models: [{ id: 'auto', name: 'Auto-select best model' }]
   },
   {
+    id: 'openrouter',
+    name: 'OpenRouter Free',
+    description: '100% Free Open-Source Models',
+    icon: Globe,
+    iconUrl: 'https://icon.horse/icon/openrouter.ai',
+    models: [
+      { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)' },
+      { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B (Free)' },
+      { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (Free)' },
+      { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini (Free)' },
+      { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Nvidia Nemotron 70B (Free)' }
+    ]
+  },
+  {
+    id: 'huggingface',
+    name: 'Hugging Face',
+    description: 'Serverless Inference API (Free)',
+    icon: Globe,
+    iconUrl: 'https://icon.horse/icon/huggingface.co',
+    models: [
+      { id: 'hf/mistralai/Mistral-7B-Instruct-v0.3', name: 'Mistral 7B v0.3' },
+      { id: 'hf/Qwen/Qwen2.5-72B-Instruct', name: 'Qwen 2.5 72B' },
+      { id: 'hf/meta-llama/Meta-Llama-3-8B-Instruct', name: 'Llama 3 8B' },
+      { id: 'hf/HuggingFaceH4/zephyr-7b-beta', name: 'Zephyr 7B Beta' }
+    ]
+  },
+  {
     id: 'chatgpt',
     name: 'ChatGPT',
     description: 'Versatile all-rounder for most tasks',
@@ -40,15 +67,14 @@ export const AI_AGENTS = [
     ]
   },
   {
-    id: 'claude',
-    name: 'Claude',
-    description: 'Long documents and careful writing',
-    icon: Feather,
-    iconUrl: 'https://icon.horse/icon/anthropic.com',
+    id: 'nvidia',
+    name: 'Nvidia',
+    description: 'High-performance reasoning and instruction following',
+    icon: Network,
+    iconUrl: 'https://icon.horse/icon/nvidia.com',
     models: [
-      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
-      { id: 'claude-3-opus', name: 'Claude 3 Opus' },
-      { id: 'claude-3-haiku', name: 'Claude 3 Haiku' }
+      { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Nemotron 70B (Free)' },
+      { id: 'nvidia/nemotron-4-340b-instruct', name: 'Nemotron-4 340B' }
     ]
   },
   {

@@ -18,6 +18,16 @@ export default defineConfig({
         target: 'https://generativelanguage.googleapis.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/gemini/, '')
+      },
+      '/api/openrouter': {
+        target: 'https://openrouter.ai/api',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/openrouter/, '')
+      },
+      '/api/huggingface': {
+        target: 'https://api-inference.huggingface.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/huggingface/, '')
       }
     }
   }

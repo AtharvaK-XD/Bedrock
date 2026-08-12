@@ -17,6 +17,8 @@ export interface Answer {
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+const HUGGINGFACE_API_KEY = import.meta.env.VITE_HUGGINGFACE_API_KEY;
 
 export const generateQuestions = async (payload: IdeaPayload): Promise<Question[]> => {
   const prompt = `You are an expert product manager. The user has an idea for a ${payload.targetType}. 
@@ -146,6 +148,59 @@ Respond ONLY with the raw updated markdown document. Do not include any conversa
 };
 
 export const testPrompt = async (modelId: string, systemPrompt: string, userPrompt: string): Promise<string> => {
+  if (modelId.startsWith('hf/')) {
+    const realModelId = modelId.replace('hf/', '');
+    const response = await fetch(`/api/huggingface/models/${realModelId}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: realModelId,
+        messages: [
+          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 1024
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Hugging Face API Error: ${errText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+
+  // OpenRouter models typically have a slash, e.g., 'google/gemma-2-9b-it:free'
+  if (modelId.includes('/')) {
+    const response = await fetch('/api/openrouter/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: modelId,
+        messages: [
+          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+          { role: 'user', content: userPrompt }
+        ]
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenRouter API Error: ${errText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+
   const isGemini = modelId.toLowerCase().includes('gemini');
 
   if (isGemini) {
