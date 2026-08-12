@@ -114,7 +114,7 @@ Format this entirely in beautiful Markdown.`;
   return data.choices[0].message.content;
 };
 
-export const refinePrompt = async (currentPrompt: string, followUp: string): Promise<string> => {
+export const refinePrompt = async (currentPrompt: string, followUp: string): Promise<{updatedMarkdown: string, summary: string}> => {
   const prompt = `You are an expert prompt engineer. You have drafted this markdown document:
 ${currentPrompt}
 
@@ -122,7 +122,10 @@ The user has provided this follow-up feedback:
 "${followUp}"
 
 Please completely rewrite the markdown document incorporating this feedback. 
-Respond ONLY with the raw updated markdown document. Do not include any conversational filler.`;
+Respond ONLY with a valid JSON object. Do not include any conversational filler or markdown formatting around the JSON (e.g. no \`\`\`json).
+The JSON object must have exactly two keys:
+- "updatedMarkdown": The complete updated markdown document as a string.
+- "summary": A detailed summary (2-3 sentences) explaining exactly what you added, changed, or removed based on the user's feedback.`;
 
   const response = await fetch('/api/groq/openai/v1/chat/completions', {
     method: 'POST',
@@ -144,7 +147,15 @@ Respond ONLY with the raw updated markdown document. Do not include any conversa
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  const content = data.choices[0].message.content;
+  
+  try {
+    const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(jsonStr) as {updatedMarkdown: string, summary: string};
+  } catch (e) {
+    console.error('Failed to parse JSON', content);
+    throw new Error('Invalid JSON from LLM');
+  }
 };
 
 export const testPrompt = async (modelId: string, systemPrompt: string, userPrompt: string): Promise<string> => {
