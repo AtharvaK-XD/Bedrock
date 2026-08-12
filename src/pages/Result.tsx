@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Download, RefreshCcw, FileText, Sparkles, Terminal, ChevronDown, ArrowRightLeft } from 'lucide-react';
 import { RefinementInput } from '../components/ui/RefinementInput';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
@@ -71,7 +71,14 @@ export default function Result() {
   };
 
   const chatPane = (
-    <motion.div layoutId="chatPane" className="flex flex-col h-full w-full relative bg-[#0a0a0a]">
+    <motion.div 
+      key="chatPane"
+      initial={{ opacity: 0, scale: 0.92, filter: "blur(8px)" }}
+      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+      exit={{ opacity: 0, scale: 0.92, filter: "blur(8px)" }}
+      transition={{ type: "spring", stiffness: 260, damping: 25 }}
+      className="flex flex-col h-full w-full relative bg-[#0a0a0a]"
+    >
       {/* Header */}
       <div className="flex-none p-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
@@ -168,7 +175,14 @@ export default function Result() {
   );
 
   const docPane = (
-    <motion.div layoutId="docPane" className="flex flex-col h-full w-full relative bg-[#161616]">
+    <motion.div 
+      key="docPane"
+      initial={{ opacity: 0, scale: 0.92, filter: "blur(8px)" }}
+      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+      exit={{ opacity: 0, scale: 0.92, filter: "blur(8px)" }}
+      transition={{ type: "spring", stiffness: 260, damping: 25 }}
+      className="flex flex-col h-full w-full relative bg-[#161616]"
+    >
       {/* Document Header */}
       <div className="flex-none p-4 border-b border-white/5 bg-[#1a1a1a] flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -223,8 +237,10 @@ export default function Result() {
       <PanelGroup orientation="horizontal" className="w-full h-full">
         
         {/* LEFT PANE */}
-        <Panel id="left-panel" defaultSize={45} minSize={25} className="relative overflow-hidden">
-          {isSwapped ? docPane : chatPane}
+        <Panel id="left-panel" defaultSize={45} minSize={25} className="relative overflow-hidden bg-[#0a0a0a]">
+          <AnimatePresence mode="popLayout" initial={false}>
+            {isSwapped ? docPane : chatPane}
+          </AnimatePresence>
         </Panel>
 
         {/* RESIZER HANDLE */}
@@ -233,8 +249,10 @@ export default function Result() {
         </PanelResizeHandle>
 
         {/* RIGHT PANE */}
-        <Panel id="right-panel" defaultSize={55} minSize={30} className="relative overflow-hidden">
-          {isSwapped ? chatPane : docPane}
+        <Panel id="right-panel" defaultSize={55} minSize={30} className="relative overflow-hidden bg-[#161616]">
+          <AnimatePresence mode="popLayout" initial={false}>
+            {isSwapped ? chatPane : docPane}
+          </AnimatePresence>
         </Panel>
 
       </PanelGroup>
