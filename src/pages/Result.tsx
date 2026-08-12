@@ -5,6 +5,7 @@ import { RefinementInput } from '../components/ui/RefinementInput';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import ReactMarkdown from 'react-markdown';
 import { useState } from 'react';
+import { refinePrompt } from '../lib/api';
 
 const TypewriterText = ({ text }: { text: string }) => {
   const words = text.split(' ');
@@ -34,13 +35,14 @@ const TypewriterText = ({ text }: { text: string }) => {
 export default function Result() {
   const location = useLocation();
   const navigate = useNavigate();
-  const promptText = location.state?.promptText as string | undefined;
+  const [promptText, setPromptText] = useState<string>(location.state?.promptText || '');
   const idea = location.state?.idea as string | undefined;
 
   const [chatHistory, setChatHistory] = useState([
     { role: 'user', content: idea },
     { role: 'ai', content: "Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist." }
   ]);
+  const [isRefining, setIsRefining] = useState(false);
 
   if (!promptText) {
     return (
@@ -125,11 +127,19 @@ export default function Result() {
           {/* Bottom Chat Input */}
           <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent">
             <RefinementInput 
-              onSubmit={(text) => {
+              onSubmit={async (text) => {
                 setChatHistory(prev => [...prev, { role: 'user', content: text }]);
-                setTimeout(() => {
+                setIsRefining(true);
+                try {
+                  const updatedText = await refinePrompt(promptText, text);
+                  setPromptText(updatedText);
                   setChatHistory(prev => [...prev, { role: 'ai', content: "I've noted that refinement. The document has been updated!" }]);
-                }, 1000);
+                } catch (err) {
+                  console.error(err);
+                  setChatHistory(prev => [...prev, { role: 'ai', content: "Sorry, I encountered an error while updating the document." }]);
+                } finally {
+                  setIsRefining(false);
+                }
               }}
             />
           </div>

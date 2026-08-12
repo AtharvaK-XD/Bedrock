@@ -13,6 +13,11 @@ export default defineConfig({
         target: 'https://api.groq.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/groq/, '')
+      },
+      '/api/gemini': {
+        target: 'https://generativelanguage.googleapis.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/gemini/, '')
       }
     }
   }
