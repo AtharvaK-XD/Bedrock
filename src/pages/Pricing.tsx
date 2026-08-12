@@ -24,7 +24,7 @@ const TIERS = [
   {
     name: 'Advanced',
     description: 'Save personal context with an AI assistant for ongoing work',
-    price: '400',
+    price: '399',
     buttonText: 'Upgrade to Advanced',
     buttonVariant: 'primary',
     isPopular: true,
@@ -41,7 +41,7 @@ const TIERS = [
   {
     name: 'Ultimate',
     description: 'State-of-the-art intelligence to automate your most ambitious work',
-    price: '1,000',
+    price: '999',
     buttonText: 'Upgrade to Ultimate',
     buttonVariant: 'secondary',
     features: [
@@ -59,14 +59,14 @@ export default function Pricing() {
   return (
     <div className="w-full px-4 sm:px-8 py-12 lg:py-16 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-16">
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-4xl md:text-5xl font-editorial font-bold text-white mb-6"
         >
           Upgrade your plan
         </motion.h1>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -74,7 +74,7 @@ export default function Pricing() {
         >
           Find your best fit.
         </motion.p>
-        
+
 
       </div>
 
@@ -87,8 +87,8 @@ export default function Pricing() {
             transition={{ delay: 0.1 * (idx + 1) }}
             className={cn(
               "relative flex flex-col p-8 rounded-3xl transition-all duration-300",
-              tier.isPopular 
-                ? "bg-teal-500/10 backdrop-blur-xl text-white shadow-2xl scale-[1.02] border border-teal-500/30 z-10" 
+              tier.isPopular
+                ? "bg-teal-500/10 backdrop-blur-xl text-white shadow-2xl scale-[1.02] border border-teal-500/30 z-10"
                 : "bg-[#1a1a1a]/80 backdrop-blur-xl text-white border border-white/10 hover:border-white/20 shadow-sm"
             )}
           >
@@ -99,23 +99,23 @@ export default function Pricing() {
                 </span>
               </div>
             )}
-            
+
             <div className="mb-8 mt-2">
               <h3 className="text-xl font-bold mb-2">{tier.name}</h3>
               <p className={cn("text-sm min-h-[40px]", tier.isPopular ? "text-gray-300" : "text-gray-400")}>
                 {tier.description}
               </p>
             </div>
-            
+
             <div className="mb-8 flex items-baseline gap-1">
               <span className="text-4xl font-bold text-white">₹{tier.price}</span>
               <span className={cn("text-sm", tier.isPopular ? "text-gray-400" : "text-gray-500")}>/ month</span>
             </div>
 
-            <button 
+            <button
               className={cn(
                 "w-full py-3 px-4 rounded-xl font-semibold transition-colors mb-8 flex items-center justify-center gap-2",
-                tier.buttonVariant === 'outline' 
+                tier.buttonVariant === 'outline'
                   ? "bg-transparent border border-white/20 text-gray-300 hover:bg-white/10 hover:border-white/30"
                   : tier.buttonVariant === 'primary'
                     ? "bg-teal-500 hover:bg-teal-600 text-white border border-transparent shadow-lg shadow-teal-500/20"
