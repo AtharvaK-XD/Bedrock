@@ -139,7 +139,7 @@ export default function Landing() {
         </div>
 
         {/* Hero Section */}
-        <section className="hero-section relative z-10 w-full min-h-screen flex items-center justify-center pt-32 pb-20 px-6 sm:px-12 max-w-[1600px]">
+        <section className="hero-section relative z-10 w-full min-h-screen flex items-center justify-center pt-32 pb-20 px-8 lg:px-24">
           <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-8">
             <div className="w-full lg:w-[50%] flex flex-col justify-center max-w-2xl lg:pr-10 z-10 mix-blend-difference">
               <div className="hero-fade-up inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-md text-gray-300 text-xs font-medium tracking-wide uppercase mb-8">
@@ -180,7 +180,7 @@ export default function Landing() {
         </section>
 
         {/* Text Reveal Statement Section */}
-        <section className="relative z-10 w-full min-h-[80vh] flex flex-col items-center justify-center px-6 sm:px-12 py-32 bg-black/40 backdrop-blur-sm border-y border-white/5">
+        <section className="relative z-10 w-full min-h-[80vh] flex flex-col items-center justify-center px-6 sm:px-12 py-32">
           <div className="max-w-5xl mx-auto text-center flex flex-col gap-12">
             <h2 className="font-display font-medium text-4xl md:text-6xl leading-tight tracking-tight text-white">
               Stop guessing with LLMs. <br />
@@ -196,27 +196,33 @@ export default function Landing() {
         </section>
 
         {/* Horizontal Scroll Gallery (Pinned) */}
-        <section className="horizontal-container relative z-10 w-full h-screen overflow-hidden bg-[#050505]">
+        <section className="horizontal-container relative z-10 w-full h-screen overflow-hidden">
           <div ref={horizontalScrollRef} className="h-full w-[300vw] flex">
             
-            <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-12 md:px-24">
-              <div className="max-w-2xl">
-                <h3 className="font-display text-6xl md:text-8xl tracking-tight mb-8">The Arena</h3>
-                <p className="text-2xl text-gray-400 font-light">Test your prompts against multiple models simultaneously. See how GPT-4, Claude 3.5, and Llama 3 interpret the exact same instructions, side by side.</p>
+            <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
+              <div className="max-w-7xl mx-auto w-full">
+                <div className="max-w-2xl">
+                  <h3 className="font-display text-6xl md:text-8xl tracking-tight mb-8">The Arena</h3>
+                  <p className="text-2xl text-gray-400 font-light">Test your prompts against multiple models simultaneously. See how GPT-4, Claude 3.5, and Llama 3 interpret the exact same instructions, side by side.</p>
+                </div>
               </div>
             </div>
             
-            <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-12 md:px-24">
-              <div className="max-w-2xl">
-                <h3 className="font-display text-6xl md:text-8xl tracking-tight mb-8">Prompt Optimizer</h3>
-                <p className="text-2xl text-gray-400 font-light">Our meta-prompting engine analyzes your draft and automatically rewrites it using advanced techniques like Chain-of-Thought and Role Prompting.</p>
+            <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
+              <div className="max-w-7xl mx-auto w-full">
+                <div className="max-w-2xl">
+                  <h3 className="font-display text-6xl md:text-8xl tracking-tight mb-8">Prompt Optimizer</h3>
+                  <p className="text-2xl text-gray-400 font-light">Our meta-prompting engine analyzes your draft and automatically rewrites it using advanced techniques like Chain-of-Thought and Role Prompting.</p>
+                </div>
               </div>
             </div>
             
-            <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-12 md:px-24">
-              <div className="max-w-2xl">
-                <h3 className="font-display text-6xl md:text-8xl tracking-tight mb-8">Library Sync</h3>
-                <p className="text-2xl text-gray-400 font-light">Save your best performing prompts in a searchable local database. Tag, categorize, and instantly copy them directly to your clipboard.</p>
+            <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
+              <div className="max-w-7xl mx-auto w-full">
+                <div className="max-w-2xl">
+                  <h3 className="font-display text-6xl md:text-8xl tracking-tight mb-8">Library Sync</h3>
+                  <p className="text-2xl text-gray-400 font-light">Save your best performing prompts in a searchable local database. Tag, categorize, and instantly copy them directly to your clipboard.</p>
+                </div>
               </div>
             </div>
 
@@ -224,8 +230,8 @@ export default function Landing() {
         </section>
 
         {/* Code / API IDE Section */}
-        <section className="ide-section relative z-10 w-full py-40 px-6 sm:px-12 bg-black border-y border-white/5">
-          <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row items-center gap-16">
+        <section className="ide-section relative z-10 w-full py-40 px-6 sm:px-12">
+          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
             <div className="w-full lg:w-1/2 flex flex-col gap-8">
               <h2 className="font-display text-5xl md:text-6xl tracking-tight">Structured Output. <br/>Ready for Code.</h2>
               <p className="text-xl text-gray-400 font-light max-w-lg">
@@ -265,7 +271,7 @@ export default function Landing() {
         </section>
 
         {/* Realistic Feature Grid */}
-        <section className="relative z-10 w-full py-32 px-6 sm:px-12 max-w-[1400px]">
+        <section className="relative z-10 w-full py-32 px-6 sm:px-12 max-w-7xl mx-auto">
           <div className="text-center mb-24">
             <h2 className="font-display text-5xl md:text-7xl tracking-tight mb-6">Everything you need.</h2>
             <p className="text-xl text-gray-400 font-light">A comprehensive suite of tools for prompt engineers.</p>
@@ -292,9 +298,6 @@ export default function Landing() {
 
         {/* Immersive CTA */}
         <section className="reveal-section relative z-10 w-full py-40 px-6 sm:px-12 flex flex-col items-center text-center">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-             <div className="w-full max-w-[1000px] h-[1px] bg-gradient-to-r from-transparent via-white to-transparent"></div>
-          </div>
           
           <h2 className="font-display font-medium text-5xl md:text-8xl tracking-tight text-white mb-8">
             Ready to build?
@@ -310,7 +313,7 @@ export default function Landing() {
         </section>
 
         {/* Minimal Footer */}
-        <footer className="relative z-10 w-full py-12 px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between border-t border-white/10 text-sm text-gray-500 font-light bg-black">
+        <footer className="relative z-10 w-full py-12 px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between border-t border-white/5 text-sm text-gray-500 font-light bg-black/40 backdrop-blur-md">
           <p>© 2026 Bedrock. All rights reserved.</p>
           <div className="flex gap-6 mt-4 sm:mt-0">
             <a href="#" data-cursor="hover" className="hover:text-white transition-colors">Twitter</a>
