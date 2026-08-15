@@ -98,7 +98,7 @@ export default function PromptTester() {
           </button>
           
           {isActive && (
-            <div className="absolute bottom-full mb-2 left-0 w-64 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 py-2 overflow-hidden">
+            <div className="absolute top-full mt-2 left-0 w-64 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 py-2 overflow-hidden">
               <div className="max-h-[300px] overflow-y-auto px-1 custom-scrollbar" data-lenis-prevent="true">
                 {AI_AGENTS.map((a) => (
                   <button
@@ -142,7 +142,7 @@ export default function PromptTester() {
         </button>
 
         {isActive && (
-          <div className="absolute bottom-full mb-2 left-0 w-full bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 py-2">
+          <div className="absolute top-full mt-2 left-0 w-full bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 py-2">
             <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-white/10 mb-2">
               {currentAgent.name} Models
             </div>
