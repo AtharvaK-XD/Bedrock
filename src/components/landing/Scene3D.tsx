@@ -67,14 +67,19 @@ const ScrollManager = () => {
     const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
     const scrollProgress = maxScroll > 0 ? scrollY / maxScroll : 0;
     
-    // Z-axis movement: Fly towards the object as you scroll down
-    const targetZ = 8 - (scrollProgress * 6);
+    // Z-axis movement: Fly towards the object as you scroll down, but pull back near the end
+    // E.g. start at 8, go to 2 at 50% scroll, then back to 5 at 100% scroll
+    const targetZ = 8 - (Math.sin(scrollProgress * Math.PI) * 6);
     
     // Y-axis movement: Slight dip
-    const targetY = -(scrollProgress * 2);
+    const targetY = -(scrollProgress * 3);
+    
+    // X-axis: sway slightly based on scroll
+    const targetX = Math.sin(scrollProgress * Math.PI * 2) * 2;
     
     camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.05);
     camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.05);
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.05);
   });
   
   return null;
