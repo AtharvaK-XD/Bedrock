@@ -14,7 +14,6 @@ import Library from './pages/Library';
 import Pricing from './pages/Pricing';
 import SettingsPage from './pages/Settings';
 import { AppLayout } from './components/layout/AppLayout';
-import { Topbar } from './components/layout/Topbar';
 import { checkForUpdates } from './lib/updater';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -92,7 +91,6 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <Topbar />
         <AnimatedRoutes />
       </Router>
     </QueryClientProvider>
