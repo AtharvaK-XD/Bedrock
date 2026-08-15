@@ -275,6 +275,7 @@ export default function Settings() {
           </div>
         </main>
       </div>
+      </div>
     </PageTransition>
   );
 }

@@ -273,7 +273,7 @@ export default function PromptTester() {
               </div>
             </div>
           </div>
-
+          </div>
         </div>
       </div>
     </PageTransition>
