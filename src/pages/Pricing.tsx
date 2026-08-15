@@ -1,6 +1,7 @@
 import { Check, X, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
+import { PageTransition } from '../components/layout/PageTransition';
 
 const TIERS = [
   {
@@ -57,7 +58,8 @@ const TIERS = [
 
 export default function Pricing() {
   return (
-    <div className="w-full px-4 sm:px-8 py-12 lg:py-16 min-h-[calc(100vh-80px)]">
+    <PageTransition>
+      <div className="w-full px-4 sm:px-8 py-12 lg:py-16 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-16">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
@@ -78,20 +80,30 @@ export default function Pricing() {
 
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-        {TIERS.map((tier, idx) => (
-          <motion.div
-            key={tier.name}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 * (idx + 1) }}
-            className={cn(
-              "relative flex flex-col p-8 rounded-3xl transition-all duration-300",
-              tier.isPopular
-                ? "bg-teal-500/10 backdrop-blur-xl text-white shadow-2xl scale-[1.02] border border-teal-500/30 z-10"
-                : "bg-[#1a1a1a]/80 backdrop-blur-xl text-white border border-white/10 hover:border-white/20 shadow-sm"
-            )}
-          >
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
+          }}
+        >
+          {TIERS.map((tier, idx) => (
+            <motion.div
+              key={tier.name}
+              variants={{
+                hidden: { opacity: 0, y: 30 },
+                visible: { opacity: 1, y: 0 }
+              }}
+              whileHover={{ y: -5 }}
+              className={cn(
+                "relative flex flex-col p-8 rounded-3xl border transition-all duration-300",
+                tier.isPopular 
+                  ? "bg-[#1a1a1a]/80 border-teal-500/50 shadow-2xl shadow-teal-500/10" 
+                  : "bg-black/40 border-white/10 hover:border-white/20 hover:bg-[#1a1a1a]/40"
+              )}
+            >
             {tier.isPopular && (
               <div className="absolute top-6 right-6">
                 <span className="bg-teal-500/10 text-teal-400 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-teal-500/20">
@@ -146,8 +158,9 @@ export default function Pricing() {
               </ul>
             </div>
           </motion.div>
-        ))}
+          ))}
+        </motion.div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

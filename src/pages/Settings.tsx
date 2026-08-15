@@ -12,6 +12,7 @@ import {
   Check
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { PageTransition } from '../components/layout/PageTransition';
 
 type Tab = 'account' | 'api-keys' | 'appearance' | 'notifications' | 'privacy';
 
@@ -38,7 +39,8 @@ export default function Settings() {
   ];
 
   return (
-    <div className="w-full px-4 sm:px-8 py-10 lg:py-16 min-h-[calc(100vh-80px)]">
+    <PageTransition>
+      <div className="w-full px-4 sm:px-8 py-10 lg:py-16 min-h-[calc(100vh-80px)]">
       <div className="mb-10">
         <h1 className="text-3xl md:text-4xl font-editorial font-bold text-white">Settings</h1>
         <p className="text-gray-400 mt-2">Manage your account, API keys, and app preferences.</p>
@@ -273,6 +275,6 @@ export default function Settings() {
           </div>
         </main>
       </div>
-    </div>
+    </PageTransition>
   );
 }

@@ -3,6 +3,7 @@ import { Play, ChevronDown, Settings } from 'lucide-react';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { cn } from '../lib/utils';
 import { testPrompt } from '../lib/api';
+import { PageTransition } from '../components/layout/PageTransition';
 
 export default function PromptTester() {
   const [prompt, setPrompt] = useState('');
@@ -170,7 +171,8 @@ export default function PromptTester() {
   };
 
   return (
-    <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
+    <PageTransition>
+      <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-10">
         <h1 className="text-4xl md:text-5xl font-editorial font-bold text-white mb-4 tracking-tight leading-[1.1]">
           The Arena.
@@ -274,6 +276,6 @@ export default function PromptTester() {
 
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

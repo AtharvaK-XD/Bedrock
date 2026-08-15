@@ -2,10 +2,11 @@ import { motion } from 'framer-motion';
 import { AuthCard } from '../components/auth/AuthCard';
 import { Zap, Shield, Sparkles } from 'lucide-react';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
+import { PageTransition } from '../components/layout/PageTransition';
 
 export default function Landing() {
   return (
-    <div className="bg-black text-white font-sans selection:bg-copper-500 selection:text-white relative overflow-hidden flex flex-col">
+    <PageTransition className="bg-black text-white font-sans selection:bg-copper-500 selection:text-white relative overflow-hidden flex flex-col">
       {/* Immersive Background Effects */}
       <motion.div 
         animate={{ 
@@ -199,6 +200,6 @@ export default function Landing() {
       <footer className="relative z-10 py-12 text-center border-t border-white/5">
         <p className="text-gray-500 font-medium">© 2026 Bedrock Inc. All rights reserved.</p>
       </footer>
-    </div>
+    </PageTransition>
   );
 }
