@@ -1,9 +1,9 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
 import { Loader2 } from 'lucide-react';
-import { motion, HTMLMotionProps } from 'framer-motion';
+import { motion } from 'framer-motion';
 
-export interface ButtonProps extends HTMLMotionProps<"button"> {
+export interface ButtonProps extends React.ComponentProps<typeof motion.button> {
   variant?: 'primary' | 'secondary' | 'ghost';
   isLoading?: boolean;
 }

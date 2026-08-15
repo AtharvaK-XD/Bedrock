@@ -169,6 +169,7 @@ Format your response clearly using markdown.`);
           </AnimatePresence>
         </div>
       </div>
+      </div>
     </PageTransition>
   );
 }

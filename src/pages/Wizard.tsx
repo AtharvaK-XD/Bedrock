@@ -204,6 +204,7 @@ export default function Wizard() {
               )}
             </AnimatePresence>
           </div>
+        </div>
       </div>
     </PageTransition>
   );
