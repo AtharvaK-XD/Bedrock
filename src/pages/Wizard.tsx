@@ -8,6 +8,7 @@ import type { Question, Answer, IdeaPayload } from '../lib/api';
 import { cn } from '../lib/utils';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
+import { PageTransition } from '../components/layout/PageTransition';
 
 export default function Wizard() {
   const navigate = useNavigate();
@@ -61,7 +62,8 @@ export default function Wizard() {
   };
 
   return (
-    <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
+    <PageTransition>
+      <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="w-full flex flex-col gap-12 transition-all duration-500">
         
         {/* Top Section (Input) */}
@@ -203,6 +205,6 @@ export default function Wizard() {
             </AnimatePresence>
           </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

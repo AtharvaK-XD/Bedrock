@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, Copy, MoreVertical, Filter, Tag } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
+import { PageTransition } from '../components/layout/PageTransition';
 
 const MOCK_SAVED_PROMPTS = [
   { id: '1', title: 'Code Review Assistant', tags: ['Coding', 'System'], date: '2 hours ago', snippet: 'You are an expert code reviewer. Analyze the following pull request for security vulnerabilities, performance bottlenecks, and...' },
@@ -31,7 +32,8 @@ export default function Library() {
   };
 
   return (
-    <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
+    <PageTransition>
+      <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
         <div>
 
@@ -76,13 +78,24 @@ export default function Library() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+          }}
+        >
         {filteredPrompts.map((prompt) => (
           <motion.div
             key={prompt.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-[#1a1a1a]/40 backdrop-blur-xl border border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.03)] rounded-3xl p-6 flex flex-col group hover:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:bg-white/10 transition-all duration-300"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0 }
+            }}
+            whileHover={{ scale: 1.02 }}
+            className="bg-[#1a1a1a]/40 backdrop-blur-xl border border-white/5 rounded-3xl p-8 hover:bg-[#1a1a1a]/60 hover:border-white/10 transition-all group flex flex-col cursor-pointer shadow-lg hover:shadow-xl hover:shadow-teal-500/5 relative overflow-hidden"
           >
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xl font-bold text-white line-clamp-1">{prompt.title}</h3>
@@ -127,7 +140,8 @@ export default function Library() {
             </Button>
           </div>
         )}
+        </motion.div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

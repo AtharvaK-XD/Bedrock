@@ -6,6 +6,7 @@ import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'reac
 import ReactMarkdown from 'react-markdown';
 import { useState } from 'react';
 import { refinePrompt } from '../lib/api';
+import { PageTransition } from '../components/layout/PageTransition';
 
 const TypewriterText = ({ text }: { text: string }) => {
   const words = text.split(' ');
@@ -217,7 +218,7 @@ export default function Result() {
   );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] text-white font-sans selection:bg-copper-500/30 overflow-hidden">
+    <PageTransition className="flex flex-col h-[calc(100vh-80px)] text-white font-sans selection:bg-copper-500/30 overflow-hidden">
       
       {/* Split Pane Workspace */}
       <PanelGroup orientation="horizontal" className="w-full h-full">
@@ -227,10 +228,10 @@ export default function Result() {
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.div
               key={isSwapped ? "doc" : "chat"}
-              initial={{ x: "100%", scale: 0.95, opacity: 0, filter: "blur(4px)" }}
-              animate={{ x: 0, scale: 1, opacity: 1, filter: "blur(0px)" }}
-              exit={{ x: "100%", scale: 0.95, opacity: 0, filter: "blur(4px)" }}
-              transition={{ type: "spring", stiffness: 350, damping: 35 }}
+              initial={{ x: "100%", scale: 0.95, opacity: 0 }}
+              animate={{ x: 0, scale: 1, opacity: 1 }}
+              exit={{ x: "100%", scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 40 }}
               className={`absolute inset-0 flex flex-col w-full h-full ${isSwapped ? 'bg-[#161616]' : 'bg-[#0a0a0a]'}`}
             >
               {isSwapped ? docPaneContent : chatPaneContent}
@@ -248,10 +249,10 @@ export default function Result() {
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.div
               key={isSwapped ? "chat" : "doc"}
-              initial={{ x: "-100%", scale: 0.95, opacity: 0, filter: "blur(4px)" }}
-              animate={{ x: 0, scale: 1, opacity: 1, filter: "blur(0px)" }}
-              exit={{ x: "-100%", scale: 0.95, opacity: 0, filter: "blur(4px)" }}
-              transition={{ type: "spring", stiffness: 350, damping: 35 }}
+              initial={{ x: "-100%", scale: 0.95, opacity: 0 }}
+              animate={{ x: 0, scale: 1, opacity: 1 }}
+              exit={{ x: "-100%", scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 40 }}
               className={`absolute inset-0 flex flex-col w-full h-full ${isSwapped ? 'bg-[#0a0a0a]' : 'bg-[#161616]'}`}
             >
               {isSwapped ? chatPaneContent : docPaneContent}
@@ -260,6 +261,6 @@ export default function Result() {
         </Panel>
 
       </PanelGroup>
-    </div>
+    </PageTransition>
   );
 }

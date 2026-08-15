@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, CheckCircle2, RefreshCcw, Copy } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
+import { PageTransition } from '../components/layout/PageTransition';
 
 const OPTIMIZATION_RULES = [
   { id: 'concise', label: 'Make it more concise', active: false },
@@ -48,7 +49,8 @@ Format your response clearly using markdown.`);
   };
 
   return (
-    <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
+    <PageTransition>
+      <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-12">
 
         <h1 className="text-5xl md:text-6xl font-editorial font-bold text-white mb-6 tracking-tight leading-[1.1]">
@@ -167,6 +169,6 @@ Format your response clearly using markdown.`);
           </AnimatePresence>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }
