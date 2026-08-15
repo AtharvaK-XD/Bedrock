@@ -1,205 +1,227 @@
-import { motion } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 import { AuthCard } from '../components/auth/AuthCard';
-import { Zap, Shield, Sparkles } from 'lucide-react';
-import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
+import { Zap, Shield, Sparkles, Layout, Layers, ArrowRight } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
+import { Scene3D } from '../components/landing/Scene3D';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 export default function Landing() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // Clean, elegant fade up for hero elements
+      gsap.fromTo('.hero-fade-up', 
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1.2, stagger: 0.15, ease: 'power4.out', delay: 0.2 }
+      );
+
+      // Parallax text
+      gsap.to('.hero-title-parallax', {
+        y: -100,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '.hero-section',
+          start: 'top top',
+          end: 'bottom top',
+          scrub: true
+        }
+      });
+
+      // Smooth section reveals
+      gsap.utils.toArray('.reveal-section').forEach((section: any) => {
+        gsap.fromTo(section,
+          { opacity: 0, y: 50 },
+          { 
+            opacity: 1, 
+            y: 0, 
+            duration: 1.2, 
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: section,
+              start: 'top 85%',
+            }
+          }
+        );
+      });
+
+      // Staggered feature cards
+      gsap.fromTo('.feature-card',
+        { opacity: 0, y: 30 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 1,
+          stagger: 0.1,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: '.features-grid',
+            start: 'top 80%',
+          }
+        }
+      );
+
+    }, containerRef);
+    
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <PageTransition className="bg-black text-white font-sans selection:bg-copper-500 selection:text-white relative overflow-hidden flex flex-col">
-      {/* Immersive Background Effects */}
-      <motion.div 
-        animate={{ 
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
-          x: [0, 50, 0],
-          y: [0, 30, 0]
-        }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-copper-500/20 rounded-full blur-[120px] pointer-events-none z-0"
-      />
-      <motion.div 
-        animate={{ 
-          scale: [1, 1.3, 1],
-          opacity: [0.2, 0.4, 0.2],
-          x: [0, -60, 0],
-          y: [0, -40, 0]
-        }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-basalt-900/20 rounded-full blur-[120px] pointer-events-none z-0"
-      />
-      <div className="fixed inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay z-0"></div>
+    <PageTransition className="bg-[#050505] text-white font-sans selection:bg-copper-500/40 selection:text-white relative overflow-hidden flex flex-col min-h-screen">
+      <div ref={containerRef} className="relative z-10 w-full h-full flex flex-col items-center">
+        
+        {/* Realistic 3D Background Element */}
+        <div className="fixed inset-0 w-full h-screen pointer-events-none z-0 overflow-hidden">
+          {/* Subtle noise for photorealistic texture */}
+          <div className="absolute inset-0 opacity-[0.015] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay z-10"></div>
+          {/* Subtle ambient lighting spot */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-copper-500/10 blur-[150px] z-0"></div>
+          <Scene3D />
+        </div>
 
-
-      {/* Hero Section (100vh) */}
-      <section className="relative z-10 min-h-screen flex items-center pt-24 pb-12">
-        <div className="w-full px-4 sm:px-8">
-          <div className="flex flex-col lg:flex-row gap-12 lg:gap-8 items-center justify-between w-full mx-auto">
+        {/* Hero Section */}
+        <section className="hero-section relative z-10 w-full min-h-screen flex items-center justify-center pt-32 pb-20 px-6 sm:px-12 max-w-[1600px]">
+          <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-8">
             
-            {/* Left Column: Massive Typography */}
-            <div className="w-full lg:w-[55%] flex flex-col justify-center">
-              <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-gray-300 text-sm md:text-base font-semibold mb-6 lg:mb-8 uppercase tracking-widest">
-                  <span className="flex w-2.5 h-2.5 rounded-full bg-copper-500 animate-pulse"></span>
-                  Bedrock 2.0 is live
-                </div>
-                
-                {/* Dynamically scaling massive font */}
-                <h1 className="font-editorial font-bold leading-[0.85] tracking-tighter mb-6 lg:mb-8 uppercase text-[clamp(4rem,9vw,11rem)] text-white flex flex-col">
-                  <motion.span
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                  >BUILD</motion.span>
-                  <motion.span
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                  >THE</motion.span>
-                  <motion.span 
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                    className="text-copper-600 italic font-medium"
-                  >
-                    PROMPT.
-                  </motion.span>
-                </h1>
-                
-                <p className="text-lg lg:text-2xl text-gray-400 leading-relaxed max-w-2xl font-medium mb-10">
-                  Stop struggling with AI outputs. Turn your vague ideas into precise, high-fidelity prompts in seconds using our guided refinement engine.
-                </p>
+            {/* Left Content */}
+            <div className="w-full lg:w-[50%] flex flex-col justify-center max-w-2xl lg:pr-10 z-10 mix-blend-difference">
+              <div className="hero-fade-up inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-md text-gray-300 text-xs font-medium tracking-wide uppercase mb-8">
+                <div className="w-1.5 h-1.5 rounded-full bg-copper-500"></div>
+                Bedrock 2.0 Available
+              </div>
+              
+              <h1 className="hero-title-parallax font-display font-medium text-[clamp(3.5rem,7vw,7rem)] leading-[0.95] tracking-tight mb-8 text-white">
+                Intelligence, <br />
+                <span className="text-gray-400">shaped by you.</span>
+              </h1>
+              
+              <p className="hero-fade-up text-lg md:text-xl text-gray-400 leading-relaxed max-w-xl font-light mb-12">
+                The most advanced environment for prompt engineering. Refine your thoughts into precise instructions with unparalleled clarity.
+              </p>
 
-                <div className="flex flex-wrap items-center gap-4">
-                  <a 
-                    href="/Bedrock-Windows.zip" 
-                    download
-                    className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-2xl font-semibold text-lg hover:bg-gray-200 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1"
-                  >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download for Windows (.zip)
-                  </a>
-                  <p className="text-sm text-gray-500 font-medium">Native Desktop App • ~10MB • Windows 10+</p>
+              <div className="hero-fade-up flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                <a 
+                  href="/Bedrock-Windows.zip" 
+                  download
+                  className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-full font-medium text-base hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                >
+                  Download for Windows
+                </a>
+                <div className="flex flex-col text-sm text-gray-500 font-medium">
+                  <span>Version 2.0.1</span>
+                  <span>Native Desktop Experience</span>
                 </div>
-              </motion.div>
+              </div>
             </div>
 
-            {/* Right Column: Auth Card */}
-            <div className="w-full lg:w-[40%] max-w-lg mx-auto lg:mx-0">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, filter: 'blur(20px)' }}
-                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              >
+            {/* Right Content - Auth/Interactive Element */}
+            <div className="hero-fade-up w-full lg:w-[40%] max-w-[440px] flex justify-center lg:justify-end z-20">
+              <div className="w-full rounded-[2rem] p-1 bg-gradient-to-b from-white/10 to-transparent shadow-2xl backdrop-blur-xl">
                 <AuthCard />
-              </motion.div>
+              </div>
             </div>
 
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* AI Models Marquee Section */}
-      <section className="relative z-10 py-12 border-y border-white/5 bg-black overflow-hidden">
-        <div className="text-center mb-8 px-6">
-          <p className="text-sm font-semibold tracking-widest uppercase text-gray-500">
-            Powered by the world's best models. Use whatever you need.
-          </p>
-        </div>
-        
-        {/* Infinite Marquee Container */}
-        <div className="relative flex overflow-hidden w-full group">
-          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-black to-transparent z-10 pointer-events-none"></div>
-          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-black to-transparent z-10 pointer-events-none"></div>
-          
-          <motion.div 
-            className="flex w-max"
-            animate={{ x: ["0%", "-50%"] }}
-            transition={{ ease: "linear", duration: 30, repeat: Infinity }}
-          >
-            {[...Array(2)].map((_, i) => (
-              <div key={i} className="flex items-center gap-32 px-16">
-                {AI_AGENTS.filter(a => a.id !== 'universal').map((agent) => (
-                  <div key={agent.id} className="flex flex-col items-center gap-6 opacity-80 hover:opacity-100 transition-opacity">
-                    <AgentIcon agent={agent} className="w-32 h-32 drop-shadow-md" />
-                    <span className="text-xl font-bold text-gray-300 uppercase tracking-widest">{agent.name}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Features Section to make page longer */}
-      <section className="relative z-10 py-32 bg-black border-t border-white/5 backdrop-blur-sm">
-        <div className="w-full px-4 sm:px-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-20"
-          >
-            <h2 className="text-[clamp(2.5rem,5vw,5rem)] font-display font-black leading-none tracking-tighter uppercase mb-6 text-white">
-              Why use Bedrock?
+        {/* Statement Section */}
+        <section className="reveal-section relative z-10 w-full py-32 px-6 sm:px-12 bg-gradient-to-b from-transparent to-[#050505]">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="font-display font-medium text-3xl md:text-5xl leading-tight tracking-tight text-white mb-6">
+              Stop guessing with LLMs. <br />
+              Start engineering with precision.
             </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              We built the ultimate toolset to help you communicate perfectly with large language models.
+            <p className="text-xl text-gray-400 font-light max-w-2xl mx-auto">
+              Bedrock bridges the gap between human intent and machine understanding, turning chaotic ideas into structured, high-performance prompts.
             </p>
-          </motion.div>
+          </div>
+        </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Realistic Feature Grid */}
+        <section className="relative z-10 w-full py-24 px-6 sm:px-12 max-w-[1400px]">
+          <div className="features-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
             {[
               {
-                icon: <Zap className="w-7 h-7" />,
-                title: "Instant Generation",
-                desc: "Type a one-liner and watch as Bedrock instantly expands it into a fully structured, multi-shot prompt ready for any AI model."
+                icon: <Sparkles className="w-6 h-6" />,
+                title: "Semantic Analysis",
+                desc: "Our engine evaluates your initial thought and identifies missing context, edge cases, and structural weaknesses automatically."
               },
               {
-                icon: <Shield className="w-7 h-7" />,
-                title: "Enterprise Ready",
-                desc: "Secure, private, and built for teams. Keep your proprietary prompts and frameworks organized in one centralized library."
+                icon: <Layers className="w-6 h-6" />,
+                title: "Structured Frameworks",
+                desc: "Outputs are formatted using industry-standard prompt structures (few-shot, chain-of-thought) for maximum reliability."
               },
               {
-                icon: <Sparkles className="w-7 h-7" />,
-                title: "Context Aware",
-                desc: "Our engine asks you the right clarifying questions to ensure every edge case is covered before generating the final output."
+                icon: <Layout className="w-6 h-6" />,
+                title: "Side-by-Side Arena",
+                desc: "Instantly benchmark your refined prompt across GPT-4, Claude 3.5, and Llama 3 to validate real-world performance."
+              },
+              {
+                icon: <Shield className="w-6 h-6" />,
+                title: "Local Privacy",
+                desc: "Built as a native desktop application. Your proprietary prompts and sensitive logic never leak into unauthorized training data."
+              },
+              {
+                icon: <Zap className="w-6 h-6" />,
+                title: "Zero Latency",
+                desc: "A native Rust core wrapped in Tauri means instant startup, negligible memory footprint, and lightning-fast interactions."
+              },
+              {
+                icon: <ArrowRight className="w-6 h-6" />,
+                title: "Frictionless Export",
+                desc: "One-click copy, JSON export, or direct API integration. Move your engineered prompts into your codebase effortlessly."
               }
             ].map((feature, idx) => (
-              <motion.div
+              <div 
                 key={idx}
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.7, delay: idx * 0.2 }}
-                whileHover={{ y: -10, transition: { duration: 0.2 } }}
-                className="bg-black p-10 rounded-[2rem] border border-white/10 shadow-sm hover:shadow-xl hover:shadow-copper-500/10 transition-all duration-300 relative overflow-hidden group"
+                className="feature-card group flex flex-col p-8 rounded-3xl bg-[#0a0a0a] border border-white/5 hover:border-white/10 transition-colors duration-500"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-copper-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="w-14 h-14 bg-copper-500/10 rounded-2xl flex items-center justify-center text-copper-500 mb-6 relative z-10 group-hover:scale-110 group-hover:bg-copper-500/20 transition-all duration-300">
+                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-gray-300 mb-6 group-hover:text-copper-400 group-hover:bg-copper-500/10 transition-colors duration-500">
                   {feature.icon}
                 </div>
-                <h3 className="text-2xl font-display font-bold mb-4 tracking-tight relative z-10">{feature.title}</h3>
-                <p className="text-gray-400 leading-relaxed relative z-10">
+                <h3 className="text-xl font-medium text-white mb-3">{feature.title}</h3>
+                <p className="text-gray-400 font-light leading-relaxed">
                   {feature.desc}
                 </p>
-              </motion.div>
+              </div>
             ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="relative z-10 py-12 text-center border-t border-white/5">
-        <p className="text-gray-500 font-medium">© 2026 Bedrock Inc. All rights reserved.</p>
-      </footer>
+          </div>
+        </section>
+
+        {/* Immersive CTA */}
+        <section className="reveal-section relative z-10 w-full py-40 px-6 sm:px-12 flex flex-col items-center text-center">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+             <div className="w-full max-w-[1000px] h-[1px] bg-gradient-to-r from-transparent via-white to-transparent"></div>
+          </div>
+          
+          <h2 className="font-display font-medium text-5xl md:text-7xl tracking-tight text-white mb-8">
+            Ready to build?
+          </h2>
+          <a 
+            href="/Bedrock-Windows.zip" 
+            download
+            className="inline-flex items-center justify-center gap-2 px-10 py-5 bg-white text-black rounded-full font-medium text-lg hover:bg-gray-100 hover:scale-105 transition-all duration-300 shadow-[0_0_30px_rgba(255,255,255,0.1)]"
+          >
+            Download Bedrock Free
+          </a>
+        </section>
+
+        {/* Minimal Footer */}
+        <footer className="relative z-10 w-full py-8 px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between border-t border-white/5 text-sm text-gray-500 font-light">
+          <p>© 2026 Bedrock. All rights reserved.</p>
+          <div className="flex gap-6 mt-4 sm:mt-0">
+            <a href="#" className="hover:text-white transition-colors">Twitter</a>
+            <a href="#" className="hover:text-white transition-colors">GitHub</a>
+            <a href="#" className="hover:text-white transition-colors">Privacy</a>
+          </div>
+        </footer>
+
+      </div>
     </PageTransition>
   );
 }
