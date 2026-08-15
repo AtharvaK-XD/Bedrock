@@ -44,42 +44,27 @@ const LiquidGlassCore = () => {
   );
 };
 
-// Controls the camera and interactive elements (parallax + scroll)
-const CameraRig = () => {
-  const { camera, pointer } = useThree();
-  const vec = new THREE.Vector3();
-  
-  useFrame(() => {
-    // Subtle mouse parallax
-    camera.position.lerp(vec.set(pointer.x * 2, pointer.y * 2, camera.position.z), 0.05);
-    camera.lookAt(0, 0, 0);
-  });
-  
-  return null;
-};
-
 // Global scroll controller for the 3D scene driven by the window scroll
 const ScrollManager = () => {
-  const { camera } = useThree();
+  const { camera, pointer } = useThree();
+  const vec = new THREE.Vector3();
   
   useFrame(() => {
     const scrollY = window.scrollY;
     const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
     const scrollProgress = maxScroll > 0 ? scrollY / maxScroll : 0;
     
-    // Z-axis movement: Fly towards the object as you scroll down, but pull back near the end
-    // E.g. start at 8, go to 2 at 50% scroll, then back to 5 at 100% scroll
-    const targetZ = 8 - (Math.sin(scrollProgress * Math.PI) * 6);
+    // Z-axis: Fly towards the object, but don't clip inside it (min Z is 3.5, object radius is 2)
+    const targetZ = 8 - (Math.sin(scrollProgress * Math.PI) * 4.5);
     
-    // Y-axis movement: Slight dip
-    const targetY = -(scrollProgress * 3);
+    // Y-axis: scroll dip + mouse parallax
+    const targetY = -(scrollProgress * 3) + (pointer.y * 1.5);
     
-    // X-axis: sway slightly based on scroll
-    const targetX = Math.sin(scrollProgress * Math.PI * 2) * 2;
+    // X-axis: sway + mouse parallax
+    const targetX = (Math.sin(scrollProgress * Math.PI * 2) * 2) + (pointer.x * 1.5);
     
-    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.05);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.05);
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.05);
+    camera.position.lerp(vec.set(targetX, targetY, targetZ), 0.05);
+    camera.lookAt(0, 0, 0);
   });
   
   return null;
@@ -97,7 +82,6 @@ export const Scene3D = () => {
         <directionalLight position={[-10, -10, -5]} intensity={1.5} color="#2c9a8b" /> {/* Copper tint */}
         
         <LiquidGlassCore />
-        <CameraRig />
         <ScrollManager />
         
         {/* Photorealistic Environment */}
