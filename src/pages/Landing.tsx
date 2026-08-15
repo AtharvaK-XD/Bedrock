@@ -129,7 +129,7 @@ export default function Landing() {
   return (
     <PageTransition className="bg-[#050505] text-white font-sans selection:bg-copper-500/40 selection:text-white relative overflow-hidden flex flex-col min-h-screen cursor-none">
       <CustomCursor />
-      <div ref={containerRef} className="relative z-10 w-full h-full flex flex-col items-center">
+      <div ref={containerRef} className="relative z-10 w-full">
         
         {/* Realistic 3D Background Element */}
         <div className="fixed inset-0 w-full h-screen pointer-events-none z-0 overflow-hidden">
@@ -147,7 +147,7 @@ export default function Landing() {
                 Bedrock 2.0 Available
               </div>
               
-              <h1 className="hero-title-parallax font-display font-medium text-[clamp(3.5rem,7vw,7rem)] leading-[0.95] tracking-tight mb-8 text-white">
+              <h1 className="hero-title-parallax font-display font-medium text-[clamp(4.5rem,9vw,9rem)] leading-[0.85] tracking-tight mb-8 text-white -ml-1">
                 Intelligence, <br />
                 <span className="text-gray-400">shaped by you.</span>
               </h1>
@@ -160,8 +160,7 @@ export default function Landing() {
                 <a 
                   href="/Bedrock-Windows.zip" 
                   download
-                  data-cursor="hover"
-                  className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-full font-medium text-base hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                  className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-black rounded-full font-semibold text-lg hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
                 >
                   Download for Windows
                 </a>
@@ -198,7 +197,7 @@ export default function Landing() {
 
         {/* Horizontal Scroll Gallery (Pinned) */}
         <section className="horizontal-container relative z-10 w-full h-screen overflow-hidden bg-[#050505]">
-          <div ref={horizontalScrollRef} className="absolute top-0 left-0 h-full w-[300vw] flex">
+          <div ref={horizontalScrollRef} className="h-full w-[300vw] flex">
             
             <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-12 md:px-24">
               <div className="max-w-2xl">
@@ -267,9 +266,9 @@ export default function Landing() {
 
         {/* Realistic Feature Grid */}
         <section className="relative z-10 w-full py-32 px-6 sm:px-12 max-w-[1400px]">
-          <div className="text-center mb-20">
-            <h2 className="font-display text-4xl md:text-5xl tracking-tight mb-4">Everything you need.</h2>
-            <p className="text-gray-400">A comprehensive suite of tools for prompt engineers.</p>
+          <div className="text-center mb-24">
+            <h2 className="font-display text-5xl md:text-7xl tracking-tight mb-6">Everything you need.</h2>
+            <p className="text-xl text-gray-400 font-light">A comprehensive suite of tools for prompt engineers.</p>
           </div>
           <div className="features-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
