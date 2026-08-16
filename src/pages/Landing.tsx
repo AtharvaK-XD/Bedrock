@@ -184,13 +184,18 @@ export default function Landing() {
 
         {/* Text Reveal Statement Section */}
         <section className="relative z-10 w-full min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 py-32">
-          <div className="max-w-5xl mx-auto text-center flex flex-col gap-12">
-            <h2 className="font-display font-medium text-4xl md:text-6xl leading-tight tracking-tight text-white">
-              Stop guessing with LLMs. <br />
-              <span className="text-copper-500 italic">Start engineering.</span>
+          <div ref={textRevealRef} className="max-w-5xl mx-auto text-center flex flex-col gap-12">
+            <h2 className="font-display font-medium text-4xl md:text-6xl leading-tight tracking-tight text-white flex flex-wrap justify-center gap-x-3 gap-y-2 md:gap-x-4">
+              {"Stop guessing with LLMs.".split(" ").map((word, i) => (
+                <span key={`h1-${i}`} className="reveal-word">{word}</span>
+              ))}
+              <div className="basis-full h-0 hidden md:block"></div>
+              {"Start engineering.".split(" ").map((word, i) => (
+                <span key={`h2-${i}`} className="reveal-word text-copper-500 italic">{word}</span>
+              ))}
             </h2>
             
-            <p ref={textRevealRef} className="relative text-2xl md:text-4xl font-light leading-relaxed max-w-4xl mx-auto flex flex-wrap justify-center gap-x-3 gap-y-2">
+            <p className="relative text-2xl md:text-4xl font-light leading-relaxed max-w-4xl mx-auto flex flex-wrap justify-center gap-x-3 gap-y-2 mt-8">
               {words.map((word, i) => (
                 <span key={i} className="reveal-word font-editorial">{word}</span>
               ))}
