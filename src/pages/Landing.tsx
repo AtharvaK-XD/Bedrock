@@ -36,10 +36,13 @@ export default function Landing() {
       // Text Reveal Scrub Animation
       if (textRevealRef.current) {
         const words = textRevealRef.current.querySelectorAll('.reveal-word');
+
         gsap.fromTo(words, 
-          { color: 'rgba(255,255,255,0.1)' },
+          { opacity: 0, y: 20, filter: 'blur(8px)' },
           {
-            color: 'rgba(255,255,255,1)',
+            opacity: 1,
+            y: 0,
+            filter: 'blur(0px)',
             stagger: 0.1,
             ease: 'none',
             scrollTrigger: {
@@ -180,14 +183,14 @@ export default function Landing() {
         </section>
 
         {/* Text Reveal Statement Section */}
-        <section className="relative z-10 w-full min-h-[80vh] flex flex-col items-center justify-center px-6 sm:px-12 py-32">
+        <section className="relative z-10 w-full min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 py-32">
           <div className="max-w-5xl mx-auto text-center flex flex-col gap-12">
             <h2 className="font-display font-medium text-4xl md:text-6xl leading-tight tracking-tight text-white">
               Stop guessing with LLMs. <br />
               <span className="text-copper-500 italic">Start engineering.</span>
             </h2>
             
-            <p ref={textRevealRef} className="text-2xl md:text-4xl font-light leading-relaxed max-w-4xl mx-auto flex flex-wrap justify-center gap-x-3 gap-y-2">
+            <p ref={textRevealRef} className="relative text-2xl md:text-4xl font-light leading-relaxed max-w-4xl mx-auto flex flex-wrap justify-center gap-x-3 gap-y-2">
               {words.map((word, i) => (
                 <span key={i} className="reveal-word font-editorial">{word}</span>
               ))}
@@ -202,7 +205,7 @@ export default function Landing() {
             <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
               <div className="max-w-7xl mx-auto w-full">
                 <div className="max-w-2xl">
-                  <h3 className="font-display text-6xl md:text-8xl tracking-tight mb-8">The Arena</h3>
+                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8">The Arena</h3>
                   <p className="text-2xl text-gray-400 font-light">Test your prompts against multiple models simultaneously. See how GPT-4, Claude 3.5, and Llama 3 interpret the exact same instructions, side by side.</p>
                 </div>
               </div>
@@ -211,7 +214,7 @@ export default function Landing() {
             <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
               <div className="max-w-7xl mx-auto w-full">
                 <div className="max-w-2xl">
-                  <h3 className="font-display text-6xl md:text-8xl tracking-tight mb-8">Prompt Optimizer</h3>
+                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8">Prompt Optimizer</h3>
                   <p className="text-2xl text-gray-400 font-light">Our meta-prompting engine analyzes your draft and automatically rewrites it using advanced techniques like Chain-of-Thought and Role Prompting.</p>
                 </div>
               </div>
@@ -220,7 +223,7 @@ export default function Landing() {
             <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
               <div className="max-w-7xl mx-auto w-full">
                 <div className="max-w-2xl">
-                  <h3 className="font-display text-6xl md:text-8xl tracking-tight mb-8">Library Sync</h3>
+                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8">Library Sync</h3>
                   <p className="text-2xl text-gray-400 font-light">Save your best performing prompts in a searchable local database. Tag, categorize, and instantly copy them directly to your clipboard.</p>
                 </div>
               </div>
@@ -230,7 +233,7 @@ export default function Landing() {
         </section>
 
         {/* Code / API IDE Section */}
-        <section className="ide-section relative z-10 w-full py-40 px-6 sm:px-12">
+        <section className="ide-section relative z-10 w-full min-h-screen flex items-center justify-center py-40 px-6 sm:px-12">
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
             <div className="w-full lg:w-1/2 flex flex-col gap-8">
               <h2 className="font-display text-5xl md:text-6xl tracking-tight">Structured Output. <br/>Ready for Code.</h2>
@@ -271,7 +274,7 @@ export default function Landing() {
         </section>
 
         {/* Realistic Feature Grid */}
-        <section className="relative z-10 w-full py-32 px-6 sm:px-12 max-w-7xl mx-auto">
+        <section className="relative z-10 w-full min-h-screen flex flex-col justify-center py-32 px-6 sm:px-12 max-w-7xl mx-auto">
           <div className="text-center mb-24">
             <h2 className="font-display text-5xl md:text-7xl tracking-tight mb-6">Everything you need.</h2>
             <p className="text-xl text-gray-400 font-light">A comprehensive suite of tools for prompt engineers.</p>
@@ -297,7 +300,7 @@ export default function Landing() {
         </section>
 
         {/* Immersive CTA */}
-        <section className="reveal-section relative z-10 w-full py-40 px-6 sm:px-12 flex flex-col items-center text-center">
+        <section className="reveal-section relative z-10 w-full min-h-screen flex flex-col items-center justify-center py-40 px-6 sm:px-12 text-center">
           
           <h2 className="font-display font-medium text-5xl md:text-8xl tracking-tight text-white mb-8">
             Ready to build?
