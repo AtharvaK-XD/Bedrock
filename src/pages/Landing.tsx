@@ -6,8 +6,23 @@ import { Scene3D } from '../components/landing/Scene3D';
 import { CustomCursor } from '../components/ui/CustomCursor';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { cn } from '../lib/utils';
 
 gsap.registerPlugin(ScrollTrigger);
+
+const RevealText = ({ text, className, containerClassName }: { text: string, className?: string, containerClassName?: string }) => (
+  <span className={cn(containerClassName)}>
+    {text.split(" ").map((word, i, arr) => {
+      const isLast = i === arr.length - 1;
+      return (
+        <span key={i}>
+          <span className={cn("reveal-word inline-block", className)}>{word}</span>
+          {!isLast && " "}
+        </span>
+      );
+    })}
+  </span>
+);
 
 export default function Landing() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -33,9 +48,10 @@ export default function Landing() {
         }
       });
 
-      // Text Reveal Scrub Animation
-      if (textRevealRef.current) {
-        const words = textRevealRef.current.querySelectorAll('.reveal-word');
+      // Vertical Reveal Containers
+      gsap.utils.toArray('.reveal-container:not(.horizontal-reveal)').forEach((container: any) => {
+        const words = container.querySelectorAll('.reveal-word');
+        if (words.length === 0) return;
 
         gsap.fromTo(words, 
           { opacity: 0, y: 20, filter: 'blur(8px)' },
@@ -46,19 +62,19 @@ export default function Landing() {
             stagger: 0.1,
             ease: 'none',
             scrollTrigger: {
-              trigger: textRevealRef.current,
-              start: 'top 80%',
-              end: 'bottom 40%',
-              scrub: true,
+              trigger: container,
+              start: 'top 85%',
+              end: 'bottom 60%',
+              scrub: 1.5,
             }
           }
         );
-      }
+      });
 
       // Horizontal Scroll Pinned Gallery
       if (horizontalScrollRef.current) {
         const sections = gsap.utils.toArray('.horizontal-panel');
-        gsap.to(sections, {
+        const scrollTween = gsap.to(sections, {
           xPercent: -100 * (sections.length - 1),
           ease: 'none',
           scrollTrigger: {
@@ -68,6 +84,30 @@ export default function Landing() {
             snap: 1 / (sections.length - 1),
             end: () => "+=" + horizontalScrollRef.current?.offsetWidth
           }
+        });
+
+        // Horizontal Reveal Containers
+        gsap.utils.toArray('.horizontal-reveal').forEach((container: any) => {
+          const words = container.querySelectorAll('.reveal-word');
+          if (words.length === 0) return;
+          
+          gsap.fromTo(words, 
+            { opacity: 0, x: 20, filter: 'blur(8px)' },
+            {
+              opacity: 1,
+              x: 0,
+              filter: 'blur(0px)',
+              stagger: 0.1,
+              ease: 'none',
+              scrollTrigger: {
+                trigger: container,
+                containerAnimation: scrollTween,
+                start: 'left 85%',
+                end: 'right 40%',
+                scrub: 1.5,
+              }
+            }
+          );
         });
       }
 
@@ -189,21 +229,15 @@ export default function Landing() {
 
         {/* Text Reveal Statement Section */}
         <section className="relative z-10 w-full min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 py-32">
-          <div ref={textRevealRef} className="max-w-5xl mx-auto text-center flex flex-col gap-12">
+          <div className="reveal-container max-w-5xl mx-auto text-center flex flex-col gap-12">
             <h2 className="font-display font-medium text-4xl md:text-6xl leading-tight tracking-tight text-white flex flex-wrap justify-center gap-x-3 gap-y-2 md:gap-x-4">
-              {"Stop guessing with LLMs.".split(" ").map((word, i) => (
-                <span key={`h1-${i}`} className="reveal-word">{word}</span>
-              ))}
+              <RevealText text="Stop guessing with LLMs." />
               <div className="basis-full h-0 hidden md:block"></div>
-              {"Start engineering.".split(" ").map((word, i) => (
-                <span key={`h2-${i}`} className="reveal-word text-copper-500 italic">{word}</span>
-              ))}
+              <RevealText text="Start engineering." className="text-copper-500 italic" />
             </h2>
             
             <p className="relative text-2xl md:text-4xl font-light leading-relaxed max-w-4xl mx-auto flex flex-wrap justify-center gap-x-3 gap-y-2 mt-8">
-              {words.map((word, i) => (
-                <span key={i} className="reveal-word font-editorial">{word}</span>
-              ))}
+              <RevealText text={statementText} className="font-editorial" />
             </p>
           </div>
         </section>
@@ -214,27 +248,27 @@ export default function Landing() {
             
             <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
               <div className="max-w-7xl mx-auto w-full">
-                <div className="max-w-2xl">
-                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8">The Arena</h3>
-                  <p className="text-2xl text-gray-400 font-light">Test your prompts against multiple models simultaneously. See how GPT-4, Claude 3.5, and Llama 3 interpret the exact same instructions, side by side.</p>
+                <div className="horizontal-reveal reveal-container max-w-2xl">
+                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="The Arena" /></h3>
+                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Test your prompts against multiple models simultaneously. See how GPT-4, Claude 3.5, and Llama 3 interpret the exact same instructions, side by side." /></p>
                 </div>
               </div>
             </div>
             
             <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
               <div className="max-w-7xl mx-auto w-full">
-                <div className="max-w-2xl">
-                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8">Prompt Optimizer</h3>
-                  <p className="text-2xl text-gray-400 font-light">Our meta-prompting engine analyzes your draft and automatically rewrites it using advanced techniques like Chain-of-Thought and Role Prompting.</p>
+                <div className="horizontal-reveal reveal-container max-w-2xl">
+                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="Prompt Optimizer" /></h3>
+                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Our meta-prompting engine analyzes your draft and automatically rewrites it using advanced techniques like Chain-of-Thought and Role Prompting." /></p>
                 </div>
               </div>
             </div>
             
             <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
               <div className="max-w-7xl mx-auto w-full">
-                <div className="max-w-2xl">
-                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8">Library Sync</h3>
-                  <p className="text-2xl text-gray-400 font-light">Save your best performing prompts in a searchable local database. Tag, categorize, and instantly copy them directly to your clipboard.</p>
+                <div className="horizontal-reveal reveal-container max-w-2xl">
+                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="Library Sync" /></h3>
+                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Save your best performing prompts in a searchable local database. Tag, categorize, and instantly copy them directly to your clipboard." /></p>
                 </div>
               </div>
             </div>
@@ -245,10 +279,10 @@ export default function Landing() {
         {/* Code / API IDE Section */}
         <section className="ide-section relative z-10 w-full min-h-screen flex items-center justify-center py-40 px-6 sm:px-12">
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
-            <div className="w-full lg:w-1/2 flex flex-col gap-8">
-              <h2 className="font-display text-5xl md:text-6xl tracking-tight">Structured Output. <br/>Ready for Code.</h2>
+            <div className="reveal-container w-full lg:w-1/2 flex flex-col gap-8">
+              <h2 className="font-display text-5xl md:text-6xl tracking-tight"><RevealText text="Structured Output." /> <br/><RevealText text="Ready for Code." /></h2>
               <p className="text-xl text-gray-400 font-light max-w-lg">
-                Bedrock doesn't just give you a block of text. It generates structured JSON schemas and exact system instructions ready to be embedded directly into your Python or Node.js applications.
+                <RevealText text="Bedrock doesn't just give you a block of text. It generates structured JSON schemas and exact system instructions ready to be embedded directly into your Python or Node.js applications." />
               </p>
             </div>
             <div className="w-full lg:w-1/2">
@@ -285,9 +319,9 @@ export default function Landing() {
 
         {/* Realistic Feature Grid */}
         <section className="relative z-10 w-full min-h-screen flex flex-col justify-center py-32 px-6 sm:px-12 max-w-7xl mx-auto">
-          <div className="text-center mb-24">
-            <h2 className="font-display text-5xl md:text-7xl tracking-tight mb-6">Everything you need.</h2>
-            <p className="text-xl text-gray-400 font-light">A comprehensive suite of tools for prompt engineers.</p>
+          <div className="reveal-container text-center mb-24">
+            <h2 className="font-display text-5xl md:text-7xl tracking-tight mb-6"><RevealText text="Everything you need." /></h2>
+            <p className="text-xl text-gray-400 font-light"><RevealText text="A comprehensive suite of tools for prompt engineers." /></p>
           </div>
           <div className="features-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
@@ -312,8 +346,8 @@ export default function Landing() {
         {/* Immersive CTA */}
         <section className="reveal-section relative z-10 w-full min-h-screen flex flex-col items-center justify-center py-40 px-6 sm:px-12 text-center">
           
-          <h2 className="font-display font-medium text-5xl md:text-8xl tracking-tight text-white mb-8">
-            Ready to build?
+          <h2 className="reveal-container font-display font-medium text-5xl md:text-8xl tracking-tight text-white mb-8">
+            <RevealText text="Ready to build?" />
           </h2>
           <a 
             href="/Bedrock-Windows.zip" 
