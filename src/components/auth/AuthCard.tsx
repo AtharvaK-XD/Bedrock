@@ -35,11 +35,11 @@ export function AuthCard() {
 
   return (
     <div className="w-full max-w-xl mx-auto">
-      <div className="bg-[#1a1a1a]/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-10 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] relative overflow-hidden">
+      <div className="bg-white/[0.04] backdrop-blur-3xl border border-white/10 rounded-[2rem] p-10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_8px_40px_-12px_rgba(0,0,0,0.4)] relative overflow-hidden">
         
         {/* Animated Background Elements inside the card */}
-        <div className="absolute -top-20 -right-20 w-40 h-40 bg-copper-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-basalt-900/10 rounded-full blur-3xl"></div>
+        <div className="absolute -top-20 -right-20 w-56 h-56 bg-copper-500/20 rounded-full blur-3xl mix-blend-screen"></div>
+        <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-teal-500/10 rounded-full blur-3xl mix-blend-screen"></div>
 
         <div className="relative z-10">
           <div className="text-center mb-8">
@@ -122,7 +122,7 @@ export function AuthCard() {
               <div className="w-full border-t border-white/10"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-[#1a1a1a] text-gray-500">Or continue with</span>
+              <span className="px-4 bg-black/20 backdrop-blur-md rounded-full border border-white/5 text-gray-400">Or continue with</span>
             </div>
           </div>
 
