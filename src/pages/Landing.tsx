@@ -316,7 +316,7 @@ export default function Landing() {
         </section>
 
         {/* Minimal Footer */}
-        <footer className="relative z-10 w-full py-12 px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between border-t border-white/5 text-sm text-gray-500 font-light bg-black/40 backdrop-blur-md">
+        <footer className="relative z-10 w-full py-12 px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-500 font-light">
           <p>© 2026 Bedrock. All rights reserved.</p>
           <div className="flex gap-6 mt-4 sm:mt-0">
             <a href="#" data-cursor="hover" className="hover:text-white transition-colors">Twitter</a>
