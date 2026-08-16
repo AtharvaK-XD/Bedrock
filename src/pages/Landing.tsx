@@ -248,7 +248,7 @@ export default function Landing() {
             
             <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
               <div className="max-w-7xl mx-auto w-full">
-                <div className="horizontal-reveal reveal-container max-w-2xl">
+                <div className="reveal-container max-w-2xl">
                   <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="The Arena" /></h3>
                   <p className="text-2xl text-gray-400 font-light"><RevealText text="Test your prompts against multiple models simultaneously. See how GPT-4, Claude 3.5, and Llama 3 interpret the exact same instructions, side by side." /></p>
                 </div>
