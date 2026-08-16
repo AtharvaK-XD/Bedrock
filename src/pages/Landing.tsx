@@ -180,6 +180,11 @@ export default function Landing() {
               </div>
             </div>
           </div>
+
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 opacity-50 z-20 hero-fade-up animate-bounce">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-white font-medium">Scroll</div>
+            <div className="w-[1px] h-12 bg-gradient-to-b from-white/50 to-transparent"></div>
+          </div>
         </section>
 
         {/* Text Reveal Statement Section */}
