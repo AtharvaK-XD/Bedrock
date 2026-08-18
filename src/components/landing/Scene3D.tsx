@@ -24,11 +24,11 @@ const LiquidGlassCore = () => {
   return (
     <Float speed={2.5} rotationIntensity={0.8} floatIntensity={1.5} floatingRange={[-0.2, 0.2]}>
       <mesh ref={mesh} position={[0, 0, 0]} scale={2.5}>
-        <icosahedronGeometry args={[1, 16]} />
+        <icosahedronGeometry args={[1, 8]} />
         <MeshTransmissionMaterial
           ref={materialRef}
           backside
-          samples={8}
+          samples={4}
           thickness={1.5}
           chromaticAberration={0.06}
           anisotropy={0.3}
@@ -37,7 +37,7 @@ const LiquidGlassCore = () => {
           temporalDistortion={0.2}
           ior={1.5}
           color="#ffffff"
-          resolution={1024}
+          resolution={256}
         />
       </mesh>
     </Float>
@@ -75,7 +75,8 @@ export const Scene3D = () => {
     <div className="absolute inset-0 z-0 pointer-events-none w-full h-full">
       <Canvas 
         camera={{ position: [0, 0, 8], fov: 45 }} 
-        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+        gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
+        dpr={[1, 1.5]}
       >
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} intensity={2} color="#ffffff" />
@@ -88,11 +89,10 @@ export const Scene3D = () => {
         <Environment preset="city" />
         
         {/* Soft grounding shadow */}
-        <ContactShadows position={[0, -3.5, 0]} opacity={0.5} scale={15} blur={2.5} far={4} />
+        <ContactShadows position={[0, -3.5, 0]} opacity={0.5} scale={15} blur={2.5} far={4} resolution={256} frames={1} />
         
         {/* Cinematic Post-Processing */}
-        <EffectComposer disableNormalPass>
-          <DepthOfField focusDistance={0} focalLength={0.02} bokehScale={2} height={480} />
+        <EffectComposer disableNormalPass multisampling={0}>
           <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} height={300} opacity={0.5} />
           <Noise opacity={0.035} blendFunction={BlendFunction.OVERLAY} />
           <Vignette eskil={false} offset={0.1} darkness={1.1} />
