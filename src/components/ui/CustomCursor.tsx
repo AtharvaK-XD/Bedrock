@@ -22,9 +22,6 @@ export const CustomCursor = () => {
   const points = useRef<Point[]>([]);
 
   useEffect(() => {
-    // Hide default cursor
-    document.body.style.cursor = 'none';
-
     // Canvas setup
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -150,7 +147,6 @@ export const CustomCursor = () => {
       document.removeEventListener('mouseleave', onMouseLeave);
       document.removeEventListener('mouseenter', onMouseEnter);
       cancelAnimationFrame(requestRef);
-      document.body.style.cursor = 'auto';
     };
   }, []);
 

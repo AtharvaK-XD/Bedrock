@@ -170,7 +170,7 @@ export default function Landing() {
   const words = statementText.split(" ");
 
   return (
-    <PageTransition className="bg-[#050505] text-white font-sans selection:bg-copper-500/40 selection:text-white relative overflow-hidden flex flex-col min-h-screen cursor-none">
+    <PageTransition className="bg-[#050505] text-white font-sans selection:bg-copper-500/40 selection:text-white relative overflow-hidden flex flex-col min-h-screen">
       <CustomCursor />
       <div ref={containerRef} className="relative z-10 w-full">
         
