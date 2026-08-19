@@ -102,7 +102,7 @@ export default function Landing() {
                 trigger: container,
                 containerAnimation: scrollTween,
                 start: 'left 85%',
-                end: 'right 40%',
+                end: 'left 40%',
                 scrub: 1.5,
               }
             }
