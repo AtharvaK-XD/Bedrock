@@ -3,7 +3,6 @@ import { AuthCard } from '../components/auth/AuthCard';
 import { Zap, Shield, Sparkles, Layout, Layers, ArrowRight, Code, Database, Globe } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Scene3D } from '../components/landing/Scene3D';
-import { CustomCursor } from '../components/ui/CustomCursor';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { cn } from '../lib/utils';
@@ -171,7 +170,6 @@ export default function Landing() {
 
   return (
     <PageTransition className="bg-[#050505] text-white font-sans selection:bg-copper-500/40 selection:text-white relative overflow-hidden flex flex-col min-h-screen">
-      <CustomCursor />
       <div ref={containerRef} className="relative z-10 w-full">
         
         {/* Realistic 3D Background Element */}
