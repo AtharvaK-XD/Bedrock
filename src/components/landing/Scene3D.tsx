@@ -43,7 +43,7 @@ const LiquidGlassCore = () => {
         <MeshTransmissionMaterial
           ref={materialRef}
           backside
-          samples={4}
+          samples={2}
           thickness={1.5}
           chromaticAberration={0.06}
           anisotropy={0.3}
@@ -52,7 +52,7 @@ const LiquidGlassCore = () => {
           temporalDistortion={0.2}
           ior={1.5}
           color="#ffffff"
-          resolution={256}
+          resolution={128}
         />
       </mesh>
     </Float>

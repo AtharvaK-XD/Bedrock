@@ -53,11 +53,10 @@ export default function Landing() {
         if (words.length === 0) return;
 
         gsap.fromTo(words, 
-          { opacity: 0, y: 20, filter: 'blur(8px)' },
+          { opacity: 0, y: 20 },
           {
             opacity: 1,
             y: 0,
-            filter: 'blur(0px)',
             stagger: 0.1,
             ease: 'none',
             scrollTrigger: {
@@ -91,11 +90,10 @@ export default function Landing() {
           if (words.length === 0) return;
           
           gsap.fromTo(words, 
-            { opacity: 0, x: 20, filter: 'blur(8px)' },
+            { opacity: 0, x: 20 },
             {
               opacity: 1,
               x: 0,
-              filter: 'blur(0px)',
               stagger: 0.1,
               ease: 'none',
               scrollTrigger: {
@@ -174,7 +172,7 @@ export default function Landing() {
         
         {/* Realistic 3D Background Element */}
         <div className="fixed inset-0 w-full h-screen pointer-events-none z-0 overflow-hidden">
-          <div className="absolute inset-0 opacity-[0.015] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay z-10"></div>
+          <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-10"></div>
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-copper-500/10 blur-[150px] z-0"></div>
           <Scene3D />
         </div>
