@@ -10,14 +10,29 @@ const LiquidGlassCore = () => {
   const mesh = useRef<THREE.Mesh>(null);
   const materialRef = useRef<any>(null);
 
+  const currentScrollProgress = useRef(0);
+
   useFrame((state, delta) => {
-    if (mesh.current) {
-      mesh.current.rotation.x += delta * 0.1;
-      mesh.current.rotation.y += delta * 0.15;
-    }
     if (materialRef.current) {
       // Slowly pulse the distortion to make it look alive/organic
       materialRef.current.time = state.clock.elapsedTime;
+    }
+
+    if (mesh.current) {
+      const scrollY = window.scrollY;
+      const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      const targetScrollProgress = scrollY / maxScroll;
+
+      // Smoothly interpolate the scroll progress for a fluid rotation effect
+      currentScrollProgress.current = THREE.MathUtils.lerp(
+        currentScrollProgress.current,
+        targetScrollProgress,
+        0.05
+      );
+
+      // Combine continuous rotation with smooth scroll-driven rotation
+      mesh.current.rotation.x = (state.clock.elapsedTime * 0.1) + (currentScrollProgress.current * Math.PI * 2);
+      mesh.current.rotation.y = (state.clock.elapsedTime * 0.15) + (currentScrollProgress.current * Math.PI * 4);
     }
   });
 
