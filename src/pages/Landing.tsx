@@ -53,10 +53,11 @@ export default function Landing() {
         if (words.length === 0) return;
 
         gsap.fromTo(words, 
-          { opacity: 0, y: 20 },
+          { opacity: 0, y: 20, filter: 'blur(8px)' },
           {
             opacity: 1,
             y: 0,
+            filter: 'blur(0px)',
             stagger: 0.1,
             ease: 'none',
             scrollTrigger: {
@@ -90,10 +91,11 @@ export default function Landing() {
           if (words.length === 0) return;
           
           gsap.fromTo(words, 
-            { opacity: 0, x: 20 },
+            { opacity: 0, x: 20, filter: 'blur(8px)' },
             {
               opacity: 1,
               x: 0,
+              filter: 'blur(0px)',
               stagger: 0.1,
               ease: 'none',
               scrollTrigger: {
