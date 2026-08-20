@@ -1,10 +1,10 @@
-import { Layers, Sparkles, Wand2, FlaskConical, BookOpen, Settings } from 'lucide-react';
+import { Layers, Sparkles, GitBranch, FlaskConical, BookOpen, Settings } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 
 const navItems = [
   { icon: Sparkles, label: 'Generator', path: '/app' },
-  { icon: Wand2, label: 'Optimizer', path: '/app/optimizer' },
+  { icon: GitBranch, label: 'Branching', path: '/app/branching' },
   { icon: FlaskConical, label: 'Prompt Tester', path: '/app/tester' },
   { icon: BookOpen, label: 'Library', path: '/app/library' },
 ];
