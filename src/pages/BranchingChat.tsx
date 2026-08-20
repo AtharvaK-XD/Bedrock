@@ -12,35 +12,61 @@ import {
   type EdgeChange,
   type Connection,
   Handle,
-  Position
+  Position,
+  BackgroundVariant
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
+import { Bot, User, Cpu, SendHorizontal } from 'lucide-react';
 
 // Custom Node component
 const ChatNode = ({ data, selected }: any) => {
+  const isSystem = data.role === 'system';
+  const isUser = data.role === 'user';
+  const isAssistant = data.role === 'assistant';
+
   return (
     <div className={cn(
-      "p-5 rounded-2xl border w-[320px] shadow-2xl backdrop-blur-md transition-all",
-      data.role === 'system' ? 'bg-purple-900/30 border-purple-500/50' : 
-      data.role === 'user' ? 'bg-blue-900/30 border-blue-500/50' : 
-      'bg-teal-900/30 border-teal-500/50',
-      selected ? 'ring-2 ring-white/50 scale-[1.02]' : 'hover:border-white/30'
+      "relative p-5 rounded-3xl border w-[340px] shadow-2xl backdrop-blur-xl transition-all duration-300",
+      isSystem ? 'bg-gradient-to-b from-purple-500/10 to-purple-900/30 border-purple-500/40' : 
+      isUser ? 'bg-gradient-to-b from-blue-500/10 to-blue-900/30 border-blue-500/40' : 
+      'bg-gradient-to-b from-teal-500/10 to-teal-900/30 border-teal-500/40',
+      selected ? 'ring-2 ring-white/60 scale-[1.02] shadow-[0_0_30px_rgba(255,255,255,0.1)]' : 'hover:border-white/40',
+      "shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]"
     )}>
-      {data.role !== 'system' && (
-        <Handle type="target" position={Position.Top} className="w-3 h-3 bg-white border-0" />
+      {!isSystem && (
+        <Handle 
+          type="target" 
+          position={Position.Top} 
+          className="w-3.5 h-3.5 bg-[#1a1a1a] border-2 border-white/60 rounded-full transition-transform hover:scale-125" 
+        />
       )}
-      <div className="flex items-center gap-2 mb-3">
+      
+      <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-3">
         <div className={cn(
-          "w-2 h-2 rounded-full",
-          data.role === 'system' ? 'bg-purple-400' : 
-          data.role === 'user' ? 'bg-blue-400' : 'bg-teal-400'
-        )} />
-        <div className="font-bold text-xs uppercase tracking-wider text-gray-300">{data.role}</div>
+          "w-8 h-8 rounded-xl flex items-center justify-center shadow-inner",
+          isSystem ? 'bg-purple-500/20 text-purple-300' : 
+          isUser ? 'bg-blue-500/20 text-blue-300' : 'bg-teal-500/20 text-teal-300'
+        )}>
+          {isSystem && <Cpu size={16} />}
+          {isUser && <User size={16} />}
+          {isAssistant && <Bot size={16} />}
+        </div>
+        <div className="font-display font-bold text-sm tracking-wide text-gray-200 capitalize">
+          {data.role}
+        </div>
       </div>
-      <div className="text-white text-sm whitespace-pre-wrap leading-relaxed">{data.content}</div>
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-white border-0" />
+      
+      <div className="text-gray-100 text-[15px] whitespace-pre-wrap leading-relaxed px-1">
+        {data.content}
+      </div>
+      
+      <Handle 
+        type="source" 
+        position={Position.Bottom} 
+        className="w-3.5 h-3.5 bg-[#1a1a1a] border-2 border-white/60 rounded-full transition-transform hover:scale-125" 
+      />
     </div>
   );
 };
@@ -183,30 +209,32 @@ export default function BranchingChat() {
             minZoom={0.2}
             className="bg-transparent"
           >
-            <Background color="#ffffff20" gap={24} size={2} />
+            <Background variant={BackgroundVariant.Dots} color="rgba(255,255,255,0.08)" gap={20} size={2} />
             <Controls className="bg-[#222] border-white/10 fill-white" showInteractive={false} />
           </ReactFlow>
 
           {/* Floating Input Panel */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-20">
-             <div className="bg-[#111]/90 backdrop-blur-xl p-2.5 rounded-2xl border border-white/20 shadow-2xl flex gap-3">
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={selectedNodeId ? "Branch from selected message..." : "Select a node to branch from, or type to continue from the latest..."}
-                  className="flex-1 bg-transparent text-white px-4 py-2 text-lg placeholder:text-gray-500 focus:outline-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') addBranch();
-                  }}
-                />
-                <button 
-                  onClick={addBranch}
-                  disabled={!inputText.trim()}
-                  className="bg-copper-500 hover:bg-copper-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-lg shadow-copper-500/20"
-                >
-                  Send
-                </button>
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-20">
+             <div className="bg-white/5 p-[1px] rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
+               <div className="bg-[#111]/90 rounded-full p-2 flex items-center gap-3 pr-2">
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={selectedNodeId ? "Branch from selected message..." : "Select a node to branch from, or type to continue..."}
+                    className="flex-1 bg-transparent text-white px-6 py-3 text-[15px] placeholder:text-gray-500 focus:outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') addBranch();
+                    }}
+                  />
+                  <button 
+                    onClick={addBranch}
+                    disabled={!inputText.trim()}
+                    className="bg-copper-500 hover:bg-copper-600 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300 shadow-lg shadow-copper-500/20"
+                  >
+                    <SendHorizontal size={20} className={inputText.trim() ? "translate-x-[-1px]" : ""} />
+                  </button>
+               </div>
              </div>
           </div>
         </div>
