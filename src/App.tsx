@@ -8,7 +8,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Landing from './pages/Landing';
 import Wizard from './pages/Wizard';
 import Result from './pages/Result';
-import Optimizer from './pages/Optimizer';
+import BranchingChat from './pages/BranchingChat';
 import PromptTester from './pages/PromptTester';
 import Library from './pages/Library';
 import Pricing from './pages/Pricing';
@@ -41,7 +41,7 @@ function AnimatedRoutes() {
             <AppLayout>
               <Routes>
                 <Route path="/" element={<Wizard />} />
-                <Route path="/optimizer" element={<Optimizer />} />
+                <Route path="/branching" element={<BranchingChat />} />
                 <Route path="/tester" element={<PromptTester />} />
                 <Route path="/library" element={<Library />} />
                 <Route path="/result" element={<Result />} />
