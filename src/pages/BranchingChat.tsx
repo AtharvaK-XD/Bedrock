@@ -21,6 +21,7 @@ import '@xyflow/react/dist/style.css';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { Plus, Hand, MousePointer2, Trash2 } from 'lucide-react';
+import { ExpandableChatbox } from '../components/ui/ExpandableChatbox';
 
 // Generic Node component with 4 handles
 const GenericNode = ({ data, selected }: any) => {
@@ -135,8 +136,21 @@ function FlowEditor() {
         </ReactFlow>
       </div>
       
-      {/* Floating Toolbar */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
+      {/* Floating Toolbar & Chatbox */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4 w-[90%] max-w-2xl">
+        <ExpandableChatbox 
+          className="w-full"
+          onSubmit={(text) => {
+             const newNode: Node = {
+               id: `node-${Date.now()}`,
+               type: 'genericNode',
+               position: { x: 300 + Math.random() * 50, y: 200 + Math.random() * 50 },
+               data: { title: 'AI Response', content: `You asked: "${text}"\n\n(This is a placeholder response node)` },
+             };
+             setNodes((nds) => [...nds, newNode].map(n => ({ ...n, selected: false })));
+          }} 
+        />
+        
         <div className="bg-[#1a1a1a]/90 backdrop-blur-2xl border border-white/10 p-1.5 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-2">
           
           <button 
