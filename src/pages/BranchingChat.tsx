@@ -144,10 +144,10 @@ function FlowEditor() {
       
       {/* Floating Toolbar & Chatbox */}
       <motion.div 
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+        initial={{ y: 50, x: "-50%", opacity: 0 }}
+        animate={{ y: 0, x: "-50%", opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.1 }}
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4 w-[90%] max-w-2xl"
+        className="absolute bottom-6 left-1/2 z-10 flex flex-col items-center gap-4 w-[90%] max-w-2xl"
       >
         <ExpandableChatbox 
           className="w-full"
