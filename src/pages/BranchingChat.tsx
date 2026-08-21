@@ -114,7 +114,7 @@ function FlowEditor() {
   };
 
   return (
-    <div className="w-full h-full min-h-[calc(100vh-80px)] relative flex flex-col rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+    <div className="w-full h-full relative flex flex-col rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
       <div className="flex-1 w-full bg-[#0a0a0a]">
         <ReactFlow
           nodes={nodes}
@@ -192,7 +192,7 @@ function FlowEditor() {
 export default function BranchingChat() {
   return (
     <PageTransition>
-      <div className="w-full px-4 sm:px-8 py-6 lg:py-10 flex flex-col h-[calc(100vh-80px)]">
+      <div className="w-full p-4 sm:p-6 flex flex-col h-[calc(100vh-80px)]">
         <ReactFlowProvider>
           <FlowEditor />
         </ReactFlowProvider>
