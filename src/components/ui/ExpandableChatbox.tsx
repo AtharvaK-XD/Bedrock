@@ -58,8 +58,9 @@ export function ExpandableChatbox({ onSubmit, className }: ExpandableChatboxProp
         height: isExpanded ? 'auto' : 56,
         borderRadius: isExpanded ? 24 : 28,
       }}
+      transition={{ type: "spring", stiffness: 400, damping: 30 }}
       className={cn(
-        "relative bg-[#1a1a1a]/95 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-300",
+        "relative bg-[#1a1a1a]/95 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden transition-colors duration-300",
         isExpanded ? "ring-2 ring-copper-500/30" : "hover:border-white/20",
         className
       )}
