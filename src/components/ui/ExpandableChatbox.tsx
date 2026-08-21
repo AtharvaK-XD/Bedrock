@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -70,14 +70,28 @@ export function ExpandableChatbox({ onSubmit, className }: ExpandableChatboxProp
         }
       }}
     >
-      <div className="flex flex-col h-full w-full">
+      <AnimatePresence mode="wait">
         {!isExpanded ? (
-          <div className="flex items-center h-full px-5 gap-3 cursor-text text-gray-400">
+          <motion.div 
+            key="collapsed"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="flex items-center h-full px-5 gap-3 cursor-text text-gray-400 w-full"
+          >
             <Sparkles className="w-5 h-5 text-copper-500/80" />
             <span className="text-sm font-medium">Ask a question or add a node...</span>
-          </div>
+          </motion.div>
         ) : (
-          <div className="flex flex-col p-4 w-full h-full relative">
+          <motion.div 
+            key="expanded"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-col p-4 w-full h-full relative"
+          >
              <textarea
                 ref={textareaRef}
                 value={value}
@@ -100,9 +114,9 @@ export function ExpandableChatbox({ onSubmit, className }: ExpandableChatboxProp
                  Send
                </button>
              </div>
-          </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </motion.div>
   );
 }
