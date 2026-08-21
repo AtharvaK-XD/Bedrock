@@ -22,20 +22,26 @@ import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { Plus, Hand, MousePointer2, Trash2 } from 'lucide-react';
 import { ExpandableChatbox } from '../components/ui/ExpandableChatbox';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Generic Node component with 4 handles
 const GenericNode = ({ data, selected }: any) => {
   return (
-    <div className={cn(
-      "relative p-4 rounded-xl border w-[260px] bg-[#1a1a1a]/95 backdrop-blur-xl transition-all duration-200",
-      selected ? 'border-copper-500 shadow-[0_0_20px_rgba(255,165,0,0.2)]' : 'border-white/10 hover:border-white/30',
-      "shadow-xl"
-    )}>
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.8, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className={cn(
+        "relative p-4 rounded-xl border w-[260px] bg-[#1a1a1a]/95 backdrop-blur-xl transition-colors duration-200",
+        selected ? 'border-copper-500 shadow-[0_0_30px_rgba(255,165,0,0.2)]' : 'border-white/10 hover:border-white/30',
+        "shadow-2xl"
+      )}
+    >
       {/* 4 Handles for loose connection mode */}
-      <Handle type="source" id="top" position={Position.Top} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-white" />
-      <Handle type="source" id="right" position={Position.Right} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-white" />
-      <Handle type="source" id="bottom" position={Position.Bottom} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-white" />
-      <Handle type="source" id="left" position={Position.Left} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-white" />
+      <Handle type="source" id="top" position={Position.Top} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
+      <Handle type="source" id="right" position={Position.Right} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
+      <Handle type="source" id="bottom" position={Position.Bottom} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
+      <Handle type="source" id="left" position={Position.Left} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
       
       <input 
         className="nodrag bg-transparent w-full font-display font-medium text-sm text-gray-100 mb-2 focus:outline-none focus:bg-white/5 rounded px-1.5 py-0.5 -mx-1.5 transition-colors" 
@@ -47,7 +53,7 @@ const GenericNode = ({ data, selected }: any) => {
         defaultValue={data.content}
         placeholder="Enter details here..."
       />
-    </div>
+    </motion.div>
   );
 };
 
@@ -137,7 +143,12 @@ function FlowEditor() {
       </div>
       
       {/* Floating Toolbar & Chatbox */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4 w-[90%] max-w-2xl">
+      <motion.div 
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.1 }}
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4 w-[90%] max-w-2xl"
+      >
         <ExpandableChatbox 
           className="w-full"
           onSubmit={(text) => {
@@ -151,19 +162,28 @@ function FlowEditor() {
           }} 
         />
         
-        <div className="bg-[#1a1a1a]/90 backdrop-blur-2xl border border-white/10 p-1.5 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-2">
+        <motion.div 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
+          className="bg-[#1a1a1a]/90 backdrop-blur-2xl border border-white/10 p-1.5 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-2"
+        >
           
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.95 }}
             onClick={addNode}
             className="flex items-center gap-2 bg-copper-500 hover:bg-copper-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
           >
             <Plus size={16} />
             <span>Add Node</span>
-          </button>
+          </motion.button>
           
           <div className="w-px h-8 bg-white/10 mx-1"></div>
           
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setToolMode('select')}
             className={cn(
               "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
@@ -173,9 +193,11 @@ function FlowEditor() {
           >
             <MousePointer2 size={16} />
             <span className="hidden sm:inline">Select (V)</span>
-          </button>
+          </motion.button>
           
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setToolMode('pan')}
             className={cn(
               "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
@@ -185,20 +207,22 @@ function FlowEditor() {
           >
             <Hand size={16} />
             <span className="hidden sm:inline">Pan (H)</span>
-          </button>
+          </motion.button>
 
           <div className="w-px h-8 bg-white/10 mx-1"></div>
           
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={deleteSelected}
             className="flex items-center justify-center p-2 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
             title="Delete Selected (Backspace/Del)"
           >
             <Trash2 size={18} />
-          </button>
+          </motion.button>
 
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
