@@ -12,6 +12,7 @@ import BranchingChat from './pages/BranchingChat';
 import PromptTester from './pages/PromptTester';
 import Library from './pages/Library';
 import Pricing from './pages/Pricing';
+import Billing from './pages/Billing';
 import SettingsPage from './pages/Settings';
 import { AppLayout } from './components/layout/AppLayout';
 import { checkForUpdates } from './lib/updater';
@@ -46,6 +47,7 @@ function AnimatedRoutes() {
                 <Route path="/library" element={<Library />} />
                 <Route path="/result" element={<Result />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/billing" element={<Billing />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </AppLayout>
