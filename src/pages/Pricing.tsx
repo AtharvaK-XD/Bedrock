@@ -1,7 +1,9 @@
-import { Check, X, Sparkles } from 'lucide-react';
+import { Check, X, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { PageTransition } from '../components/layout/PageTransition';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const TIERS = [
   {
@@ -57,8 +59,47 @@ const TIERS = [
 ];
 
 export default function Pricing() {
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleUpgrade = (tierName: string) => {
+    if (tierName === 'Free') return; // Do nothing for current plan
+    setIsUpgrading(true);
+    // Simulate setup delay
+    setTimeout(() => {
+      navigate('/app/billing');
+    }, 2000);
+  };
+
   return (
     <PageTransition>
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {isUpgrading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="flex flex-col items-center gap-6"
+            >
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-teal-500/20 rounded-full"></div>
+                <Loader2 className="w-16 h-16 text-teal-400 animate-spin absolute top-0 left-0" />
+              </div>
+              <p className="text-xl font-editorial text-white tracking-wide">
+                Setting up your billing page...
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="w-full px-4 sm:px-8 py-12 lg:py-16 min-h-[calc(100vh-80px)]">
       <div className="text-center mb-16">
         <motion.h1
@@ -125,6 +166,7 @@ export default function Pricing() {
             </div>
 
             <button
+              onClick={() => handleUpgrade(tier.name)}
               className={cn(
                 "w-full py-3 px-4 rounded-xl font-semibold transition-colors mb-8 flex items-center justify-center gap-2",
                 tier.buttonVariant === 'outline'
