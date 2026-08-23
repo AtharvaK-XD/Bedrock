@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AuthCard } from '../components/auth/AuthCard';
-import { Zap, Shield, Sparkles, Layout, Layers, ArrowRight, Code, Database, Globe } from 'lucide-react';
+import { Shield, Sparkles, Layout, Layers, Database, Globe } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Scene3D } from '../components/landing/Scene3D';
 import gsap from 'gsap';
@@ -26,7 +26,6 @@ const RevealText = ({ text, className, containerClassName }: { text: string, cla
 export default function Landing() {
   const containerRef = useRef<HTMLDivElement>(null);
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
-  const textRevealRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -166,7 +165,6 @@ export default function Landing() {
 
   // Split text for scrub reveal
   const statementText = "Bedrock bridges the gap between human intent and machine understanding, turning chaotic ideas into structured, high-performance prompts.";
-  const words = statementText.split(" ");
 
   return (
     <PageTransition className="bg-[#050505] text-white font-sans selection:bg-copper-500/40 selection:text-white relative overflow-hidden flex flex-col min-h-screen">

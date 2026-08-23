@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
-import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings, Globe, BotMessageSquare, Feather, Network, Wind, Compass, Zap, Database, X } from 'lucide-react';
+import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings, Globe, BotMessageSquare, Network, Wind, Compass, Zap, Database, X } from 'lucide-react';
 import type { IdeaPayload } from '../../lib/mockApi';
 
 interface RichInputProps {
@@ -201,7 +201,7 @@ export function RichInput({
   const WEEKLY_LIMIT = 200000;
   const [sessionTokens, setSessionTokens] = useState(0);
   const [weeklyTokens, setWeeklyTokens] = useState(0);
-  const [sessionResetTime, setSessionResetTime] = useState<Date | null>(null);
+  const [, setSessionResetTime] = useState<Date | null>(null);
   const [weeklyResetTime, setWeeklyResetTime] = useState<Date | null>(null);
   const [timeUntilWeekly, setTimeUntilWeekly] = useState("");
 

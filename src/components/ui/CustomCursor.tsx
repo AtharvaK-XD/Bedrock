@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { cn } from '../../lib/utils';
 
@@ -110,7 +110,6 @@ export const CustomCursor = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       const maxAge = 45; 
-      const maxDist = 80;
       
       // Update ages and filter out old points
       points.current = points.current.filter(p => {

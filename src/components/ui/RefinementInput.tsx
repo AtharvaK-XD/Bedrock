@@ -20,7 +20,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
   const WEEKLY_LIMIT = 200000;
   const [sessionTokens, setSessionTokens] = useState(0);
   const [weeklyTokens, setWeeklyTokens] = useState(0);
-  const [sessionResetTime, setSessionResetTime] = useState<Date | null>(null);
+  const [, setSessionResetTime] = useState<Date | null>(null);
   const [weeklyResetTime, setWeeklyResetTime] = useState<Date | null>(null);
   const [timeUntilWeekly, setTimeUntilWeekly] = useState("");
 

@@ -130,7 +130,7 @@ export default function Pricing() {
             visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
           }}
         >
-          {TIERS.map((tier, idx) => (
+          {TIERS.map((tier) => (
             <motion.div
               key={tier.name}
               variants={{
