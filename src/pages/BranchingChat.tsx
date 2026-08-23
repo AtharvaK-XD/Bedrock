@@ -22,7 +22,7 @@ import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { Plus, Hand, MousePointer2, Trash2 } from 'lucide-react';
 import { ExpandableChatbox } from '../components/ui/ExpandableChatbox';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 // Generic Node component with 4 handles
 const GenericNode = ({ data, selected }: any) => {

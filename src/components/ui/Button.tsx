@@ -31,7 +31,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"></div>
         )}
         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-        <span className="relative z-10 flex items-center">{children}</span>
+        <span className="relative z-10 flex items-center">{children as React.ReactNode}</span>
       </motion.button>
     );
   }

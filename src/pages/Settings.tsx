@@ -30,7 +30,7 @@ export default function Settings() {
     }, 800);
   };
 
-  const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'account', label: 'Account Profile', icon: User },
     { id: 'api-keys', label: 'Models & API Keys', icon: Key },
     { id: 'appearance', label: 'Appearance', icon: Palette },
