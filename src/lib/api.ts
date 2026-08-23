@@ -33,27 +33,25 @@ Respond ONLY with a valid JSON array of objects. Each object must have:
 
 Do not include any markdown formatting, just the raw JSON array.`;
 
-  const response = await fetch('/api/groq/openai/v1/chat/completions', {
+  const response = await fetch(`/api/gemini/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'llama-3.1-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.3 },
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    console.error('Groq API Error:', errText);
+    console.error('Gemini API Error:', errText);
     throw new Error('Failed to generate questions: ' + errText);
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
   
   try {
     const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -91,27 +89,25 @@ Include sections for:
 - Potential challenges.
 Format this entirely in beautiful Markdown.`;
 
-  const response = await fetch('/api/groq/openai/v1/chat/completions', {
+  const response = await fetch(`/api/gemini/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'llama-3.1-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7 },
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    console.error('Groq API Error:', errText);
+    console.error('Gemini API Error:', errText);
     throw new Error('Failed to synthesize prompt: ' + errText);
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 };
 
 export const refinePrompt = async (currentPrompt: string, followUp: string): Promise<{updatedMarkdown: string, summary: string}> => {
@@ -127,27 +123,25 @@ The JSON object must have exactly two keys:
 - "updatedMarkdown": The complete updated markdown document as a string.
 - "summary": A detailed summary (2-3 sentences) explaining exactly what you added, changed, or removed based on the user's feedback.`;
 
-  const response = await fetch('/api/groq/openai/v1/chat/completions', {
+  const response = await fetch(`/api/gemini/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'llama-3.1-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.5,
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.5 },
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    console.error('Groq API Error:', errText);
+    console.error('Gemini API Error:', errText);
     throw new Error('Failed to refine prompt: ' + errText);
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
   
   try {
     const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
