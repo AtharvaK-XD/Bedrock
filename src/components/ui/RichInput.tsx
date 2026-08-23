@@ -396,7 +396,7 @@ export function RichInput({
   const selectedModel = selectedAgent.models.find(m => m.id === selectedModelId) || selectedAgent.models[0];
 
   return (
-    <div ref={containerRef} className="bg-[#111] backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl transition-all focus-within:ring-4 focus-within:ring-copper-500/20 focus-within:border-copper-500/30 flex flex-col relative group">
+    <div ref={containerRef} className="bg-[#111]/40 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl transition-all focus-within:ring-4 focus-within:ring-copper-500/20 focus-within:border-copper-500/30 flex flex-col relative group">
       {/* Subtle gradient overlay for extra glass texture */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none z-0 rounded-3xl"></div>
       
@@ -547,7 +547,7 @@ export function RichInput({
         />
 
         {/* Bottom Toolbar */}
-        <div className="flex items-center justify-between p-4 bg-[#1a1a1a]/50 rounded-b-3xl">
+        <div className="flex items-center justify-between p-4 bg-[#1a1a1a]/30 rounded-b-3xl">
           <div className="flex items-center gap-1">
             <button type="button" className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors tooltip-trigger">
               <Mic className="w-5 h-5" />

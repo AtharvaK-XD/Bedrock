@@ -105,7 +105,7 @@ export default function Wizard() {
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  <div className="bg-[#1a1a1a]/60 backdrop-blur-xl border border-white/10 rounded-[32px] p-8 md:p-10 shadow-sm relative overflow-hidden">
+                  <div className="bg-[#1a1a1a]/30 backdrop-blur-xl border border-white/10 rounded-[32px] p-8 md:p-10 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-copper-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
                     
                     <div className="relative z-10 mb-10">

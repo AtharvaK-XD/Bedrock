@@ -32,7 +32,7 @@ const GenericNode = ({ data, selected }: any) => {
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={cn(
-        "relative p-4 rounded-xl border w-[260px] bg-[#1a1a1a]/95 backdrop-blur-xl transition-colors duration-200",
+        "relative p-4 rounded-xl border w-[260px] bg-[#1a1a1a]/40 backdrop-blur-xl transition-colors duration-200",
         selected ? 'border-copper-500 shadow-[0_0_30px_rgba(255,165,0,0.2)]' : 'border-white/10 hover:border-white/30',
         "shadow-2xl"
       )}
@@ -122,7 +122,7 @@ function FlowEditor() {
 
   return (
     <div className="w-full h-full relative flex flex-col rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-      <div className="flex-1 w-full bg-[#0a0a0a]">
+      <div className="flex-1 w-full bg-transparent">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -168,7 +168,7 @@ function FlowEditor() {
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
-        className="absolute bottom-6 right-6 z-10 bg-[#1a1a1a]/90 backdrop-blur-2xl border border-white/10 p-1.5 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-2"
+        className="absolute bottom-6 right-6 z-10 bg-[#1a1a1a]/40 backdrop-blur-2xl border border-white/10 p-1.5 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-2"
       >
         <motion.button 
           whileHover={{ scale: 1.02 }}

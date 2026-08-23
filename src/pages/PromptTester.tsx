@@ -185,7 +185,7 @@ export default function PromptTester() {
       <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 lg:gap-8 h-[700px]">
         {/* Left: Input */}
         <div className="flex flex-col gap-6 h-full">
-          <div className="bg-[#1a1a1a]/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-5 flex flex-col flex-1 relative overflow-hidden group">
+          <div className="bg-[#1a1a1a]/30 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-5 flex flex-col flex-1 relative overflow-hidden group">
             <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">System Prompt (Optional)</h3>
             <textarea
               value={systemPrompt}
