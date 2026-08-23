@@ -136,7 +136,7 @@ export default function Billing() {
   }, [controls]);
 
   // Spring configurations for realistic paper snapping
-  const paperSpring = { type: "spring", damping: 15, stiffness: 60, mass: 1 };
+  const paperSpring = { type: "spring" as const, damping: 15, stiffness: 60, mass: 1 };
   
   return (
     <PageTransition>

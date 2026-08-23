@@ -1,7 +1,7 @@
-import React, { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Environment, MeshTransmissionMaterial, Float, ContactShadows, useScroll } from '@react-three/drei';
-import { EffectComposer, DepthOfField, Bloom, Noise, Vignette, ChromaticAberration } from '@react-three/postprocessing';
+import { Environment, MeshTransmissionMaterial, Float, ContactShadows } from '@react-three/drei';
+import { EffectComposer, Bloom, Noise, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { BlendFunction } from 'postprocessing';
 
@@ -12,7 +12,7 @@ const LiquidGlassCore = () => {
 
   const currentScrollProgress = useRef(0);
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     if (materialRef.current) {
       // Slowly pulse the distortion to make it look alive/organic
       materialRef.current.time = state.clock.elapsedTime;
@@ -107,7 +107,7 @@ export const Scene3D = () => {
         <ContactShadows position={[0, -3.5, 0]} opacity={0.5} scale={15} blur={2.5} far={4} resolution={256} frames={1} />
         
         {/* Cinematic Post-Processing */}
-        <EffectComposer disableNormalPass multisampling={0}>
+        <EffectComposer multisampling={0}>
           <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} height={300} opacity={0.5} />
           <Noise opacity={0.035} blendFunction={BlendFunction.OVERLAY} />
           <Vignette eskil={false} offset={0.1} darkness={1.1} />
