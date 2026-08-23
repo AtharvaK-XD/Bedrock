@@ -171,7 +171,7 @@ export default function Result() {
   const docPaneContent = (
     <>
       {/* Document Header */}
-      <div className="flex-none p-4 border-b border-white/5 bg-[#1a1a1a] flex items-center justify-between">
+      <div className="flex-none p-4 border-b border-white/5 bg-transparent flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-white/10 p-2 rounded-lg flex items-center justify-center">
             <FileText className="w-5 h-5 text-gray-300" />

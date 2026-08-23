@@ -79,7 +79,7 @@ export default function Settings() {
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 bg-[#1a1a1a]/60 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-sm min-h-[500px] relative overflow-hidden">
+        <main className="flex-1 bg-[#1a1a1a]/30 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-sm min-h-[500px] relative overflow-hidden">
           <AnimatePresence mode="wait">
             {activeTab === 'account' && (
               <motion.div

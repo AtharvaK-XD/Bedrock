@@ -141,8 +141,8 @@ export default function Pricing() {
               className={cn(
                 "relative flex flex-col p-8 rounded-3xl border transition-all duration-300",
                 tier.isPopular 
-                  ? "bg-[#1a1a1a]/80 border-teal-500/50 shadow-2xl shadow-teal-500/10" 
-                  : "bg-black/40 border-white/10 hover:border-white/20 hover:bg-[#1a1a1a]/40"
+                  ? "bg-[#1a1a1a]/40 border-teal-500/50 shadow-2xl shadow-teal-500/10" 
+                  : "bg-black/20 border-white/10 hover:border-white/20 hover:bg-[#1a1a1a]/30"
               )}
             >
             {tier.isPopular && (
