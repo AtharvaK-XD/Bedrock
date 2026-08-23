@@ -40,7 +40,7 @@ Do not include any markdown formatting, just the raw JSON array.`;
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.3,
     }),
@@ -98,7 +98,7 @@ Format this entirely in beautiful Markdown.`;
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
     }),
@@ -134,7 +134,7 @@ The JSON object must have exactly two keys:
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.5,
     }),
@@ -237,10 +237,10 @@ export const testPrompt = async (modelId: string, systemPrompt: string, userProm
   }
 
   // Fallback to Groq for everything else (assuming Groq supports it, or mapping to a default groq model)
-  // For safety, we will map unknown models to llama-3.3-70b-versatile for the demo
-  const groqModel = modelId === 'llama-3-70b' ? 'llama-3.3-70b-versatile' 
+  // For safety, we will map unknown models to llama-3.1-70b-versatile for the demo
+  const groqModel = modelId === 'llama-3-70b' ? 'llama-3.1-70b-versatile' 
     : modelId === 'llama-3-8b' ? 'llama-3.1-8b-instant'
-    : 'llama-3.3-70b-versatile';
+    : 'llama-3.1-70b-versatile';
 
   const response = await fetch('/api/groq/openai/v1/chat/completions', {
     method: 'POST',
