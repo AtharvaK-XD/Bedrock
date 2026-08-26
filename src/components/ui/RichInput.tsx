@@ -648,6 +648,7 @@ export function RichInput({
               Weekly: {Math.round((weeklyTokens / WEEKLY_LIMIT) * 100)}% · resets in {timeUntilWeekly}
             </span>
           </div>
+        </div>
         </motion.div>
         )}
       </AnimatePresence>
