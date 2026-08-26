@@ -1,7 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import {
   ReactFlow,
-  Controls,
   Background,
   applyNodeChanges,
   applyEdgeChanges,
@@ -136,9 +135,9 @@ function FlowEditor() {
           panOnScroll={true}
           fitView
           className="bg-transparent"
+          proOptions={{ hideAttribution: true }}
         >
           <Background variant={BackgroundVariant.Dots} color="rgba(255,255,255,0.08)" gap={20} size={2} />
-          <Controls className="bg-[#222] border-white/10 fill-white" showInteractive={false} />
         </ReactFlow>
       </div>
       
