@@ -43,12 +43,12 @@ const GenericNode = ({ data, selected }: any) => {
       <Handle type="source" id="left" position={Position.Left} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
       
       <input 
-        className="nodrag bg-transparent w-full font-display font-medium text-sm text-gray-100 mb-2 focus:outline-none focus:bg-white/5 rounded px-1.5 py-0.5 -mx-1.5 transition-colors" 
+        className="nodrag bg-transparent w-full font-display font-medium text-sm text-gray-100 mb-2 focus:outline-none focus:bg-white/5 rounded px-1.5 py-0.5 -mx-1.5 transition-colors group-[.is-pan-mode]/flow:pointer-events-none" 
         defaultValue={data.title}
         placeholder="Node Title"
       />
       <textarea 
-        className="nodrag bg-transparent w-full text-gray-400 text-[13px] leading-relaxed resize-none focus:outline-none focus:bg-white/5 rounded px-1.5 py-1 -mx-1.5 min-h-[60px] transition-colors" 
+        className="nodrag bg-transparent w-full text-gray-400 text-[13px] leading-relaxed resize-none focus:outline-none focus:bg-white/5 rounded px-1.5 py-1 -mx-1.5 min-h-[60px] transition-colors group-[.is-pan-mode]/flow:pointer-events-none" 
         defaultValue={data.content}
         placeholder="Enter details here..."
       />
@@ -120,7 +120,10 @@ function FlowEditor() {
   };
 
   return (
-    <div className="w-full h-full relative flex flex-col rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+    <div className={cn(
+      "w-full h-full relative flex flex-col rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] group/flow",
+      toolMode === 'pan' && "is-pan-mode"
+    )}>
       <div className="flex-1 w-full bg-transparent">
         <ReactFlow
           nodes={nodes}
