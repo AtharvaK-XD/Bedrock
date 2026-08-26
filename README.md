@@ -70,6 +70,3 @@ The compiled binaries will be available in the `src-tauri/target/release/bundle/
 ## 🎨 Design Philosophy
 
 Bedrock prioritizes an ultra-premium aesthetic. You will find meticulously crafted glassmorphism, dynamic 3D folding animations, and buttery-smooth page transitions designed to make prompt engineering feel less like a chore and more like a creative experience.
-
----
-*Developed by Bedrock Inc.*
