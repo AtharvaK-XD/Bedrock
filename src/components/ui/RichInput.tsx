@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings, Globe, BotMessageSquare, Network, Wind, Compass, Zap, Database, X } from 'lucide-react';
 import type { IdeaPayload } from '../../lib/mockApi';
 
@@ -191,6 +192,7 @@ export function RichInput({
 }: RichInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -331,11 +333,14 @@ export function RichInput({
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setActiveDropdown(null);
+        if (!value.trim()) {
+          setIsExpanded(false);
+        }
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [value]);
 
   const defaultPlaceholders = [
     "Help me review a tricky pull request in a legacy codebase...",
@@ -396,12 +401,49 @@ export function RichInput({
   const selectedModel = selectedAgent.models.find(m => m.id === selectedModelId) || selectedAgent.models[0];
 
   return (
-    <div ref={containerRef} className="bg-[#111]/40 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl transition-all focus-within:ring-4 focus-within:ring-copper-500/20 focus-within:border-copper-500/30 flex flex-col relative group">
+    <motion.div 
+      ref={containerRef}
+      initial={false}
+      animate={{
+        height: isExpanded ? 'auto' : 56,
+        borderRadius: isExpanded ? 24 : 28,
+      }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+      className={cn(
+        "bg-[#111]/40 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden transition-all focus-within:ring-4 focus-within:ring-copper-500/20 focus-within:border-copper-500/30 flex flex-col relative group cursor-text",
+        !isExpanded && "hover:border-white/20"
+      )}
+      onClick={() => {
+        if (!isExpanded) {
+          setIsExpanded(true);
+          setTimeout(() => textareaRef.current?.focus(), 50);
+        }
+      }}
+    >
       {/* Subtle gradient overlay for extra glass texture */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none z-0 rounded-3xl"></div>
       
-      {/* Content wrapper to stay above background effects */}
-      <div className="relative z-10 flex flex-col h-full">
+      <AnimatePresence mode="wait">
+        {!isExpanded ? (
+          <motion.div 
+            key="collapsed"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="flex items-center h-full px-6 gap-4 relative z-10 w-full text-gray-400"
+          >
+            <span className="text-[15px] font-medium truncate">{placeholderText || "Type something..."}</span>
+          </motion.div>
+        ) : (
+          <motion.div 
+            key="expanded"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="relative z-10 flex flex-col h-full w-full"
+          >
         {/* Top Toolbar */}
         <div className="flex items-center gap-2 p-3 border-b border-white/5 bg-transparent">
           <div className="relative">
@@ -606,8 +648,9 @@ export function RichInput({
               Weekly: {Math.round((weeklyTokens / WEEKLY_LIMIT) * 100)}% · resets in {timeUntilWeekly}
             </span>
           </div>
-        </div>
-      </div>
-    </div>
+        </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
