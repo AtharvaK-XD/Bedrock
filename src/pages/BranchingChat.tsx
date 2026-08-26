@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+atioimport { useCallback, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -15,6 +15,11 @@ import {
   BackgroundVariant,
   ConnectionMode,
   ReactFlowProvider,
+  BaseEdge,
+  EdgeLabelRenderer,
+  getSmoothStepPath,
+  useReactFlow,
+  type EdgeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -23,10 +28,66 @@ import { Plus, Hand, MousePointer2, Trash2 } from 'lucide-react';
 import { ExpandableChatbox } from '../components/ui/ExpandableChatbox';
 import { motion } from 'framer-motion';
 
+// Custom Edge with Delete Button
+const DeletableEdge = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style = {},
+  markerEnd,
+  selected,
+}: EdgeProps) => {
+  const { setEdges } = useReactFlow();
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  const onEdgeClick = () => {
+    setEdges((edges) => edges.filter((e) => e.id !== id));
+  };
+
+  return (
+    <>
+      <BaseEdge
+        path={edgePath}
+        markerEnd={markerEnd}
+        style={{ ...style, strokeWidth: selected ? 3 : 2, stroke: selected ? '#ff9b71' : '#fff' }}
+      />
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            pointerEvents: 'all',
+          }}
+          className="nodrag nopan"
+        >
+          <button
+            className="w-5 h-5 flex items-center justify-center bg-[#1a1a1a] border border-white/20 rounded-full text-gray-400 hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/10 transition-colors shadow-lg"
+            onClick={onEdgeClick}
+            title="Delete Connection"
+          >
+            <Trash2 size={10} />
+          </button>
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+};
+
 // Generic Node component with 4 handles
 const GenericNode = ({ data, selected }: any) => {
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.8, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -41,14 +102,14 @@ const GenericNode = ({ data, selected }: any) => {
       <Handle type="source" id="right" position={Position.Right} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
       <Handle type="source" id="bottom" position={Position.Bottom} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
       <Handle type="source" id="left" position={Position.Left} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
-      
-      <input 
-        className="nodrag bg-transparent w-full font-display font-medium text-sm text-gray-100 mb-2 focus:outline-none focus:bg-white/5 rounded px-1.5 py-0.5 -mx-1.5 transition-colors group-[.is-pan-mode]/flow:pointer-events-none" 
+
+      <input
+        className="nodrag bg-transparent w-full font-display font-medium text-sm text-gray-100 mb-2 focus:outline-none focus:bg-white/5 rounded px-1.5 py-0.5 -mx-1.5 transition-colors group-[.is-pan-mode]/flow:pointer-events-none"
         defaultValue={data.title}
         placeholder="Node Title"
       />
-      <textarea 
-        className="nodrag bg-transparent w-full text-gray-400 text-[13px] leading-relaxed resize-none focus:outline-none focus:bg-white/5 rounded px-1.5 py-1 -mx-1.5 min-h-[60px] transition-colors group-[.is-pan-mode]/flow:pointer-events-none" 
+      <textarea
+        className="nodrag bg-transparent w-full text-gray-400 text-[13px] leading-relaxed resize-none focus:outline-none focus:bg-white/5 rounded px-1.5 py-1 -mx-1.5 min-h-[60px] transition-colors group-[.is-pan-mode]/flow:pointer-events-none"
         defaultValue={data.content}
         placeholder="Enter details here..."
       />
@@ -57,6 +118,7 @@ const GenericNode = ({ data, selected }: any) => {
 };
 
 const nodeTypes = { genericNode: GenericNode };
+const edgeTypes = { deletableEdge: DeletableEdge };
 
 const initialNodes: Node[] = [
   {
@@ -82,7 +144,7 @@ function FlowEditor() {
     []
   );
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#fff', strokeWidth: 2 } }, eds)),
+    (params: Connection) => setEdges((eds) => addEdge({ ...params, type: 'deletableEdge', animated: true, style: { stroke: '#fff', strokeWidth: 2 } }, eds)),
     []
   );
 
@@ -93,7 +155,7 @@ function FlowEditor() {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
-      
+
       if (e.key.toLowerCase() === 'h') {
         setToolMode('pan');
       } else if (e.key.toLowerCase() === 'v') {
@@ -132,6 +194,8 @@ function FlowEditor() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={{ type: 'deletableEdge' }}
           connectionMode={ConnectionMode.Loose}
           panOnDrag={toolMode === 'pan'}
           selectionOnDrag={toolMode === 'select'}
@@ -143,36 +207,36 @@ function FlowEditor() {
           <Background variant={BackgroundVariant.Dots} color="rgba(255,255,255,0.08)" gap={20} size={2} />
         </ReactFlow>
       </div>
-      
+
       {/* Chatbox (Center) */}
-      <motion.div 
+      <motion.div
         initial={{ y: 50, x: "-50%", opacity: 0 }}
         animate={{ y: 0, x: "-50%", opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.1 }}
         className="absolute bottom-6 left-1/2 z-10 w-[90%] max-w-2xl"
       >
-        <ExpandableChatbox 
+        <ExpandableChatbox
           className="w-full"
           onSubmit={(text) => {
-             const newNode: Node = {
-               id: `node-${Date.now()}`,
-               type: 'genericNode',
-               position: { x: 300 + Math.random() * 50, y: 200 + Math.random() * 50 },
-               data: { title: 'AI Response', content: `You asked: "${text}"\n\n(This is a placeholder response node)` },
-             };
-             setNodes((nds) => [...nds, newNode].map(n => ({ ...n, selected: false })));
-          }} 
+            const newNode: Node = {
+              id: `node-${Date.now()}`,
+              type: 'genericNode',
+              position: { x: 300 + Math.random() * 50, y: 200 + Math.random() * 50 },
+              data: { title: 'AI Response', content: `You asked: "${text}"\n\n(This is a placeholder response node)` },
+            };
+            setNodes((nds) => [...nds, newNode].map(n => ({ ...n, selected: false })));
+          }}
         />
       </motion.div>
 
       {/* Floating Toolbar (Right) */}
-      <motion.div 
+      <motion.div
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
         className="absolute bottom-6 right-6 z-10 bg-[#1a1a1a]/40 backdrop-blur-2xl border border-white/10 p-1.5 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-2"
       >
-        <motion.button 
+        <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.95 }}
           onClick={addNode}
@@ -181,10 +245,10 @@ function FlowEditor() {
           <Plus size={16} />
           <span>Add Node</span>
         </motion.button>
-        
+
         <div className="w-px h-8 bg-white/10 mx-1"></div>
-        
-        <motion.button 
+
+        <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setToolMode('select')}
@@ -197,8 +261,8 @@ function FlowEditor() {
           <MousePointer2 size={16} />
           <span className="hidden sm:inline">Select (V)</span>
         </motion.button>
-        
-        <motion.button 
+
+        <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setToolMode('pan')}
@@ -213,8 +277,8 @@ function FlowEditor() {
         </motion.button>
 
         <div className="w-px h-8 bg-white/10 mx-1"></div>
-        
-        <motion.button 
+
+        <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={deleteSelected}
