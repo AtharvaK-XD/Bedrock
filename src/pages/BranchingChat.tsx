@@ -229,64 +229,28 @@ function FlowEditor() {
         />
       </motion.div>
 
-      {/* Floating Toolbar (Right) */}
+      {/* Top Left Toolbar */}
       <motion.div
-        initial={{ y: 50, opacity: 0 }}
+        initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
-        className="absolute bottom-6 right-6 z-10 bg-[#1a1a1a]/40 backdrop-blur-2xl border border-white/10 p-1.5 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-2"
+        className="absolute top-6 left-6 z-10 flex items-center gap-3"
       >
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.95 }}
           onClick={addNode}
-          className="flex items-center gap-2 bg-copper-500 hover:bg-copper-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+          className="flex items-center gap-2 bg-copper-500 hover:bg-copper-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-black/20"
         >
           <Plus size={16} />
           <span>Add Node</span>
         </motion.button>
 
-        <div className="w-px h-8 bg-white/10 mx-1"></div>
-
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setToolMode('select')}
-          className={cn(
-            "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
-            toolMode === 'select' ? "bg-white/10 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
-          )}
-          title="Select Mode (V)"
-        >
-          <MousePointer2 size={16} />
-          <span className="hidden sm:inline">Select (V)</span>
-        </motion.button>
-
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setToolMode('pan')}
-          className={cn(
-            "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
-            toolMode === 'pan' ? "bg-white/10 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
-          )}
-          title="Pan Mode (H)"
-        >
-          <Hand size={16} />
-          <span className="hidden sm:inline">Pan (H)</span>
-        </motion.button>
-
-        <div className="w-px h-8 bg-white/10 mx-1"></div>
-
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={deleteSelected}
-          className="flex items-center justify-center p-2 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
-          title="Delete Selected (Backspace/Del)"
-        >
-          <Trash2 size={18} />
-        </motion.button>
+        <div className="flex items-center gap-3 px-4 py-2 bg-[#1a1a1a]/40 backdrop-blur-2xl border border-white/10 rounded-xl text-xs font-medium text-gray-400 shadow-lg shadow-black/20">
+          <span className={toolMode === 'select' ? "text-white drop-shadow-md" : ""}>Press V to Select</span>
+          <div className="w-1 h-1 rounded-full bg-white/20"></div>
+          <span className={toolMode === 'pan' ? "text-white drop-shadow-md" : ""}>Press H to Pan</span>
+        </div>
       </motion.div>
     </div>
   );
