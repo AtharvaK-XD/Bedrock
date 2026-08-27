@@ -1,65 +1,135 @@
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { 
-  Sparkles, GitBranch, FlaskConical, BookOpen, 
-  ArrowUpRight, Zap, Activity, TerminalSquare
-} from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
-import { cn } from '../lib/utils';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Html, Line } from '@react-three/drei';
+import * as THREE from 'three';
+import { useRef } from 'react';
 
 // --- MOCK DATA ---
-const CHART_DATA = [32, 45, 28, 60, 42, 80, 55, 90, 70, 110, 85, 130];
-const MAX_CHART = Math.max(...CHART_DATA);
-
 const RECENT_EXECUTIONS = [
-  { id: 'req_8f72k', model: 'gpt-4o', task: 'Generate React Component', tokens: '4,021', latency: '843ms', status: 'success' },
-  { id: 'req_2m9x1', model: 'claude-3.5', task: 'Customer Support Extraction', tokens: '12,402', latency: '2.1s', status: 'success' },
-  { id: 'req_9p4v0', model: 'gpt-4o-mini', task: 'Format JSON Payload', tokens: '342', latency: '120ms', status: 'success' },
-  { id: 'req_5k1b2', model: 'llama-3-70b', task: 'Creative Story Draft', tokens: '2,890', latency: '1.4s', status: 'success' },
-  { id: 'req_3x8m9', model: 'gpt-4o', task: 'Code Review Agent', tokens: '8,102', latency: '3.4s', status: 'error' },
+  { id: 'TRC-8F72K9', time: '14:22:01.042', node: 'SYSTEM_PROMPT_01', model: 'gpt-4o', tokens: 4021, latency: 843, status: 'OK' },
+  { id: 'TRC-2M9X1B', time: '14:22:00.891', node: 'DATA_EXTRACT_A', model: 'claude-3.5', tokens: 12402, latency: 2104, status: 'OK' },
+  { id: 'TRC-9P4V0C', time: '14:21:58.112', node: 'ROUTER_NODE', model: 'gpt-4o-mini', tokens: 342, latency: 120, status: 'OK' },
+  { id: 'TRC-5K1B2F', time: '14:21:55.663', node: 'CREATIVE_AGENT', model: 'llama-3-70b', tokens: 2890, latency: 1420, status: 'OK' },
+  { id: 'TRC-3X8M9Z', time: '14:21:50.001', node: 'CODE_REVIEW', model: 'gpt-4o', tokens: 8102, latency: 3411, status: 'ERR_TIMEOUT' },
+  { id: 'TRC-1A2B3C', time: '14:21:48.552', node: 'SYSTEM_PROMPT_01', model: 'gpt-4o', tokens: 412, latency: 198, status: 'OK' },
 ];
 
 const QUICK_ACTIONS = [
-  { title: 'Prompt Generator', path: '/app/generator', icon: Sparkles, color: 'text-copper-400' },
-  { title: 'Branching Pipeline', path: '/app/branching', icon: GitBranch, color: 'text-blue-400' },
-  { title: 'A/B Prompt Tester', path: '/app/tester', icon: FlaskConical, color: 'text-purple-400' },
-  { title: 'Prompt Library', path: '/app/library', icon: BookOpen, color: 'text-green-400' },
+  { title: 'PROMPT_GENERATOR', path: '/app/generator', shortcut: '⌘G' },
+  { title: 'BRANCHING_PIPELINE', path: '/app/branching', shortcut: '⌘B' },
+  { title: 'PROMPT_TESTER', path: '/app/tester', shortcut: '⌘T' },
+  { title: 'PROMPT_LIBRARY', path: '/app/library', shortcut: '⌘L' },
 ];
 
 // --- COMPONENTS ---
 
-function SparklineChart() {
-  const points = CHART_DATA.map((val, i) => {
-    const x = (i / (CHART_DATA.length - 1)) * 100;
-    const y = 100 - (val / MAX_CHART) * 100;
-    return `${x},${y}`;
-  }).join(' ');
+const NODES = [
+  { id: 'INGEST', pos: [-3, 0, 0], color: '#3b82f6' },
+  { id: 'ROUTER', pos: [-1, 1, 1], color: '#ffffff' },
+  { id: 'GPT-4', pos: [2, 1.5, -1], color: '#10b981' },
+  { id: 'CLAUDE-3', pos: [1, -1.5, 2], color: '#f59e0b' },
+  { id: 'EGRESS', pos: [4, 0, 0], color: '#ffffff' }
+];
+
+const EDGES = [
+  [0, 1], // Ingest -> Router
+  [1, 2], // Router -> GPT-4
+  [1, 3], // Router -> Claude
+  [2, 4], // GPT-4 -> Egress
+  [3, 4]  // Claude -> Egress
+];
+
+function TopologyNode({ position, color, label }: { position: number[], color: string, label: string }) {
+  return (
+    <group position={new THREE.Vector3(...position)}>
+      <mesh>
+        <icosahedronGeometry args={[0.3, 0]} />
+        <meshBasicMaterial color={color} wireframe />
+      </mesh>
+      {/* Glow Core */}
+      <mesh>
+        <sphereGeometry args={[0.1, 16, 16]} />
+        <meshBasicMaterial color={color} toneMapped={false} transparent opacity={0.8} />
+      </mesh>
+      <Html center distanceFactor={12}>
+        <div className="text-[10px] font-mono text-white/70 bg-black/80 px-1.5 py-0.5 border border-white/20 select-none whitespace-nowrap tracking-wider backdrop-blur-sm shadow-xl">
+          {label}
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+function AnimatedPacket({ start, end, color, speed, delay }: { start: number[], end: number[], color: string, speed: number, delay: number }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const vStart = new THREE.Vector3(...start);
+  const vEnd = new THREE.Vector3(...end);
+  const distance = vStart.distanceTo(vEnd);
+  
+  useFrame(({ clock }) => {
+    const t = ((clock.elapsedTime * speed) + delay) % distance;
+    const progress = t / distance;
+    if (meshRef.current) {
+      meshRef.current.position.lerpVectors(vStart, vEnd, progress);
+    }
+  });
 
   return (
-    <div className="relative w-full h-full flex flex-col justify-end mt-4">
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-16 overflow-visible">
-        <defs>
-          <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(255, 165, 0, 0.4)" />
-            <stop offset="100%" stopColor="rgba(255, 165, 0, 0.0)" />
-          </linearGradient>
-        </defs>
-        <polygon 
-          points={`0,100 ${points} 100,100`} 
-          fill="url(#chart-gradient)" 
-          className="animate-pulse opacity-50"
-        />
-        <polyline 
-          points={points} 
-          fill="none" 
-          stroke="#ffa500" 
-          strokeWidth="2" 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          className="drop-shadow-[0_0_8px_rgba(255,165,0,0.5)]"
-        />
-      </svg>
-      <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a]/80 to-transparent pointer-events-none" />
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[0.06, 16, 16]} />
+      <meshBasicMaterial color={color} toneMapped={false} />
+    </mesh>
+  );
+}
+
+function NetworkTopology3D() {
+  return (
+    <div className="relative w-full h-[300px] sm:h-[400px] border border-white/10 bg-[#050505] overflow-hidden flex items-center justify-center font-mono text-[10px] text-white/40 cursor-move">
+      <Canvas camera={{ position: [0, 0, 7], fov: 45 }} gl={{ antialias: true }}>
+        <color attach="background" args={['#050505']} />
+        
+        {/* Subtle ambient light just in case */}
+        <ambientLight intensity={0.5} />
+        
+        <OrbitControls autoRotate autoRotateSpeed={1.0} enableZoom={false} enablePan={false} />
+        
+        {/* Edges */}
+        {EDGES.map((edge, i) => (
+          <Line
+            key={`edge-${i}`}
+            points={[
+              new THREE.Vector3(...NODES[edge[0]].pos), 
+              new THREE.Vector3(...NODES[edge[1]].pos)
+            ]}
+            color="rgba(255,255,255,0.15)"
+            lineWidth={1}
+          />
+        ))}
+
+        {/* Nodes */}
+        {NODES.map((node, i) => (
+          <TopologyNode key={`node-${i}`} position={node.pos} color={node.color} label={node.id} />
+        ))}
+
+        {/* Animated Packets */}
+        <AnimatedPacket start={NODES[0].pos} end={NODES[1].pos} color="#3b82f6" speed={1.5} delay={0} />
+        <AnimatedPacket start={NODES[0].pos} end={NODES[1].pos} color="#3b82f6" speed={1.5} delay={1.5} />
+        
+        <AnimatedPacket start={NODES[1].pos} end={NODES[2].pos} color="#10b981" speed={2} delay={0.5} />
+        <AnimatedPacket start={NODES[1].pos} end={NODES[3].pos} color="#f59e0b" speed={1.2} delay={1} />
+        
+        <AnimatedPacket start={NODES[2].pos} end={NODES[4].pos} color="#10b981" speed={2.5} delay={0} />
+        <AnimatedPacket start={NODES[3].pos} end={NODES[4].pos} color="#f59e0b" speed={1.8} delay={2} />
+
+      </Canvas>
+      
+      {/* Overlay Status */}
+      <div className="absolute top-4 left-4 flex flex-col gap-1 pointer-events-none">
+        <span className="text-white/80 font-semibold tracking-widest">3D_TOPOLOGY_MONITOR</span>
+        <span>STATUS: ACTIVE_SIMULATION</span>
+        <span>ENGINE: WEBGL_R3F</span>
+      </div>
     </div>
   );
 }
@@ -67,177 +137,128 @@ function SparklineChart() {
 export default function Dashboard() {
   return (
     <PageTransition>
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar text-white">
+      <div className="w-full h-full overflow-y-auto bg-black text-white font-mono selection:bg-white/20 custom-scrollbar pb-12">
         
-        {/* Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[160px] pb-12">
+        {/* HEADER / TICKER */}
+        <header className="w-full border-b border-white/10 px-4 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 bg-black/90 backdrop-blur-md z-10">
+          <div className="flex items-center gap-4">
+            <h1 className="text-sm font-bold tracking-widest uppercase">Bedrock / Cmd_Center</h1>
+            <div className="h-4 w-px bg-white/20 hidden sm:block" />
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)] animate-pulse" />
+              <span className="text-xs text-green-400 font-semibold tracking-widest">SYS_ONLINE</span>
+            </div>
+          </div>
           
-          {/* HERO CARD (2x2) */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
-            className="md:col-span-2 md:row-span-2 relative bg-[#111] rounded-3xl border border-white/5 overflow-hidden flex flex-col p-8 group"
-          >
-            {/* Geometric / Orb Background */}
-            <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-copper-500/20 rounded-full blur-[80px] pointer-events-none group-hover:bg-copper-500/30 transition-all duration-1000" />
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none mix-blend-overlay" />
+          <div className="flex flex-wrap items-center gap-4 sm:gap-8 text-xs text-white/60 tracking-widest">
+            <div className="flex gap-2">
+              <span className="text-white/30">P99_LAT:</span>
+              <span className="text-white">242ms</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-white/30">TOK/SEC:</span>
+              <span className="text-white">14.2K</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-white/30">ERR_RT:</span>
+              <span className="text-red-400">0.04%</span>
+            </div>
+          </div>
+        </header>
+
+        <div className="w-full px-4 sm:px-8 pt-8 flex flex-col gap-8">
+          
+          {/* TOP SECTION: Topology & Actions */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             
-            <div className="relative z-10 flex-1 flex flex-col">
-              <div className="flex items-center gap-2 mb-auto">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                <span className="text-xs font-mono text-green-400 uppercase tracking-widest">Engine Online</span>
+            {/* Main Viz */}
+            <div className="lg:col-span-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs text-white/50 tracking-widest">TRAFFIC_ROUTING_GRAPH</h2>
+                <span className="text-[10px] text-white/30">REFRESH_RATE: 1000ms</span>
               </div>
-              
-              <div className="mt-8">
-                <h1 className="text-4xl font-display font-medium tracking-tight mb-3">
-                  Welcome back,<br/><span className="text-copper-400 font-serif italic">Atharva</span>
-                </h1>
-                <p className="text-gray-400 text-sm max-w-sm leading-relaxed">
-                  Your AI infrastructure is operating at peak efficiency. 12 active workflows are currently routing traffic across 4 models.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* USAGE CHART (2x1) */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
-            className="md:col-span-2 md:row-span-1 bg-[#151515] rounded-3xl border border-white/5 p-6 flex flex-col relative overflow-hidden"
-          >
-            <div className="flex justify-between items-start z-10">
-              <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Total Tokens (7d)</h3>
-                <div className="text-2xl font-mono text-white">4.28M</div>
-              </div>
-              <div className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-400/10 px-2 py-1 rounded-md">
-                <ArrowUpRight className="w-3 h-3" /> 14.2%
-              </div>
-            </div>
-            <SparklineChart />
-          </motion.div>
-
-          {/* METRIC: LATENCY (1x1) */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
-            className="md:col-span-1 md:row-span-1 bg-[#151515] rounded-3xl border border-white/5 p-6 flex flex-col justify-between group hover:border-white/10 transition-colors"
-          >
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-              <Activity className="w-4 h-4 text-blue-400" />
-              P95 Latency
-            </h3>
-            <div>
-              <div className="text-3xl font-mono text-white mb-1">245<span className="text-lg text-gray-500">ms</span></div>
-              <p className="text-xs text-gray-400">Across all active models</p>
-            </div>
-          </motion.div>
-
-          {/* METRIC: COST LIMIT (1x1) */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
-            className="md:col-span-1 md:row-span-1 bg-[#151515] rounded-3xl border border-white/5 p-6 flex flex-col justify-between group hover:border-white/10 transition-colors"
-          >
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-              <Zap className="w-4 h-4 text-copper-400" />
-              Cost Guardrail
-            </h3>
-            <div className="w-full">
-              <div className="flex justify-between text-xs mb-2 font-mono">
-                <span className="text-white">$42.50</span>
-                <span className="text-gray-500">$100</span>
-              </div>
-              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full bg-copper-500 w-[42.5%] rounded-full" />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* EXECUTION LOG (3x2) */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}
-            className="md:col-span-3 md:row-span-2 bg-[#111] rounded-3xl border border-white/5 p-6 flex flex-col overflow-hidden"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                <TerminalSquare className="w-4 h-4 text-gray-400" />
-                Live Execution Log
-              </h2>
-              <button className="text-xs text-gray-500 hover:text-white transition-colors font-medium flex items-center gap-1">
-                View All <ArrowUpRight className="w-3 h-3" />
-              </button>
+              <NetworkTopology3D />
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar -mx-2 px-2">
-              <table className="w-full text-left border-collapse">
+            {/* Quick Actions (Terminal Style) */}
+            <div className="lg:col-span-1 flex flex-col gap-2">
+              <h2 className="text-xs text-white/50 tracking-widest">EXECUTABLES</h2>
+              <div className="flex-1 border border-white/10 bg-[#050505] p-4 flex flex-col gap-1">
+                {QUICK_ACTIONS.map((action, idx) => (
+                  <Link 
+                    key={action.title} 
+                    to={action.path}
+                    className="group flex items-center justify-between p-2 hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-white/30 group-hover:text-white transition-colors">{`0${idx + 1}_`}</span>
+                      <span className="text-sm tracking-wide group-hover:font-bold transition-all">{action.title}</span>
+                    </div>
+                    <span className="text-[10px] text-white/20 border border-white/10 px-1.5 py-0.5 group-hover:text-white/60 group-hover:border-white/30 transition-colors">
+                      {action.shortcut}
+                    </span>
+                  </Link>
+                ))}
+                
+                <div className="mt-auto pt-4 border-t border-white/10">
+                  <div className="text-[10px] text-white/30 leading-relaxed">
+                    <span className="text-blue-400">{'>'}</span> sys.info()<br/>
+                    Build: 1.0.4-rc2<br/>
+                    Region: us-east-1<br/>
+                    Load: 24%
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+
+          {/* BOTTOM SECTION: Telemetry Log */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs text-white/50 tracking-widest">TRACE_LOG (LAST_6_EVENTS)</h2>
+              <div className="flex gap-2">
+                <button className="text-[10px] border border-white/10 px-2 py-1 hover:bg-white/10 transition-colors">EXPORT_CSV</button>
+                <button className="text-[10px] border border-white/10 px-2 py-1 hover:bg-white/10 transition-colors">CLEAR</button>
+              </div>
+            </div>
+            
+            <div className="w-full border border-white/10 bg-[#050505] overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
                 <thead>
-                  <tr className="text-[10px] uppercase tracking-widest text-gray-500 border-b border-white/5">
-                    <th className="pb-3 font-semibold">Request ID</th>
-                    <th className="pb-3 font-semibold">Model</th>
-                    <th className="pb-3 font-semibold hidden sm:table-cell">Task</th>
-                    <th className="pb-3 font-semibold text-right">Tokens</th>
-                    <th className="pb-3 font-semibold text-right">Latency</th>
+                  <tr className="text-white/40 border-b border-white/10 bg-white/[0.02]">
+                    <th className="p-3 font-normal tracking-widest">TRACE_ID</th>
+                    <th className="p-3 font-normal tracking-widest">TIMESTAMP</th>
+                    <th className="p-3 font-normal tracking-widest">NODE_ORIGIN</th>
+                    <th className="p-3 font-normal tracking-widest">MODEL_TARGET</th>
+                    <th className="p-3 font-normal tracking-widest text-right">TOKENS</th>
+                    <th className="p-3 font-normal tracking-widest text-right">LATENCY(ms)</th>
+                    <th className="p-3 font-normal tracking-widest text-right">STATUS</th>
                   </tr>
                 </thead>
-                <tbody className="text-sm">
+                <tbody className="text-white/80">
                   {RECENT_EXECUTIONS.map((exec, idx) => (
-                    <tr key={idx} className="border-b border-white/5 group hover:bg-white/[0.02] transition-colors">
-                      <td className="py-3 font-mono text-gray-400 text-xs">
-                        {exec.id}
+                    <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.03] transition-colors cursor-crosshair">
+                      <td className="p-3 text-white/50">{exec.id}</td>
+                      <td className="p-3">{exec.time}</td>
+                      <td className="p-3">{exec.node}</td>
+                      <td className="p-3">
+                        <span className="bg-white/10 px-1.5 py-0.5">{exec.model}</span>
                       </td>
-                      <td className="py-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/5 text-white border border-white/10">
-                          {exec.model}
+                      <td className="p-3 text-right">{exec.tokens}</td>
+                      <td className="p-3 text-right">{exec.latency}</td>
+                      <td className="p-3 text-right">
+                        <span className={exec.status === 'OK' ? 'text-green-400' : 'text-red-400'}>
+                          [{exec.status}]
                         </span>
-                      </td>
-                      <td className="py-3 text-gray-300 truncate max-w-[200px] hidden sm:table-cell">
-                        {exec.task}
-                      </td>
-                      <td className="py-3 font-mono text-gray-400 text-right text-xs">
-                        {exec.tokens}
-                      </td>
-                      <td className="py-3 font-mono text-right text-xs flex items-center justify-end gap-2">
-                        {exec.latency}
-                        <div className={cn("w-1.5 h-1.5 rounded-full", exec.status === 'success' ? 'bg-green-500' : 'bg-red-500')} />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </motion.div>
-
-          {/* QUICK ACTIONS (1x2) */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }}
-            className="md:col-span-1 md:row-span-2 bg-[#151515] rounded-3xl border border-white/5 p-4 flex flex-col"
-          >
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4 px-2 mt-2">
-              Workspaces
-            </h2>
-            <div className="flex flex-col gap-2">
-              {QUICK_ACTIONS.map((action) => (
-                <Link 
-                  key={action.title} 
-                  to={action.path}
-                  className="group relative flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-all duration-300"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-black border border-white/5 flex items-center justify-center shadow-inner group-hover:border-white/10 transition-colors">
-                    <action.icon className={cn("w-5 h-5", action.color)} />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-gray-200 group-hover:text-white transition-colors">{action.title}</h3>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-gray-600 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-white transition-all duration-300" />
-                </Link>
-              ))}
-            </div>
-            
-            <div className="mt-auto p-4 bg-copper-500/10 border border-copper-500/20 rounded-2xl mx-2 mb-2">
-              <h4 className="text-xs font-semibold text-copper-400 mb-1">Pro Tip</h4>
-              <p className="text-xs text-copper-200/60 leading-relaxed">
-                Connect your GitHub repository to automatically sync prompts to your codebase.
-              </p>
-            </div>
-          </motion.div>
-
+          </div>
+          
         </div>
       </div>
     </PageTransition>
