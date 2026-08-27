@@ -6,6 +6,7 @@ import Lenis from 'lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Landing from './pages/Landing';
+import Dashboard from './pages/Dashboard';
 import Wizard from './pages/Wizard';
 import Result from './pages/Result';
 import BranchingChat from './pages/BranchingChat';
@@ -41,7 +42,8 @@ function AnimatedRoutes() {
           element={
             <AppLayout>
               <Routes>
-                <Route path="/" element={<Wizard />} />
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/generator" element={<Wizard />} />
                 <Route path="/branching" element={<BranchingChat />} />
                 <Route path="/tester" element={<PromptTester />} />
                 <Route path="/library" element={<Library />} />
