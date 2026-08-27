@@ -24,10 +24,88 @@ import {
 import '@xyflow/react/dist/style.css';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
-import { Plus, Hand, MousePointer2, Trash2, Play, Settings, Bot, FileText, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { 
+  Plus, Hand, MousePointer2, Trash2, Play, Settings, Bot, FileText, 
+  CheckCircle2, AlertCircle, X, Database, GitBranch, Code, Merge, ListChecks 
+} from 'lucide-react';
 import { ExpandableChatbox } from '../components/ui/ExpandableChatbox';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
+
+export const NODE_CONFIG = {
+  system: { 
+    title: 'System Persona', 
+    desc: 'Sets base context & behavior', 
+    icon: Settings, 
+    color: 'text-blue-400', 
+    bg: 'bg-blue-500/10',
+    border: 'border-blue-500/20',
+    hoverBorder: 'hover:border-blue-500/50' 
+  },
+  prompt: { 
+    title: 'User Prompt', 
+    desc: 'Main instruction or input', 
+    icon: FileText, 
+    color: 'text-copper-400', 
+    bg: 'bg-copper-500/10',
+    border: 'border-copper-500/20',
+    hoverBorder: 'hover:border-copper-500/50' 
+  },
+  output: { 
+    title: 'AI Output', 
+    desc: 'Response validation & chaining', 
+    icon: Bot, 
+    color: 'text-green-400', 
+    bg: 'bg-green-500/10',
+    border: 'border-green-500/20',
+    hoverBorder: 'hover:border-green-500/50' 
+  },
+  data: { 
+    title: 'Data Context', 
+    desc: 'Inject variables or documents', 
+    icon: Database, 
+    color: 'text-purple-400', 
+    bg: 'bg-purple-500/10',
+    border: 'border-purple-500/20',
+    hoverBorder: 'hover:border-purple-500/50' 
+  },
+  condition: { 
+    title: 'Condition / If', 
+    desc: 'Route based on AI response', 
+    icon: GitBranch, 
+    color: 'text-yellow-400', 
+    bg: 'bg-yellow-500/10',
+    border: 'border-yellow-500/20',
+    hoverBorder: 'hover:border-yellow-500/50' 
+  },
+  code: { 
+    title: 'Code Script', 
+    desc: 'Execute custom logic', 
+    icon: Code, 
+    color: 'text-red-400', 
+    bg: 'bg-red-500/10',
+    border: 'border-red-500/20',
+    hoverBorder: 'hover:border-red-500/50' 
+  },
+  merge: { 
+    title: 'Merge Nodes', 
+    desc: 'Combine multiple inputs', 
+    icon: Merge, 
+    color: 'text-teal-400', 
+    bg: 'bg-teal-500/10',
+    border: 'border-teal-500/20',
+    hoverBorder: 'hover:border-teal-500/50' 
+  },
+  evaluation: { 
+    title: 'Evaluation', 
+    desc: 'Grade output quality', 
+    icon: ListChecks, 
+    color: 'text-indigo-400', 
+    bg: 'bg-indigo-500/10',
+    border: 'border-indigo-500/20',
+    hoverBorder: 'hover:border-indigo-500/50' 
+  }
+};
 
 // Define custom node data type
 export type PromptNodeData = {
@@ -36,7 +114,7 @@ export type PromptNodeData = {
   agentId: string;
   modelId: string;
   status: 'idle' | 'running' | 'success' | 'error';
-  nodeType: 'system' | 'prompt' | 'output';
+  nodeType: keyof typeof NODE_CONFIG;
   output?: string;
 };
 
@@ -102,6 +180,8 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
   
   const agent = AI_AGENTS.find(a => a.id === data.agentId) || AI_AGENTS[0];
   const model = agent.models.find(m => m.id === data.modelId) || agent.models[0];
+  
+  const config = NODE_CONFIG[data.nodeType] || NODE_CONFIG.prompt;
 
   const handleRun = () => {
     // Mock run logic
@@ -114,7 +194,7 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
     setTimeout(() => {
       setNodes(nodes => nodes.map(n => {
         if (n.id === id) {
-          return { ...n, data: { ...n.data, status: 'success', output: 'Simulated output based on: ' + (data.description || data.title) } };
+          return { ...n, data: { ...n.data, status: 'success', output: `Simulated ${config.title} execution for:\n` + (data.description || data.title) } };
         }
         return n;
       }));
@@ -140,16 +220,12 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
       {/* Node Header */}
       <div className={cn(
         "flex items-center justify-between px-3 py-2 border-b rounded-t-xl",
-        data.nodeType === 'system' ? 'bg-blue-500/10 border-blue-500/20' :
-        data.nodeType === 'output' ? 'bg-green-500/10 border-green-500/20' :
-        'bg-copper-500/10 border-copper-500/20'
+        config.bg, config.border
       )}>
         <div className="flex items-center gap-2">
-           {data.nodeType === 'system' ? <Settings className="w-4 h-4 text-blue-400" /> :
-            data.nodeType === 'output' ? <Bot className="w-4 h-4 text-green-400" /> :
-            <FileText className="w-4 h-4 text-copper-400" />}
+           <config.icon className={cn("w-4 h-4", config.color)} />
            <span className="text-[11px] font-semibold tracking-wide uppercase text-white/70">
-             {data.nodeType === 'system' ? 'System' : data.nodeType === 'output' ? 'Output' : 'Prompt'}
+             {config.title}
            </span>
         </div>
         <div className="flex items-center gap-1.5 bg-[#111] px-2 py-1 rounded-md border border-white/5">
@@ -256,13 +332,14 @@ function FlowEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const addNode = (type: 'system' | 'prompt' | 'output' = 'prompt') => {
+  const addNode = (type: keyof typeof NODE_CONFIG = 'prompt') => {
+    const config = NODE_CONFIG[type];
     const newNode: Node = {
       id: `node-${Date.now()}`,
       type: 'genericNode',
       position: { x: 300 + Math.random() * 50, y: 200 + Math.random() * 50 },
       data: { 
-        title: `New ${type.charAt(0).toUpperCase() + type.slice(1)} Node`, 
+        title: `New ${config.title}`, 
         description: '',
         agentId: 'chatgpt',
         modelId: 'gpt-4o',
@@ -362,19 +439,21 @@ function FlowEditor() {
                 {/* Node Type */}
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Node Type</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['system', 'prompt', 'output'] as const).map(type => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(NODE_CONFIG).map(([type, cfg]) => (
                       <button
                         key={type}
-                        onClick={() => onNodeDataChange(selectedNode.id, { nodeType: type })}
+                        onClick={() => onNodeDataChange(selectedNode.id, { nodeType: type as keyof typeof NODE_CONFIG })}
                         className={cn(
-                          "px-2 py-2 rounded-lg text-xs font-medium capitalize border transition-all",
+                          "px-2 py-2 rounded-lg text-[11px] font-medium capitalize border transition-all flex items-center justify-center gap-1.5",
                           selectedNode.data.nodeType === type 
-                            ? "bg-copper-500/20 border-copper-500/50 text-copper-400 shadow-inner" 
-                            : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+                            ? cn(cfg.bg, cfg.border, cfg.color, "shadow-inner") 
+                            : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"
                         )}
+                        title={cfg.desc}
                       >
-                        {type}
+                        <cfg.icon className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{type}</span>
                       </button>
                     ))}
                   </div>
@@ -422,15 +501,16 @@ function FlowEditor() {
                 
                 <button 
                   onClick={() => {
+                    const cfg = NODE_CONFIG[selectedNode.data.nodeType];
                     onNodeDataChange(selectedNode.id, { status: 'running', output: undefined });
                     setTimeout(() => {
                       onNodeDataChange(selectedNode.id, { 
                         status: 'success', 
-                        output: `Simulated response for: "${selectedNode.data.title}"\n\nBased on your prompt: ${selectedNode.data.description}` 
+                        output: `Simulated ${cfg.title} execution for: "${selectedNode.data.title}"\n\nBased on your prompt: ${selectedNode.data.description}` 
                       });
                     }, 2000);
                   }}
-                  className="w-full py-3 bg-white text-black rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors shadow-lg"
+                  className="w-full py-3 bg-white text-black rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors shadow-lg shrink-0 mt-auto"
                 >
                   <Play className="w-4 h-4 fill-current" />
                   Execute Node
@@ -446,27 +526,23 @@ function FlowEditor() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 50, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="absolute top-1/2 right-6 -translate-y-1/2 flex flex-col gap-3 z-20"
+            className="absolute top-6 right-6 flex flex-col items-end gap-3 z-20 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar p-2 -mr-2"
           >
-            {[
-              { type: 'system', title: 'System Persona', desc: 'Sets base context & behavior', icon: Settings, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20 hover:border-blue-500/50' },
-              { type: 'prompt', title: 'User Prompt', desc: 'Main instruction or input', icon: FileText, color: 'text-copper-400', bg: 'bg-copper-500/10 border-copper-500/20 hover:border-copper-500/50' },
-              { type: 'output', title: 'AI Output', desc: 'Response validation & chaining', icon: Bot, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20 hover:border-green-500/50' },
-            ].map((item) => (
+            {Object.entries(NODE_CONFIG).map(([type, item]) => (
               <button
-                key={item.type}
-                onClick={() => addNode(item.type as any)}
+                key={type}
+                onClick={() => addNode(type as keyof typeof NODE_CONFIG)}
                 className={cn(
-                  "group flex items-center p-3 rounded-xl border bg-[#1a1a1a]/80 backdrop-blur-xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap",
+                  "group flex items-center p-3 rounded-xl border bg-[#1a1a1a]/80 backdrop-blur-xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap shrink-0",
                   "w-[56px] hover:w-[260px]",
-                  item.bg
+                  item.bg, item.border, item.hoverBorder
                 )}
               >
                 <div className={cn("p-2 rounded-lg shrink-0 bg-black/40", item.color)}>
                   <item.icon className="w-5 h-5" />
                 </div>
                 <div className="ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100 text-left">
-                  <div className="text-sm font-semibold text-white group-hover:text-copper-400 transition-colors">{item.title}</div>
+                  <div className={cn("text-sm font-semibold transition-colors", item.color)}>{item.title}</div>
                   <div className="text-[11px] text-gray-400 mt-0.5">{item.desc}</div>
                 </div>
               </button>
