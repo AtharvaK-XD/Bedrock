@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Paperclip, Mic, ChevronDown, Bot, Code, Edit3, Settings, Globe, BotMessageSquare, Network, Wind, Compass, Zap, Database, X } from 'lucide-react';
 import type { IdeaPayload } from '../../lib/mockApi';
 
