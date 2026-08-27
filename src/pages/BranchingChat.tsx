@@ -28,7 +28,7 @@ import { cn } from '../lib/utils';
 import { 
   Trash2, Play, Settings, Bot, FileText, 
   CheckCircle2, AlertCircle, X, Database, GitBranch, Code, Merge, ListChecks,
-  ChevronDown, MousePointer2
+  ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
@@ -297,7 +297,7 @@ function CustomSelect({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+      if (ref.current && !ref.current.contains(e.target as HTMLElement)) setIsOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
