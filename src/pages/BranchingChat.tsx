@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -26,7 +26,8 @@ import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { 
   Trash2, Play, Settings, Bot, FileText, 
-  CheckCircle2, AlertCircle, X, Database, GitBranch, Code, Merge, ListChecks 
+  CheckCircle2, AlertCircle, X, Database, GitBranch, Code, Merge, ListChecks,
+  ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
@@ -275,6 +276,74 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
 const nodeTypes = { genericNode: GenericNode };
 const edgeTypes = { deletableEdge: DeletableEdge };
 
+// Custom Select Dropdown Component
+function CustomSelect({ 
+  value, 
+  options, 
+  onChange, 
+  renderValue,
+  renderOption 
+}: { 
+  value: string, 
+  options: any[], 
+  onChange: (val: string) => void,
+  renderValue?: (opt: any) => React.ReactNode,
+  renderOption?: (opt: any) => React.ReactNode
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find((o) => o.id === value) || options[0];
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white hover:border-white/20 transition-colors focus:outline-none focus:border-copper-500/50 shadow-inner"
+      >
+        <div className="truncate flex items-center gap-2">
+          {renderValue ? renderValue(selected) : selected?.name}
+        </div>
+        <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform", isOpen && "rotate-180")} />
+      </button>
+      
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-50 w-full mt-1.5 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-[240px] overflow-y-auto custom-scrollbar flex flex-col p-1.5"
+          >
+            {options.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => { onChange(option.id); setIsOpen(false); }}
+                className={cn(
+                  "w-full text-left px-3 py-2 text-sm transition-colors rounded-lg flex items-center gap-2",
+                  value === option.id ? "bg-copper-500/15 text-copper-400 font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
+                )}
+              >
+                {renderOption ? renderOption(option) : option.name}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 const initialNodes: Node<PromptNodeData>[] = [
   {
     id: 'node-1',
@@ -462,28 +531,32 @@ function FlowEditor() {
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">AI Model</label>
                   <div className="space-y-2">
-                    <select 
+                    <CustomSelect 
                       value={selectedNode.data.agentId}
-                      onChange={(e) => {
-                        const newAgent = AI_AGENTS.find(a => a.id === e.target.value)!;
+                      options={AI_AGENTS}
+                      onChange={(agentId) => {
+                        const newAgent = AI_AGENTS.find(a => a.id === agentId)!;
                         onNodeDataChange(selectedNode.id, { agentId: newAgent.id, modelId: newAgent.models[0].id });
                       }}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-copper-500/50"
-                    >
-                      {AI_AGENTS.map(agent => (
-                        <option key={agent.id} value={agent.id}>{agent.name}</option>
-                      ))}
-                    </select>
+                      renderValue={(agent) => (
+                        <>
+                          <AgentIcon agent={agent} className="w-4 h-4 rounded-sm" />
+                          <span>{agent.name}</span>
+                        </>
+                      )}
+                      renderOption={(agent) => (
+                        <>
+                          <AgentIcon agent={agent} className="w-4 h-4 rounded-sm" />
+                          <span>{agent.name}</span>
+                        </>
+                      )}
+                    />
                     
-                    <select 
+                    <CustomSelect 
                       value={selectedNode.data.modelId}
-                      onChange={(e) => onNodeDataChange(selectedNode.id, { modelId: e.target.value })}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-gray-300 focus:outline-none focus:border-copper-500/50"
-                    >
-                      {(AI_AGENTS.find(a => a.id === selectedNode.data.agentId) || AI_AGENTS[0]).models.map(model => (
-                        <option key={model.id} value={model.id}>{model.name}</option>
-                      ))}
-                    </select>
+                      options={(AI_AGENTS.find(a => a.id === selectedNode.data.agentId) || AI_AGENTS[0]).models}
+                      onChange={(modelId) => onNodeDataChange(selectedNode.id, { modelId })}
+                    />
                   </div>
                 </div>
                 
