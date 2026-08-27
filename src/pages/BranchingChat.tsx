@@ -323,7 +323,8 @@ function CustomSelect({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 w-full mt-1.5 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-[240px] overflow-y-auto custom-scrollbar flex flex-col p-1.5"
+            onWheel={(e) => e.stopPropagation()}
+            className="absolute z-50 w-full mt-1.5 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-x-hidden max-h-[240px] overflow-y-auto custom-scrollbar flex flex-col p-1.5 nowheel nopan nodrag"
           >
             {options.map((option) => (
               <button
@@ -465,7 +466,7 @@ function FlowEditor() {
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
-        className="absolute top-6 left-6 z-10 flex items-center gap-3"
+        className="absolute top-6 left-6 z-10 flex items-center gap-3 nowheel nopan nodrag"
       >
         <div className="flex items-center gap-3 px-4 py-2 bg-[#1a1a1a]/60 backdrop-blur-2xl border border-white/10 rounded-xl text-xs font-medium text-gray-400 shadow-lg shadow-black/20">
           <span className={toolMode === 'select' ? "text-white drop-shadow-md" : ""}>Press V to Select</span>
@@ -486,7 +487,8 @@ function FlowEditor() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 400, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="absolute top-4 right-4 bottom-4 w-80 bg-[#1a1a1a]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-20 overflow-hidden"
+            onWheel={(e) => e.stopPropagation()}
+            className="absolute top-4 right-4 bottom-4 w-80 bg-[#1a1a1a]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-20 overflow-hidden nowheel nopan nodrag"
           >
             <div className="flex flex-col h-full w-80">
               <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
@@ -565,12 +567,12 @@ function FlowEditor() {
                 </div>
                 
                 {/* Description / Prompt */}
-                <div className="space-y-2 flex-1 flex flex-col">
+                <div className="space-y-2 flex flex-col">
                   <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Prompt Context</label>
                   <textarea 
                     value={selectedNode.data.description}
                     onChange={(e) => onNodeDataChange(selectedNode.id, { description: e.target.value })}
-                    className="w-full flex-1 min-h-[150px] bg-black/50 border border-white/10 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-copper-500/50 focus:ring-1 focus:ring-copper-500/50 transition-all resize-none custom-scrollbar"
+                    className="w-full min-h-[200px] bg-black/50 border border-white/10 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-copper-500/50 focus:ring-1 focus:ring-copper-500/50 transition-all resize-y custom-scrollbar"
                     placeholder="Enter the prompt instructions or context for this node..."
                   />
                 </div>
@@ -586,7 +588,7 @@ function FlowEditor() {
                       });
                     }, 2000);
                   }}
-                  className="w-full py-3 bg-white text-black rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors shadow-lg shrink-0 mt-auto"
+                  className="w-full py-3 bg-white text-black rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors shadow-lg shrink-0 mt-6"
                 >
                   <Play className="w-4 h-4 fill-current" />
                   Execute Node
@@ -602,7 +604,8 @@ function FlowEditor() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 50, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="absolute top-6 right-6 flex flex-col items-end gap-3 z-20 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar p-2 -mr-2"
+            onWheel={(e) => e.stopPropagation()}
+            className="absolute top-6 right-6 flex flex-col items-end gap-3 z-20 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar p-2 -mr-2 nowheel nopan nodrag"
           >
             {Object.entries(NODE_CONFIG).map(([type, item]) => (
               <button
