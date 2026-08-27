@@ -20,6 +20,7 @@ import {
   getBezierPath,
   useReactFlow,
   type EdgeProps,
+  SelectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -27,7 +28,7 @@ import { cn } from '../lib/utils';
 import { 
   Trash2, Play, Settings, Bot, FileText, 
   CheckCircle2, AlertCircle, X, Database, GitBranch, Code, Merge, ListChecks,
-  ChevronDown
+  ChevronDown, MousePointer2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
@@ -418,7 +419,9 @@ function FlowEditor() {
     setNodes((nds) => [...nds.map(n => ({...n, selected: false})), { ...newNode, selected: true }]);
   };
 
-  const selectedNode = nodes.find(n => n.selected);
+  const selectedNodes = nodes.filter(n => n.selected);
+  const selectedNode = selectedNodes.length === 1 ? selectedNodes[0] : null;
+  const isMultiSelect = selectedNodes.length > 1;
 
   const onNodeDataChange = (id: string, newData: Partial<PromptNodeData>) => {
     setNodes(nds => nds.map(n => {
@@ -445,8 +448,9 @@ function FlowEditor() {
           edgeTypes={edgeTypes}
           defaultEdgeOptions={{ type: 'deletableEdge' }}
           connectionMode={ConnectionMode.Loose}
-          panOnDrag={toolMode === 'pan'}
+          panOnDrag={toolMode === 'pan' ? true : [1, 2]}
           selectionOnDrag={toolMode === 'select'}
+          selectionMode={SelectionMode.Partial}
           panOnScroll={true}
           fitView
           className="bg-transparent"
@@ -474,7 +478,7 @@ function FlowEditor() {
 
       {/* Right UI Overlays */}
       <AnimatePresence mode="wait">
-        {selectedNode ? (
+        {isMultiSelect ? null : selectedNode ? (
           /* Node Settings Editor */
           <motion.div
             key="editor"

@@ -62,3 +62,8 @@
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   }
 }
+
+/* React Flow Overrides */
+.react-flow__nodesselection-rect {
+  display: none !important;
+}
