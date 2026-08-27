@@ -17,7 +17,7 @@ import {
   ReactFlowProvider,
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
+  getBezierPath,
   useReactFlow,
   type EdgeProps,
 } from '@xyflow/react';
@@ -42,7 +42,7 @@ const DeletableEdge = ({
   selected,
 }: EdgeProps) => {
   const { setEdges } = useReactFlow();
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -98,10 +98,10 @@ const GenericNode = ({ data, selected }: any) => {
       )}
     >
       {/* 4 Handles for loose connection mode */}
-      <Handle type="source" id="top" position={Position.Top} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
-      <Handle type="source" id="right" position={Position.Right} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
-      <Handle type="source" id="bottom" position={Position.Bottom} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
-      <Handle type="source" id="left" position={Position.Left} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 hover:scale-125 transition-transform hover:border-copper-400" />
+      <Handle type="source" id="top" position={Position.Top} className="w-3 h-3 !-top-1.5 !bg-zinc-900 border-2 !border-zinc-400 transition-colors hover:!border-copper-400" />
+      <Handle type="source" id="right" position={Position.Right} className="w-3 h-3 !-right-1.5 !bg-zinc-900 border-2 !border-zinc-400 transition-colors hover:!border-copper-400" />
+      <Handle type="source" id="bottom" position={Position.Bottom} className="w-3 h-3 !-bottom-1.5 !bg-zinc-900 border-2 !border-zinc-400 transition-colors hover:!border-copper-400" />
+      <Handle type="source" id="left" position={Position.Left} className="w-3 h-3 !-left-1.5 !bg-zinc-900 border-2 !border-zinc-400 transition-colors hover:!border-copper-400" />
 
       <input
         className="nodrag bg-transparent w-full font-display font-medium text-sm text-gray-100 mb-2 focus:outline-none focus:bg-white/5 rounded px-1.5 py-0.5 -mx-1.5 transition-colors group-[.is-pan-mode]/flow:pointer-events-none"
