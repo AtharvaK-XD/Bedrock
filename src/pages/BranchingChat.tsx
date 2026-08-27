@@ -25,10 +25,9 @@ import '@xyflow/react/dist/style.css';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { 
-  Plus, Hand, MousePointer2, Trash2, Play, Settings, Bot, FileText, 
+  Trash2, Play, Settings, Bot, FileText, 
   CheckCircle2, AlertCircle, X, Database, GitBranch, Code, Merge, ListChecks 
 } from 'lucide-react';
-import { ExpandableChatbox } from '../components/ui/ExpandableChatbox';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 
@@ -276,7 +275,7 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
 const nodeTypes = { genericNode: GenericNode };
 const edgeTypes = { deletableEdge: DeletableEdge };
 
-const initialNodes: Node[] = [
+const initialNodes: Node<PromptNodeData>[] = [
   {
     id: 'node-1',
     type: 'genericNode',
@@ -288,18 +287,18 @@ const initialNodes: Node[] = [
       modelId: 'gpt-4o',
       nodeType: 'system',
       status: 'idle'
-    } as PromptNodeData,
+    },
   },
 ];
 const initialEdges: Edge[] = [];
 
 function FlowEditor() {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes);
+  const [nodes, setNodes] = useState<Node<PromptNodeData>[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [toolMode, setToolMode] = useState<'pan' | 'select'>('select');
 
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as Node<PromptNodeData>[]),
     []
   );
   const onEdgesChange = useCallback(
@@ -334,7 +333,7 @@ function FlowEditor() {
 
   const addNode = (type: keyof typeof NODE_CONFIG = 'prompt') => {
     const config = NODE_CONFIG[type];
-    const newNode: Node = {
+    const newNode: Node<PromptNodeData> = {
       id: `node-${Date.now()}`,
       type: 'genericNode',
       position: { x: 300 + Math.random() * 50, y: 200 + Math.random() * 50 },
@@ -345,7 +344,7 @@ function FlowEditor() {
         modelId: 'gpt-4o',
         nodeType: type,
         status: 'idle'
-      } as PromptNodeData,
+      },
     };
     setNodes((nds) => [...nds.map(n => ({...n, selected: false})), { ...newNode, selected: true }]);
   };
