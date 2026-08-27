@@ -608,7 +608,6 @@ export function RichInput({
             </span>
           </div>
         </div>
-        </div>
       </div>
     </div>
   );
