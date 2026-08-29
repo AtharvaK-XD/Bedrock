@@ -14,7 +14,7 @@ import {
 import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
 
-type Tab = 'account' | 'api-keys' | 'appearance' | 'notifications' | 'privacy';
+type Tab = 'account' | 'api-keys' | 'notifications' | 'privacy';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<Tab>('account');
@@ -33,7 +33,6 @@ export default function Settings() {
   const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'account', label: 'Account Profile', icon: User },
     { id: 'api-keys', label: 'Models & API Keys', icon: Key },
-    { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'privacy', label: 'Privacy & Data', icon: Shield },
   ];
@@ -198,38 +197,6 @@ export default function Settings() {
                         placeholder="sk-..."
                         className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
                       />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {activeTab === 'appearance' && (
-              <motion.div
-                key="appearance"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-8"
-              >
-                <div>
-                  <h2 className="text-xl font-bold text-white mb-6">Appearance</h2>
-                  
-                  <div className="space-y-4">
-                    <label className="text-sm font-semibold text-white">Theme</label>
-                    <div className="grid grid-cols-3 gap-4">
-                      {['Light', 'Dark', 'System'].map((theme, i) => (
-                        <button 
-                          key={theme}
-                          className={cn(
-                            "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all",
-                            i === 0 ? "border-copper-500 bg-copper-500/5 ring-1 ring-copper-500" : "border-white/10 bg-transparent hover:bg-white/5 text-white"
-                          )}
-                        >
-                          <div className={cn("w-12 h-8 rounded-md mb-3 border", i === 1 ? "bg-[#111] border-white/10" : "bg-transparent border-white/20")}></div>
-                          <span className={cn("text-sm font-semibold", i === 0 ? "text-copper-400" : "text-gray-300")}>{theme}</span>
-                        </button>
-                      ))}
                     </div>
                   </div>
                 </div>
