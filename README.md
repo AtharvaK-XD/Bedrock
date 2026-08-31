@@ -269,4 +269,3 @@ In production desktop runtime environments, requests leverage native network cap
 
 - **Oxlint Integration**: Bedrock utilizes Oxlint for performant linting without runtime overhead.
 - **Strict TypeScript**: Configured with strict type validation to ensure type safety across all graph nodes, model interfaces, and API responses.
-- **Modular Component Design**: Presentation components and layout containers are decoupled from API orchestration hooks.
