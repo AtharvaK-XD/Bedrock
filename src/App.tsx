@@ -15,6 +15,7 @@ import Library from './pages/Library';
 import Pricing from './pages/Pricing';
 import Billing from './pages/Billing';
 import SettingsPage from './pages/Settings';
+import AuthPage from './pages/Auth';
 import { AppLayout } from './components/layout/AppLayout';
 import { checkForUpdates } from './lib/updater';
 
@@ -28,13 +29,18 @@ function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* Public Route (No AppLayout) */}
+        {/* Public Routes (No AppLayout) */}
         <Route 
           path="/" 
           element={
             ('__TAURI_INTERNALS__' in window) ? <Navigate to="/app" replace /> : <Landing />
           } 
         />
+        <Route path="/login" element={<AuthPage defaultMode="login" />} />
+        <Route path="/signin" element={<AuthPage defaultMode="login" />} />
+        <Route path="/signup" element={<AuthPage defaultMode="register" />} />
+        <Route path="/join" element={<AuthPage defaultMode="register" />} />
+        <Route path="/register" element={<AuthPage defaultMode="register" />} />
         
         {/* App Routes (Wrapped in AppLayout) */}
         <Route 
