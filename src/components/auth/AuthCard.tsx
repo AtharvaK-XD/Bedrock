@@ -3,8 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Mail, Lock, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-export function AuthCard() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+interface AuthCardProps {
+  initialMode?: 'login' | 'register';
+}
+
+export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
+  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -35,14 +39,14 @@ export function AuthCard() {
 
   return (
     <div className="w-full max-w-xl mx-auto">
-      <div className="bg-black/40 backdrop-blur-3xl border border-white/5 rounded-[2rem] p-10 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.8)] relative overflow-hidden">
+      <div className="bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-8 sm:p-10 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.8)] relative overflow-hidden">
 
         <div className="relative z-10">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-display font-bold text-white tracking-tight">
               {mode === 'login' ? 'Welcome back' : 'Create account'}
             </h2>
-            <p className="text-gray-400 mt-2">
+            <p className="text-gray-400 mt-2 text-sm">
               {mode === 'login' ? 'Enter your details to sign in.' : 'Start building perfect prompts today.'}
             </p>
           </div>
@@ -61,7 +65,7 @@ export function AuthCard() {
                     <input 
                       type="text" 
                       placeholder="Full Name" 
-                      required
+                      required={mode === 'register'}
                       className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
                     />
                   </div>
@@ -91,7 +95,7 @@ export function AuthCard() {
 
             {mode === 'login' && (
               <div className="flex justify-end">
-                <button type="button" className="text-sm font-medium text-teal-500 hover:text-teal-400 transition-colors">
+                <button type="button" className="text-sm font-medium text-copper-400 hover:text-copper-300 transition-colors cursor-pointer">
                   Forgot password?
                 </button>
               </div>
@@ -100,10 +104,10 @@ export function AuthCard() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-4 group"
+              className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-4 group cursor-pointer"
             >
               {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
               ) : (
                 <>
                   {mode === 'login' ? 'Sign in' : 'Create account'}
@@ -118,7 +122,7 @@ export function AuthCard() {
               <div className="w-full border-t border-white/10"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-black/20 backdrop-blur-md rounded-full border border-white/5 text-gray-400">Or continue with</span>
+              <span className="px-4 bg-black/40 backdrop-blur-md rounded-full border border-white/5 text-gray-400 text-xs uppercase tracking-wider">Or continue with</span>
             </div>
           </div>
 
@@ -126,7 +130,7 @@ export function AuthCard() {
             <button
               type="button"
               onClick={() => navigate('/app')}
-              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm"
+              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer"
             >
               <GoogleIcon />
               {mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}
@@ -134,7 +138,7 @@ export function AuthCard() {
             <button
               type="button"
               onClick={() => navigate('/app')}
-              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm"
+              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer"
             >
               <GithubIcon />
               {mode === 'login' ? 'Sign in with GitHub' : 'Sign up with GitHub'}
@@ -146,7 +150,7 @@ export function AuthCard() {
             <button 
               type="button"
               onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-              className="font-semibold text-teal-500 hover:text-teal-400 transition-colors"
+              className="font-semibold text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
             >
               {mode === 'login' ? 'Sign up' : 'Sign in'}
             </button>
