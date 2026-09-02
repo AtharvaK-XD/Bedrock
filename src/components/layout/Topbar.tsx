@@ -1,6 +1,7 @@
 import { Layers, Sparkles, GitBranch, FlaskConical, BookOpen, Settings, LayoutDashboard } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Link, useLocation } from 'react-router-dom';
+import { useUserProfile } from '../../lib/useUserProfile';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/app' },
@@ -12,6 +13,7 @@ const navItems = [
 
 export function Topbar() {
   const location = useLocation();
+  const { profile } = useUserProfile();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-20 border-b border-white/5 bg-black/60 backdrop-blur-xl">
@@ -56,15 +58,27 @@ export function Topbar() {
             <Settings className="w-5 h-5" />
           </Link>
           <div className="h-8 w-px bg-white/10"></div>
-          <button className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <Link 
+            to="/app/profile" 
+            className={cn(
+              "flex items-center gap-3 p-1.5 -mr-1.5 rounded-2xl group transition-all duration-200 border",
+              location.pathname === '/app/profile'
+                ? "bg-white/10 border-copper-500/40 shadow-sm shadow-copper-500/10"
+                : "border-transparent hover:bg-white/5 hover:border-white/10"
+            )}
+            title="View Profile"
+          >
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-white leading-none">Atharva K.</p>
-              <p className="text-xs text-gray-400 mt-1">Free Plan</p>
+              <p className="text-sm font-semibold text-white leading-none group-hover:text-copper-300 transition-colors">{profile.name}</p>
+              <p className="text-xs text-gray-400 mt-1 flex items-center justify-end gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                {profile.plan}
+              </p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold shadow-md">
-              AK
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold shadow-md ring-2 ring-transparent group-hover:ring-copper-400/50 transition-all">
+              {profile.avatarInitials}
             </div>
-          </button>
+          </Link>
         </div>
       </div>
     </header>

@@ -15,6 +15,7 @@ import Library from './pages/Library';
 import Pricing from './pages/Pricing';
 import Billing from './pages/Billing';
 import SettingsPage from './pages/Settings';
+import Profile from './pages/Profile';
 import AuthPage from './pages/Auth';
 import { AppLayout } from './components/layout/AppLayout';
 import { checkForUpdates } from './lib/updater';
@@ -41,6 +42,7 @@ function AnimatedRoutes() {
         <Route path="/signup" element={<AuthPage defaultMode="register" />} />
         <Route path="/join" element={<AuthPage defaultMode="register" />} />
         <Route path="/register" element={<AuthPage defaultMode="register" />} />
+        <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
         
         {/* App Routes (Wrapped in AppLayout) */}
         <Route 
@@ -57,6 +59,7 @@ function AnimatedRoutes() {
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/billing" element={<Billing />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/profile" element={<Profile />} />
               </Routes>
             </AppLayout>
           } 
