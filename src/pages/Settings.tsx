@@ -12,21 +12,27 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
+import { Link } from 'react-router-dom';
+import { useUserProfile } from '../lib/useUserProfile';
 
 type Tab = 'account' | 'api-keys' | 'notifications' | 'privacy';
 
 export default function Settings() {
+  const { profile, updateProfile } = useUserProfile();
   const [activeTab, setActiveTab] = useState<Tab>('account');
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [name, setName] = useState(profile.name);
+  const [email, setEmail] = useState(profile.email);
 
   const handleSave = () => {
     setIsSaving(true);
+    updateProfile({ name, email });
     setTimeout(() => {
       setIsSaving(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    }, 800);
+    }, 600);
   };
 
   const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -88,11 +94,16 @@ export default function Settings() {
                 className="space-y-8"
               >
                 <div>
-                  <h2 className="text-xl font-bold text-white mb-6">Account Profile</h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-white">Account Profile</h2>
+                    <Link to="/app/profile" className="text-xs font-semibold text-copper-400 hover:text-copper-300 flex items-center gap-1">
+                      View Full Profile & Activity &rarr;
+                    </Link>
+                  </div>
                   
                   <div className="flex items-center gap-6 mb-8">
                     <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold text-2xl shadow-md">
-                      AK
+                      {profile.avatarInitials}
                     </div>
                     <div>
                       <button className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-lg transition-colors">
@@ -107,7 +118,8 @@ export default function Settings() {
                       <label className="text-sm font-semibold text-gray-300">Full Name</label>
                       <input 
                         type="text" 
-                        defaultValue="Atharva K."
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                         className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all"
                       />
                     </div>
@@ -115,7 +127,8 @@ export default function Settings() {
                       <label className="text-sm font-semibold text-gray-300">Email Address</label>
                       <input 
                         type="email" 
-                        defaultValue="atharva@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all"
                       />
                     </div>
