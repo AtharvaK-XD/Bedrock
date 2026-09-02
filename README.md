@@ -262,10 +262,3 @@ During development in browser environments, cross-origin resource sharing (CORS)
 - `/api/huggingface/*` -> Proxied to `https://api-inference.huggingface.co`
 
 In production desktop runtime environments, requests leverage native network capabilities governed by Tauri's secure permission set (`src-tauri/capabilities/`).
-
----
-
-## Code Quality and Standards
-
-- **Oxlint Integration**: Bedrock utilizes Oxlint for performant linting without runtime overhead.
-- **Strict TypeScript**: Configured with strict type validation to ensure type safety across all graph nodes, model interfaces, and API responses.
