@@ -260,5 +260,3 @@ During development in browser environments, cross-origin resource sharing (CORS)
 - `/api/groq/*` -> Proxied to `https://api.groq.com`
 - `/api/openrouter/*` -> Proxied to `https://openrouter.ai/api`
 - `/api/huggingface/*` -> Proxied to `https://api-inference.huggingface.co`
-
-In production desktop runtime environments, requests leverage native network capabilities governed by Tauri's secure permission set (`src-tauri/capabilities/`).
