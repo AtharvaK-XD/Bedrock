@@ -1,9 +1,6 @@
 import { Link } from 'react-router-dom';
 import { PageTransition } from '../components/layout/PageTransition';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Html, Line } from '@react-three/drei';
-import * as THREE from 'three';
-import { useRef } from 'react';
+import { NetworkTopology2D } from '../components/dashboard/NetworkTopology2D';
 
 // --- MOCK DATA ---
 const RECENT_EXECUTIONS = [
@@ -21,118 +18,6 @@ const QUICK_ACTIONS = [
   { title: 'PROMPT_TESTER', path: '/app/tester', shortcut: '⌘T' },
   { title: 'PROMPT_LIBRARY', path: '/app/library', shortcut: '⌘L' },
 ];
-
-// --- COMPONENTS ---
-
-const NODES = [
-  { id: 'INGEST', pos: [-3, 0, 0], color: '#3b82f6' },
-  { id: 'ROUTER', pos: [-1, 1, 1], color: '#ffffff' },
-  { id: 'GPT-4', pos: [2, 1.5, -1], color: '#10b981' },
-  { id: 'CLAUDE-3', pos: [1, -1.5, 2], color: '#f59e0b' },
-  { id: 'EGRESS', pos: [4, 0, 0], color: '#ffffff' }
-];
-
-const EDGES = [
-  [0, 1], // Ingest -> Router
-  [1, 2], // Router -> GPT-4
-  [1, 3], // Router -> Claude
-  [2, 4], // GPT-4 -> Egress
-  [3, 4]  // Claude -> Egress
-];
-
-function TopologyNode({ position, color, label }: { position: number[], color: string, label: string }) {
-  return (
-    <group position={new THREE.Vector3(...position)}>
-      <mesh>
-        <icosahedronGeometry args={[0.3, 0]} />
-        <meshBasicMaterial color={color} wireframe />
-      </mesh>
-      {/* Glow Core */}
-      <mesh>
-        <sphereGeometry args={[0.1, 16, 16]} />
-        <meshBasicMaterial color={color} toneMapped={false} transparent opacity={0.8} />
-      </mesh>
-      <Html center distanceFactor={12}>
-        <div className="text-[10px] font-mono text-white/70 bg-black/80 px-1.5 py-0.5 border border-white/20 select-none whitespace-nowrap tracking-wider backdrop-blur-sm shadow-xl">
-          {label}
-        </div>
-      </Html>
-    </group>
-  );
-}
-
-function AnimatedPacket({ start, end, color, speed, delay }: { start: number[], end: number[], color: string, speed: number, delay: number }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const vStart = new THREE.Vector3(...start);
-  const vEnd = new THREE.Vector3(...end);
-  const distance = vStart.distanceTo(vEnd);
-  
-  useFrame(({ clock }) => {
-    const t = ((clock.elapsedTime * speed) + delay) % distance;
-    const progress = t / distance;
-    if (meshRef.current) {
-      meshRef.current.position.lerpVectors(vStart, vEnd, progress);
-    }
-  });
-
-  return (
-    <mesh ref={meshRef}>
-      <sphereGeometry args={[0.06, 16, 16]} />
-      <meshBasicMaterial color={color} toneMapped={false} />
-    </mesh>
-  );
-}
-
-function NetworkTopology3D() {
-  return (
-    <div className="relative w-full h-[300px] sm:h-[400px] border border-white/10 bg-[#050505] overflow-hidden flex items-center justify-center font-mono text-[10px] text-white/40 cursor-move">
-      <Canvas camera={{ position: [0, 0, 7], fov: 45 }} gl={{ antialias: true }}>
-        <color attach="background" args={['#050505']} />
-        
-        {/* Subtle ambient light just in case */}
-        <ambientLight intensity={0.5} />
-        
-        <OrbitControls autoRotate autoRotateSpeed={1.0} enableZoom={false} enablePan={false} />
-        
-        {/* Edges */}
-        {EDGES.map((edge, i) => (
-          <Line
-            key={`edge-${i}`}
-            points={[
-              new THREE.Vector3(...NODES[edge[0]].pos), 
-              new THREE.Vector3(...NODES[edge[1]].pos)
-            ]}
-            color="rgba(255,255,255,0.15)"
-            lineWidth={1}
-          />
-        ))}
-
-        {/* Nodes */}
-        {NODES.map((node, i) => (
-          <TopologyNode key={`node-${i}`} position={node.pos} color={node.color} label={node.id} />
-        ))}
-
-        {/* Animated Packets */}
-        <AnimatedPacket start={NODES[0].pos} end={NODES[1].pos} color="#3b82f6" speed={1.5} delay={0} />
-        <AnimatedPacket start={NODES[0].pos} end={NODES[1].pos} color="#3b82f6" speed={1.5} delay={1.5} />
-        
-        <AnimatedPacket start={NODES[1].pos} end={NODES[2].pos} color="#10b981" speed={2} delay={0.5} />
-        <AnimatedPacket start={NODES[1].pos} end={NODES[3].pos} color="#f59e0b" speed={1.2} delay={1} />
-        
-        <AnimatedPacket start={NODES[2].pos} end={NODES[4].pos} color="#10b981" speed={2.5} delay={0} />
-        <AnimatedPacket start={NODES[3].pos} end={NODES[4].pos} color="#f59e0b" speed={1.8} delay={2} />
-
-      </Canvas>
-      
-      {/* Overlay Status */}
-      <div className="absolute top-4 left-4 flex flex-col gap-1 pointer-events-none">
-        <span className="text-white/80 font-semibold tracking-widest">3D_TOPOLOGY_MONITOR</span>
-        <span>STATUS: ACTIVE_SIMULATION</span>
-        <span>ENGINE: WEBGL_R3F</span>
-      </div>
-    </div>
-  );
-}
 
 export default function Dashboard() {
   return (
@@ -177,7 +62,7 @@ export default function Dashboard() {
                 <h2 className="text-xs text-white/50 tracking-widest">TRAFFIC_ROUTING_GRAPH</h2>
                 <span className="text-[10px] text-white/30">REFRESH_RATE: 1000ms</span>
               </div>
-              <NetworkTopology3D />
+              <NetworkTopology2D />
             </div>
 
             {/* Quick Actions (Terminal Style) */}
