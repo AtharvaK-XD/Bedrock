@@ -23,12 +23,12 @@ import {
   Mail,
   Award,
   ArrowUpRight,
-  Sliders,
-  Flame
+  Sliders
 } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { useUserProfile } from '../lib/useUserProfile';
+import { PromptActivityHeatmap } from '../components/profile/PromptActivityHeatmap';
 
 const GithubIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -38,31 +38,6 @@ const GithubIcon = ({ className }: { className?: string }) => (
 );
 
 type Tab = 'overview' | 'edit' | 'usage' | 'preferences';
-
-// Generate mock 12-week activity heatmap data
-const WEEKS_COUNT = 16;
-const DAYS_PER_WEEK = 7;
-const generateHeatmapData = () => {
-  const data = [];
-  for (let w = 0; w < WEEKS_COUNT; w++) {
-    const week = [];
-    for (let d = 0; d < DAYS_PER_WEEK; d++) {
-      // Create interesting patterns with higher activity toward recent weeks
-      const rand = Math.random();
-      let level = 0;
-      if (rand > 0.7) level = 1;
-      if (rand > 0.85) level = 2;
-      if (rand > 0.93) level = 3;
-      if (rand > 0.98) level = 4;
-      if (w > 12 && rand > 0.4) level = Math.floor(Math.random() * 3) + 2;
-      week.push({ day: d, level, runs: level === 0 ? 0 : level * 4 + Math.floor(Math.random() * 5) });
-    }
-    data.push(week);
-  }
-  return data;
-};
-
-const HEATMAP_DATA = generateHeatmapData();
 
 const RECENT_ACTIVITY = [
   {
@@ -382,60 +357,7 @@ export default function Profile() {
                 {/* Left 2 Cols: Activity Heatmap & Recent Pipeline Executions */}
                 <div className="lg:col-span-2 space-y-8">
                   {/* Prompt Engineering Activity Heatmap */}
-                  <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                          <Flame className="w-4 h-4 text-copper-400" />
-                          Prompt Architecture Activity
-                        </h2>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          1,894 pipeline executions and prompt evaluations across 16 weeks
-                        </p>
-                      </div>
-                      <span className="text-xs font-mono text-copper-400 font-semibold bg-copper-500/10 px-2.5 py-1 rounded-full border border-copper-500/20">
-                        Active Streak: 19 Days
-                      </span>
-                    </div>
-
-                    {/* Heatmap Grid */}
-                    <div className="overflow-x-auto pb-2 pt-2">
-                      <div className="flex gap-1.5 min-w-[560px]">
-                        {HEATMAP_DATA.map((week, wIndex) => (
-                          <div key={wIndex} className="flex flex-col gap-1.5 flex-1">
-                            {week.map((item, dIndex) => {
-                              let bg = 'bg-white/5';
-                              if (item.level === 1) bg = 'bg-copper-900/50 border border-copper-800/40';
-                              if (item.level === 2) bg = 'bg-copper-700/60 border border-copper-600/50';
-                              if (item.level === 3) bg = 'bg-copper-500/80 border border-copper-400/60 shadow-[0_0_8px_rgba(44,154,139,0.3)]';
-                              if (item.level === 4) bg = 'bg-copper-300 border border-white shadow-[0_0_12px_rgba(79,176,161,0.6)]';
-
-                              return (
-                                <div
-                                  key={dIndex}
-                                  title={`Week ${wIndex + 1}: ${item.runs} executions`}
-                                  className={cn("h-3.5 rounded-sm transition-transform hover:scale-125 cursor-pointer", bg)}
-                                />
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Heatmap legend */}
-                    <div className="flex items-center justify-between text-xs text-gray-500 mt-4 pt-3 border-t border-white/5">
-                      <span>Less Active</span>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-sm bg-white/5" />
-                        <div className="w-3 h-3 rounded-sm bg-copper-900/50" />
-                        <div className="w-3 h-3 rounded-sm bg-copper-700/60" />
-                        <div className="w-3 h-3 rounded-sm bg-copper-500/80" />
-                        <div className="w-3 h-3 rounded-sm bg-copper-300" />
-                      </div>
-                      <span>More Active</span>
-                    </div>
-                  </div>
+                  <PromptActivityHeatmap />
 
                   {/* Recent Prompt & Pipeline Executions */}
                   <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl shadow-sm">
