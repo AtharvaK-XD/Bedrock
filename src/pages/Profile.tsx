@@ -23,7 +23,12 @@ import {
   Mail,
   Award,
   ArrowUpRight,
-  Sliders
+  Sliders,
+  Camera,
+  Globe,
+  Palette,
+  Share2,
+  TrendingUp
 } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
@@ -36,6 +41,66 @@ const GithubIcon = ({ className }: { className?: string }) => (
     <path d="M9 18c-4.51 2-5-2-7-2" />
   </svg>
 );
+
+const BANNER_THEMES = [
+  {
+    id: 'copper',
+    name: 'Bedrock Aurora',
+    gradient: 'from-[#0a1816] via-[#122622] to-[#0a1318]',
+    radial1: 'from-copper-500/30 via-emerald-500/10 to-transparent',
+    radial2: 'from-copper-600/20 via-transparent to-transparent',
+    gridColor: '#4FB0A1',
+    meshOpacity: 'opacity-25',
+    accentColor: 'text-copper-300',
+    badgeBorder: 'border-copper-500/30',
+    dotBg: 'bg-copper-400',
+  },
+  {
+    id: 'cyber',
+    name: 'Cyber Emerald',
+    gradient: 'from-[#051a13] via-[#0a291f] to-[#071514]',
+    radial1: 'from-emerald-400/30 via-teal-500/10 to-transparent',
+    radial2: 'from-emerald-600/20 via-transparent to-transparent',
+    gridColor: '#34d399',
+    meshOpacity: 'opacity-25',
+    accentColor: 'text-emerald-300',
+    badgeBorder: 'border-emerald-500/30',
+    dotBg: 'bg-emerald-400',
+  },
+  {
+    id: 'nebula',
+    name: 'Deep Nebula',
+    gradient: 'from-[#120f26] via-[#1b1538] to-[#0a0d1c]',
+    radial1: 'from-indigo-500/30 via-purple-500/10 to-transparent',
+    radial2: 'from-purple-600/20 via-transparent to-transparent',
+    gridColor: '#818cf8',
+    meshOpacity: 'opacity-25',
+    accentColor: 'text-indigo-300',
+    badgeBorder: 'border-indigo-500/30',
+    dotBg: 'bg-indigo-400',
+  },
+  {
+    id: 'solar',
+    name: 'Solar Amber',
+    gradient: 'from-[#201407] via-[#2c1c0b] to-[#120d09]',
+    radial1: 'from-amber-500/30 via-orange-500/10 to-transparent',
+    radial2: 'from-amber-600/20 via-transparent to-transparent',
+    gridColor: '#fbbf24',
+    meshOpacity: 'opacity-25',
+    accentColor: 'text-amber-300',
+    badgeBorder: 'border-amber-500/30',
+    dotBg: 'bg-amber-400',
+  },
+];
+
+const SPECIALIZATION_TAGS = [
+  'Multi-Agent Workflows',
+  'Tree-of-Thought Eval',
+  'Prompt Distillation',
+  'Claude 3.5 & GPT-4o',
+  'DSPy Pipelines',
+  'Adaptive Routing',
+];
 
 type Tab = 'overview' | 'edit' | 'usage' | 'preferences';
 
@@ -83,6 +148,9 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [copiedHandle, setCopiedHandle] = useState(false);
+  const [bannerTheme, setBannerTheme] = useState('copper');
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -111,6 +179,14 @@ export default function Profile() {
     setCopiedEmail(true);
     setTimeout(() => setCopiedEmail(false), 2000);
   };
+
+  const handleCopyHandle = () => {
+    navigator.clipboard.writeText(`@${profile.username}`);
+    setCopiedHandle(true);
+    setTimeout(() => setCopiedHandle(false), 2000);
+  };
+
+  const activeTheme = BANNER_THEMES.find((t) => t.id === bannerTheme) || BANNER_THEMES[0];
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,7 +232,7 @@ export default function Profile() {
               onClick={handleCopyLink}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-xs font-semibold border border-white/10 transition-colors"
             >
-              {copiedLink ? <Check className="w-3.5 h-3.5 text-copper-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedLink ? <Check className="w-3.5 h-3.5 text-copper-400" /> : <Share2 className="w-3.5 h-3.5" />}
               {copiedLink ? 'Link Copied' : 'Share Profile'}
             </button>
             <Link 
@@ -170,65 +246,183 @@ export default function Profile() {
         </div>
 
         {/* Hero Identity Banner */}
-        <div className="relative rounded-3xl border border-white/10 bg-[#121417]/80 backdrop-blur-xl overflow-hidden shadow-2xl mb-8">
-          {/* Banner Graphic Background with Mesh & Light Flare */}
-          <div className="h-44 sm:h-52 w-full relative overflow-hidden bg-gradient-to-r from-basalt-900 via-[#182624] to-basalt-900 border-b border-white/5">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-copper-500/25 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_var(--tw-gradient-stops))] from-copper-600/15 via-transparent to-transparent pointer-events-none" />
+        <div className="relative rounded-3xl border border-white/10 bg-[#121417]/85 backdrop-blur-2xl overflow-hidden shadow-2xl mb-8 group/card transition-all duration-300">
+          {/* Banner Graphic Background with Mesh, Neural Prompt Lines & Theme Gradients */}
+          <div className={cn(
+            "h-48 sm:h-56 w-full relative overflow-hidden bg-gradient-to-r border-b border-white/5 transition-all duration-500",
+            activeTheme.gradient
+          )}>
+            <div className={cn("absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] pointer-events-none transition-all duration-500", activeTheme.radial1)} />
+            <div className={cn("absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_var(--tw-gradient-stops))] pointer-events-none transition-all duration-500", activeTheme.radial2)} />
             
             {/* Tech grid mesh */}
             <div 
-              className="absolute inset-0 opacity-15 pointer-events-none" 
+              className={cn("absolute inset-0 pointer-events-none transition-opacity duration-300", activeTheme.meshOpacity)} 
               style={{
-                backgroundImage: 'linear-gradient(to right, #4FB0A1 1px, transparent 1px), linear-gradient(to bottom, #4FB0A1 1px, transparent 1px)',
+                backgroundImage: `linear-gradient(to right, ${activeTheme.gridColor} 1px, transparent 1px), linear-gradient(to bottom, ${activeTheme.gridColor} 1px, transparent 1px)`,
                 backgroundSize: '36px 36px'
               }}
             />
 
-            {/* Quick Badge in Banner */}
-            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-black/60 text-copper-300 border border-copper-500/30 backdrop-blur-md shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-copper-400 animate-pulse" />
+            {/* Neural Prompt Graph decorative curves */}
+            <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M -50 140 C 120 40, 260 180, 440 90 C 620 0, 800 150, 980 60 C 1140 -20, 1300 110, 1480 50" fill="none" stroke={activeTheme.gridColor} strokeWidth="1.5" strokeDasharray="6 6" />
+              <path d="M 60 200 C 220 110, 420 220, 640 100 C 860 -10, 1060 160, 1260 80" fill="none" stroke={activeTheme.gridColor} strokeWidth="1" opacity="0.5" />
+              <circle cx="440" cy="90" r="3.5" fill={activeTheme.gridColor} />
+              <circle cx="980" cy="60" r="4" fill="#ffffff" opacity="0.8" />
+              <circle cx="640" cy="100" r="3" fill={activeTheme.gridColor} />
+            </svg>
+
+            {/* Subtle Telemetry Watermark */}
+            <div className="absolute bottom-3 right-6 hidden md:flex items-center gap-2 text-[10px] font-mono text-white/20 tracking-widest uppercase select-none pointer-events-none">
+              <span>// BEDROCK PROMPT RUNTIME v2.5</span>
+              <span>•</span>
+              <span>NODE: #BDRK-8924</span>
+            </div>
+
+            {/* Quick Badges & Controls in Banner */}
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2.5 z-20">
+              {/* Theme Customizer Trigger */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowThemePicker(!showThemePicker)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 hover:bg-black/80 text-gray-300 hover:text-white border border-white/15 backdrop-blur-md shadow-sm transition-all cursor-pointer"
+                  title="Customize banner backdrop theme"
+                >
+                  <Palette className="w-3.5 h-3.5 text-copper-400" />
+                  <span className="hidden sm:inline">Theme</span>
+                </button>
+
+                {showThemePicker && (
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-[#15181b]/95 backdrop-blur-2xl border border-white/15 p-2 shadow-2xl z-30 space-y-1">
+                    <p className="text-[10px] font-mono uppercase tracking-wider text-gray-400 px-2.5 py-1">Banner Style</p>
+                    {BANNER_THEMES.map((theme) => (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        onClick={() => {
+                          setBannerTheme(theme.id);
+                          setShowThemePicker(false);
+                        }}
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer",
+                          bannerTheme === theme.id 
+                            ? "bg-white/10 text-white font-semibold" 
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={cn("w-2 h-2 rounded-full", theme.dotBg)} />
+                          <span>{theme.name}</span>
+                        </div>
+                        {bannerTheme === theme.id && <Check className="w-3.5 h-3.5 text-copper-400" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Verified Member Badge */}
+              <span className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-black/60 backdrop-blur-md shadow-sm border transition-all",
+                activeTheme.accentColor,
+                activeTheme.badgeBorder
+              )}>
+                <span className={cn("w-2 h-2 rounded-full animate-pulse", activeTheme.dotBg)} />
                 Bedrock Member
               </span>
             </div>
           </div>
 
           {/* Profile Header Content */}
-          <div className="px-6 sm:px-10 pb-8 pt-0 relative">
+          <div className="px-6 sm:px-10 pb-7 pt-0 relative">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 -mt-16 sm:-mt-20 mb-6">
+              
               {/* Avatar & Main Info */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5 sm:gap-6">
-                <div className="relative group">
-                  <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-gradient-to-tr from-copper-600 via-copper-500 to-copper-300 text-white flex items-center justify-center font-display font-bold text-3xl sm:text-4xl shadow-xl ring-4 ring-black/80">
-                    {profile.avatarInitials}
+              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5 sm:gap-6 flex-1 min-w-0">
+                
+                {/* Avatar with Glow Ring & Edit Overlay */}
+                <div 
+                  className="relative group cursor-pointer shrink-0" 
+                  onClick={() => setActiveTab('edit')}
+                  title="Click to edit profile & avatar"
+                >
+                  <div className="relative p-1 rounded-3xl bg-gradient-to-tr from-copper-400 via-copper-500 to-emerald-400 shadow-2xl shadow-copper-900/40 ring-4 ring-[#121417]">
+                    <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-[22px] bg-gradient-to-tr from-basalt-900 via-[#162724] to-basalt-800 text-white flex flex-col items-center justify-center font-display font-bold text-3xl sm:text-4xl relative overflow-hidden border border-white/10 group-hover:border-copper-400/60 transition-all">
+                      {/* Subtle shine glass effect */}
+                      <div className="absolute inset-0 bg-gradient-to-tr from-copper-500/20 via-transparent to-white/10 pointer-events-none" />
+                      <span className="bg-gradient-to-br from-white via-sandstone-100 to-copper-200 bg-clip-text text-transparent drop-shadow-md">
+                        {profile.avatarInitials}
+                      </span>
+                      
+                      {/* Hover edit badge overlay */}
+                      <div className="absolute inset-0 bg-black/65 backdrop-blur-xs flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <Camera className="w-5 h-5 text-copper-300 mb-1" />
+                        <span className="text-[10px] font-medium text-white/90">Edit Photo</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 ring-4 ring-black flex items-center justify-center" title="Active">
-                    <div className="w-2 h-2 rounded-full bg-white" />
+
+                  {/* Presence Status Radar Dot */}
+                  <div 
+                    className="absolute -bottom-1 -right-1 flex items-center justify-center"
+                    title="Node Active • Online"
+                  >
+                    <span className="absolute w-5 h-5 rounded-full bg-emerald-400/40 animate-ping pointer-events-none" />
+                    <div className="relative w-6 h-6 rounded-full bg-[#121417] p-1 shadow-md">
+                      <div className="w-full h-full rounded-full bg-emerald-500 ring-2 ring-emerald-400/50 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight">
+                {/* Identity & Metadata Details */}
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h1 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight flex items-center gap-2">
                       {profile.name}
+                      <span className="inline-flex items-center text-copper-400" title="Verified Prompt Architect">
+                        <CheckCircle2 className="w-5 h-5 fill-copper-500/20 text-copper-400" />
+                      </span>
                     </h1>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-gray-300 border border-white/10">
-                      @{profile.username}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-copper-500/20 text-copper-300 border border-copper-500/30">
-                      <Sparkles className="w-3 h-3" />
+
+                    {/* Interactive Handle Copy */}
+                    <button
+                      onClick={handleCopyHandle}
+                      className="group/handle inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all cursor-pointer"
+                      title="Click to copy username handle"
+                    >
+                      <span>@{profile.username}</span>
+                      {copiedHandle ? (
+                        <Check className="w-3 h-3 text-copper-400" />
+                      ) : (
+                        <Copy className="w-3 h-3 text-gray-500 group-hover/handle:text-gray-300 transition-colors" />
+                      )}
+                    </button>
+
+                    {/* Plan Badge */}
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-copper-500/15 text-copper-300 border border-copper-500/30 shadow-sm">
+                      <Sparkles className="w-3 h-3 text-copper-400" />
                       {profile.plan}
                     </span>
                   </div>
 
-                  <p className="text-sm sm:text-base text-gray-300 font-medium">
-                    {profile.role} <span className="text-gray-500">at</span> {profile.organization}
+                  {/* Role & Company */}
+                  <p className="text-sm sm:text-base text-gray-300 font-medium flex flex-wrap items-center gap-2">
+                    <span className="text-white font-semibold">{profile.role}</span>
+                    <span className="text-gray-500">at</span>
+                    <span className="flex items-center gap-1 text-gray-300 font-medium">
+                      <Building className="w-3.5 h-3.5 text-gray-400" />
+                      {profile.organization}
+                    </span>
                   </p>
 
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 pt-1">
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-gray-500" />
+                  {/* Metadata Row: Location, Joined, Email & Dev Links */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-400 pt-1">
+                    <span className="flex items-center gap-1.5 text-gray-300">
+                      <MapPin className="w-3.5 h-3.5 text-copper-400" />
                       {profile.location}
                     </span>
                     <span className="flex items-center gap-1.5">
@@ -237,78 +431,214 @@ export default function Profile() {
                     </span>
                     <button 
                       onClick={handleCopyEmail}
-                      className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer group/email"
+                      title="Click to copy email"
                     >
-                      <Mail className="w-3.5 h-3.5 text-gray-500" />
-                      {profile.email}
-                      {copiedEmail && <span className="text-copper-400 font-semibold">(copied)</span>}
+                      <Mail className="w-3.5 h-3.5 text-gray-500 group-hover/email:text-copper-400 transition-colors" />
+                      <span className="font-mono text-[11px]">{profile.email}</span>
+                      {copiedEmail && <span className="text-copper-400 font-semibold text-[11px]">(copied)</span>}
                     </button>
+
+                    {/* Developer Social Links */}
+                    {profile.github && (
+                      <a 
+                        href={`https://github.com/${profile.github}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors hover:underline"
+                        title="GitHub Profile"
+                      >
+                        <GithubIcon className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="font-mono text-[11px]">gh/{profile.github}</span>
+                        <ArrowUpRight className="w-2.5 h-2.5 opacity-60" />
+                      </a>
+                    )}
+                    {profile.website && (
+                      <a 
+                        href={profile.website}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-gray-400 hover:text-copper-300 transition-colors hover:underline"
+                        title="Portfolio / Website"
+                      >
+                        <Globe className="w-3.5 h-3.5 text-copper-400" />
+                        <span className="font-mono text-[11px]">{profile.website.replace(/^https?:\/\//, '')}</span>
+                        <ArrowUpRight className="w-2.5 h-2.5 opacity-60" />
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-3 self-start md:self-end">
+              <div className="flex items-center gap-2.5 self-start md:self-end shrink-0">
                 <button
                   onClick={() => setActiveTab(activeTab === 'edit' ? 'overview' : 'edit')}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-sm",
+                    "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border cursor-pointer",
                     activeTab === 'edit'
-                      ? "bg-white text-black hover:bg-gray-200"
-                      : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                      ? "bg-white text-black hover:bg-gray-200 border-white shadow-lg"
+                      : "bg-white/5 hover:bg-white/10 text-white border-white/10 hover:border-white/20 hover:shadow-md"
                   )}
                 >
-                  <User className="w-4 h-4" />
+                  <User className="w-4 h-4 text-copper-400" />
                   {activeTab === 'edit' ? 'Close Edit' : 'Edit Profile'}
                 </button>
 
                 <Link
                   to="/app/pricing"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-copper-500 hover:bg-copper-600 text-white shadow-lg shadow-copper-500/20 transition-all hover:scale-[1.02]"
+                  className="group relative inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white overflow-hidden shadow-lg shadow-copper-500/20 hover:shadow-copper-500/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  Upgrade Plan
+                  <div className="absolute inset-0 bg-gradient-to-r from-copper-600 via-copper-500 to-emerald-600 group-hover:opacity-90 transition-opacity" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <Sparkles className="w-4 h-4 relative z-10 animate-pulse text-white" />
+                  <span className="relative z-10 font-bold">Upgrade Plan</span>
                 </Link>
               </div>
             </div>
 
-            {/* Bio summary */}
-            <p className="text-sm text-gray-300 max-w-3xl leading-relaxed border-t border-white/5 pt-4">
-              "{profile.bio}"
-            </p>
+            {/* Bio summary & Specialization Tags */}
+            <div className="mt-5 pt-4 border-t border-white/5 space-y-3">
+              <div className="relative pl-3.5 border-l-2 border-copper-400/80 py-0.5 bg-gradient-to-r from-copper-500/5 to-transparent rounded-r-xl">
+                <p className="text-sm text-gray-200 leading-relaxed font-normal italic">
+                  "{profile.bio}"
+                </p>
+              </div>
+
+              {/* Specialization Tags */}
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                <span className="text-[11px] font-mono uppercase tracking-wider text-gray-500 flex items-center gap-1 mr-1">
+                  <Sliders className="w-3 h-3 text-copper-400" />
+                  Focus:
+                </span>
+                {SPECIALIZATION_TAGS.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2.5 py-1 rounded-lg text-xs font-mono bg-white/[0.04] hover:bg-copper-500/10 text-gray-300 hover:text-copper-300 border border-white/5 hover:border-copper-500/30 transition-colors cursor-default"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 border-t border-white/5 divide-x divide-white/5 bg-black/40">
-            <div className="p-4 sm:p-5 text-center sm:text-left">
-              <span className="text-xs text-gray-400 flex items-center justify-center sm:justify-start gap-1.5 font-medium">
-                <Terminal className="w-3.5 h-3.5 text-copper-400" /> Prompts Built
-              </span>
-              <p className="text-xl sm:text-2xl font-bold font-mono text-white mt-1">142</p>
+          {/* Quick Metrics Bar - Telemetry HUD */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 border-t border-white/10 bg-black/40 backdrop-blur-md divide-y sm:divide-y-0 sm:divide-x divide-white/5">
+            {/* Stat 1: Prompts Built */}
+            <div className="p-4 sm:p-5 hover:bg-white/[0.03] transition-all group relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-copper-400/0 group-hover:bg-copper-400 transition-colors" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-400 flex items-center gap-1.5 font-medium">
+                  <Terminal className="w-3.5 h-3.5 text-copper-400" />
+                  Prompts Built
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-copper-500/10 text-copper-300 border border-copper-500/20">
+                  <TrendingUp className="w-2.5 h-2.5" />
+                  +18 mo
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl sm:text-3xl font-bold font-mono text-white tracking-tight group-hover:text-copper-300 transition-colors">
+                  142
+                </p>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-copper-400 inline-block" />
+                42 active in production
+              </p>
             </div>
-            <div className="p-4 sm:p-5 text-center sm:text-left">
-              <span className="text-xs text-gray-400 flex items-center justify-center sm:justify-start gap-1.5 font-medium">
-                <GitBranch className="w-3.5 h-3.5 text-sky-400" /> Branch Runs
-              </span>
-              <p className="text-xl sm:text-2xl font-bold font-mono text-white mt-1">1,894</p>
+
+            {/* Stat 2: Branch Runs */}
+            <div className="p-4 sm:p-5 hover:bg-white/[0.03] transition-all group relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-sky-400/0 group-hover:bg-sky-400 transition-colors" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-400 flex items-center gap-1.5 font-medium">
+                  <GitBranch className="w-3.5 h-3.5 text-sky-400" />
+                  Branch Runs
+                </span>
+                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                  Top 5%
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl sm:text-3xl font-bold font-mono text-white tracking-tight group-hover:text-sky-300 transition-colors">
+                  1,894
+                </p>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 inline-block" />
+                3.2 avg tree depth
+              </p>
             </div>
-            <div className="p-4 sm:p-5 text-center sm:text-left">
-              <span className="text-xs text-gray-400 flex items-center justify-center sm:justify-start gap-1.5 font-medium">
-                <Zap className="w-3.5 h-3.5 text-amber-400" /> Tokens Used
-              </span>
-              <p className="text-xl sm:text-2xl font-bold font-mono text-white mt-1">4.2M</p>
+
+            {/* Stat 3: Tokens Used */}
+            <div className="p-4 sm:p-5 hover:bg-white/[0.03] transition-all group relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-amber-400/0 group-hover:bg-amber-400 transition-colors" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-400 flex items-center gap-1.5 font-medium">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  Tokens Used
+                </span>
+                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                  84% quota
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl sm:text-3xl font-bold font-mono text-white tracking-tight group-hover:text-amber-300 transition-colors">
+                  4.2M
+                </p>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+                Across 3 LLM providers
+              </p>
             </div>
-            <div className="p-4 sm:p-5 text-center sm:text-left">
-              <span className="text-xs text-gray-400 flex items-center justify-center sm:justify-start gap-1.5 font-medium">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Reliability
-              </span>
-              <p className="text-xl sm:text-2xl font-bold font-mono text-white mt-1">99.4%</p>
+
+            {/* Stat 4: Reliability */}
+            <div className="p-4 sm:p-5 hover:bg-white/[0.03] transition-all group relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-emerald-400/0 group-hover:bg-emerald-400 transition-colors" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-400 flex items-center gap-1.5 font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  Reliability
+                </span>
+                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                  Optimal SLA
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl sm:text-3xl font-bold font-mono text-emerald-400 tracking-tight group-hover:text-emerald-300 transition-colors">
+                  99.4%
+                </p>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                Zero unhandled timeouts
+              </p>
             </div>
-            <div className="p-4 sm:p-5 col-span-2 sm:col-span-1 text-center sm:text-left border-t sm:border-t-0">
-              <span className="text-xs text-gray-400 flex items-center justify-center sm:justify-start gap-1.5 font-medium">
-                <Clock className="w-3.5 h-3.5 text-indigo-400" /> Avg Latency
-              </span>
-              <p className="text-xl sm:text-2xl font-bold font-mono text-white mt-1">412ms</p>
+
+            {/* Stat 5: Avg Latency */}
+            <div className="p-4 sm:p-5 col-span-2 sm:col-span-1 hover:bg-white/[0.03] transition-all group relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-indigo-400/0 group-hover:bg-indigo-400 transition-colors" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-400 flex items-center gap-1.5 font-medium">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                  Avg Latency
+                </span>
+                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                  p95: 580ms
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl sm:text-3xl font-bold font-mono text-white tracking-tight group-hover:text-indigo-300 transition-colors">
+                  412ms
+                </p>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block" />
+                Fast routing engine
+              </p>
             </div>
           </div>
         </div>
