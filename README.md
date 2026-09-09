@@ -48,7 +48,6 @@ Modern software teams, prompt engineers, and AI developers require structured wo
 
 ### 4. Native Desktop Experience
 - **Tauri 2.0 Foundation**: Minimal memory footprint, native window decorations, and operating system sandboxing via Rust.
-- **Seamless Auto-Updater**: Native update checks and self-updating binary delivery through `@tauri-apps/plugin-updater`.
 - **UI Architecture**: Glassmorphism and hardware-accelerated transitions utilizing Tailwind CSS, Framer Motion, GSAP ScrollTrigger, and Lenis smooth scrolling.
 
 ---
