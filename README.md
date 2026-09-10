@@ -43,7 +43,6 @@ Modern software teams, prompt engineers, and AI developers require structured wo
   - **Groq**: Llama 3.1 70B Versatile, Llama 3.1 8B Instant
   - **OpenRouter**: Llama 3.1 8B, Gemma 2 9B, Mistral 7B, Phi-3 Mini, Nvidia Nemotron 70B
   - **Hugging Face Serverless**: Mistral 7B Instruct, Qwen 2.5 72B, Meta Llama 3 8B, Zephyr 7B
-  - **OpenAI / ChatGPT**: GPT-4o, GPT-4 Turbo, GPT-3.5 Turbo
 - **Configuration Controls**: Independent adjustment of system instructions, temperature, token limits, and target credentials per model instance.
 
 ### 4. Native Desktop Experience
