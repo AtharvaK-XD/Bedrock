@@ -224,25 +224,29 @@ export function NetworkTopology2D() {
   };
 
   return (
-    <div className="relative w-full border border-white/10 bg-[#050505] overflow-hidden flex flex-col font-mono text-xs text-white/80 select-none shadow-2xl rounded-sm">
+    <div className="relative w-full bg-[#050608] border border-white/10 overflow-hidden flex flex-col font-sans text-xs text-white/80 select-none shadow-[0_24px_60px_rgba(0,0,0,0.95)] rounded-3xl group">
+      {/* Ambient top edge highlight for glass reflection */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none z-10" />
+
       {/* Top HUD Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between px-4 py-2.5 border-b border-white/10 bg-white/[0.02] gap-3">
+      <div className="flex flex-wrap items-center justify-between px-5 py-3.5 border-b border-white/[0.08] bg-[#090b10]/90 backdrop-blur-xl gap-3">
         {/* Left: Monitor Status */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
               {!isPaused && (
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               )}
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isPaused ? 'bg-amber-400' : 'bg-emerald-500'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isPaused ? 'bg-amber-400' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]'}`}></span>
             </span>
-            <span className="text-[11px] font-bold tracking-widest text-white">2D_TOPOLOGY_MONITOR</span>
+            <span className="text-xs font-semibold tracking-wider text-white font-display uppercase">2D Topology Flow</span>
           </div>
-          <span className="hidden sm:inline-block text-[10px] text-white/30">|</span>
-          <span className="hidden sm:inline-block text-[10px] text-white/40 tracking-wider">
-            {isPaused ? 'STATUS: PAUSED' : 'STATUS: REALTIME_FLOW'}
+          <span className="hidden sm:inline-block text-white/20">|</span>
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-white/50">
+            <span className={`w-1.5 h-1.5 rounded-full ${isPaused ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+            {isPaused ? 'Paused' : 'Realtime Routing'}
           </span>
-          <span className="hidden md:inline-block text-[10px] text-emerald-400/80 bg-emerald-500/10 px-1.5 py-0.5 border border-emerald-500/20">
+          <span className="hidden md:inline-flex items-center text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shadow-sm">
             60 FPS SVG
           </span>
         </div>
@@ -250,18 +254,18 @@ export function NetworkTopology2D() {
         {/* Right: Route Filtering & Playback Controls */}
         <div className="flex items-center gap-2">
           {/* Route Filters */}
-          <div className="flex items-center border border-white/10 p-0.5 rounded bg-black/40 text-[10px]">
+          <div className="flex items-center border border-white/10 p-0.5 rounded-xl bg-black/60 backdrop-blur-md text-[11px]">
             {(['ALL', 'GPT-4', 'CLAUDE-3'] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setRouteFilter(mode)}
-                className={`px-2 py-0.5 tracking-wider transition-colors ${
+                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
                   routeFilter === mode
-                    ? 'bg-white/20 text-white font-semibold'
-                    : 'text-white/40 hover:text-white/80'
+                    ? 'bg-white/15 text-white shadow-sm font-semibold'
+                    : 'text-white/50 hover:text-white/90 hover:bg-white/5'
                 }`}
               >
-                {mode}
+                {mode === 'ALL' ? 'All Routes' : mode === 'GPT-4' ? 'GPT-4o' : 'Claude 3.5'}
               </button>
             ))}
           </div>
@@ -270,36 +274,36 @@ export function NetworkTopology2D() {
           <button
             onClick={() => setSpeedMultiplier((prev) => (prev === 1 ? 1.5 : prev === 1.5 ? 2.5 : 1))}
             title="Cycle simulation speed"
-            className="text-[10px] border border-white/10 px-2 py-1 hover:bg-white/10 text-white/70 hover:text-white transition-colors flex items-center gap-1"
+            className="text-xs border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] px-2.5 py-1 rounded-xl text-white/70 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
           >
-            <Activity className="w-3 h-3 text-cyan-400" />
-            <span>{speedMultiplier}x</span>
+            <Activity className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="font-mono text-[11px]">{speedMultiplier}x</span>
           </button>
 
           {/* Pause / Play */}
           <button
             onClick={() => setIsPaused(!isPaused)}
             title={isPaused ? 'Resume live simulation' : 'Pause simulation'}
-            className="text-[10px] border border-white/10 px-2 py-1 hover:bg-white/10 text-white/70 hover:text-white transition-colors flex items-center gap-1"
+            className="text-xs border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] px-2.5 py-1 rounded-xl text-white/70 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
           >
-            {isPaused ? <Play className="w-3 h-3 text-emerald-400" /> : <Pause className="w-3 h-3 text-amber-400" />}
-            <span className="hidden sm:inline">{isPaused ? 'RESUME' : 'PAUSE'}</span>
+            {isPaused ? <Play className="w-3.5 h-3.5 text-emerald-400" /> : <Pause className="w-3.5 h-3.5 text-amber-400" />}
+            <span className="hidden sm:inline text-[11px] font-medium">{isPaused ? 'Resume' : 'Pause'}</span>
           </button>
 
           {/* Burst Trigger */}
           <button
             onClick={handleBurst}
             title="Inject high-volume traffic burst"
-            className="text-[10px] border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 hover:bg-cyan-500/20 text-cyan-300 transition-colors flex items-center gap-1 active:scale-95"
+            className="text-xs border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1 rounded-xl text-cyan-300 transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.15)] active:scale-95"
           >
-            <Zap className="w-3 h-3 text-cyan-400" />
-            <span className="hidden sm:inline">BURST</span>
+            <Zap className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span className="hidden sm:inline text-[11px] font-semibold tracking-wide">BURST</span>
           </button>
         </div>
       </div>
 
       {/* SVG Canvas Container */}
-      <div className="relative w-full overflow-x-auto overflow-y-hidden bg-[#050505] flex items-center justify-center p-2 sm:p-4 min-h-[340px]">
+      <div className="relative w-full overflow-x-auto overflow-y-hidden bg-[#030305] flex items-center justify-center p-3 sm:p-5 min-h-[340px]">
         <svg
           viewBox="0 0 920 340"
           className="w-full h-auto max-w-[920px] select-none"
@@ -307,8 +311,8 @@ export function NetworkTopology2D() {
         >
           <defs>
             {/* Dark Matrix Grid Background */}
-            <pattern id="matrix-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-              <circle cx="2" cy="2" r="0.8" fill="rgba(255, 255, 255, 0.08)" />
+            <pattern id="matrix-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="0.8" fill="rgba(255, 255, 255, 0.06)" />
             </pattern>
 
             {/* Glowing Drop Shadows */}
@@ -328,10 +332,14 @@ export function NetworkTopology2D() {
               <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#a855f7" floodOpacity="0.8" />
             </filter>
 
-            {/* Card Gradients */}
+            {/* Deep Obsidian Black Node Gradients */}
             <linearGradient id="node-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0f1117" stopOpacity="0.95" />
-              <stop offset="100%" stopColor="#07080a" stopOpacity="0.98" />
+              <stop offset="0%" stopColor="#0f1118" stopOpacity="0.98" />
+              <stop offset="100%" stopColor="#050609" stopOpacity="0.98" />
+            </linearGradient>
+            <linearGradient id="node-sheen" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.08" />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
             </linearGradient>
 
             {/* Edge Paths Definitions for packet animations */}
@@ -344,17 +352,17 @@ export function NetworkTopology2D() {
           <rect width="920" height="340" fill="url(#matrix-grid)" />
 
           {/* Background Stage Columns (Logical Pipeline Zones) */}
-          <g opacity="0.04">
-            <line x1="225" y1="20" x2="225" y2="320" stroke="#ffffff" strokeDasharray="4 4" />
-            <line x1="450" y1="20" x2="450" y2="320" stroke="#ffffff" strokeDasharray="4 4" />
-            <line x1="695" y1="20" x2="695" y2="320" stroke="#ffffff" strokeDasharray="4 4" />
+          <g opacity="0.05">
+            <line x1="225" y1="15" x2="225" y2="325" stroke="#ffffff" strokeDasharray="3 3" />
+            <line x1="450" y1="15" x2="450" y2="325" stroke="#ffffff" strokeDasharray="3 3" />
+            <line x1="695" y1="15" x2="695" y2="325" stroke="#ffffff" strokeDasharray="3 3" />
           </g>
 
-          <g opacity="0.25" fontSize="8" fill="#ffffff" letterSpacing="0.1em">
-            <text x="50" y="30">STAGE_01 // INGESTION</text>
-            <text x="265" y="30">STAGE_02 // ROUTING_LAYER</text>
-            <text x="495" y="30">STAGE_03 // INFERENCE_CLUSTER</text>
-            <text x="740" y="30">STAGE_04 // DISPATCH_SINK</text>
+          <g opacity="0.4" fontSize="8.5" fill="#ffffff" letterSpacing="0.08em" fontFamily="Inter, sans-serif" fontWeight="500">
+            <text x="50" y="28">STAGE 01 · INGESTION</text>
+            <text x="265" y="28">STAGE 02 · ROUTING</text>
+            <text x="495" y="28">STAGE 03 · INFERENCE CLUSTER</text>
+            <text x="740" y="28">STAGE 04 · DISPATCH SINK</text>
           </g>
 
           {/* EDGES: Base Wire & Active Glow */}
@@ -500,43 +508,56 @@ export function NetworkTopology2D() {
                 className="cursor-pointer transition-transform duration-200"
                 style={{
                   opacity: isDimmed ? 0.25 : 1,
-                  filter: isFocused ? `drop-shadow(0 0 12px ${node.glowColor})` : 'none',
+                  filter: isFocused ? `drop-shadow(0 0 16px ${node.glowColor})` : 'none',
                 }}
               >
-                {/* Card Outer Box */}
+                {/* Card Outer Box with Curved Corners */}
                 <rect
                   x={node.box.x}
                   y={node.box.y}
                   width={node.box.w}
                   height={node.box.h}
-                  rx="6"
+                  rx="14"
+                  ry="14"
                   fill="url(#node-gradient)"
-                  stroke={isFocused ? node.color : 'rgba(255, 255, 255, 0.15)'}
+                  stroke={isFocused ? node.color : 'rgba(255, 255, 255, 0.12)'}
                   strokeWidth={isFocused ? '1.5' : '1'}
                   className="transition-colors duration-200"
                 />
 
-                {/* Left accent indicator bar */}
+                {/* Inner Sheen Top Highlight */}
                 <rect
                   x={node.box.x}
-                  y={node.box.y + 4}
+                  y={node.box.y}
+                  width={node.box.w}
+                  height={node.box.h}
+                  rx="14"
+                  ry="14"
+                  fill="url(#node-sheen)"
+                  pointerEvents="none"
+                />
+
+                {/* Left accent indicator bar */}
+                <rect
+                  x={node.box.x + 3}
+                  y={node.box.y + 12}
                   width="3"
-                  height={node.box.h - 8}
+                  height={node.box.h - 24}
                   rx="1.5"
                   fill={node.color}
                 />
 
                 {/* Status Dot */}
                 <circle
-                  cx={node.box.x + 18}
-                  cy={node.box.y + 20}
+                  cx={node.box.x + 20}
+                  cy={node.box.y + 22}
                   r="3.5"
                   fill={node.color}
                 />
                 {!isPaused && (
                   <circle
-                    cx={node.box.x + 18}
-                    cy={node.box.y + 20}
+                    cx={node.box.x + 20}
+                    cy={node.box.y + 22}
                     r="6"
                     stroke={node.color}
                     strokeWidth="1"
@@ -560,25 +581,25 @@ export function NetworkTopology2D() {
 
                 {/* Title */}
                 <text
-                  x={node.box.x + 30}
-                  y={node.box.y + 23}
+                  x={node.box.x + 32}
+                  y={node.box.y + 26}
                   fill="#ffffff"
-                  fontSize="12"
-                  fontWeight="700"
-                  letterSpacing="0.06em"
-                  fontFamily="monospace"
+                  fontSize="12.5"
+                  fontWeight="600"
+                  letterSpacing="0.02em"
+                  fontFamily="Inter, -apple-system, sans-serif"
                 >
                   {node.title}
                 </text>
 
                 {/* Subtitle / Engine */}
                 <text
-                  x={node.box.x + 16}
-                  y={node.box.y + 40}
-                  fill="rgba(255, 255, 255, 0.45)"
-                  fontSize="8.5"
-                  letterSpacing="0.04em"
-                  fontFamily="monospace"
+                  x={node.box.x + 18}
+                  y={node.box.y + 42}
+                  fill="rgba(255, 255, 255, 0.5)"
+                  fontSize="9"
+                  letterSpacing="0.02em"
+                  fontFamily="Inter, -apple-system, sans-serif"
                 >
                   {node.subtitle}
                 </text>
@@ -586,32 +607,31 @@ export function NetworkTopology2D() {
                 {/* Metric pill */}
                 <rect
                   x={node.box.x + 14}
-                  y={node.box.y + 47}
+                  y={node.box.y + 48}
                   width={node.box.w - 28}
                   height="16"
-                  rx="3"
+                  rx="6"
                   fill="rgba(255, 255, 255, 0.04)"
                   stroke="rgba(255, 255, 255, 0.08)"
                   strokeWidth="0.8"
                 />
                 <text
                   x={node.box.x + 20}
-                  y={node.box.y + 59}
+                  y={node.box.y + 60}
                   fill={node.color}
                   fontSize="8.5"
                   fontWeight="600"
-                  letterSpacing="0.02em"
-                  fontFamily="monospace"
+                  fontFamily="Fira Code, monospace"
                 >
                   {node.metricPrimary}
                 </text>
                 <text
                   x={node.box.x + node.box.w - 20}
-                  y={node.box.y + 59}
+                  y={node.box.y + 60}
                   textAnchor="end"
-                  fill="rgba(255, 255, 255, 0.5)"
+                  fill="rgba(255, 255, 255, 0.55)"
                   fontSize="8"
-                  fontFamily="monospace"
+                  fontFamily="Fira Code, monospace"
                 >
                   {node.metricSecondary}
                 </text>
@@ -651,53 +671,53 @@ export function NetworkTopology2D() {
       </div>
 
       {/* Bottom Telemetry HUD / Inspector Panel */}
-      <div className="border-t border-white/10 bg-[#08080a] px-4 py-2.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-[11px]">
+      <div className="border-t border-white/[0.08] bg-[#090b10]/90 backdrop-blur-xl px-5 py-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
         {activeNode ? (
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 w-full">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 w-full">
             <div className="flex items-center gap-2">
-              <span className="text-white/40">INSPECTING:</span>
-              <span className="font-bold tracking-wider" style={{ color: activeNode.color }}>
-                [{activeNode.title}]
+              <span className="text-white/40 text-[11px] uppercase tracking-wider font-semibold">Inspecting</span>
+              <span className="font-semibold text-xs px-2.5 py-0.5 rounded-lg border shadow-sm" style={{ color: activeNode.color, backgroundColor: `${activeNode.color}15`, borderColor: `${activeNode.color}30` }}>
+                {activeNode.title}
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-white/30">RUNTIME:</span>
-              <span className="text-white/90">{activeNode.details.model}</span>
+            <div className="flex items-center gap-1.5 text-white/70">
+              <span className="text-white/40">Runtime:</span>
+              <span className="text-white font-mono text-[11px] bg-white/5 px-2 py-0.5 rounded border border-white/5">{activeNode.details.model}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-white/30">P99_LATENCY:</span>
-              <span className="text-emerald-400 font-semibold">{activeNode.details.p99Latency}</span>
+              <span className="text-white/40">P99 Latency:</span>
+              <span className="text-emerald-400 font-mono font-medium">{activeNode.details.p99Latency}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-white/30">THROUGHPUT:</span>
-              <span className="text-white/90">{activeNode.details.throughput}</span>
+              <span className="text-white/40">Throughput:</span>
+              <span className="text-white font-mono font-medium">{activeNode.details.throughput}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-white/30">QUEUE:</span>
+              <span className="text-white/40">Queue:</span>
               <span className="text-cyan-400 font-mono">{activeNode.details.queueDepth} reqs</span>
             </div>
             <div className="flex items-center gap-1.5 ml-auto">
-              <span className="text-white/30">ERR_RT:</span>
-              <span className="text-white/80">{activeNode.details.errorRate}</span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 ml-1" />
+              <span className="text-white/40">Error Rate:</span>
+              <span className="text-white/90 font-mono">{activeNode.details.errorRate}</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 ml-0.5" />
             </div>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-white/50 w-full">
-            <div className="flex items-center gap-2 text-white/70">
-              <Cpu className="w-3.5 h-3.5 text-blue-400" />
-              <span>PIPELINE_STATUS: <span className="text-green-400 font-semibold">ALL_SYSTEMS_OPTIMAL</span></span>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-white/50 w-full text-xs">
+            <div className="flex items-center gap-2 text-white/80">
+              <Cpu className="w-4 h-4 text-copper-400" />
+              <span>Status: <span className="text-emerald-400 font-medium">All Systems Optimal</span></span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-white/30">TOTAL_FLOW:</span>
-              <span className="text-white/80">14.2K TOK/SEC</span>
+              <span className="text-white/40">Total Flow:</span>
+              <span className="text-white font-mono font-medium">14.2k tok/s</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-white/30">ACTIVE_ROUTES:</span>
-              <span className="text-white/80">2 (GPT-4O + CLAUDE-3.5)</span>
+              <span className="text-white/40">Active Routes:</span>
+              <span className="text-white/90 font-medium">GPT-4o + Claude 3.5</span>
             </div>
-            <div className="hidden lg:flex items-center gap-1.5 ml-auto text-[10px] text-white/30">
-              <span>TIP: HOVER OR CLICK ANY NODE TO INSPECT LIVE TELEMETRY</span>
+            <div className="hidden lg:flex items-center gap-1.5 ml-auto text-[11px] text-white/40">
+              <span>Click or hover any node for live runtime telemetry</span>
             </div>
           </div>
         )}
