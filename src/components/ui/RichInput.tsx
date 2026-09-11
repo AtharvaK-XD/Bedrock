@@ -396,27 +396,36 @@ export function RichInput({
   const selectedModel = selectedAgent.models.find(m => m.id === selectedModelId) || selectedAgent.models[0];
 
   return (
-    <div ref={containerRef} className="bg-[#111]/40 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl transition-all focus-within:ring-4 focus-within:ring-copper-500/20 focus-within:border-copper-500/30 flex flex-col relative group">
-      {/* Subtle gradient overlay for extra glass texture */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none z-0 rounded-3xl"></div>
-      
+    <div
+      ref={containerRef}
+      className="glass-card relative rounded-3xl transition-all duration-300 border border-white/[0.09] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 flex flex-col group overflow-hidden shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)]"
+    >
+      {/* Specular top rim highlight line */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent z-20" />
+
+      {/* Subtle micro noise grain for frosted glass tactile texture */}
+      <div className="pointer-events-none absolute inset-0 glass-noise opacity-25 rounded-3xl z-0" />
+
+      {/* Gentle top specular sheen gradient */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.035] via-transparent to-black/20 rounded-3xl z-0" />
+
       {/* Content wrapper to stay above background effects */}
       <div className="relative z-10 flex flex-col h-full">
         {/* Top Toolbar */}
-        <div className="flex items-center gap-2 p-3 border-b border-white/5 bg-transparent">
+        <div className="flex items-center gap-2 p-3 sm:p-3.5 border-b border-white/[0.06] bg-white/[0.015]">
           <div className="relative">
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'target' ? null : 'target')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-200 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
             >
-              <selectedTarget.icon className="w-4 h-4 text-gray-400" />
+              <selectedTarget.icon className="w-4 h-4 text-zinc-400" />
               {selectedTarget.label}
-              <ChevronDown className="w-4 h-4 text-gray-500" />
+              <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
             </button>
             
             {activeDropdown === 'target' && (
-              <div className="absolute top-full left-0 mt-1 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 py-1">
+              <div className="absolute top-full left-0 mt-1.5 w-52 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-50 p-1.5 backdrop-blur-2xl">
                 {targetOptions.map((opt) => (
                   <button
                     key={opt.id}
@@ -426,11 +435,11 @@ export function RichInput({
                       setActiveDropdown(null);
                     }}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors",
-                      targetType === opt.id ? "bg-white/10 text-white font-medium" : "text-gray-300 hover:bg-white/5 hover:text-white"
+                      "w-full flex items-center gap-3 px-3 py-2 text-xs sm:text-sm text-left rounded-xl transition-colors",
+                      targetType === opt.id ? "bg-white/10 text-white font-medium" : "text-zinc-400 hover:bg-white/5 hover:text-white"
                     )}
                   >
-                    <opt.icon className="w-4 h-4 text-gray-400" />
+                    <opt.icon className="w-4 h-4 text-zinc-400" />
                     {opt.label}
                   </button>
                 ))}
@@ -445,15 +454,15 @@ export function RichInput({
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'agent' ? null : 'agent')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-200 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
             >
-              <AgentIcon agent={selectedAgent} className="w-4 h-4 text-gray-400" />
+              <AgentIcon agent={selectedAgent} className="w-4 h-4 text-zinc-400" />
               {selectedAgent.name}
-              <ChevronDown className="w-4 h-4 text-gray-500" />
+              <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
             </button>
             
             {activeDropdown === 'agent' && (
-              <div className="absolute top-full left-0 mt-1 w-72 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 py-2">
+              <div className="absolute top-full left-0 mt-1.5 w-76 sm:w-80 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-50 p-2 backdrop-blur-2xl">
                 <div className="max-h-[350px] overflow-y-auto custom-scrollbar flex flex-col gap-1 p-1" data-lenis-prevent="true">
                   {AI_AGENTS.map((agent) => (
                     <button
@@ -465,14 +474,14 @@ export function RichInput({
                         setActiveDropdown(null);
                       }}
                       className={cn(
-                        "w-full flex items-start gap-3 px-3 py-2.5 text-left rounded-lg transition-colors",
+                        "w-full flex items-start gap-3 px-3 py-2.5 text-left rounded-xl transition-colors",
                         selectedAgentId === agent.id ? "bg-white/10" : "hover:bg-white/5"
                       )}
                     >
                       <AgentIcon agent={agent} className="w-5 h-5 mt-0.5 shrink-0" />
                       <div>
-                        <div className={cn("text-sm font-medium", selectedAgentId === agent.id ? "text-white" : "text-gray-300")}>{agent.name}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">{agent.description}</div>
+                        <div className={cn("text-xs sm:text-sm font-medium", selectedAgentId === agent.id ? "text-white" : "text-zinc-300")}>{agent.name}</div>
+                        <div className="text-[11px] text-zinc-400 mt-0.5">{agent.description}</div>
                       </div>
                     </button>
                   ))}
@@ -483,24 +492,24 @@ export function RichInput({
 
           <div className="w-px h-4 bg-white/10"></div>
           
-          {/* Model Selection Dropdown (Replacing Advanced) */}
+          {/* Model Selection Dropdown */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'model' ? null : 'model')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-200 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
             >
-              <Settings className="w-4 h-4 text-gray-400" />
+              <Settings className="w-4 h-4 text-zinc-400" />
               {selectedModel.name}
-              <ChevronDown className="w-4 h-4 text-gray-500" />
+              <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
             </button>
 
             {activeDropdown === 'model' && (
-              <div className="absolute top-full left-0 mt-1 w-56 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 py-2">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-white/5 mb-2">
+              <div className="absolute top-full left-0 mt-1.5 w-60 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-50 p-2 backdrop-blur-2xl">
+                <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1">
                   {selectedAgent.name} Models
                 </div>
-                <div className="max-h-[300px] overflow-y-auto px-2 custom-scrollbar" data-lenis-prevent="true">
+                <div className="max-h-[300px] overflow-y-auto px-1 custom-scrollbar" data-lenis-prevent="true">
                   {selectedAgent.models.map((model) => (
                     <button
                       key={model.id}
@@ -510,8 +519,8 @@ export function RichInput({
                         setActiveDropdown(null);
                       }}
                       className={cn(
-                        "w-full flex items-center gap-2 px-2 py-2 text-sm text-left rounded-lg transition-colors",
-                        selectedModelId === model.id ? "bg-white/10 text-white font-medium" : "text-gray-300 hover:bg-white/5 hover:text-white"
+                        "w-full flex items-center gap-2 px-3 py-2 text-xs sm:text-sm text-left rounded-xl transition-colors",
+                        selectedModelId === model.id ? "bg-white/10 text-white font-medium" : "text-zinc-300 hover:bg-white/5 hover:text-white"
                       )}
                     >
                       {model.name}
@@ -527,9 +536,9 @@ export function RichInput({
         {files.length > 0 && (
           <div className="px-6 pt-4 flex flex-wrap gap-2">
             {files.map((file, idx) => (
-              <div key={idx} className="flex items-center gap-1 bg-white/5 border border-white/10 px-2 py-1 rounded-md text-xs text-gray-300">
+              <div key={idx} className="flex items-center gap-1.5 bg-white/[0.04] border border-white/10 px-2.5 py-1 rounded-lg text-xs text-zinc-300">
                 <span className="truncate max-w-[150px]">{file.name}</span>
-                <button type="button" onClick={() => removeFile(idx)} className="text-gray-500 hover:text-white">
+                <button type="button" onClick={() => removeFile(idx)} className="text-zinc-500 hover:text-white transition-colors">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -543,13 +552,13 @@ export function RichInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholderText}
           data-lenis-prevent="true"
-          className="w-full min-h-[100px] max-h-[500px] resize-none bg-transparent p-6 text-lg text-white placeholder:text-gray-500 focus:outline-none"
+          className="w-full min-h-[110px] max-h-[500px] resize-none bg-transparent p-6 text-lg text-white placeholder:text-zinc-500 focus:outline-none leading-relaxed"
         />
 
         {/* Bottom Toolbar */}
-        <div className="flex items-center justify-between p-4 bg-[#1a1a1a]/30 rounded-b-3xl">
+        <div className="flex items-center justify-between p-3.5 sm:p-4 border-t border-white/[0.06] bg-white/[0.015]">
           <div className="flex items-center gap-1">
-            <button type="button" className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors tooltip-trigger">
+            <button type="button" className="p-2 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl transition-colors tooltip-trigger">
               <Mic className="w-5 h-5" />
             </button>
             <input 
@@ -562,7 +571,7 @@ export function RichInput({
             <button 
               type="button" 
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors tooltip-trigger"
+              className="p-2 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl transition-colors tooltip-trigger"
               title="Attach files (Max 5MB)"
             >
               <Paperclip className="w-5 h-5" />
@@ -573,22 +582,22 @@ export function RichInput({
             type="button"
             onClick={handleActionSubmit}
             disabled={!value.trim() || isLoading}
-            className="flex items-center gap-2 px-5 py-2 bg-white text-black rounded-xl font-medium transition-all hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white text-zinc-950 hover:bg-zinc-100 rounded-xl font-medium transition-all shadow-[0_2px_12px_rgba(255,255,255,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
           >
             {isLoading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              <div className="w-4 h-4 border-2 border-zinc-400 border-t-zinc-950 rounded-full animate-spin"></div>
             ) : (
-              <Sparkles className="w-5 h-5 text-copper-400" />
+              <Sparkles className="w-4 h-4 text-emerald-600" />
             )}
             Generate
           </button>
         </div>
 
         {/* Token Quota Progress */}
-        <div className="flex flex-col sm:flex-row items-center justify-between px-6 pb-4 pt-1 text-[11px] text-gray-500 gap-4 sm:gap-8">
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 pb-4 pt-2 text-[11px] text-zinc-500 gap-4 sm:gap-8 border-t border-white/[0.03] bg-black/20">
           <div className="flex items-center gap-3 flex-1 w-full">
             <span className="whitespace-nowrap w-20">Session: {Math.round((sessionTokens / SESSION_LIMIT) * 100)}%</span>
-            <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
+            <div className="h-1.5 flex-1 bg-white/[0.05] rounded-full overflow-hidden border border-white/[0.05]">
               <div 
                 className="h-full bg-blue-500/80 rounded-full transition-all duration-500" 
                 style={{ width: `${Math.min(100, (sessionTokens / SESSION_LIMIT) * 100)}%` }} 
@@ -596,7 +605,7 @@ export function RichInput({
             </div>
           </div>
           <div className="flex items-center gap-3 flex-1 w-full justify-end">
-            <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
+            <div className="h-1.5 flex-1 bg-white/[0.05] rounded-full overflow-hidden border border-white/[0.05]">
               <div 
                 className="h-full bg-blue-500/80 rounded-full transition-all duration-500" 
                 style={{ width: `${Math.min(100, (weeklyTokens / WEEKLY_LIMIT) * 100)}%` }} 

@@ -105,8 +105,10 @@ export default function Wizard() {
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  <div className="bg-[#1a1a1a]/30 backdrop-blur-xl border border-white/10 rounded-[32px] p-8 md:p-10 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-copper-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+                  <div className="glass-card border border-white/10 rounded-[32px] p-8 md:p-10 shadow-2xl relative overflow-hidden">
+                    {/* Specular top rim highlight line */}
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent z-20" />
+                    <div className="pointer-events-none absolute inset-0 glass-noise opacity-20 rounded-[32px] z-0" />
                     
                     <div className="relative z-10 mb-10">
                       <div className="inline-flex items-center justify-center p-2 bg-copper-500/10 rounded-xl mb-4 text-copper-500">

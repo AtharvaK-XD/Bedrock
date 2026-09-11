@@ -216,13 +216,19 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         }
       }}
       className={cn(
-        "relative flex flex-col w-full mx-auto bg-[#111] backdrop-blur-md border border-white/10 rounded-3xl shadow-xl transition-all duration-500 ease-[0.22,1,0.36,1] focus-within:ring-2 focus-within:ring-copper-500/30",
+        "glass-card relative flex flex-col w-full mx-auto border border-white/[0.09] rounded-3xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)] transition-all duration-500 ease-[0.22,1,0.36,1] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 overflow-hidden",
         expanded ? "max-w-[700px] min-h-[140px]" : "max-w-[340px] min-h-[60px]",
         className
       )}
     >
+      {/* Specular top rim highlight line */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent z-20" />
+
+      {/* Subtle micro noise grain */}
+      <div className="pointer-events-none absolute inset-0 glass-noise opacity-25 rounded-3xl z-0" />
+
       {/* Input area */}
-      <div className={cn("flex flex-col w-full px-5 transition-all duration-500 flex-1", expanded ? "pt-5 justify-start" : "pt-0 justify-center")}>
+      <div className={cn("relative z-10 flex flex-col w-full px-5 transition-all duration-500 flex-1", expanded ? "pt-5 justify-start" : "pt-0 justify-center")}>
         {files.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {files.map((file, idx) => (
