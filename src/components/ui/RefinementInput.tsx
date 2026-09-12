@@ -216,7 +216,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         }
       }}
       className={cn(
-        "glass-card relative flex flex-col w-full mx-auto border border-white/[0.09] rounded-3xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)] transition-all duration-500 ease-[0.22,1,0.36,1] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 overflow-hidden",
+        "glass-card relative flex flex-col w-full mx-auto border border-white/[0.09] rounded-3xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)] transition-all duration-500 ease-[0.22,1,0.36,1] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10",
         expanded ? "max-w-[700px] min-h-[140px]" : "max-w-[340px] min-h-[60px]",
         className
       )}

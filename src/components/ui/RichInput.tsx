@@ -398,10 +398,13 @@ export function RichInput({
   return (
     <div
       ref={containerRef}
-      className="glass-card relative rounded-3xl transition-all duration-300 border border-white/[0.09] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 flex flex-col group overflow-hidden shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)]"
+      className={cn(
+        "glass-card relative rounded-3xl transition-all duration-300 border border-white/[0.09] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 flex flex-col group shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)]",
+        activeDropdown ? "z-50" : "z-10"
+      )}
     >
       {/* Specular top rim highlight line */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent z-20" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent z-20 rounded-t-3xl" />
 
       {/* Subtle micro noise grain for frosted glass tactile texture */}
       <div className="pointer-events-none absolute inset-0 glass-noise opacity-25 rounded-3xl z-0" />
@@ -412,7 +415,7 @@ export function RichInput({
       {/* Content wrapper to stay above background effects */}
       <div className="relative z-10 flex flex-col h-full">
         {/* Top Toolbar */}
-        <div className="flex items-center gap-2 p-3 sm:p-3.5 border-b border-white/[0.06] bg-white/[0.015]">
+        <div className="flex items-center gap-2 p-3 sm:p-3.5 border-b border-white/[0.06] bg-white/[0.015] rounded-t-3xl">
           <div className="relative">
             <button
               type="button"
@@ -425,7 +428,7 @@ export function RichInput({
             </button>
             
             {activeDropdown === 'target' && (
-              <div className="absolute top-full left-0 mt-1.5 w-52 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-50 p-1.5 backdrop-blur-2xl">
+              <div className="absolute top-full left-0 mt-2 w-52 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-1.5 backdrop-blur-2xl">
                 {targetOptions.map((opt) => (
                   <button
                     key={opt.id}
@@ -462,8 +465,8 @@ export function RichInput({
             </button>
             
             {activeDropdown === 'agent' && (
-              <div className="absolute top-full left-0 mt-1.5 w-76 sm:w-80 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-50 p-2 backdrop-blur-2xl">
-                <div className="max-h-[350px] overflow-y-auto custom-scrollbar flex flex-col gap-1 p-1" data-lenis-prevent="true">
+              <div className="absolute top-full left-0 mt-2 w-80 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-2 backdrop-blur-2xl">
+                <div className="max-h-[380px] overflow-y-auto custom-scrollbar flex flex-col gap-1 p-1" data-lenis-prevent="true">
                   {AI_AGENTS.map((agent) => (
                     <button
                       key={agent.id}
@@ -505,11 +508,11 @@ export function RichInput({
             </button>
 
             {activeDropdown === 'model' && (
-              <div className="absolute top-full left-0 mt-1.5 w-60 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-50 p-2 backdrop-blur-2xl">
+              <div className="absolute top-full left-0 mt-2 w-64 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-2 backdrop-blur-2xl">
                 <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1">
                   {selectedAgent.name} Models
                 </div>
-                <div className="max-h-[300px] overflow-y-auto px-1 custom-scrollbar" data-lenis-prevent="true">
+                <div className="max-h-[340px] overflow-y-auto px-1 custom-scrollbar" data-lenis-prevent="true">
                   {selectedAgent.models.map((model) => (
                     <button
                       key={model.id}
