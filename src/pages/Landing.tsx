@@ -246,7 +246,7 @@ export default function Landing() {
               <div className="max-w-7xl mx-auto w-full">
                 <div className="reveal-container max-w-2xl">
                   <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="The Arena" /></h3>
-                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Test your prompts against multiple models simultaneously. See how GPT-4, Claude 3.5, and Llama 3 interpret the exact same instructions, side by side." /></p>
+                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Test your prompts against multiple models simultaneously. See how GPT-4, Gemini 2.5, and Llama 3 interpret the exact same instructions, side by side." /></p>
                 </div>
               </div>
             </div>
@@ -323,7 +323,7 @@ export default function Landing() {
             {[
               { icon: <Sparkles className="w-5 h-5" />, title: "Semantic Analysis", desc: "Our engine evaluates your initial thought and identifies missing context automatically." },
               { icon: <Layers className="w-5 h-5" />, title: "Structured Frameworks", desc: "Outputs are formatted using industry-standard prompt structures for maximum reliability." },
-              { icon: <Layout className="w-5 h-5" />, title: "Side-by-Side Arena", desc: "Instantly benchmark your refined prompt across GPT-4, Claude 3.5, and Llama 3." },
+              { icon: <Layout className="w-5 h-5" />, title: "Side-by-Side Arena", desc: "Instantly benchmark your refined prompt across GPT-4, Gemini 2.5, and Llama 3." },
               { icon: <Shield className="w-5 h-5" />, title: "Local Privacy", desc: "Built as a native desktop application. Your proprietary prompts never leak." },
               { icon: <Database className="w-5 h-5" />, title: "Vector DB Sync", desc: "Coming soon: Sync your prompt library with your local RAG databases." },
               { icon: <Globe className="w-5 h-5" />, title: "API Integration", desc: "Export straight to your codebase or call the Bedrock proxy API." }
