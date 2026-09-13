@@ -22,7 +22,7 @@ import { NetworkTopology2D } from '../components/dashboard/NetworkTopology2D';
 // --- MOCK DATA ---
 const INITIAL_EXECUTIONS = [
   { id: 'TRC-8F72K9', time: '14:22:01.042', node: 'SYSTEM_PROMPT_01', model: 'gpt-4o', tokens: 4021, latency: 843, status: 'OK' },
-  { id: 'TRC-2M9X1B', time: '14:22:00.891', node: 'DATA_EXTRACT_A', model: 'claude-3.5', tokens: 12402, latency: 2104, status: 'OK' },
+  { id: 'TRC-2M9X1B', time: '14:22:00.891', node: 'DATA_EXTRACT_A', model: 'gemini-2.5', tokens: 12402, latency: 1204, status: 'OK' },
   { id: 'TRC-9P4V0C', time: '14:21:58.112', node: 'ROUTER_NODE', model: 'gpt-4o-mini', tokens: 342, latency: 120, status: 'OK' },
   { id: 'TRC-5K1B2F', time: '14:21:55.663', node: 'CREATIVE_AGENT', model: 'llama-3-70b', tokens: 2890, latency: 1420, status: 'OK' },
   { id: 'TRC-3X8M9Z', time: '14:21:50.001', node: 'CODE_REVIEW', model: 'gpt-4o', tokens: 8102, latency: 3411, status: 'ERR_TIMEOUT' },
@@ -370,8 +370,8 @@ export default function Dashboard() {
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[11px] font-mono border ${
                               exec.model.includes('gpt-4o')
                                 ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                                : exec.model.includes('claude')
-                                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                : exec.model.includes('gemini')
+                                ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
                                 : 'bg-purple-500/15 text-purple-300 border-purple-500/30'
                             }`}>
                               {exec.model}

@@ -97,7 +97,7 @@ const SPECIALIZATION_TAGS = [
   'Multi-Agent Workflows',
   'Tree-of-Thought Eval',
   'Prompt Distillation',
-  'Claude 3.5 & GPT-4o',
+  'Gemini 2.5 & GPT-4o',
   'DSPy Pipelines',
   'Adaptive Routing',
 ];
@@ -109,7 +109,7 @@ const RECENT_ACTIVITY = [
     id: 'ACT-01',
     title: 'Customer Support Triaging Prompt',
     type: 'Wizard Pipeline',
-    model: 'claude-3.5-sonnet',
+    model: 'gemini-2.5-flash',
     date: '12 minutes ago',
     status: 'Optimized (98% Score)',
     path: '/app/generator',
@@ -127,7 +127,7 @@ const RECENT_ACTIVITY = [
     id: 'ACT-03',
     title: 'Financial Document Extractor Benchmark',
     type: 'Prompt Tester',
-    model: 'gpt-4o vs claude-3.5',
+    model: 'gpt-4o vs gemini-2.5',
     date: 'Yesterday',
     status: 'Evaluated 50 runs',
     path: '/app/tester',
@@ -759,11 +759,11 @@ export default function Profile() {
 
                       <div>
                         <div className="flex justify-between text-xs font-mono mb-1.5">
-                          <span className="text-white font-medium">Claude 3.5 Sonnet</span>
-                          <span className="text-amber-400 font-bold">34%</span>
+                          <span className="text-white font-medium">Gemini 2.5 Flash</span>
+                          <span className="text-cyan-400 font-bold">34%</span>
                         </div>
                         <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full" style={{ width: '34%' }} />
+                          <div className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full" style={{ width: '34%' }} />
                         </div>
                       </div>
 
@@ -1215,7 +1215,7 @@ export default function Profile() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
-                    { id: 'claude', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', desc: 'Superior coding, creative depth, and reasoning.' },
+                    { id: 'mistral', name: 'Mistral Large', provider: 'Mistral AI', desc: 'Superior coding, creative depth, and reasoning.' },
                     { id: 'gpt4o', name: 'GPT-4o Omnimodal', provider: 'OpenAI', desc: 'Fast throughput, tool execution, and multimodal vision.' },
                     { id: 'gemini', name: 'Gemini 1.5 Pro', provider: 'Google', desc: 'Massive 1M+ context window for deep document synthesis.' },
                     { id: 'llama', name: 'Llama 3 70B', provider: 'Meta / Groq', desc: 'Ultra-low latency inference via specialized LPUs.' },
@@ -1246,7 +1246,7 @@ export default function Profile() {
                 <div className="pt-6 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-2 text-xs text-gray-400">
                     <ShieldCheck className="w-4 h-4 text-copper-400" />
-                    <span>To configure customized provider API keys (OpenAI, Anthropic, Gemini, Groq), visit Settings.</span>
+                    <span>To configure customized provider API keys (OpenAI, Gemini, Groq), visit Settings.</span>
                   </div>
 
                   <Link

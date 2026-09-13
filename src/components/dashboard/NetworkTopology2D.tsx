@@ -63,7 +63,7 @@ const NODES: NodeInfo[] = [
     inPorts: [{ x: 265, y: 170 }],
     outPorts: [
       { x: 400, y: 155 }, // to GPT-4
-      { x: 400, y: 185 }, // to Claude-3
+      { x: 400, y: 185 }, // to Gemini
     ],
     details: {
       model: 'bedrock-smart-router-v2',
@@ -97,24 +97,24 @@ const NODES: NodeInfo[] = [
     },
   },
   {
-    id: 'CLAUDE-3',
-    title: 'CLAUDE-3.5',
-    subtitle: 'ANTHROPIC / 200K',
-    color: '#f59e0b', // amber-500
-    glowColor: 'rgba(245, 158, 11, 0.5)',
-    metricPrimary: '1,210ms',
-    metricSecondary: '5.8k tok/s',
+    id: 'GEMINI-2.5',
+    title: 'GEMINI-2.5',
+    subtitle: 'GOOGLE / 1M',
+    color: '#06b6d4', // cyan-500
+    glowColor: 'rgba(6, 182, 212, 0.5)',
+    metricPrimary: '1,050ms',
+    metricSecondary: '9.2k tok/s',
     box: { x: 495, y: 215, w: 155, h: 70 },
     inPorts: [{ x: 495, y: 250 }],
     outPorts: [{ x: 650, y: 250 }],
     details: {
-      model: 'claude-3-5-sonnet-20241022',
-      engine: 'Anthropic Bedrock v2',
-      p99Latency: '1,210ms',
-      throughput: '5,790 tok/s',
+      model: 'gemini-2.5-flash',
+      engine: 'Google AI Studio / Vertex',
+      p99Latency: '1,050ms',
+      throughput: '9,240 tok/s',
       errorRate: '0.01%',
-      queueDepth: 8,
-      activeConns: 320,
+      queueDepth: 5,
+      activeConns: 380,
     },
   },
   {
@@ -128,7 +128,7 @@ const NODES: NodeInfo[] = [
     box: { x: 740, y: 135, w: 135, h: 70 },
     inPorts: [
       { x: 740, y: 155 }, // from GPT-4
-      { x: 740, y: 185 }, // from Claude-3
+      { x: 740, y: 185 }, // from Gemini
     ],
     outPorts: [{ x: 875, y: 170 }],
     details: {
@@ -170,11 +170,11 @@ const EDGES: EdgePath[] = [
     speed: 1.8,
   },
   {
-    id: 'path-router-claude',
+    id: 'path-router-gemini',
     source: 'ROUTER',
-    target: 'CLAUDE-3',
+    target: 'GEMINI-2.5',
     d: 'M 400 185 C 450 185, 445 250, 495 250',
-    color: '#f59e0b',
+    color: '#06b6d4',
     speed: 1.6,
   },
   {
@@ -186,11 +186,11 @@ const EDGES: EdgePath[] = [
     speed: 1.8,
   },
   {
-    id: 'path-claude-egress',
-    source: 'CLAUDE-3',
+    id: 'path-gemini-egress',
+    source: 'GEMINI-2.5',
     target: 'EGRESS',
     d: 'M 650 250 C 700 250, 690 185, 740 185',
-    color: '#f59e0b',
+    color: '#06b6d4',
     speed: 1.6,
   },
 ];
@@ -198,7 +198,7 @@ const EDGES: EdgePath[] = [
 export function NetworkTopology2D() {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [routeFilter, setRouteFilter] = useState<'ALL' | 'GPT-4' | 'CLAUDE-3'>('ALL');
+  const [routeFilter, setRouteFilter] = useState<'ALL' | 'GPT-4' | 'GEMINI-2.5'>('ALL');
   const [isPaused, setIsPaused] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1);
   const [burstKey, setBurstKey] = useState<number>(0);
@@ -212,9 +212,9 @@ export function NetworkTopology2D() {
 
   const isEdgeActive = (edge: EdgePath) => {
     if (routeFilter === 'GPT-4') {
-      if (edge.source === 'CLAUDE-3' || edge.target === 'CLAUDE-3') return false;
+      if (edge.source === 'GEMINI-2.5' || edge.target === 'GEMINI-2.5') return false;
     }
-    if (routeFilter === 'CLAUDE-3') {
+    if (routeFilter === 'GEMINI-2.5') {
       if (edge.source === 'GPT-4' || edge.target === 'GPT-4') return false;
     }
     if (activeNodeId) {
@@ -255,7 +255,7 @@ export function NetworkTopology2D() {
         <div className="flex items-center gap-2">
           {/* Route Filters */}
           <div className="flex items-center border border-white/10 p-0.5 rounded-xl bg-black/60 backdrop-blur-md text-[11px]">
-            {(['ALL', 'GPT-4', 'CLAUDE-3'] as const).map((mode) => (
+            {(['ALL', 'GPT-4', 'GEMINI-2.5'] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setRouteFilter(mode)}
@@ -265,7 +265,7 @@ export function NetworkTopology2D() {
                     : 'text-white/50 hover:text-white/90 hover:bg-white/5'
                 }`}
               >
-                {mode === 'ALL' ? 'All Routes' : mode === 'GPT-4' ? 'GPT-4o' : 'Claude 3.5'}
+                {mode === 'ALL' ? 'All Routes' : mode === 'GPT-4' ? 'GPT-4o' : 'Gemini 2.5'}
               </button>
             ))}
           </div>
@@ -496,8 +496,8 @@ export function NetworkTopology2D() {
 
             // Route filter dimming
             let isDimmed = false;
-            if (routeFilter === 'GPT-4' && node.id === 'CLAUDE-3') isDimmed = true;
-            if (routeFilter === 'CLAUDE-3' && node.id === 'GPT-4') isDimmed = true;
+            if (routeFilter === 'GPT-4' && node.id === 'GEMINI-2.5') isDimmed = true;
+            if (routeFilter === 'GEMINI-2.5' && node.id === 'GPT-4') isDimmed = true;
 
             return (
               <g
@@ -714,7 +714,7 @@ export function NetworkTopology2D() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-white/40">Active Routes:</span>
-              <span className="text-white/90 font-medium">GPT-4o + Claude 3.5</span>
+              <span className="text-white/90 font-medium">GPT-4o + Gemini 2.5</span>
             </div>
             <div className="hidden lg:flex items-center gap-1.5 ml-auto text-[11px] text-white/40">
               <span>Click or hover any node for live runtime telemetry</span>
