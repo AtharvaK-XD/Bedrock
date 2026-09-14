@@ -11,8 +11,6 @@ Modern software teams, prompt engineers, and AI developers require structured wo
 1. **System Prompt Synthesis**: Interactive, persona-driven requirement elicitation and automated prompt compilation.
 2. **Visual Flow Orchestration**: Node-based canvas for chaining prompts, conditional routing, data injection, and automated evaluation.
 3. **Multi-Model Benchmarking**: Side-by-side prompt execution and diff evaluation across heterogeneous providers.
-4. **Prompt Asset Management**: Local persistence and categorization for templates, system personas, and test configurations.
-
 ---
 
 ## Core Capabilities
