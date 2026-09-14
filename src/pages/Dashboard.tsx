@@ -188,10 +188,6 @@ export default function Dashboard() {
                   <h2 className="text-sm font-display font-semibold text-white tracking-wide">Live Pipeline Architecture</h2>
                   <span className="text-xs text-white/40 hidden sm:inline">· Active 2D Model Dispatch Graph</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-white/40">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                  <span>1000ms Polling</span>
-                </div>
               </div>
               <NetworkTopology2D />
             </div>
