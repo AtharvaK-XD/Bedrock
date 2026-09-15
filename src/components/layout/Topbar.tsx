@@ -75,8 +75,12 @@ export function Topbar() {
                 {profile.plan}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold shadow-md ring-2 ring-transparent group-hover:ring-copper-400/50 transition-all">
-              {profile.avatarInitials}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold shadow-md ring-2 ring-transparent group-hover:ring-copper-400/50 transition-all overflow-hidden">
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+              ) : (
+                profile.avatarInitials
+              )}
             </div>
           </Link>
         </div>

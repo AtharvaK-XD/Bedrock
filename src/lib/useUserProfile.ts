@@ -10,6 +10,7 @@ export interface UserProfile {
   location: string;
   organization: string;
   avatarInitials: string;
+  avatarUrl?: string;
   github: string;
   huggingface: string;
   website: string;
@@ -29,6 +30,7 @@ const DEFAULT_PROFILE: UserProfile = {
   location: 'San Francisco, CA (UTC-7)',
   organization: 'Bedrock Labs',
   avatarInitials: 'AK',
+  avatarUrl: '',
   github: 'atharva-k',
   huggingface: 'atharvak',
   website: 'https://bedrock.ai',

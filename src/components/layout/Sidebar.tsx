@@ -52,8 +52,12 @@ export function Sidebar() {
           to="/app/profile" 
           className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-basalt-900/5 transition-colors cursor-pointer"
         >
-          <div className="w-8 h-8 rounded-full bg-basalt-900 text-white flex items-center justify-center text-xs font-semibold">
-            {profile.avatarInitials}
+          <div className="w-8 h-8 rounded-full bg-basalt-900 text-white flex items-center justify-center text-xs font-semibold overflow-hidden">
+            {profile.avatarUrl ? (
+              <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+            ) : (
+              profile.avatarInitials
+            )}
           </div>
           <div className="flex-1 overflow-hidden">
             <p className="text-sm font-medium text-basalt-900 truncate">{profile.name}</p>
