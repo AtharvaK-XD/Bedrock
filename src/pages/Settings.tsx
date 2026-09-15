@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, 
@@ -8,12 +8,15 @@ import {
   CreditCard,
   LogOut,
   Save,
-  Check
+  Check,
+  Camera,
+  Trash2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Link } from 'react-router-dom';
 import { useUserProfile } from '../lib/useUserProfile';
+import { processAvatarImage } from '../lib/imageUtils';
 
 type Tab = 'account' | 'api-keys' | 'notifications' | 'privacy';
 
@@ -24,6 +27,26 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [name, setName] = useState(profile.name);
   const [email, setEmail] = useState(profile.email);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingAvatar(true);
+      setAvatarError(null);
+      const dataUrl = await processAvatarImage(file);
+      updateProfile({ avatarUrl: dataUrl });
+    } catch (err: any) {
+      setAvatarError(err?.message || 'Failed to process avatar');
+      setTimeout(() => setAvatarError(null), 4000);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (e.target) e.target.value = '';
+    }
+  };
 
   const handleSave = () => {
     setIsSaving(true);
@@ -102,14 +125,52 @@ export default function Settings() {
                   </div>
                   
                   <div className="flex items-center gap-6 mb-8">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold text-2xl shadow-md">
-                      {profile.avatarInitials}
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleAvatarFileChange} 
+                      accept="image/*" 
+                      className="hidden" 
+                    />
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="relative group w-20 h-20 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold text-2xl shadow-md overflow-hidden cursor-pointer ring-2 ring-transparent hover:ring-copper-400/50 transition-all"
+                      title="Click to choose a new avatar image"
+                    >
+                      {profile.avatarUrl ? (
+                        <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                      ) : (
+                        profile.avatarInitials
+                      )}
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera className="w-5 h-5 text-copper-300" />
+                        <span className="text-[9px] font-medium text-white mt-0.5">Change</span>
+                      </div>
                     </div>
                     <div>
-                      <button className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-lg transition-colors">
-                        Change Avatar
-                      </button>
-                      <p className="text-xs text-gray-500 mt-2">JPG, GIF or PNG. Max size of 800K</p>
+                      <div className="flex items-center gap-3">
+                        <button 
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingAvatar}
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                        >
+                          <Camera className="w-4 h-4 text-copper-400" />
+                          {isUploadingAvatar ? 'Processing...' : (profile.avatarUrl ? 'Change Avatar' : 'Upload Avatar')}
+                        </button>
+                        {profile.avatarUrl && (
+                          <button 
+                            type="button"
+                            onClick={() => updateProfile({ avatarUrl: '' })}
+                            className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">JPG, PNG, WEBP or GIF. Auto-scaled & optimized</p>
+                      {avatarError && <p className="text-xs text-red-400 mt-1">{avatarError}</p>}
                     </div>
                   </div>
 

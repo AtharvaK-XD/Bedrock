@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
@@ -28,12 +28,14 @@ import {
   Globe,
   Palette,
   Share2,
-  TrendingUp
+  TrendingUp,
+  Trash2
 } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { useUserProfile } from '../lib/useUserProfile';
 import { PromptActivityHeatmap } from '../components/profile/PromptActivityHeatmap';
+import { processAvatarImage } from '../lib/imageUtils';
 
 const GithubIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -153,6 +155,40 @@ export default function Profile() {
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoMessage, setPhotoMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingPhoto(true);
+      setPhotoMessage(null);
+      const dataUrl = await processAvatarImage(file);
+      updateProfile({ avatarUrl: dataUrl });
+      setPhotoMessage({ type: 'success', text: 'Profile photo updated!' });
+      setTimeout(() => setPhotoMessage(null), 3000);
+    } catch (err: any) {
+      setPhotoMessage({ type: 'error', text: err?.message || 'Failed to update photo' });
+      setTimeout(() => setPhotoMessage(null), 4000);
+    } finally {
+      setIsUploadingPhoto(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleRemovePhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateProfile({ avatarUrl: '' });
+    setPhotoMessage({ type: 'success', text: 'Custom photo removed' });
+    setTimeout(() => setPhotoMessage(null), 3000);
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -345,28 +381,53 @@ export default function Profile() {
                 {/* Avatar with Glow Ring & Edit Overlay */}
                 <div 
                   className="relative group cursor-pointer shrink-0" 
-                  onClick={() => setActiveTab('edit')}
-                  title="Click to edit profile & avatar"
+                  onClick={handleAvatarClick}
+                  title={profile.avatarUrl ? "Click to change profile photo" : "Click to select profile photo"}
                 >
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handlePhotoSelect} 
+                    accept="image/png, image/jpeg, image/webp, image/gif, image/*" 
+                    className="hidden" 
+                    id="profile-avatar-upload"
+                  />
                   <div className="relative p-1 rounded-3xl bg-gradient-to-tr from-copper-400 via-copper-500 to-emerald-400 shadow-2xl shadow-copper-900/40 ring-4 ring-[#121417]">
                     <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-[22px] bg-gradient-to-tr from-basalt-900 via-[#162724] to-basalt-800 text-white flex flex-col items-center justify-center font-display font-bold text-3xl sm:text-4xl relative overflow-hidden border border-white/10 group-hover:border-copper-400/60 transition-all">
                       {/* Subtle shine glass effect */}
-                      <div className="absolute inset-0 bg-gradient-to-tr from-copper-500/20 via-transparent to-white/10 pointer-events-none" />
-                      <span className="bg-gradient-to-br from-white via-sandstone-100 to-copper-200 bg-clip-text text-transparent drop-shadow-md">
-                        {profile.avatarInitials}
-                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-tr from-copper-500/20 via-transparent to-white/10 pointer-events-none z-10" />
+
+                      {profile.avatarUrl ? (
+                        <img 
+                          src={profile.avatarUrl} 
+                          alt={profile.name} 
+                          className="w-full h-full object-cover relative z-0" 
+                        />
+                      ) : (
+                        <span className="bg-gradient-to-br from-white via-sandstone-100 to-copper-200 bg-clip-text text-transparent drop-shadow-md">
+                          {profile.avatarInitials}
+                        </span>
+                      )}
                       
                       {/* Hover edit badge overlay */}
-                      <div className="absolute inset-0 bg-black/65 backdrop-blur-xs flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <Camera className="w-5 h-5 text-copper-300 mb-1" />
-                        <span className="text-[10px] font-medium text-white/90">Edit Photo</span>
+                      <div className="absolute inset-0 bg-black/65 backdrop-blur-xs flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
+                        {isUploadingPhoto ? (
+                          <div className="w-6 h-6 border-2 border-copper-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <Camera className="w-5 h-5 text-copper-300 mb-1 group-hover:scale-110 transition-transform" />
+                            <span className="text-[10px] font-medium text-white/90">
+                              {profile.avatarUrl ? 'Change Photo' : 'Select Photo'}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Presence Status Radar Dot */}
                   <div 
-                    className="absolute -bottom-1 -right-1 flex items-center justify-center"
+                    className="absolute -bottom-1 -right-1 flex items-center justify-center z-20"
                     title="Node Active • Online"
                   >
                     <span className="absolute w-5 h-5 rounded-full bg-emerald-400/40 animate-ping pointer-events-none" />
@@ -376,6 +437,18 @@ export default function Profile() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Quick remove photo button when custom avatar is present */}
+                  {profile.avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      title="Remove custom photo"
+                      className="absolute -top-1.5 -right-1.5 z-30 p-1.5 rounded-full bg-[#121417] text-gray-400 hover:text-red-400 border border-white/20 hover:border-red-500/40 shadow-lg backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Identity & Metadata Details */}
@@ -407,6 +480,19 @@ export default function Profile() {
                       <Sparkles className="w-3 h-3 text-copper-400" />
                       {profile.plan}
                     </span>
+
+                    {/* Photo upload status notification badge */}
+                    {photoMessage && (
+                      <span className={cn(
+                        "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border shadow-sm animate-pulse",
+                        photoMessage.type === 'success'
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                          : "bg-red-500/20 text-red-300 border-red-500/40"
+                      )}>
+                        {photoMessage.type === 'success' && <Check className="w-3 h-3" />}
+                        {photoMessage.text}
+                      </span>
+                    )}
                   </div>
 
                   {/* Role & Company */}
@@ -906,6 +992,49 @@ export default function Profile() {
                       <CheckCircle2 className="w-3.5 h-3.5" /> Saved successfully
                     </span>
                   )}
+                </div>
+
+                {/* Profile Photo Card in Edit Tab */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-4 rounded-2xl bg-white/[0.03] border border-white/10 mb-6">
+                  <div 
+                    onClick={handleAvatarClick}
+                    className="relative group w-16 h-16 rounded-2xl bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold text-xl shadow-md overflow-hidden shrink-0 cursor-pointer ring-2 ring-white/10 hover:ring-copper-400/50 transition-all"
+                    title="Click to select or change photo"
+                  >
+                    {profile.avatarUrl ? (
+                      <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                    ) : (
+                      profile.avatarInitials
+                    )}
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera className="w-4 h-4 text-copper-300" />
+                    </div>
+                  </div>
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white">Profile Photo</p>
+                    <p className="text-xs text-gray-400">JPG, PNG, WEBP, or GIF. Click to open folder and choose an image.</p>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={handleAvatarClick}
+                      disabled={isUploadingPhoto}
+                      className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-copper-400" />
+                      {isUploadingPhoto ? 'Uploading...' : (profile.avatarUrl ? 'Change Photo' : 'Select Photo')}
+                    </button>
+                    {profile.avatarUrl && (
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <form onSubmit={handleSave} className="space-y-6">
