@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RichInput } from '../components/ui/RichInput';
@@ -218,34 +219,37 @@ export default function Wizard() {
       </div>
 
       {/* Full Screen PixelCard Loading Overlay for Follow-up Questions and Synthesis */}
-      <AnimatePresence>
-        {(isGenerating || isSynthesizing) && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black"
-          >
-            <PixelCard
-              active={true}
-              variant="copper"
-              gap={12}
-              speed={35}
-              className="w-full h-full !rounded-none !border-0 !bg-black flex flex-col items-center justify-center relative"
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {(isGenerating || isSynthesizing) && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center bg-black overflow-hidden"
             >
-              <div className="relative z-10 flex flex-col items-center justify-center text-center p-8 bg-black/50 backdrop-blur-xl rounded-3xl border border-white/10 max-w-md w-full mx-4 shadow-2xl">
-                <div className="w-12 h-12 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin"></div>
-                <div className="mt-5 text-white font-display font-medium text-xl tracking-tight">
-                  {isGenerating ? 'Generating Follow-Up Questions' : 'Synthesizing Build-Ready Prompt'}
+              <PixelCard
+                active={true}
+                variant="copper"
+                gap={12}
+                speed={35}
+                className="w-full h-full !rounded-none !border-0 !bg-black flex flex-col items-center justify-center relative"
+              >
+                <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 max-w-lg select-none pointer-events-none">
+                  <div className="w-12 h-12 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin drop-shadow-[0_0_15px_rgba(200,168,107,0.5)]"></div>
+                  <div className="mt-6 text-white font-display font-medium text-2xl sm:text-3xl tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
+                    {isGenerating ? 'Generating Follow-Up Questions' : 'Synthesizing Build-Ready Prompt'}
+                  </div>
+                  <div className="mt-2.5 text-copper-400 font-mono text-xs sm:text-sm uppercase tracking-widest animate-pulse drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]">
+                    {isGenerating ? 'ANALYZING PROMPT REQUIREMENTS...' : 'ASSEMBLING FINALIZED PROMPT...'}
+                  </div>
                 </div>
-                <div className="mt-2 text-copper-400 font-mono text-xs uppercase tracking-widest animate-pulse">
-                  {isGenerating ? 'Analyzing prompt requirements...' : 'Assembling finalized prompt...'}
-                </div>
-              </div>
-            </PixelCard>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </PixelCard>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </PageTransition>
   );
 }
