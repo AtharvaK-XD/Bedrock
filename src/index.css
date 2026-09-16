@@ -93,39 +93,3 @@
 .react-flow__nodesselection-rect {
   display: none !important;
 }
-
-/* Wavy Aurora Beam Animations */
-@keyframes wavy-aurora-spin {
-  0% {
-    transform: rotate(0deg) scale(1.02);
-  }
-  35% {
-    transform: rotate(120deg) scale(1.12, 0.94);
-  }
-  70% {
-    transform: rotate(240deg) scale(0.96, 1.10);
-  }
-  100% {
-    transform: rotate(360deg) scale(1.02);
-  }
-}
-
-@keyframes wavy-aurora-breathe {
-  0%, 100% {
-    opacity: 0.55;
-    transform: scale(0.98);
-  }
-  50% {
-    opacity: 0.9;
-    transform: scale(1.03);
-  }
-}
-
-@keyframes wavy-inner-pulse {
-  0%, 100% {
-    opacity: 0.25;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
