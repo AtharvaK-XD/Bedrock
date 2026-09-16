@@ -13,7 +13,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <Topbar />
 
       {/* Main Content Area */}
-      <main className="flex-1 relative z-10 pt-20">
+      <main className="flex-1 relative pt-20">
         {children}
       </main>
     </div>

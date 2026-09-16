@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { RefinementInput } from '../components/ui/RefinementInput';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import ReactMarkdown from 'react-markdown';
@@ -199,28 +200,6 @@ export default function Result() {
         </div>
       </div>
 
-      {/* Full Output Panel Pixel Animation Overlay */}
-      {isRefining && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#0a0a0a]">
-          <PixelCard
-            active={true}
-            variant="copper"
-            gap={10}
-            speed={35}
-            className="w-full h-full !rounded-none !border-0 !bg-[#0a0a0a] flex flex-col items-center justify-center relative"
-          >
-            <div className="relative z-10 flex flex-col items-center justify-center text-center p-8 bg-black/60 backdrop-blur-xl rounded-3xl border border-white/10 max-w-sm w-full mx-4 shadow-2xl">
-              <div className="w-12 h-12 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin"></div>
-              <div className="mt-5 text-white font-display font-medium text-lg tracking-tight">
-                Applying Refinements
-              </div>
-              <div className="mt-2 text-copper-400 font-mono text-xs uppercase tracking-widest animate-pulse">
-                Synthesizing prompt changes...
-              </div>
-            </div>
-          </PixelCard>
-        </div>
-      )}
     </div>
   );
 
@@ -268,6 +247,39 @@ export default function Result() {
         </Panel>
 
       </PanelGroup>
+
+      {/* Full Screen PixelCard Loading Overlay for Refinements / Follow-ups */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isRefining && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center bg-black overflow-hidden"
+            >
+              <PixelCard
+                active={true}
+                variant="copper"
+                gap={12}
+                speed={35}
+                className="w-full h-full !rounded-none !border-0 !bg-black flex flex-col items-center justify-center relative"
+              >
+                <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 max-w-lg select-none pointer-events-none">
+                  <div className="w-12 h-12 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin drop-shadow-[0_0_15px_rgba(200,168,107,0.5)]"></div>
+                  <div className="mt-6 text-white font-display font-medium text-2xl sm:text-3xl tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
+                    Applying Refinements
+                  </div>
+                  <div className="mt-2.5 text-copper-400 font-mono text-xs sm:text-sm uppercase tracking-widest animate-pulse drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]">
+                    SYNTHESIZING PROMPT CHANGES...
+                  </div>
+                </div>
+              </PixelCard>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </PageTransition>
   );
 }
