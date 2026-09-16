@@ -167,7 +167,7 @@ export default function Result() {
   );
 
   const docPaneContent = (
-    <>
+    <div className="relative w-full h-full flex flex-col overflow-hidden">
       {/* Document Header */}
       <div className="flex-none p-4 border-b border-white/5 bg-transparent flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -194,32 +194,34 @@ export default function Result() {
 
       {/* Document Content */}
       <div className="flex-1 overflow-y-auto p-8 custom-scrollbar relative" data-lenis-prevent="true">
-        {isRefining && (
-          <div className="absolute inset-0 bg-[#0a0a0a]/80 backdrop-blur-md flex flex-col items-center justify-center z-20 transition-all duration-300 p-6">
-            <PixelCard
-              active={true}
-              variant="copper"
-              gap={5}
-              speed={40}
-              className="w-80 h-52 sm:w-96 sm:h-56 rounded-3xl border border-white/10 shadow-[0_16px_50px_rgba(0,0,0,0.9)] bg-[#111]/90 p-6"
-            >
-              <div className="relative z-10 flex flex-col items-center justify-center text-center">
-                <div className="w-10 h-10 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin"></div>
-                <div className="mt-4 text-white font-display font-medium text-base tracking-tight">
-                  Applying Refinements
-                </div>
-                <div className="mt-1.5 text-copper-400 font-mono text-xs uppercase tracking-wider animate-pulse">
-                  Synthesizing prompt...
-                </div>
-              </div>
-            </PixelCard>
-          </div>
-        )}
         <div className={`max-w-4xl mx-auto prose prose-invert prose-copper prose-p:leading-relaxed prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-white/10 prose-headings:font-display transition-opacity duration-300 ${isRefining ? 'opacity-30' : 'opacity-100'}`}>
           <ReactMarkdown>{promptText}</ReactMarkdown>
         </div>
       </div>
-    </>
+
+      {/* Full Output Panel Pixel Animation Overlay */}
+      {isRefining && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#0a0a0a]">
+          <PixelCard
+            active={true}
+            variant="copper"
+            gap={10}
+            speed={35}
+            className="w-full h-full !rounded-none !border-0 !bg-[#0a0a0a] flex flex-col items-center justify-center relative"
+          >
+            <div className="relative z-10 flex flex-col items-center justify-center text-center p-8 bg-black/60 backdrop-blur-xl rounded-3xl border border-white/10 max-w-sm w-full mx-4 shadow-2xl">
+              <div className="w-12 h-12 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin"></div>
+              <div className="mt-5 text-white font-display font-medium text-lg tracking-tight">
+                Applying Refinements
+              </div>
+              <div className="mt-2 text-copper-400 font-mono text-xs uppercase tracking-widest animate-pulse">
+                Synthesizing prompt changes...
+              </div>
+            </div>
+          </PixelCard>
+        </div>
+      )}
+    </div>
   );
 
   return (
