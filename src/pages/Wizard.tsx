@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RichInput } from '../components/ui/RichInput';
+import { BorderBeam } from 'border-beam';
 import { generateQuestions, synthesizePrompt } from '../lib/api';
 import type { Question, Answer, IdeaPayload } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -82,14 +83,22 @@ export default function Wizard() {
             </div>
 
             <div className="max-w-5xl mx-auto w-full">
-              <RichInput
-                value={idea}
-                onChange={setIdea}
-                onSubmit={handleGenerateQuestions}
-                isLoading={isGenerating}
-                targetType={targetType}
-                onTargetTypeChange={setTargetType}
-              />
+              <BorderBeam
+                size="md"
+                colorVariant="colorful"
+                borderRadius={24}
+                strength={0.9}
+                className="rounded-3xl"
+              >
+                <RichInput
+                  value={idea}
+                  onChange={setIdea}
+                  onSubmit={handleGenerateQuestions}
+                  isLoading={isGenerating}
+                  targetType={targetType}
+                  onTargetTypeChange={setTargetType}
+                />
+              </BorderBeam>
             </div>
           </motion.div>
         </div>

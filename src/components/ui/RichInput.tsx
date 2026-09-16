@@ -358,7 +358,7 @@ export function RichInput({
       ref={containerRef}
       className={cn(
         "glass-card relative rounded-3xl transition-all duration-300 border border-white/[0.09] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 flex flex-col group shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)]",
-        activeDropdown ? "z-50" : "z-10"
+        activeDropdown ? "z-50" : "z-0"
       )}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent z-20 rounded-t-3xl" />
