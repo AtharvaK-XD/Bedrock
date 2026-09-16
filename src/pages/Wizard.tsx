@@ -217,28 +217,28 @@ export default function Wizard() {
       </div>
       </div>
 
-      {/* PixelCard Loading Overlay for Follow-up Questions and Synthesis */}
+      {/* Full Screen PixelCard Loading Overlay for Follow-up Questions and Synthesis */}
       <AnimatePresence>
         {(isGenerating || isSynthesizing) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-[#0a0a0a]/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black"
           >
             <PixelCard
               active={true}
               variant="copper"
-              gap={5}
-              speed={40}
-              className="w-80 h-52 sm:w-96 sm:h-56 rounded-3xl border border-white/10 shadow-[0_16px_50px_rgba(0,0,0,0.9)] bg-[#111]/95 p-6"
+              gap={12}
+              speed={35}
+              className="w-full h-full !rounded-none !border-0 !bg-black flex flex-col items-center justify-center relative"
             >
-              <div className="relative z-10 flex flex-col items-center justify-center text-center">
-                <div className="w-10 h-10 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin"></div>
-                <div className="mt-4 text-white font-display font-medium text-base tracking-tight">
+              <div className="relative z-10 flex flex-col items-center justify-center text-center p-8 bg-black/50 backdrop-blur-xl rounded-3xl border border-white/10 max-w-md w-full mx-4 shadow-2xl">
+                <div className="w-12 h-12 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin"></div>
+                <div className="mt-5 text-white font-display font-medium text-xl tracking-tight">
                   {isGenerating ? 'Generating Follow-Up Questions' : 'Synthesizing Build-Ready Prompt'}
                 </div>
-                <div className="mt-1.5 text-copper-400 font-mono text-xs uppercase tracking-wider animate-pulse">
+                <div className="mt-2 text-copper-400 font-mono text-xs uppercase tracking-widest animate-pulse">
                   {isGenerating ? 'Analyzing prompt requirements...' : 'Assembling finalized prompt...'}
                 </div>
               </div>
