@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Plus, Mic } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { IdeaPayload } from '../../lib/mockApi';
 
@@ -367,7 +368,7 @@ export function RichInput({
 
       <div className="relative z-10 flex flex-col h-full">
         {/* Top Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 p-3 sm:p-3.5 border-b border-white/[0.06] bg-white/[0.015] rounded-t-3xl">
+        <div className="flex flex-wrap items-center gap-2 p-3.5 sm:p-4 bg-transparent rounded-t-3xl">
           {/* Target Dropdown */}
           <div className="relative">
             <button
@@ -513,8 +514,8 @@ export function RichInput({
         />
 
         {/* Bottom Toolbar */}
-        <div className="flex items-center justify-between p-3.5 sm:p-4 border-t border-white/[0.06] bg-white/[0.015]">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between p-3.5 sm:p-4 bg-transparent">
+          <div className="flex items-center gap-1.5">
             <input 
               type="file" 
               ref={fileInputRef} 
@@ -525,15 +526,19 @@ export function RichInput({
             <button 
               type="button" 
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl border border-white/5 hover:border-white/10 transition-colors font-medium"
+              className="p-2 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl transition-colors"
+              title="Attach files (Max 5MB)"
+              aria-label="Attach files"
             >
-              Attach File
+              <Plus className="w-5 h-5" />
             </button>
             <button 
               type="button" 
-              className="px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl border border-white/5 hover:border-white/10 transition-colors font-medium"
+              className="p-2 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl transition-colors"
+              title="Voice Dictate"
+              aria-label="Voice Dictate"
             >
-              Voice Dictate
+              <Mic className="w-5 h-5" />
             </button>
           </div>
           
@@ -551,7 +556,7 @@ export function RichInput({
         </div>
 
         {/* Token Quota Progress */}
-        <div className="flex flex-col sm:flex-row items-center justify-between px-6 pb-4 pt-2 text-[11px] font-mono text-zinc-500 gap-4 sm:gap-8 border-t border-white/[0.03] bg-black/20">
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 pb-4 pt-1 text-[11px] font-mono text-zinc-500 gap-4 sm:gap-8 bg-transparent">
           <div className="flex items-center gap-3 flex-1 w-full">
             <span className="whitespace-nowrap w-20">Session: {Math.round((sessionTokens / SESSION_LIMIT) * 100)}%</span>
             <div className="h-1.5 flex-1 bg-white/[0.05] rounded-full overflow-hidden border border-white/[0.05]">
