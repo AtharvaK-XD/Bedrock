@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface ExpandableChatboxProps {
@@ -60,8 +59,8 @@ export function ExpandableChatbox({ onSubmit, className }: ExpandableChatboxProp
       }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
       className={cn(
-        "relative bg-[#1a1a1a]/95 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden transition-colors duration-300",
-        isExpanded ? "ring-2 ring-copper-500/30" : "hover:border-white/20",
+        "relative bg-[#111318]/95 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden transition-colors duration-300",
+        isExpanded ? "ring-1 ring-copper-500/40 border-copper-500/30" : "hover:border-white/20",
         className
       )}
       onClick={() => {
@@ -81,7 +80,7 @@ export function ExpandableChatbox({ onSubmit, className }: ExpandableChatboxProp
             transition={{ duration: 0.15 }}
             className="flex items-center h-full px-5 gap-3 cursor-text text-gray-400 w-full"
           >
-            <Sparkles className="w-5 h-5 text-copper-500/80" />
+            <span className="w-1.5 h-1.5 rounded-full bg-copper-400" />
             <span className="text-sm font-medium">Ask a question or add a node...</span>
           </motion.div>
         ) : (
@@ -104,14 +103,13 @@ export function ExpandableChatbox({ onSubmit, className }: ExpandableChatboxProp
              />
              <div className="flex justify-between items-center mt-2 border-t border-white/10 pt-3">
                <div className="text-xs text-gray-500 font-medium">
-                 Press <kbd className="font-sans px-1 py-0.5 bg-white/10 rounded">Enter</kbd> to send
+                 Press <kbd className="font-mono text-[10px] px-1.5 py-0.5 bg-white/10 rounded">Enter</kbd> to submit
                </div>
                <button
                  onClick={handleSubmit}
                  disabled={!value.trim()}
-                 className="flex items-center gap-2 bg-copper-500 hover:bg-copper-600 disabled:bg-white/5 disabled:text-gray-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm disabled:shadow-none"
+                 className="bg-copper-500 hover:bg-copper-600 disabled:bg-white/5 disabled:text-gray-500 text-white px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-colors shadow-sm disabled:shadow-none"
                >
-                 <Send className="w-4 h-4" />
                  Send
                </button>
              </div>

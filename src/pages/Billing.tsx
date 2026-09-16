@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
-import { ArrowLeft, CheckCircle2, ShieldCheck, CreditCard, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PageTransition } from '../components/layout/PageTransition';
 
@@ -17,14 +16,14 @@ const ReceiptTop = ({ currentDate }: { currentDate: string }) => (
     <div className="absolute top-0 left-0 right-0 h-3 bg-gradient-to-r from-transparent via-[#f8f9fa] to-transparent bg-[length:12px_12px]" style={{ backgroundImage: 'radial-gradient(circle at 6px 0, transparent 6px, #f8f9fa 6.5px)' }}/>
     
     <div className="text-center mb-6">
-      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-teal-100 text-teal-600 mb-4 shadow-sm border border-teal-200/50">
-        <CheckCircle2 className="w-6 h-6" />
+      <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-black text-white font-mono text-[10px] font-bold mb-3 shadow-sm border border-black/20">
+        PAID
       </div>
       <h2 className="text-2xl font-bold font-editorial tracking-tight text-black mb-1">Upgrade Successful</h2>
-      <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Order Receipt</p>
+      <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold font-mono">Order Receipt</p>
     </div>
 
-    <div className="space-y-1.5 text-xs text-gray-600">
+    <div className="space-y-1.5 text-xs text-gray-600 font-mono">
       <div className="flex justify-between">
         <span>Date</span>
         <span className="font-semibold text-black text-right">{currentDate}</span>
@@ -45,17 +44,17 @@ const ReceiptMiddle = () => (
   <div className="w-[400px] h-[220px] relative py-6 px-8 font-mono select-none overflow-hidden border-t border-gray-200/50" style={paperStyle}>
     <div className="w-full h-[1px] bg-gray-300 mb-5 border-b border-dashed border-gray-400" />
     <div className="mb-5">
-      <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-3 font-semibold">Subscription Detail</h3>
+      <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-3 font-semibold font-mono">Subscription Detail</h3>
       <div className="flex justify-between items-start mb-2">
         <div>
-          <p className="font-bold text-lg text-black">Advanced Plan</p>
-          <p className="text-[10px] text-gray-500 mt-0.5">Billed monthly</p>
+          <p className="font-bold text-lg text-black font-sans">Advanced Plan</p>
+          <p className="text-[10px] text-gray-500 mt-0.5 font-mono">Billed monthly</p>
         </div>
-        <p className="font-bold text-lg text-black">₹399.00</p>
+        <p className="font-bold text-lg text-black font-mono">₹399.00</p>
       </div>
     </div>
     <div className="w-full h-[1px] bg-gray-300 mb-5 border-b border-dashed border-gray-400" />
-    <div className="space-y-2 mb-2">
+    <div className="space-y-2 mb-2 font-mono">
       <div className="flex justify-between text-xs text-gray-600">
         <span>Subtotal</span>
         <span className="text-black font-medium">₹399.00</span>
@@ -70,18 +69,19 @@ const ReceiptMiddle = () => (
 
 const ReceiptBottom = () => (
   <div className="w-[400px] h-[340px] relative pt-4 pb-12 px-8 font-mono select-none overflow-hidden border-t border-gray-200/50" style={paperStyle}>
-    <div className="flex justify-between items-center mb-6 pt-2">
+    <div className="flex justify-between items-center mb-6 pt-2 font-mono">
       <span className="font-bold text-gray-700 text-sm">Total Paid</span>
       <span className="font-bold text-2xl text-black">₹470.82</span>
     </div>
 
-    <div className="bg-white p-4 rounded-xl flex items-center gap-3 mb-8 border border-gray-200 shadow-sm">
-      <CreditCard className="w-5 h-5 text-gray-400" />
-      <div className="flex-1">
-        <p className="text-sm font-semibold text-gray-800">Visa ending in 4242</p>
+    <div className="bg-white p-4 rounded-xl flex items-center justify-between mb-8 border border-gray-200 shadow-sm">
+      <div>
+        <p className="text-xs font-mono font-semibold text-gray-800">VISA ···· 4242</p>
         <p className="text-[10px] text-gray-500 mt-0.5">Authenticated via Stripe</p>
       </div>
-      <ShieldCheck className="w-5 h-5 text-teal-500" />
+      <span className="font-mono text-[9px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded uppercase">
+        Verified
+      </span>
     </div>
 
     {/* Barcode Mock */}
@@ -95,8 +95,7 @@ const ReceiptBottom = () => (
 
     <div className="text-center space-y-5">
       <p className="text-[10px] text-gray-500 italic">Thank you for building with Bedrock.</p>
-      <button className="flex items-center justify-center gap-2 w-full py-3 bg-[#111] text-white rounded-xl hover:bg-black transition-colors font-sans text-sm font-semibold shadow-md active:scale-[0.98]">
-        <Download className="w-4 h-4" />
+      <button className="flex items-center justify-center w-full py-3 bg-[#111] text-white rounded-xl hover:bg-black transition-colors font-mono text-xs uppercase tracking-wider font-semibold shadow-md active:scale-[0.98]">
         Download PDF Receipt
       </button>
     </div>
@@ -127,7 +126,6 @@ export default function Billing() {
   }, []);
 
   useEffect(() => {
-    // Sequence the unfolding animation
     const sequence = async () => {
       await controls.start("unfold");
       controls.start("float");
@@ -135,7 +133,6 @@ export default function Billing() {
     sequence();
   }, [controls]);
 
-  // Spring configurations for realistic paper snapping
   const paperSpring = { type: "spring" as const, damping: 15, stiffness: 60, mass: 1 };
   
   return (
@@ -144,98 +141,53 @@ export default function Billing() {
         
         {/* Navigation overlay */}
         <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 absolute top-8 left-0 right-0 z-50">
-          <Link to="/app/pricing" className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors group bg-black/50 px-5 py-2.5 rounded-full backdrop-blur-md border border-white/10 text-sm font-medium">
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            Back to Pricing
+          <Link to="/app/pricing" className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors group bg-black/50 px-5 py-2.5 rounded-full backdrop-blur-md border border-white/10 text-xs font-mono uppercase tracking-wider">
+            &larr; Back to Pricing
           </Link>
         </div>
 
-        {/* 3D Scene Container */}
-        <div 
-          className="relative w-full h-full flex flex-col items-center pt-24 pb-32" 
-          style={{ perspective: '1600px', transformStyle: 'preserve-3d' }}
-        >
-          
-          {/* Printer Slot Graphic */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-8 bg-gradient-to-b from-[#111] to-[#0a0a0a] rounded-b-3xl border-x border-b border-white/5 shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-20">
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-[92%] h-[6px] bg-black rounded-full shadow-[inset_0_3px_6px_rgba(0,0,0,1)]" />
-            <div className="absolute bottom-[-15px] left-1/2 -translate-x-1/2 w-[85%] h-[30px] bg-teal-500/10 blur-[25px] pointer-events-none" />
-          </div>
-
-          {/* Root Group (Top Segment) */}
+        {/* Paper Unfolding Container */}
+        <div className="mt-20 sm:mt-16 flex flex-col items-center perspective-[1200px]">
+          {/* Top Receipt Panel */}
           <motion.div
-            style={{ transformStyle: 'preserve-3d' }}
-            initial={{ y: -100, rotateX: 60, rotateZ: -5, opacity: 0 }}
-            variants={{
-              unfold: { 
-                y: 0, 
-                rotateX: 10, // Slight tilt forward
-                rotateZ: 0, 
-                opacity: 1,
-                transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] }
-              },
-              float: {
-                y: [0, -10, 0],
-                rotateX: [10, 12, 10],
-                rotateY: [-2, 2, -2],
-                transition: { duration: 6, repeat: Infinity, ease: "easeInOut" }
-              }
-            }}
+            initial={{ rotateX: 90, opacity: 0 }}
             animate={controls}
-            className="relative z-10 drop-shadow-[0_40px_80px_rgba(0,0,0,0.6)]"
+            variants={{
+              unfold: { rotateX: 0, opacity: 1, transition: { ...paperSpring, delay: 0.1 } },
+              float: { y: [-2, 2, -2], transition: { duration: 6, repeat: Infinity, ease: "easeInOut" } }
+            }}
+            className="origin-bottom z-30"
           >
             <ReceiptTop currentDate={currentDate} />
-
-            {/* Middle Hinge */}
-            <motion.div
-              className="absolute top-full left-0 w-full"
-              style={{ transformOrigin: 'top', transformStyle: 'preserve-3d' }}
-              initial={{ rotateX: -160 }}
-              variants={{
-                unfold: { 
-                  rotateX: 0, 
-                  transition: { delay: 0.3, ...paperSpring }
-                }
-              }}
-              animate={controls}
-            >
-              <ReceiptMiddle />
-              
-              {/* Dynamic Shadow (Ambient Occlusion) for Middle Fold */}
-              <motion.div 
-                className="absolute inset-0 bg-gradient-to-b from-black/40 to-transparent pointer-events-none"
-                initial={{ opacity: 1 }}
-                variants={{ unfold: { opacity: 0, transition: { delay: 0.3, duration: 1 } } }}
-                animate={controls}
-              />
-
-              {/* Bottom Hinge */}
-              <motion.div
-                className="absolute top-full left-0 w-full"
-                style={{ transformOrigin: 'top', transformStyle: 'preserve-3d' }}
-                initial={{ rotateX: 160 }}
-                variants={{
-                  unfold: { 
-                    rotateX: 0, 
-                    transition: { delay: 0.6, ...paperSpring }
-                  }
-                }}
-                animate={controls}
-              >
-                <ReceiptBottom />
-                
-                {/* Dynamic Shadow (Ambient Occlusion) for Bottom Fold */}
-                <motion.div 
-                  className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none"
-                  initial={{ opacity: 1 }}
-                  variants={{ unfold: { opacity: 0, transition: { delay: 0.6, duration: 1 } } }}
-                  animate={controls}
-                />
-              </motion.div>
-            </motion.div>
           </motion.div>
-          
+
+          {/* Middle Receipt Panel */}
+          <motion.div
+            initial={{ rotateX: -90, opacity: 0 }}
+            animate={controls}
+            variants={{
+              unfold: { rotateX: 0, opacity: 1, transition: { ...paperSpring, delay: 0.3 } },
+              float: { y: [-2, 2, -2], transition: { duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.2 } }
+            }}
+            className="origin-top z-20"
+          >
+            <ReceiptMiddle />
+          </motion.div>
+
+          {/* Bottom Receipt Panel */}
+          <motion.div
+            initial={{ rotateX: 90, opacity: 0 }}
+            animate={controls}
+            variants={{
+              unfold: { rotateX: 0, opacity: 1, transition: { ...paperSpring, delay: 0.5 } },
+              float: { y: [-2, 2, -2], transition: { duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.4 } }
+            }}
+            className="origin-top z-10 -mt-[1px]"
+          >
+            <ReceiptBottom />
+          </motion.div>
         </div>
+
       </div>
     </PageTransition>
   );

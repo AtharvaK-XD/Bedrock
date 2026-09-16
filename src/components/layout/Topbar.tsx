@@ -1,14 +1,13 @@
-import { Layers, Sparkles, GitBranch, FlaskConical, BookOpen, Settings, LayoutDashboard } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 import { useUserProfile } from '../../lib/useUserProfile';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/app' },
-  { icon: Sparkles, label: 'Generator', path: '/app/generator' },
-  { icon: GitBranch, label: 'Branching', path: '/app/branching' },
-  { icon: FlaskConical, label: 'Prompt Tester', path: '/app/tester' },
-  { icon: BookOpen, label: 'Library', path: '/app/library' },
+  { label: 'Dashboard', path: '/app' },
+  { label: 'Generator', path: '/app/generator' },
+  { label: 'Branching', path: '/app/branching' },
+  { label: 'Prompt Tester', path: '/app/tester' },
+  { label: 'Library', path: '/app/library' },
 ];
 
 export function Topbar() {
@@ -16,19 +15,17 @@ export function Topbar() {
   const { profile } = useUserProfile();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-20 border-b border-white/5 bg-black/60 backdrop-blur-xl">
+    <header className="fixed top-0 left-0 right-0 z-50 h-20 border-b border-white/5 bg-black/70 backdrop-blur-xl">
       <div className="w-full px-4 sm:px-8 h-full flex items-center justify-between">
         
-        {/* Brand */}
-        <Link to="/app" className="flex items-center gap-3 text-white group">
-          <div className="p-1.5 bg-copper-500/10 rounded-lg group-hover:bg-copper-500/20 transition-colors">
-            <Layers className="w-6 h-6 text-copper-500" />
-          </div>
-          <span className="font-display font-bold text-xl tracking-tight">Bedrock</span>
+        {/* Brand - Minimalist Typography */}
+        <Link to="/app" className="flex items-center gap-2.5 text-white group">
+          <span className="w-2 h-2 rounded-full bg-copper-400 shadow-[0_0_8px_rgba(200,168,107,0.8)] transition-transform group-hover:scale-125" />
+          <span className="font-display font-bold text-lg tracking-wider uppercase text-white">Bedrock</span>
         </Link>
 
-        {/* Center Nav */}
-        <nav className="hidden md:flex items-center gap-1 bg-[#111] p-1.5 rounded-2xl border border-white/5 shadow-sm">
+        {/* Center Nav - Pure Typography */}
+        <nav className="hidden md:flex items-center gap-1 bg-[#0d0e12] p-1.5 rounded-2xl border border-white/5 shadow-sm">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -36,13 +33,12 @@ export function Topbar() {
                 key={item.label}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300",
+                  "px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200",
                   isActive 
-                    ? "bg-white/10 text-white shadow-md" 
+                    ? "bg-white/10 text-white shadow-sm font-semibold" 
                     : "text-gray-400 hover:text-white hover:bg-white/5"
                 )}
               >
-                <item.icon className={cn("w-4 h-4", isActive ? "text-copper-400" : "")} />
                 {item.label}
               </Link>
             );
@@ -50,14 +46,22 @@ export function Topbar() {
         </nav>
 
         {/* Right User Actions */}
-        <div className="flex items-center gap-4">
-          <Link to="/app/pricing" className="hidden md:flex items-center justify-center px-4 py-1.5 bg-copper-500 hover:bg-copper-600 text-white text-sm font-semibold rounded-full shadow-sm shadow-copper-500/20 transition-all">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Link to="/app/pricing" className="hidden md:flex items-center justify-center px-4 py-1.5 bg-copper-500 hover:bg-copper-600 text-white text-xs font-semibold uppercase tracking-wider rounded-full shadow-sm shadow-copper-500/20 transition-all">
             Upgrade
           </Link>
-          <Link to="/app/settings" className="p-2 text-gray-400 hover:bg-white/5 rounded-full transition-colors">
-            <Settings className="w-5 h-5" />
+          <Link 
+            to="/app/settings" 
+            className={cn(
+              "px-3 py-1.5 text-xs font-medium rounded-xl transition-colors border",
+              location.pathname === '/app/settings'
+                ? "bg-white/10 text-white border-white/20"
+                : "text-gray-400 hover:text-white hover:bg-white/5 border-transparent"
+            )}
+          >
+            Settings
           </Link>
-          <div className="h-8 w-px bg-white/10"></div>
+          <div className="h-6 w-px bg-white/10 hidden sm:block" />
           <Link 
             to="/app/profile" 
             className={cn(
@@ -70,12 +74,12 @@ export function Topbar() {
           >
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-white leading-none group-hover:text-copper-300 transition-colors">{profile.name}</p>
-              <p className="text-xs text-gray-400 mt-1 flex items-center justify-end gap-1">
+              <p className="text-[11px] font-mono text-gray-400 mt-1 flex items-center justify-end gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                 {profile.plan}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center font-bold shadow-md ring-2 ring-transparent group-hover:ring-copper-400/50 transition-all overflow-hidden">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center text-xs font-bold shadow-md ring-2 ring-transparent group-hover:ring-copper-400/50 transition-all overflow-hidden">
               {profile.avatarUrl ? (
                 <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
               ) : (

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 import { RichInput } from '../components/ui/RichInput';
 import { generateQuestions, synthesizePrompt } from '../lib/api';
 import type { Question, Answer, IdeaPayload } from '../lib/api';
@@ -106,14 +105,13 @@ export default function Wizard() {
                   transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="glass-card border border-white/10 rounded-[32px] p-8 md:p-10 shadow-2xl relative overflow-hidden">
-                    {/* Specular top rim highlight line */}
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent z-20" />
                     <div className="pointer-events-none absolute inset-0 glass-noise opacity-20 rounded-[32px] z-0" />
                     
                     <div className="relative z-10 mb-10">
-                      <div className="inline-flex items-center justify-center p-2 bg-copper-500/10 rounded-xl mb-4 text-copper-500">
-                        <Sparkles className="w-5 h-5" />
-                      </div>
+                      <span className="font-mono text-[11px] text-copper-400 uppercase tracking-widest px-3 py-1 rounded-full bg-copper-500/10 border border-copper-500/20 mb-3 inline-block">
+                        Step 02 · Requirements
+                      </span>
                       <h3 className="text-3xl font-display font-bold text-white">Clarifying Questions</h3>
                       <p className="text-lg text-gray-400 mt-2">Let's refine your idea to generate the best possible prompt.</p>
                     </div>
@@ -122,8 +120,8 @@ export default function Wizard() {
                       {questions.map((q, idx) => (
                         <div key={q.id} className="space-y-5">
                           <Label className="text-lg font-medium text-white block flex items-start gap-4">
-                            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold text-gray-400">
-                              {idx + 1}
+                            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 font-mono flex items-center justify-center text-xs font-semibold text-gray-300">
+                              0{idx + 1}
                             </span>
                             <span className="pt-1">{q.questionText}</span>
                           </Label>
@@ -151,8 +149,8 @@ export default function Wizard() {
                                     <option key={opt} value={opt} className="bg-[#1a1a1a] text-white">{opt}</option>
                                   ))}
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-                                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 font-mono text-xs">
+                                  ▾
                                 </div>
                               </div>
                             )}
@@ -192,21 +190,21 @@ export default function Wizard() {
                         <button
                           type="submit"
                           disabled={isSynthesizing}
-                          className="inline-flex items-center justify-center rounded-xl bg-white text-black hover:bg-gray-200 px-8 py-4 text-lg font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-50 w-full sm:w-auto"
+                          className="inline-flex items-center justify-center rounded-xl bg-white text-black hover:bg-gray-200 px-8 py-4 text-base font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-50 w-full sm:w-auto active:scale-[0.98]"
                         >
-                          {isSynthesizing ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-3"></div>
-                          ) : null}
-                          Synthesize Prompt <Sparkles className="ml-2 w-5 h-5 text-copper-400" />
+                          {isSynthesizing && (
+                            <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin mr-3 inline-block"></span>
+                          )}
+                          Synthesize Prompt
                         </button>
                       </div>
                     </form>
                   </div>
                 </motion.div>
               )}
-            </AnimatePresence>
-          </div>
+          </AnimatePresence>
         </div>
+      </div>
       </div>
     </PageTransition>
   );

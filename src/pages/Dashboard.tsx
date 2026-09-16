@@ -1,21 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Sparkles, 
-  GitBranch, 
-  FlaskConical, 
-  BookOpen, 
-  Zap, 
-  Activity, 
-  ShieldCheck, 
-  ArrowUpRight, 
-  Download, 
-  RotateCcw, 
-  Radio, 
-  Terminal, 
-  CheckCircle2, 
-  AlertCircle
-} from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { NetworkTopology2D } from '../components/dashboard/NetworkTopology2D';
 
@@ -35,9 +19,7 @@ const QUICK_ACTIONS = [
     subtitle: 'High-fidelity multi-turn prompt designer', 
     path: '/app/generator', 
     shortcut: '⌘G',
-    icon: Sparkles,
-    gradient: 'from-teal-500/20 to-copper-500/20',
-    iconColor: 'text-copper-400',
+    tag: 'GEN',
     borderHover: 'group-hover:border-copper-500/40'
   },
   { 
@@ -45,9 +27,7 @@ const QUICK_ACTIONS = [
     subtitle: 'Multi-model tree visualizer & forks', 
     path: '/app/branching', 
     shortcut: '⌘B',
-    icon: GitBranch,
-    gradient: 'from-emerald-500/20 to-teal-500/20',
-    iconColor: 'text-emerald-400',
+    tag: 'FORK',
     borderHover: 'group-hover:border-emerald-500/40'
   },
   { 
@@ -55,9 +35,7 @@ const QUICK_ACTIONS = [
     subtitle: 'Side-by-side LLM arena & benchmark', 
     path: '/app/tester', 
     shortcut: '⌘T',
-    icon: FlaskConical,
-    gradient: 'from-amber-500/20 to-orange-500/20',
-    iconColor: 'text-amber-400',
+    tag: 'ARENA',
     borderHover: 'group-hover:border-amber-500/40'
   },
   { 
@@ -65,9 +43,7 @@ const QUICK_ACTIONS = [
     subtitle: 'Curated index of battle-tested prompts', 
     path: '/app/library', 
     shortcut: '⌘L',
-    icon: BookOpen,
-    gradient: 'from-purple-500/20 to-indigo-500/20',
-    iconColor: 'text-purple-400',
+    tag: 'INDEX',
     borderHover: 'group-hover:border-purple-500/40'
   },
 ];
@@ -126,7 +102,7 @@ export default function Dashboard() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)]"></span>
               </span>
-              <span className="text-xs font-semibold tracking-wide text-emerald-400 uppercase">Operational</span>
+              <span className="text-xs font-semibold tracking-wide text-emerald-400 uppercase font-mono">OPERATIONAL</span>
             </div>
             <div className="h-4 w-px bg-white/15 hidden sm:block" />
             <div className="flex items-center gap-2">
@@ -139,36 +115,36 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
             {/* Latency */}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#08090d] border border-white/10 shadow-sm">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
               <div className="flex items-baseline gap-1.5">
-                <span className="text-[10px] text-white/40 font-medium uppercase tracking-wider">P99 Lat</span>
+                <span className="text-[10px] text-white/40 font-mono font-medium uppercase tracking-wider">P99 LAT</span>
                 <span className="font-mono text-xs font-semibold text-white">242ms</span>
               </div>
             </div>
 
             {/* Throughput */}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#08090d] border border-white/10 shadow-sm">
-              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
               <div className="flex items-baseline gap-1.5">
-                <span className="text-[10px] text-white/40 font-medium uppercase tracking-wider">Tokens</span>
+                <span className="text-[10px] text-white/40 font-mono font-medium uppercase tracking-wider">THROUGHPUT</span>
                 <span className="font-mono text-xs font-semibold text-white">14.2K<span className="text-[10px] font-sans font-normal text-white/40">/s</span></span>
               </div>
             </div>
 
             {/* Error Rate */}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#08090d] border border-white/10 shadow-sm">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <div className="flex items-baseline gap-1.5">
-                <span className="text-[10px] text-white/40 font-medium uppercase tracking-wider">Error Rate</span>
+                <span className="text-[10px] text-white/40 font-mono font-medium uppercase tracking-wider">ERROR RATE</span>
                 <span className="font-mono text-xs font-semibold text-emerald-400">0.04%</span>
               </div>
             </div>
 
             {/* Region */}
             <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#08090d] border border-white/10 shadow-sm">
-              <Radio className="w-3.5 h-3.5 text-copper-400" />
+              <span className="w-1.5 h-1.5 rounded-full bg-copper-400" />
               <div className="flex items-baseline gap-1.5">
-                <span className="text-[10px] text-white/40 font-medium uppercase tracking-wider">Cluster</span>
+                <span className="text-[10px] text-white/40 font-mono font-medium uppercase tracking-wider">CLUSTER</span>
                 <span className="font-mono text-xs font-medium text-white/80">us-east-1</span>
               </div>
             </div>
@@ -196,58 +172,46 @@ export default function Dashboard() {
             <div className="lg:col-span-1 flex flex-col gap-3">
               <div className="flex items-center justify-between px-1">
                 <h2 className="text-sm font-display font-semibold text-white tracking-wide">Executables</h2>
-                <span className="text-[11px] text-white/40">Workflows</span>
+                <span className="text-[11px] font-mono text-white/40 uppercase">Workflows</span>
               </div>
               
               <div className="relative flex-1 rounded-3xl bg-[#050608] border border-white/10 p-5 sm:p-6 flex flex-col justify-between overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.95)] group">
-                {/* Luminous top border sheen */}
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
                 {/* Executables Links */}
                 <div className="flex flex-col gap-2.5">
-                  {QUICK_ACTIONS.map((action) => {
-                    const Icon = action.icon;
-                    return (
-                      <Link 
-                        key={action.title} 
-                        to={action.path}
-                        className={`group relative flex items-center justify-between p-3.5 rounded-2xl glass-subcard hover:border-white/25 hover:bg-white/[0.08] transition-all duration-300 shadow-sm ${action.borderHover}`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${action.gradient} border border-white/15 flex items-center justify-center shrink-0 shadow-inner`}>
-                            <Icon className={`w-4 h-4 ${action.iconColor}`} />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-semibold text-white tracking-tight group-hover:text-white transition-colors truncate">
-                                {action.title}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-white/45 truncate leading-tight mt-0.5">
-                              {action.subtitle}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                          <span className="font-mono text-[10px] text-white/40 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-md group-hover:text-white/80 group-hover:border-white/20 transition-colors">
-                            {action.shortcut}
+                  {QUICK_ACTIONS.map((action) => (
+                    <Link 
+                      key={action.title} 
+                      to={action.path}
+                      className={`group relative flex items-center justify-between p-3.5 rounded-2xl glass-subcard hover:border-white/25 hover:bg-white/[0.08] transition-all duration-200 shadow-sm ${action.borderHover}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="font-mono text-[10px] font-bold px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-white/70 group-hover:text-white group-hover:border-white/20 transition-colors">
+                          {action.tag}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="text-xs font-semibold text-white tracking-tight group-hover:text-white transition-colors truncate block">
+                            {action.title}
                           </span>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-white/20 group-hover:text-white/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                          <p className="text-[10px] text-white/45 truncate leading-tight mt-0.5">
+                            {action.subtitle}
+                          </p>
                         </div>
-                      </Link>
-                    );
-                  })}
+                      </div>
+
+                      <span className="font-mono text-[10px] text-white/40 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-md group-hover:text-white/80 group-hover:border-white/20 transition-colors shrink-0 ml-2">
+                        {action.shortcut}
+                      </span>
+                    </Link>
+                  ))}
                 </div>
                 
                 {/* System Environment Footer Widget */}
                 <div className="mt-5 pt-4 border-t border-white/10">
                   <div className="rounded-2xl glass-subcard p-4 backdrop-blur-xl flex flex-col gap-2.5">
                     <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5 text-white/70 font-medium">
-                        <Terminal className="w-3.5 h-3.5 text-blue-400" />
-                        <span>System Runtime</span>
-                      </div>
+                      <span className="text-white/70 font-medium">System Runtime</span>
                       <span className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                         v1.0.4-rc2
                       </span>
@@ -281,7 +245,7 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
               <div>
                 <h2 className="text-sm font-display font-semibold text-white tracking-wide flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-copper-400" />
+                  <span className="w-2 h-2 rounded-full bg-copper-400" />
                   <span>Execution Trace Log</span>
                 </h2>
                 <p className="text-xs text-white/40 mt-0.5">Live streaming event telemetry from active LLM inference clusters</p>
@@ -290,7 +254,7 @@ export default function Dashboard() {
               {/* Log Controls */}
               <div className="flex items-center gap-2">
                 {/* Filter Pills */}
-                <div className="flex items-center border border-white/10 p-0.5 rounded-xl bg-black/40 backdrop-blur-md text-[11px]">
+                <div className="flex items-center border border-white/10 p-0.5 rounded-xl bg-black/40 backdrop-blur-md text-[11px] font-mono">
                   {(['ALL', 'OK', 'ERR'] as const).map((filter) => (
                     <button
                       key={filter}
@@ -309,33 +273,30 @@ export default function Dashboard() {
                 {/* Export CSV Button */}
                 <button 
                   onClick={handleExportCSV}
-                  className="text-xs border border-white/10 bg-[#08090d] hover:bg-white/[0.06] px-3 py-1.5 rounded-xl text-white/80 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                  className="text-xs font-mono border border-white/10 bg-[#08090d] hover:bg-white/[0.06] px-3 py-1.5 rounded-xl text-white/80 hover:text-white transition-all shadow-sm active:scale-95"
                 >
-                  <Download className="w-3.5 h-3.5 text-white/60" />
-                  <span className="hidden sm:inline font-medium">Export CSV</span>
+                  Export CSV
                 </button>
 
                 {/* Clear or Reset Button */}
                 <button 
                   onClick={handleClearOrReset}
-                  className="text-xs border border-white/10 bg-[#08090d] hover:bg-white/[0.06] px-3 py-1.5 rounded-xl text-white/80 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                  className="text-xs font-mono border border-white/10 bg-[#08090d] hover:bg-white/[0.06] px-3 py-1.5 rounded-xl text-white/80 hover:text-white transition-all shadow-sm active:scale-95"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 text-white/60" />
-                  <span className="hidden sm:inline font-medium">{executions.length === 0 ? 'Restore' : 'Clear'}</span>
+                  {executions.length === 0 ? 'Restore' : 'Clear'}
                 </button>
               </div>
             </div>
             
             {/* Table Container Card */}
             <div className="relative w-full rounded-3xl bg-[#050608] border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.95)] overflow-hidden p-5 sm:p-6">
-              {/* Luminous top border sheen */}
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
               {filteredExecutions.length > 0 ? (
                 <div className="w-full overflow-x-auto custom-scrollbar rounded-2xl bg-[#030305] border border-white/[0.08]">
                   <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
                     <thead>
-                      <tr className="text-white/40 border-b border-white/[0.08] bg-[#08090d]">
+                      <tr className="text-white/40 border-b border-white/[0.08] bg-[#08090d] font-mono">
                         <th className="p-3.5 font-medium text-[11px] uppercase tracking-wider pl-6">Trace ID</th>
                         <th className="p-3.5 font-medium text-[11px] uppercase tracking-wider">Timestamp</th>
                         <th className="p-3.5 font-medium text-[11px] uppercase tracking-wider">Node Origin</th>
@@ -383,14 +344,14 @@ export default function Dashboard() {
                           </td>
                           <td className="p-3.5 text-right pr-6">
                             {exec.status === 'OK' ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                                 200 OK
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-sm">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-sm">
                                 <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
-                                Timeout
+                                TIMEOUT
                               </span>
                             )}
                           </td>
@@ -401,14 +362,11 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="py-12 px-4 flex flex-col items-center justify-center text-center">
-                  <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-3">
-                    <AlertCircle className="w-5 h-5 text-white/30" />
-                  </div>
                   <p className="text-sm font-medium text-white/70">No trace records found</p>
-                  <p className="text-xs text-white/40 mt-1">Adjust filters or restore mock trace records</p>
+                  <p className="text-xs text-white/40 mt-1 font-mono">Adjust filters or restore mock trace records</p>
                   <button 
                     onClick={handleClearOrReset}
-                    className="mt-4 text-xs font-semibold px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white rounded-xl transition-all"
+                    className="mt-4 text-xs font-semibold px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl transition-all font-mono"
                   >
                     Restore Traces
                   </button>
@@ -421,8 +379,8 @@ export default function Dashboard() {
 
         {/* Floating Toast Notification */}
         {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-2xl glass-card text-white text-xs shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-3 duration-200">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl glass-card text-white text-xs shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-3 duration-200 border border-white/15 font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
             <span>{toastMessage}</span>
           </div>
         )}

@@ -1,4 +1,3 @@
-import { Check, X, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -23,7 +22,6 @@ const TIERS = [
       { text: 'Zero wait times', active: false },
     ],
   },
-
   {
     name: 'Advanced',
     description: 'Save personal context with an AI assistant for ongoing work',
@@ -63,12 +61,11 @@ export default function Pricing() {
   const navigate = useNavigate();
 
   const handleUpgrade = (tierName: string) => {
-    if (tierName === 'Free') return; // Do nothing for current plan
+    if (tierName === 'Free') return;
     setIsUpgrading(true);
-    // Simulate setup delay
     setTimeout(() => {
       navigate('/app/billing');
-    }, 2000);
+    }, 1800);
   };
 
   return (
@@ -80,20 +77,17 @@ export default function Pricing() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md"
           >
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1 }}
               className="flex flex-col items-center gap-6"
             >
-              <div className="relative">
-                <div className="w-16 h-16 border-4 border-teal-500/20 rounded-full"></div>
-                <Loader2 className="w-16 h-16 text-teal-400 animate-spin absolute top-0 left-0" />
-              </div>
-              <p className="text-xl font-editorial text-white tracking-wide">
-                Setting up your billing page...
+              <div className="w-14 h-14 border-2 border-teal-500/20 border-t-teal-400 rounded-full animate-spin"></div>
+              <p className="text-lg font-mono text-white tracking-wide uppercase text-xs">
+                Setting up your billing account...
               </p>
             </motion.div>
           </motion.div>
@@ -105,7 +99,7 @@ export default function Pricing() {
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-4xl md:text-5xl font-editorial font-bold text-white mb-6"
+          className="text-4xl md:text-5xl font-editorial font-bold text-white mb-4 tracking-tight"
         >
           Upgrade your plan
         </motion.h1>
@@ -113,12 +107,10 @@ export default function Pricing() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-lg text-gray-400 max-w-xl mx-auto mb-8"
+          className="text-lg text-gray-400 max-w-xl mx-auto mb-8 font-light"
         >
-          Find your best fit.
+          Predictable flat-rate pricing for high-throughput prompt engineering.
         </motion.p>
-
-
       </div>
 
         <motion.div 
@@ -137,61 +129,61 @@ export default function Pricing() {
                 hidden: { opacity: 0, y: 30 },
                 visible: { opacity: 1, y: 0 }
               }}
-              whileHover={{ y: -5 }}
+              whileHover={{ y: -4 }}
               className={cn(
                 "relative flex flex-col p-8 rounded-3xl border transition-all duration-300",
                 tier.isPopular 
-                  ? "bg-[#1a1a1a]/40 border-teal-500/50 shadow-2xl shadow-teal-500/10" 
-                  : "bg-black/20 border-white/10 hover:border-white/20 hover:bg-[#1a1a1a]/30"
+                  ? "bg-[#14181a]/60 border-teal-500/40 shadow-2xl shadow-teal-500/5" 
+                  : "bg-black/40 border-white/10 hover:border-white/20 hover:bg-[#111]"
               )}
             >
             {tier.isPopular && (
               <div className="absolute top-6 right-6">
-                <span className="bg-teal-500/10 text-teal-400 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-teal-500/20">
+                <span className="bg-teal-500/10 text-teal-400 text-[10px] font-mono font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-teal-500/20">
                   Recommended
                 </span>
               </div>
             )}
 
             <div className="mb-8 mt-2">
-              <h3 className="text-xl font-bold mb-2">{tier.name}</h3>
-              <p className={cn("text-sm min-h-[40px]", tier.isPopular ? "text-gray-300" : "text-gray-400")}>
+              <h3 className="text-2xl font-bold font-display mb-2">{tier.name}</h3>
+              <p className={cn("text-xs leading-relaxed min-h-[36px]", tier.isPopular ? "text-gray-300" : "text-gray-400")}>
                 {tier.description}
               </p>
             </div>
 
-            <div className="mb-8 flex items-baseline gap-1">
-              <span className="text-4xl font-bold text-white">₹{tier.price}</span>
-              <span className={cn("text-sm", tier.isPopular ? "text-gray-400" : "text-gray-500")}>/ month</span>
+            <div className="mb-8 flex items-baseline gap-1 font-mono">
+              <span className="text-4xl font-bold text-white tracking-tight">₹{tier.price}</span>
+              <span className={cn("text-xs uppercase tracking-wider", tier.isPopular ? "text-gray-400" : "text-gray-500")}>/ month</span>
             </div>
 
             <button
               onClick={() => handleUpgrade(tier.name)}
               className={cn(
-                "w-full py-3 px-4 rounded-xl font-semibold transition-colors mb-8 flex items-center justify-center gap-2",
+                "w-full py-3 px-4 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all mb-8 shadow-sm",
                 tier.buttonVariant === 'outline'
                   ? "bg-transparent border border-white/20 text-gray-300 hover:bg-white/10 hover:border-white/30"
                   : tier.buttonVariant === 'primary'
-                    ? "bg-teal-500 hover:bg-teal-600 text-white border border-transparent shadow-lg shadow-teal-500/20"
-                    : "bg-white text-black hover:bg-gray-200 border border-transparent shadow-md"
+                    ? "bg-teal-500 hover:bg-teal-400 text-black font-bold shadow-lg shadow-teal-500/20"
+                    : "bg-white text-black hover:bg-gray-200"
               )}
             >
-              {tier.isPopular && <Sparkles className="w-4 h-4" />}
               {tier.buttonText}
             </button>
 
             <div className="flex-1">
-              <ul className="space-y-4">
+              <ul className="space-y-3.5">
                 {tier.features.map((feature, fIdx) => (
-                  <li key={fIdx} className="flex items-start gap-3 text-sm">
-                    {feature.active ? (
-                      <Check className={cn("w-5 h-5 shrink-0 mt-0.5", tier.isPopular ? "text-teal-400" : "text-copper-500")} />
-                    ) : (
-                      <X className={cn("w-5 h-5 shrink-0 mt-0.5 opacity-40", tier.isPopular ? "text-teal-500/50" : "text-gray-600")} />
-                    )}
+                  <li key={fIdx} className="flex items-start gap-2.5 text-xs">
                     <span className={cn(
-                      (feature as any).bold && "font-semibold",
-                      !feature.active && (tier.isPopular ? "text-gray-400 opacity-80" : "text-gray-500")
+                      "font-mono text-xs select-none shrink-0",
+                      feature.active ? (tier.isPopular ? "text-teal-400 font-bold" : "text-copper-400 font-bold") : "text-gray-600 opacity-40"
+                    )}>
+                      {feature.active ? "—" : "·"}
+                    </span>
+                    <span className={cn(
+                      (feature as any).bold && "font-semibold text-white",
+                      !feature.active ? "text-gray-600 line-through opacity-40 font-mono" : "text-gray-300 font-sans"
                     )}>
                       {feature.text}
                     </span>

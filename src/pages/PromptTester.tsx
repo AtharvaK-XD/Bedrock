@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { Play, ChevronDown, Settings } from 'lucide-react';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { cn } from '../lib/utils';
 import { testPrompt } from '../lib/api';
@@ -88,17 +87,17 @@ export default function PromptTester() {
           <button
             type="button"
             onClick={() => setActiveDropdown(isActive ? null : dropdownId)}
-            className="w-full flex items-center justify-between gap-2 px-3 py-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-sm font-medium text-white hover:bg-white/10 transition-colors shadow-sm"
+            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#1a1a1a] border border-white/10 rounded-xl text-xs font-medium text-white hover:bg-white/10 transition-colors shadow-sm"
           >
             <div className="flex items-center gap-2 truncate">
-              <AgentIcon agent={currentAgent} className="w-4 h-4 text-gray-400 shrink-0" />
+              <AgentIcon agent={currentAgent} />
               <span className="truncate">{currentAgent.name}</span>
             </div>
-            <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+            <span className="text-[10px] text-gray-500 shrink-0">▾</span>
           </button>
           
           {isActive && (
-            <div className="absolute top-full mt-2 left-0 w-64 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 py-2 overflow-hidden">
+            <div className="absolute top-full mt-2 left-0 w-64 bg-[#1a1a1a]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-xl z-50 py-2 overflow-hidden">
               <div className="max-h-[300px] overflow-y-auto px-1 custom-scrollbar" data-lenis-prevent="true">
                 {AI_AGENTS.map((a) => (
                   <button
@@ -110,11 +109,11 @@ export default function PromptTester() {
                       setActiveDropdown(null);
                     }}
                     className={cn(
-                      "w-full flex items-start gap-3 px-3 py-2 text-left rounded-lg transition-colors",
+                      "w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors",
                       currentAgent.id === a.id ? "bg-white/10" : "hover:bg-white/10"
                     )}
                   >
-                    <AgentIcon agent={a} className="w-4 h-4 mt-0.5 shrink-0" />
+                    <AgentIcon agent={a} />
                     <div className="min-w-0">
                       <div className={cn("text-xs font-medium truncate", currentAgent.id === a.id ? "text-white" : "text-gray-300")}>{a.name}</div>
                     </div>
@@ -132,18 +131,15 @@ export default function PromptTester() {
         <button
           type="button"
           onClick={() => setActiveDropdown(isActive ? null : dropdownId)}
-          className="w-full flex items-center justify-between gap-2 px-3 py-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-sm font-medium text-white hover:bg-white/10 transition-colors shadow-sm"
+          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#1a1a1a] border border-white/10 rounded-xl text-xs font-medium text-white hover:bg-white/10 transition-colors shadow-sm font-mono"
         >
-          <div className="flex items-center gap-2 truncate">
-            <Settings className="w-4 h-4 text-gray-400 shrink-0" />
-            <span className="truncate">{currentModel.name}</span>
-          </div>
-          <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+          <span className="truncate">{currentModel.name}</span>
+          <span className="text-[10px] text-gray-500 shrink-0">▾</span>
         </button>
 
         {isActive && (
-          <div className="absolute top-full mt-2 left-0 w-full bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 py-2">
-            <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-white/10 mb-2">
+          <div className="absolute top-full mt-2 left-0 w-full bg-[#1a1a1a]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-xl z-50 py-2 font-mono">
+            <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-white/10 mb-2">
               {currentAgent.name} Models
             </div>
             <div className="max-h-[300px] overflow-y-auto px-1.5 custom-scrollbar" data-lenis-prevent="true">
@@ -156,11 +152,12 @@ export default function PromptTester() {
                     setActiveDropdown(null);
                   }}
                   className={cn(
-                    "w-full flex items-center gap-2 px-2 py-1.5 text-xs text-left rounded-lg transition-colors",
+                    "w-full flex items-center justify-between px-2 py-1.5 text-xs text-left rounded-lg transition-colors",
                     currentModel.id === m.id ? "bg-white/10 text-white font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
                   )}
                 >
-                  {m.name}
+                  <span>{m.name}</span>
+                  {currentModel.id === m.id && <span className="w-1.5 h-1.5 rounded-full bg-copper-400" />}
                 </button>
               ))}
             </div>
@@ -186,33 +183,31 @@ export default function PromptTester() {
         {/* Left: Input */}
         <div className="flex flex-col gap-6 h-full">
           <div className="bg-[#1a1a1a]/30 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-5 flex flex-col flex-1 relative overflow-hidden group">
-            <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">System Prompt (Optional)</h3>
+            <h3 className="text-xs font-mono font-semibold text-gray-400 mb-2 uppercase tracking-wider">System Prompt (Optional)</h3>
             <textarea
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               data-lenis-prevent="true"
-              className="w-full h-24 resize-none bg-[#111] border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-copper-500/50 mb-6 custom-scrollbar"
+              className="w-full h-24 resize-none bg-[#111] border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-copper-500/50 mb-6 custom-scrollbar font-mono text-xs"
             />
             
-            <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">User Prompt</h3>
+            <h3 className="text-xs font-mono font-semibold text-gray-400 mb-2 uppercase tracking-wider">User Prompt</h3>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Enter the prompt you want to test..."
               data-lenis-prevent="true"
-              className="w-full flex-1 resize-none bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none custom-scrollbar"
+              className="w-full flex-1 resize-none bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none custom-scrollbar leading-relaxed"
             />
           </div>
 
           <button
             onClick={handleTest}
             disabled={!prompt.trim() || isTesting}
-            className="w-full flex items-center justify-center gap-2 px-8 py-4 bg-copper-500 text-white rounded-xl font-semibold transition-all hover:bg-copper-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-copper-500/20"
+            className="w-full flex items-center justify-center gap-2 px-8 py-4 bg-copper-500 text-white rounded-xl font-semibold text-sm uppercase tracking-wider transition-all hover:bg-copper-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-copper-500/20 active:scale-[0.98]"
           >
-            {isTesting ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            ) : (
-              <Play className="w-5 h-5" />
+            {isTesting && (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></span>
             )}
             {isTesting ? 'Running Battle...' : 'Run Arena'}
           </button>
@@ -239,7 +234,7 @@ export default function PromptTester() {
                     {result1}
                   </pre>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-gray-600 italic text-sm text-center px-4">
+                  <div className="h-full flex items-center justify-center text-gray-600 italic text-sm text-center px-4 font-mono text-xs">
                     Run a test to see Model A's output here.
                   </div>
                 )}
@@ -266,7 +261,7 @@ export default function PromptTester() {
                     {result2}
                   </pre>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-gray-600 italic text-sm text-center px-4">
+                  <div className="h-full flex items-center justify-center text-gray-600 italic text-sm text-center px-4 font-mono text-xs">
                     Run a test to see Model B's output here.
                   </div>
                 )}

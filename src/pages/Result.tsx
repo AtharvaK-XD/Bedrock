@@ -1,6 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Download, RefreshCcw, FileText, Sparkles, Terminal, ChevronDown, ArrowRightLeft } from 'lucide-react';
 import { RefinementInput } from '../components/ui/RefinementInput';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import ReactMarkdown from 'react-markdown';
@@ -49,7 +48,7 @@ export default function Result() {
   if (!promptText) {
     return (
       <div className="flex items-center justify-center min-h-screen text-white">
-        <p>No prompt found. <button onClick={() => navigate('/')} className="text-copper-500 hover:text-copper-600 underline ml-1 transition-colors">Start over</button></p>
+        <p>No prompt found. <button onClick={() => navigate('/')} className="text-copper-400 hover:text-copper-300 underline ml-1 transition-colors">Start over</button></p>
       </div>
     );
   }
@@ -76,23 +75,21 @@ export default function Result() {
       {/* Header */}
       <div className="flex-none p-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-          <Terminal className="w-5 h-5 text-copper-500" />
+          <span className="w-1.5 h-1.5 rounded-full bg-copper-400"></span>
           <span>Interactive prompt refinement</span>
-          <ChevronDown className="w-4 h-4 text-gray-500" />
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setIsSwapped(!isSwapped)}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-            title="Swap Panels"
+            className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 border border-white/5"
           >
-            <ArrowRightLeft className="w-3.5 h-3.5" /> Swap
+            Swap Panels
           </button>
           <button 
             onClick={() => navigate('/')} 
-            className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 border border-white/5"
           >
-            <RefreshCcw className="w-3.5 h-3.5" /> Start Over
+            Start Over
           </button>
         </div>
       </div>
@@ -112,9 +109,9 @@ export default function Result() {
             {msg.role === 'ai' && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start">
                 <div className="flex flex-col gap-4 max-w-[95%]">
-                  <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
-                    <Sparkles className="w-4 h-4 text-copper-500" />
-                    {idx === 1 ? 'Synthesized your prompt' : 'Refined your prompt'}
+                  <div className="flex items-center gap-2 text-xs font-mono text-copper-400 font-semibold uppercase tracking-wider">
+                    <span className="w-1 h-1 rounded-full bg-copper-400" />
+                    {idx === 1 ? 'Prompt Synthesized' : 'Prompt Refined'}
                   </div>
                   <div className="text-[15.5px] leading-relaxed text-gray-300">
                     <TypewriterText text={msg.content || ""} />
@@ -129,8 +126,8 @@ export default function Result() {
         {isRefining && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start">
             <div className="flex flex-col gap-4 max-w-[95%]">
-              <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
-                <Sparkles className="w-4 h-4 text-copper-500 animate-pulse" />
+              <div className="flex items-center gap-2 text-xs font-mono text-copper-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-copper-400 animate-pulse" />
                 Thinking...
               </div>
               <div className="text-[15.5px] leading-relaxed text-gray-300 flex items-center gap-1.5 h-6">
@@ -173,26 +170,23 @@ export default function Result() {
       {/* Document Header */}
       <div className="flex-none p-4 border-b border-white/5 bg-transparent flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-white/10 p-2 rounded-lg flex items-center justify-center">
-            <FileText className="w-5 h-5 text-gray-300" />
-          </div>
-          <div className="font-medium text-white text-[15px]">
-            Bedrock desktop app prompt <span className="text-gray-500 font-normal ml-1">MD</span>
+          <div className="font-display font-medium text-white text-[15px]">
+            Bedrock App Prompt <span className="font-mono text-xs text-gray-500 ml-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">MD</span>
           </div>
         </div>
         
         <div className="flex gap-2">
           <button 
             onClick={handleCopy} 
-            className="flex items-center gap-2 px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-sm font-medium text-gray-200"
+            className="px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-xs font-semibold text-gray-200 uppercase tracking-wider"
           >
-            <Copy className="w-4 h-4" /> Copy
+            Copy
           </button>
           <button 
             onClick={handleDownload} 
-            className="flex items-center gap-2 px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-sm font-medium text-gray-200"
+            className="px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-xs font-semibold text-gray-200 uppercase tracking-wider"
           >
-            <Download className="w-4 h-4" /> Download
+            Download
           </button>
         </div>
       </div>
@@ -201,13 +195,8 @@ export default function Result() {
       <div className="flex-1 overflow-y-auto p-8 custom-scrollbar relative" data-lenis-prevent="true">
         {isRefining && (
           <div className="absolute inset-0 bg-[#161616]/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-300">
-            <div className="relative">
-              <div className="w-16 h-16 border-4 border-copper-500/20 border-t-copper-500 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-copper-500 animate-pulse" />
-              </div>
-            </div>
-            <div className="mt-4 text-copper-500 font-medium animate-pulse">Applying your refinements...</div>
+            <div className="w-12 h-12 border-2 border-copper-500/20 border-t-copper-500 rounded-full animate-spin"></div>
+            <div className="mt-4 text-copper-400 font-mono text-xs uppercase tracking-wider animate-pulse">Applying refinements...</div>
           </div>
         )}
         <div className={`max-w-4xl mx-auto prose prose-invert prose-copper prose-p:leading-relaxed prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-white/10 prose-headings:font-display transition-opacity duration-300 ${isRefining ? 'opacity-30' : 'opacity-100'}`}>

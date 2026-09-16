@@ -1,17 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  User, 
-  Key, 
-  Bell, 
-  Shield, 
-  CreditCard,
-  LogOut,
-  Save,
-  Check,
-  Camera,
-  Trash2
-} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Link } from 'react-router-dom';
@@ -58,11 +46,11 @@ export default function Settings() {
     }, 600);
   };
 
-  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'account', label: 'Account Profile', icon: User },
-    { id: 'api-keys', label: 'Models & API Keys', icon: Key },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'privacy', label: 'Privacy & Data', icon: Shield },
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'account', label: 'Account Profile' },
+    { id: 'api-keys', label: 'Models & API Keys' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'privacy', label: 'Privacy & Data' },
   ];
 
   return (
@@ -70,7 +58,7 @@ export default function Settings() {
       <div className="w-full px-4 sm:px-8 py-10 lg:py-16 min-h-[calc(100vh-80px)]">
       <div className="mb-10">
         <h1 className="text-3xl md:text-4xl font-editorial font-bold text-white">Settings</h1>
-        <p className="text-gray-400 mt-2">Manage your account, API keys, and app preferences.</p>
+        <p className="text-gray-400 mt-2 text-sm">Manage your account credentials, API keys, and workspace preferences.</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
@@ -84,22 +72,21 @@ export default function Settings() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 text-left",
+                    "flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-left",
                     isActive 
-                      ? "bg-white/10 text-white shadow-md" 
+                      ? "bg-white/10 text-white shadow-sm font-semibold" 
                       : "text-gray-400 hover:text-white hover:bg-white/5"
                   )}
                 >
-                  <tab.icon className={cn("w-4 h-4", isActive ? "text-copper-400" : "text-gray-500")} />
-                  {tab.label}
+                  <span>{tab.label}</span>
+                  {isActive && <span className="w-1.5 h-1.5 rounded-full bg-copper-400" />}
                 </button>
               );
             })}
             
             <div className="h-px bg-white/10 my-4 mx-4"></div>
             
-            <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-900/20 transition-all duration-200 text-left">
-              <LogOut className="w-4 h-4" />
+            <button className="px-4 py-3 rounded-xl text-xs font-mono uppercase tracking-wider text-rose-400 hover:bg-rose-950/30 transition-all duration-200 text-left">
               Sign Out
             </button>
           </nav>
@@ -119,8 +106,8 @@ export default function Settings() {
                 <div>
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-white">Account Profile</h2>
-                    <Link to="/app/profile" className="text-xs font-semibold text-copper-400 hover:text-copper-300 flex items-center gap-1">
-                      View Full Profile & Activity &rarr;
+                    <Link to="/app/profile" className="text-xs font-mono uppercase tracking-wider text-copper-400 hover:text-copper-300 transition-colors">
+                      View Profile &rarr;
                     </Link>
                   </div>
                   
@@ -142,9 +129,8 @@ export default function Settings() {
                       ) : (
                         profile.avatarInitials
                       )}
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Camera className="w-5 h-5 text-copper-300" />
-                        <span className="text-[9px] font-medium text-white mt-0.5">Change</span>
+                      <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[10px] font-mono text-white uppercase tracking-wider">Edit</span>
                       </div>
                     </div>
                     <div>
@@ -153,30 +139,28 @@ export default function Settings() {
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploadingAvatar}
-                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                         >
-                          <Camera className="w-4 h-4 text-copper-400" />
                           {isUploadingAvatar ? 'Processing...' : (profile.avatarUrl ? 'Change Avatar' : 'Upload Avatar')}
                         </button>
                         {profile.avatarUrl && (
                           <button 
                             type="button"
                             onClick={() => updateProfile({ avatarUrl: '' })}
-                            className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                            className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
                           >
-                            <Trash2 className="w-4 h-4" />
                             Remove
                           </button>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">JPG, PNG, WEBP or GIF. Auto-scaled & optimized</p>
+                      <p className="text-xs text-gray-500 mt-2 font-mono">JPG, PNG, WEBP or GIF. Auto-scaled & optimized</p>
                       {avatarError && <p className="text-xs text-red-400 mt-1">{avatarError}</p>}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-300">Full Name</label>
+                      <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">Full Name</label>
                       <input 
                         type="text" 
                         value={name}
@@ -185,12 +169,12 @@ export default function Settings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-300">Email Address</label>
+                      <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">Email Address</label>
                       <input 
                         type="email" 
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all"
+                        className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
                       />
                     </div>
                   </div>
@@ -199,18 +183,17 @@ export default function Settings() {
                 <div className="h-px bg-white/10"></div>
 
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-gray-400" />
+                  <h3 className="text-base font-bold text-white mb-4">
                     Subscription Plan
                   </h3>
                   <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/10">
                     <div>
                       <p className="font-semibold text-white">Free Tier</p>
-                      <p className="text-sm text-gray-400">Core model access, limited messages</p>
+                      <p className="text-xs text-gray-400 font-mono mt-0.5">Core model access, limited messages</p>
                     </div>
-                    <button className="px-4 py-2 bg-copper-500 hover:bg-copper-600 text-white text-sm font-semibold rounded-lg shadow-sm shadow-copper-500/20 transition-all">
+                    <Link to="/app/pricing" className="px-4 py-2 bg-copper-500 hover:bg-copper-600 text-white text-xs font-semibold uppercase tracking-wider rounded-lg shadow-sm shadow-copper-500/20 transition-all">
                       Upgrade
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </motion.div>
@@ -230,10 +213,8 @@ export default function Settings() {
 
                   <div className="space-y-6">
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-semibold text-white">Default Model</label>
-                      </div>
-                      <select className="w-full px-4 py-3 bg-[#111] border border-white/10 text-white rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all appearance-none">
+                      <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">Default Model</label>
+                      <select className="w-full px-4 py-3 bg-[#111] border border-white/10 text-white rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all appearance-none font-mono">
                         <option>Gemini 1.5 Pro (Free API)</option>
                         <option>Llama 3 70B (via Groq)</option>
                         <option>OpenAI GPT-4o (BYOK)</option>
@@ -244,27 +225,27 @@ export default function Settings() {
                     <div className="h-px bg-white/10 my-2"></div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-white">Google Gemini API Key</label>
+                      <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">Google Gemini API Key</label>
                       <input 
                         type="password" 
                         placeholder="AIzaSy..."
                         className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
                       />
-                      <p className="text-xs text-gray-500">Get a free key from Google AI Studio.</p>
+                      <p className="text-xs text-gray-500 font-mono">Get a free key from Google AI Studio.</p>
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-white">Groq API Key</label>
+                      <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">Groq API Key</label>
                       <input 
                         type="password" 
                         placeholder="gsk_..."
                         className="w-full px-4 py-3 bg-transparent border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
                       />
-                      <p className="text-xs text-gray-500">Get a free key from Groq Cloud to run open-source models lightning fast.</p>
+                      <p className="text-xs text-gray-500 font-mono">Get a free key from Groq Cloud to run open-source models lightning fast.</p>
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-white">OpenAI API Key</label>
+                      <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">OpenAI API Key</label>
                       <input 
                         type="password" 
                         placeholder="sk-..."
@@ -276,16 +257,15 @@ export default function Settings() {
               </motion.div>
             )}
 
-            {/* Other tabs can be similarly implemented */}
             {(activeTab === 'notifications' || activeTab === 'privacy') && (
               <motion.div
                 key="placeholder"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="flex items-center justify-center h-[300px] text-gray-500 text-sm"
+                className="flex items-center justify-center h-[300px] text-gray-500 text-xs font-mono uppercase tracking-wider"
               >
-                {activeTab === 'notifications' ? 'Notification settings coming soon.' : 'Privacy settings coming soon.'}
+                {activeTab === 'notifications' ? 'Notification preferences coming soon.' : 'Privacy controls coming soon.'}
               </motion.div>
             )}
           </AnimatePresence>
@@ -296,19 +276,15 @@ export default function Settings() {
               onClick={handleSave}
               disabled={isSaving || saved}
               className={cn(
-                "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-black shadow-md transition-all duration-300",
+                "flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-black shadow-md transition-all duration-300 active:scale-[0.98]",
                 saved 
-                  ? "bg-green-500 shadow-green-500/20 text-white" 
-                  : "bg-white hover:bg-gray-200 hover:-translate-y-0.5",
+                  ? "bg-emerald-400 shadow-emerald-400/20 text-black font-bold" 
+                  : "bg-white hover:bg-gray-200",
                 isSaving && "opacity-80"
               )}
             >
-              {isSaving ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : saved ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <Save className="w-4 h-4" />
+              {isSaving && (
+                <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin inline-block" />
               )}
               {saved ? 'Saved!' : isSaving ? 'Saving...' : 'Save Changes'}
             </button>
