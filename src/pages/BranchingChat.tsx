@@ -25,11 +25,6 @@ import {
 import '@xyflow/react/dist/style.css';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
-import { 
-  Trash2, Play, Settings, Bot, FileText, 
-  CheckCircle2, AlertCircle, X, Database, GitBranch, Code, Merge, ListChecks,
-  ChevronDown
-} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 
@@ -37,7 +32,7 @@ export const NODE_CONFIG = {
   system: { 
     title: 'System Persona', 
     desc: 'Sets base context & behavior', 
-    icon: Settings, 
+    tag: 'SYS', 
     color: 'text-blue-400', 
     bg: 'bg-blue-500/10',
     border: 'border-blue-500/20',
@@ -46,7 +41,7 @@ export const NODE_CONFIG = {
   prompt: { 
     title: 'User Prompt', 
     desc: 'Main instruction or input', 
-    icon: FileText, 
+    tag: 'PROMPT', 
     color: 'text-copper-400', 
     bg: 'bg-copper-500/10',
     border: 'border-copper-500/20',
@@ -55,7 +50,7 @@ export const NODE_CONFIG = {
   output: { 
     title: 'AI Output', 
     desc: 'Response validation & chaining', 
-    icon: Bot, 
+    tag: 'OUT', 
     color: 'text-green-400', 
     bg: 'bg-green-500/10',
     border: 'border-green-500/20',
@@ -64,7 +59,7 @@ export const NODE_CONFIG = {
   data: { 
     title: 'Data Context', 
     desc: 'Inject variables or documents', 
-    icon: Database, 
+    tag: 'DATA', 
     color: 'text-purple-400', 
     bg: 'bg-purple-500/10',
     border: 'border-purple-500/20',
@@ -73,7 +68,7 @@ export const NODE_CONFIG = {
   condition: { 
     title: 'Condition / If', 
     desc: 'Route based on AI response', 
-    icon: GitBranch, 
+    tag: 'BRANCH', 
     color: 'text-yellow-400', 
     bg: 'bg-yellow-500/10',
     border: 'border-yellow-500/20',
@@ -82,7 +77,7 @@ export const NODE_CONFIG = {
   code: { 
     title: 'Code Script', 
     desc: 'Execute custom logic', 
-    icon: Code, 
+    tag: 'CODE', 
     color: 'text-red-400', 
     bg: 'bg-red-500/10',
     border: 'border-red-500/20',
@@ -91,7 +86,7 @@ export const NODE_CONFIG = {
   merge: { 
     title: 'Merge Nodes', 
     desc: 'Combine multiple inputs', 
-    icon: Merge, 
+    tag: 'MERGE', 
     color: 'text-teal-400', 
     bg: 'bg-teal-500/10',
     border: 'border-teal-500/20',
@@ -100,7 +95,7 @@ export const NODE_CONFIG = {
   evaluation: { 
     title: 'Evaluation', 
     desc: 'Grade output quality', 
-    icon: ListChecks, 
+    tag: 'EVAL', 
     color: 'text-indigo-400', 
     bg: 'bg-indigo-500/10',
     border: 'border-indigo-500/20',
@@ -108,7 +103,6 @@ export const NODE_CONFIG = {
   }
 };
 
-// Define custom node data type
 export type PromptNodeData = {
   title: string;
   description: string;
@@ -163,11 +157,11 @@ const DeletableEdge = ({
           className="nodrag nopan"
         >
           <button
-            className="w-5 h-5 flex items-center justify-center bg-[#1a1a1a] border border-white/20 rounded-full text-gray-400 hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/10 transition-colors shadow-lg"
+            className="w-5 h-5 flex items-center justify-center bg-[#1a1a1a] border border-white/20 rounded-full text-gray-400 hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/10 transition-colors shadow-lg font-mono text-xs leading-none"
             onClick={onEdgeClick}
             title="Delete Connection"
           >
-            <Trash2 size={10} />
+            ×
           </button>
         </div>
       </EdgeLabelRenderer>
@@ -185,7 +179,6 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
   const config = NODE_CONFIG[data.nodeType] || NODE_CONFIG.prompt;
 
   const handleRun = () => {
-    // Mock run logic
     setNodes(nodes => nodes.map(n => {
       if (n.id === id) {
         return { ...n, data: { ...n.data, status: 'running' } };
@@ -212,7 +205,7 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
         selected ? 'border-copper-500 shadow-[0_0_30px_rgba(255,165,0,0.15)]' : 'border-white/10 hover:border-white/30'
       )}
     >
-      {/* 4 Handles for loose connection mode, perfectly centered and transform-free */}
+      {/* 4 Handles for loose connection mode */}
       <Handle type="source" id="top" position={Position.Top} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 transition-colors hover:border-copper-400 !transform-none" style={{ left: 'calc(50% - 6px)', top: '-6px' }} />
       <Handle type="source" id="right" position={Position.Right} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 transition-colors hover:border-copper-400 !transform-none" style={{ top: 'calc(50% - 6px)', right: '-6px' }} />
       <Handle type="source" id="bottom" position={Position.Bottom} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 transition-colors hover:border-copper-400 !transform-none" style={{ left: 'calc(50% - 6px)', bottom: '-6px' }} />
@@ -224,14 +217,16 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
         config.bg, config.border
       )}>
         <div className="flex items-center gap-2">
-           <config.icon className={cn("w-4 h-4", config.color)} />
+           <span className={cn("font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/40 border border-white/10", config.color)}>
+             {config.tag}
+           </span>
            <span className="text-[11px] font-semibold tracking-wide uppercase text-white/70">
              {config.title}
            </span>
         </div>
         <div className="flex items-center gap-1.5 bg-[#111] px-2 py-1 rounded-md border border-white/5">
-           <AgentIcon agent={agent} className="w-3 h-3 opacity-70" />
-           <span className="text-[10px] font-medium text-gray-400 truncate max-w-[80px]">{model.name}</span>
+           <AgentIcon agent={agent} />
+           <span className="text-[10px] font-mono text-gray-400 truncate max-w-[80px]">{model.name}</span>
         </div>
       </div>
       
@@ -245,7 +240,7 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
         </div>
         
         {data.output && (
-          <div className="mt-2 p-2 bg-white/5 rounded-lg border border-white/10 text-[12px] text-gray-300 max-h-[100px] overflow-y-auto custom-scrollbar">
+          <div className="mt-2 p-2 bg-white/5 rounded-lg border border-white/10 text-[12px] text-gray-300 max-h-[100px] overflow-y-auto custom-scrollbar font-mono">
             {data.output}
           </div>
         )}
@@ -254,19 +249,18 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
       {/* Node Footer */}
       <div className="px-3 py-2 border-t border-white/10 bg-black/40 flex items-center justify-between rounded-b-xl group-[.is-pan-mode]/flow:pointer-events-none">
         <div className="flex items-center gap-2">
-          {data.status === 'running' && <div className="w-3 h-3 border-2 border-copper-500/30 border-t-copper-500 rounded-full animate-spin" />}
-          {data.status === 'success' && <CheckCircle2 className="w-3 h-3 text-green-500" />}
-          {data.status === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
-          {data.status === 'idle' && <div className="w-3 h-3 rounded-full bg-white/10" />}
-          <span className="text-[11px] font-medium text-gray-500 capitalize">{data.status}</span>
+          {data.status === 'running' && <div className="w-2 h-2 border-2 border-copper-500/30 border-t-copper-500 rounded-full animate-spin" />}
+          {data.status === 'success' && <div className="w-2 h-2 rounded-full bg-emerald-400" />}
+          {data.status === 'error' && <div className="w-2 h-2 rounded-full bg-rose-400" />}
+          {data.status === 'idle' && <div className="w-2 h-2 rounded-full bg-white/20" />}
+          <span className="text-[10px] font-mono text-gray-500 uppercase">{data.status}</span>
         </div>
         
         <button 
           onClick={handleRun}
           disabled={data.status === 'running'}
-          className="flex items-center gap-1.5 px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-md text-xs font-medium transition-colors nodrag disabled:opacity-50"
+          className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-md text-xs font-mono font-medium transition-colors nodrag disabled:opacity-50"
         >
-          <Play className="w-3 h-3" />
           Run
         </button>
       </div>
@@ -313,7 +307,7 @@ function CustomSelect({
         <div className="truncate flex items-center gap-2">
           {renderValue ? renderValue(selected) : selected?.name}
         </div>
-        <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform", isOpen && "rotate-180")} />
+        <span className="text-[10px] text-gray-400">▾</span>
       </button>
       
       <AnimatePresence>
@@ -381,10 +375,8 @@ function FlowEditor() {
     []
   );
 
-  // Keyboard shortcuts for Hand (H) and Select (V) tools
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
         return;
       }
@@ -466,14 +458,14 @@ function FlowEditor() {
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
-        className="absolute top-6 left-6 z-10 flex items-center gap-3 nowheel nopan nodrag"
+        className="absolute top-6 left-6 z-10 flex items-center gap-3 nowheel nopan nodrag font-mono text-xs"
       >
-        <div className="flex items-center gap-3 px-4 py-2 bg-[#1a1a1a]/60 backdrop-blur-2xl border border-white/10 rounded-xl text-xs font-medium text-gray-400 shadow-lg shadow-black/20">
-          <span className={toolMode === 'select' ? "text-white drop-shadow-md" : ""}>Press V to Select</span>
+        <div className="flex items-center gap-3 px-4 py-2 bg-[#1a1a1a]/80 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-lg shadow-black/20">
+          <span className={toolMode === 'select' ? "text-white font-semibold" : ""}>V : Select</span>
           <div className="w-1 h-1 rounded-full bg-white/20"></div>
-          <span className={toolMode === 'pan' ? "text-white drop-shadow-md" : ""}>Press H to Pan</span>
+          <span className={toolMode === 'pan' ? "text-white font-semibold" : ""}>H : Pan</span>
           <div className="w-1 h-1 rounded-full bg-white/20"></div>
-          <span>Backspace to Delete</span>
+          <span>DEL : Remove</span>
         </div>
       </motion.div>
 
@@ -488,20 +480,23 @@ function FlowEditor() {
             exit={{ x: 400, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             onWheel={(e) => e.stopPropagation()}
-            className="absolute top-4 right-4 bottom-4 w-80 bg-[#1a1a1a]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-20 overflow-hidden nowheel nopan nodrag"
+            className="absolute top-4 right-4 bottom-4 w-80 bg-[#1a1a1a]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-20 overflow-hidden nowheel nopan nodrag"
           >
             <div className="flex flex-col h-full w-80">
               <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
                 <h3 className="font-display font-semibold text-white">Node Settings</h3>
-                <button onClick={() => setNodes(nds => nds.map(n => ({...n, selected: false})))} className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
-                  <X className="w-4 h-4" />
+                <button 
+                  onClick={() => setNodes(nds => nds.map(n => ({...n, selected: false})))} 
+                  className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors font-mono text-sm"
+                >
+                  ×
                 </button>
               </div>
               
               <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6 custom-scrollbar">
                 {/* Title */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Node Title</label>
+                  <label className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider">Node Title</label>
                   <input 
                     type="text" 
                     value={selectedNode.data.title}
@@ -512,22 +507,21 @@ function FlowEditor() {
                 
                 {/* Node Type */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Node Type</label>
+                  <label className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider">Node Type</label>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(NODE_CONFIG).map(([type, cfg]) => (
                       <button
                         key={type}
                         onClick={() => onNodeDataChange(selectedNode.id, { nodeType: type as keyof typeof NODE_CONFIG })}
                         className={cn(
-                          "px-2 py-2 rounded-lg text-[11px] font-medium capitalize border transition-all flex items-center justify-center gap-1.5",
+                          "px-2 py-2 rounded-lg text-[10px] font-mono uppercase border transition-all flex items-center justify-center gap-1",
                           selectedNode.data.nodeType === type 
-                            ? cn(cfg.bg, cfg.border, cfg.color, "shadow-inner") 
+                            ? cn(cfg.bg, cfg.border, cfg.color, "shadow-inner font-bold") 
                             : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"
                         )}
                         title={cfg.desc}
                       >
-                        <cfg.icon className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{type}</span>
+                        <span>{cfg.tag}</span>
                       </button>
                     ))}
                   </div>
@@ -535,7 +529,7 @@ function FlowEditor() {
 
                 {/* Model Selection */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">AI Model</label>
+                  <label className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider">AI Model</label>
                   <div className="space-y-2">
                     <CustomSelect 
                       value={selectedNode.data.agentId}
@@ -546,13 +540,13 @@ function FlowEditor() {
                       }}
                       renderValue={(agent) => (
                         <>
-                          <AgentIcon agent={agent} className="w-4 h-4 rounded-sm" />
+                          <AgentIcon agent={agent} />
                           <span>{agent.name}</span>
                         </>
                       )}
                       renderOption={(agent) => (
                         <>
-                          <AgentIcon agent={agent} className="w-4 h-4 rounded-sm" />
+                          <AgentIcon agent={agent} />
                           <span>{agent.name}</span>
                         </>
                       )}
@@ -568,11 +562,11 @@ function FlowEditor() {
                 
                 {/* Description / Prompt */}
                 <div className="space-y-2 flex flex-col">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Prompt Context</label>
+                  <label className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider">Prompt Context</label>
                   <textarea 
                     value={selectedNode.data.description}
                     onChange={(e) => onNodeDataChange(selectedNode.id, { description: e.target.value })}
-                    className="w-full min-h-[200px] bg-black/50 border border-white/10 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-copper-500/50 focus:ring-1 focus:ring-copper-500/50 transition-all resize-y custom-scrollbar"
+                    className="w-full min-h-[200px] bg-black/50 border border-white/10 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-copper-500/50 focus:ring-1 focus:ring-copper-500/50 transition-all resize-y custom-scrollbar font-mono text-xs leading-relaxed"
                     placeholder="Enter the prompt instructions or context for this node..."
                   />
                 </div>
@@ -588,9 +582,8 @@ function FlowEditor() {
                       });
                     }, 2000);
                   }}
-                  className="w-full py-3 bg-white text-black rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors shadow-lg shrink-0 mt-6"
+                  className="w-full py-3 bg-white text-black rounded-xl font-semibold text-xs uppercase tracking-wider flex items-center justify-center hover:bg-gray-200 transition-colors shadow-lg shrink-0 mt-6 active:scale-[0.98]"
                 >
-                  <Play className="w-4 h-4 fill-current" />
                   Execute Node
                 </button>
               </div>
@@ -605,24 +598,24 @@ function FlowEditor() {
             exit={{ x: 50, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             onWheel={(e) => e.stopPropagation()}
-            className="absolute top-6 right-6 flex flex-col items-end gap-3 z-20 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar p-2 -mr-2 nowheel nopan nodrag"
+            className="absolute top-6 right-6 flex flex-col items-end gap-2.5 z-20 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar p-2 -mr-2 nowheel nopan nodrag"
           >
             {Object.entries(NODE_CONFIG).map(([type, item]) => (
               <button
                 key={type}
                 onClick={() => addNode(type as keyof typeof NODE_CONFIG)}
                 className={cn(
-                  "group flex items-center p-3 rounded-xl border bg-[#1a1a1a]/80 backdrop-blur-xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap shrink-0",
-                  "w-[56px] hover:w-[260px]",
+                  "group flex items-center p-2.5 rounded-xl border bg-[#1a1a1a]/90 backdrop-blur-xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap shrink-0",
+                  "w-[50px] hover:w-[240px]",
                   item.bg, item.border, item.hoverBorder
                 )}
               >
-                <div className={cn("p-2 rounded-lg shrink-0 bg-black/40", item.color)}>
-                  <item.icon className="w-5 h-5" />
+                <div className={cn("w-7 h-7 rounded-lg shrink-0 bg-black/50 border border-white/10 flex items-center justify-center font-mono text-[9px] font-bold", item.color)}>
+                  {item.tag}
                 </div>
-                <div className="ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100 text-left">
-                  <div className={cn("text-sm font-semibold transition-colors", item.color)}>{item.title}</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5">{item.desc}</div>
+                <div className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100 text-left">
+                  <div className={cn("text-xs font-semibold uppercase tracking-wide", item.color)}>{item.title}</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">{item.desc}</div>
                 </div>
               </button>
             ))}

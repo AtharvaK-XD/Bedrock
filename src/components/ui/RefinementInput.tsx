@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Sparkles, ArrowUp, ChevronDown, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AI_AGENTS } from './RichInput';
 
@@ -25,18 +24,15 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
   const [timeUntilWeekly, setTimeUntilWeekly] = useState("");
 
   useEffect(() => {
-    // Load from local storage and handle resets
     const loadTokens = () => {
       const now = new Date();
       
-      // Calculate next 5-hour reset
       const nextSessionReset = new Date(now);
       const currentHour = now.getHours();
       const nextResetHour = Math.floor(currentHour / 5) * 5 + 5;
       nextSessionReset.setHours(nextResetHour, 0, 0, 0);
       setSessionResetTime(nextSessionReset);
 
-      // Calculate next weekly reset (Sunday midnight)
       const nextWeeklyReset = new Date(now);
       nextWeeklyReset.setDate(now.getDate() + ((7 - now.getDay()) % 7));
       if (now.getDay() === 0 && now.getHours() > 0) {
@@ -45,14 +41,12 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
       nextWeeklyReset.setHours(0, 0, 0, 0);
       setWeeklyResetTime(nextWeeklyReset);
 
-      // Check if we need to reset
       const lastSessionResetStr = localStorage.getItem('lastSessionReset');
       const lastWeeklyResetStr = localStorage.getItem('lastWeeklyReset');
       
       let currentSessionTokens = parseInt(localStorage.getItem('sessionTokens') || '0', 10);
       let currentWeeklyTokens = parseInt(localStorage.getItem('weeklyTokens') || '0', 10);
 
-      // If we passed the reset time, reset tokens
       if (lastSessionResetStr) {
         const lastSessionReset = new Date(lastSessionResetStr);
         if (now > lastSessionReset) {
@@ -140,10 +134,10 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
   }, []);
 
   const defaultPlaceholders = [
-    "What would you like to change or create?",
-    "Add a new feature to the prompt...",
-    "Make the tone more professional...",
-    "Rewrite this for a technical audience..."
+    "What would you like to change or refine in this prompt?",
+    "Add a constraint or output format...",
+    "Make the tone more direct and concise...",
+    "Rewrite this for a production coding agent..."
   ];
 
   const [placeholderText, setPlaceholderText] = useState("");
@@ -182,7 +176,6 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if ((input.trim() || files.length > 0) && onSubmit) {
-      // Token deduction
       const usedTokens = Math.max(1, Math.floor(input.length * 0.25));
       const newSessionTokens = Math.min(sessionTokens + usedTokens, SESSION_LIMIT);
       const newWeeklyTokens = Math.min(weeklyTokens + usedTokens, WEEKLY_LIMIT);
@@ -192,7 +185,6 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
       localStorage.setItem('sessionTokens', newSessionTokens.toString());
       localStorage.setItem('weeklyTokens', newWeeklyTokens.toString());
 
-      // In a real app, you would pass files to onSubmit too
       onSubmit(input, model);
       setInput('');
       setFiles([]);
@@ -217,14 +209,11 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
       }}
       className={cn(
         "glass-card relative flex flex-col w-full mx-auto border border-white/[0.09] rounded-3xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)] transition-all duration-500 ease-[0.22,1,0.36,1] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10",
-        expanded ? "max-w-[700px] min-h-[140px]" : "max-w-[340px] min-h-[60px]",
+        expanded ? "max-w-[700px] min-h-[140px]" : "max-w-[360px] min-h-[60px]",
         className
       )}
     >
-      {/* Specular top rim highlight line */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent z-20" />
-
-      {/* Subtle micro noise grain */}
       <div className="pointer-events-none absolute inset-0 glass-noise opacity-25 rounded-3xl z-0" />
 
       {/* Input area */}
@@ -232,10 +221,10 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         {files.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {files.map((file, idx) => (
-              <div key={idx} className="flex items-center gap-1 bg-white/5 border border-white/10 px-2 py-1 rounded-md text-xs text-gray-300">
+              <div key={idx} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1 rounded-md text-xs text-gray-300 font-mono">
                 <span className="truncate max-w-[150px]">{file.name}</span>
-                <button type="button" onClick={() => removeFile(idx)} className="text-gray-500 hover:text-white">
-                  <X className="w-3 h-3" />
+                <button type="button" onClick={() => removeFile(idx)} className="text-gray-500 hover:text-white leading-none">
+                  ×
                 </button>
               </div>
             ))}
@@ -259,7 +248,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         "flex items-center justify-between px-3 pb-3 mt-auto transition-all duration-500 ease-[0.22,1,0.36,1]",
         expanded ? "opacity-100 max-h-[50px] translate-y-0" : "opacity-0 max-h-0 translate-y-4 pointer-events-none"
       )}>
-        {/* Left tools (+) */}
+        {/* Left tools (Attach) */}
         <div className="flex items-center">
           <input 
             type="file" 
@@ -271,10 +260,10 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
           <button 
             type="button" 
             onClick={() => fileInputRef.current?.click()}
-            className="text-gray-500 hover:text-gray-300 transition-colors p-2 rounded-xl hover:bg-white/10"
+            className="text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-xl hover:bg-white/10 text-xs font-medium border border-white/5"
             title="Attach files (Max 5MB)"
           >
-            <Plus className="w-5 h-5" strokeWidth={2.5} />
+            Attach
           </button>
         </div>
 
@@ -285,15 +274,15 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
             <button
               type="button"
               onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-              className="flex items-center bg-white/10 hover:bg-white/20 transition-colors rounded-full px-4 py-1.5 border border-white/5 whitespace-nowrap"
+              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 transition-colors rounded-xl px-3 py-1.5 border border-white/5 whitespace-nowrap text-xs font-mono"
             >
-              <span className="text-white text-[13px] font-medium mr-1.5">{model}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400 transition-colors" />
+              <span className="text-white">{model}</span>
+              <span className="text-[10px] text-gray-400">▾</span>
             </button>
 
             {isModelDropdownOpen && (
               <div 
-                className="absolute bottom-full right-0 mb-2 w-56 max-h-[300px] overflow-y-auto custom-scrollbar bg-[#1a1a1a]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl z-50 py-2"
+                className="absolute bottom-full right-0 mb-2 w-56 max-h-[300px] overflow-y-auto custom-scrollbar bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl z-50 py-2"
                 data-lenis-prevent="true"
               >
                 {AI_AGENTS.map((agent) => (
@@ -310,8 +299,8 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                           setIsModelDropdownOpen(false);
                         }}
                         className={cn(
-                          "w-full flex items-center px-4 py-1.5 text-[13px] text-left transition-colors",
-                          model === m.name ? "bg-copper-500/10 text-copper-700 font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
+                          "w-full flex items-center px-4 py-1.5 text-xs text-left transition-colors font-mono",
+                          model === m.name ? "bg-copper-500/20 text-copper-300 font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
                         )}
                       >
                         {m.name}
@@ -323,23 +312,19 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
             )}
           </div>
 
-          <button type="button" className="text-gray-500 hover:text-gray-300 transition-colors p-2 rounded-xl hover:bg-white/10 whitespace-nowrap">
-            <Sparkles className="w-[18px] h-[18px]" strokeWidth={2} />
-          </button>
-
           <button 
             type="submit"
             disabled={!input.trim() && files.length === 0}
-            className="ml-1 bg-copper-500 text-white p-2 rounded-full hover:bg-copper-600 disabled:opacity-50 disabled:bg-white/10 disabled:text-gray-500 transition-all flex items-center justify-center"
+            className="bg-copper-500 text-white px-4 py-1.5 rounded-xl hover:bg-copper-600 disabled:opacity-40 disabled:bg-white/10 disabled:text-gray-500 transition-all text-xs font-semibold uppercase tracking-wider"
           >
-            <ArrowUp className="w-[18px] h-[18px]" strokeWidth={2.5} />
+            Refine
           </button>
         </div>
       </div>
       
       {/* Token Quota Progress */}
       <div className={cn(
-        "flex flex-col sm:flex-row items-center justify-between px-5 pb-3 text-[10px] text-gray-500 gap-4 sm:gap-6 transition-all duration-500 ease-[0.22,1,0.36,1]",
+        "flex flex-col sm:flex-row items-center justify-between px-5 pb-3 text-[10px] font-mono text-gray-500 gap-4 sm:gap-6 transition-all duration-500 ease-[0.22,1,0.36,1]",
         expanded ? "opacity-100 max-h-[30px] translate-y-0" : "opacity-0 max-h-0 translate-y-4 pointer-events-none"
       )}>
         <div className="flex items-center gap-2 flex-1 w-full">
@@ -358,8 +343,8 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
               style={{ width: `${Math.min(100, (weeklyTokens / WEEKLY_LIMIT) * 100)}%` }} 
             />
           </div>
-          <span className="whitespace-nowrap text-right">
-            Weekly: {Math.round((weeklyTokens / WEEKLY_LIMIT) * 100)}% · resets in {timeUntilWeekly}
+          <span className="whitespace-nowrap text-right" title={timeUntilWeekly ? `Resets in ${timeUntilWeekly}` : undefined}>
+            Weekly: {Math.round((weeklyTokens / WEEKLY_LIMIT) * 100)}%{timeUntilWeekly ? ` (${timeUntilWeekly})` : ''}
           </span>
         </div>
       </div>

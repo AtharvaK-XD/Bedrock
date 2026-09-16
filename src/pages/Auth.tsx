@@ -1,7 +1,6 @@
 import { useSearchParams, Link } from 'react-router-dom';
 import { AuthCard } from '../components/auth/AuthCard';
 import { PageTransition } from '../components/layout/PageTransition';
-import { Layers } from 'lucide-react';
 
 interface AuthPageProps {
   defaultMode?: 'login' | 'register';
@@ -19,11 +18,9 @@ export default function AuthPage({ defaultMode = 'register' }: AuthPageProps) {
       
       {/* Header / Brand */}
       <header className="relative z-10 w-full flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-3 text-white group">
-          <div className="p-1.5 bg-white/5 rounded-lg group-hover:bg-white/10 transition-colors">
-            <Layers className="w-5 h-5 text-[#c8a86b]" />
-          </div>
-          <span className="font-display font-bold text-lg tracking-tight">Bedrock</span>
+        <Link to="/" className="flex items-center gap-2.5 text-white group">
+          <span className="w-2 h-2 rounded-full bg-copper-400" />
+          <span className="font-display font-bold text-lg tracking-wider uppercase">Bedrock</span>
         </Link>
       </header>
 
@@ -33,7 +30,7 @@ export default function AuthPage({ defaultMode = 'register' }: AuthPageProps) {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 w-full flex items-center justify-between text-xs text-gray-600 font-light">
+      <footer className="relative z-10 w-full flex items-center justify-between text-xs text-gray-600 font-mono">
         <span>© {new Date().getFullYear()} Bedrock Inc.</span>
         <span>Secure Authentication</span>
       </footer>

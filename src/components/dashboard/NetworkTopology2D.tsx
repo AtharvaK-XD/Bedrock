@@ -1,12 +1,5 @@
 import { useState } from 'react';
-import { 
-  Activity, 
-  Zap, 
-  Play, 
-  Pause, 
-  Cpu, 
-  CheckCircle2
-} from 'lucide-react';
+
 
 interface NodeInfo {
   id: string;
@@ -276,8 +269,8 @@ export function NetworkTopology2D() {
             title="Cycle simulation speed"
             className="text-xs border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] px-2.5 py-1 rounded-xl text-white/70 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
           >
-            <Activity className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="font-mono text-[11px]">{speedMultiplier}x</span>
+            <span className="text-[10px] text-zinc-500 font-mono">SPEED</span>
+            <span className="font-mono text-[11px] text-cyan-400 font-semibold">{speedMultiplier}x</span>
           </button>
 
           {/* Pause / Play */}
@@ -286,8 +279,8 @@ export function NetworkTopology2D() {
             title={isPaused ? 'Resume live simulation' : 'Pause simulation'}
             className="text-xs border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] px-2.5 py-1 rounded-xl text-white/70 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
           >
-            {isPaused ? <Play className="w-3.5 h-3.5 text-emerald-400" /> : <Pause className="w-3.5 h-3.5 text-amber-400" />}
-            <span className="hidden sm:inline text-[11px] font-medium">{isPaused ? 'Resume' : 'Pause'}</span>
+            <span className={`w-1.5 h-1.5 rounded-full ${isPaused ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+            <span className="text-[11px] font-medium">{isPaused ? 'Resume' : 'Pause'}</span>
           </button>
 
           {/* Burst Trigger */}
@@ -296,8 +289,7 @@ export function NetworkTopology2D() {
             title="Inject high-volume traffic burst"
             className="text-xs border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1 rounded-xl text-cyan-300 transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.15)] active:scale-95"
           >
-            <Zap className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-            <span className="hidden sm:inline text-[11px] font-semibold tracking-wide">BURST</span>
+            <span className="font-mono text-[11px] font-semibold tracking-wide">BURST</span>
           </button>
         </div>
       </div>
@@ -699,13 +691,13 @@ export function NetworkTopology2D() {
             <div className="flex items-center gap-1.5 ml-auto">
               <span className="text-white/40">Error Rate:</span>
               <span className="text-white/90 font-mono">{activeNode.details.errorRate}</span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 ml-0.5" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-1 inline-block" />
             </div>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-white/50 w-full text-xs">
             <div className="flex items-center gap-2 text-white/80">
-              <Cpu className="w-4 h-4 text-copper-400" />
+              <span className="w-2 h-2 rounded-full bg-copper-400 inline-block" />
               <span>Status: <span className="text-emerald-400 font-medium">All Systems Optimal</span></span>
             </div>
             <div className="flex items-center gap-1.5">

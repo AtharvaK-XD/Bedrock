@@ -1,13 +1,5 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Flame, 
-  TrendingUp, 
-  Calendar, 
-  Zap, 
-  Activity, 
-  ShieldCheck
-} from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface DayActivity {
@@ -24,16 +16,13 @@ interface DayActivity {
 const WEEKS_COUNT = 16;
 const DAYS_PER_WEEK = 7;
 
-// Generate deterministic & beautiful calendar data for the past 16 weeks
 function generateActivityCalendar(): { weeks: DayActivity[][]; months: { name: string; colIndex: number }[] } {
   const weeks: DayActivity[][] = [];
   const months: { name: string; colIndex: number }[] = [];
   
-  // Reference end date: Feb 20, 2026
   const baseDate = new Date(2026, 1, 20);
   const totalDays = WEEKS_COUNT * DAYS_PER_WEEK;
   
-  // Calculate start date
   const startDate = new Date(baseDate);
   startDate.setDate(baseDate.getDate() - totalDays + 1);
 
@@ -55,10 +44,8 @@ function generateActivityCalendar(): { weeks: DayActivity[][]; months: { name: s
         lastMonth = monthIndex;
       }
 
-      // Generate a realistic activity pattern
       const isWeekend = d === 0 || d === 6;
       const recencyBoost = (w / WEEKS_COUNT) * 0.4;
-      // High streak in the last 3 weeks
       const inCurrentStreak = w >= 13 || (w >= 10 && d >= 1 && d <= 5);
       
       let level: 0 | 1 | 2 | 3 | 4 = 0;
@@ -84,16 +71,16 @@ function generateActivityCalendar(): { weeks: DayActivity[][]; months: { name: s
 
       switch (level) {
         case 1:
-          runs = Math.floor(pseudoRand * 3) + 1; // 1 - 3
+          runs = Math.floor(pseudoRand * 3) + 1;
           break;
         case 2:
-          runs = Math.floor(pseudoRand * 4) + 4; // 4 - 7
+          runs = Math.floor(pseudoRand * 4) + 4;
           break;
         case 3:
-          runs = Math.floor(pseudoRand * 6) + 8; // 8 - 13
+          runs = Math.floor(pseudoRand * 6) + 8;
           break;
         case 4:
-          runs = Math.floor(pseudoRand * 8) + 14; // 14 - 21
+          runs = Math.floor(pseudoRand * 8) + 14;
           break;
         default:
           runs = 0;
@@ -128,14 +115,6 @@ export function PromptActivityHeatmap() {
   const [filter, setFilter] = useState<'all' | 'streak' | 'high'>('all');
 
   const { totalRuns, activeStreak, peakDayRuns, passRate } = useMemo(() => {
-    let runs = 0;
-    let max = 0;
-    STATIC_CALENDAR.weeks.forEach(w => {
-      w.forEach(d => {
-        runs += d.runs;
-        if (d.runs > max) max = d.runs;
-      });
-    });
     return {
       totalRuns: '1,894',
       activeStreak: 19,
@@ -144,49 +123,36 @@ export function PromptActivityHeatmap() {
     };
   }, []);
 
-  // Quick stats highlight
   const statChips = [
-    { label: 'Total Executions', value: totalRuns, icon: Zap, detail: '+14% vs prev 16w', highlight: 'text-white' },
-    { label: 'Active Streak', value: `${activeStreak} Days`, icon: Flame, detail: 'Personal best streak 🔥', highlight: 'text-copper-400' },
-    { label: 'Peak Velocity', value: `${peakDayRuns} Runs/d`, icon: TrendingUp, detail: 'Highest throughput', highlight: 'text-emerald-400' },
-    { label: 'Reliability Rate', value: passRate, icon: ShieldCheck, detail: '1,882 tests passed', highlight: 'text-teal-300' },
+    { label: 'Total Executions', value: totalRuns, detail: '+14% vs prev 16w', highlight: 'text-white' },
+    { label: 'Active Streak', value: `${activeStreak} Days`, detail: 'Personal best', highlight: 'text-copper-400' },
+    { label: 'Peak Velocity', value: `${peakDayRuns} Runs/d`, detail: 'Highest throughput', highlight: 'text-emerald-400' },
+    { label: 'Reliability Rate', value: passRate, detail: '1,882 tests passed', highlight: 'text-teal-300' },
   ];
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#13161c]/90 via-[#0f1115]/95 to-[#0b0c0e]/95 backdrop-blur-2xl p-6 sm:p-7 shadow-2xl shadow-black/80 group">
-      {/* Ambient background glows */}
       <div className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 bg-copper-500/10 rounded-full blur-3xl transition-opacity group-hover:opacity-100 opacity-60" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl transition-opacity group-hover:opacity-100 opacity-40" />
       
-      {/* Subtle top light edge */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-copper-400/30 to-transparent" />
 
       {/* Header section */}
       <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3.5">
-          <div className="relative p-2.5 rounded-2xl bg-gradient-to-br from-copper-500/20 via-copper-600/10 to-transparent border border-copper-500/30 shadow-[0_0_20px_rgba(44,154,139,0.25)]">
-            <Flame className="w-5 h-5 text-copper-400 animate-pulse" />
-            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-copper-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-copper-400" />
+        <div>
+          <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
+            Prompt Architecture Activity
+            <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-gray-300 border border-white/10">
+              16 WEEKS
             </span>
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              Prompt Architecture Activity
-              <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-gray-300 border border-white/10">
-                16 WEEKS
-              </span>
-            </h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {totalRuns} pipeline executions, node transformations, and prompt benchmarks
-            </p>
-          </div>
+          </h2>
+          <p className="text-xs text-gray-400 mt-1 font-mono">
+            {totalRuns} pipeline executions, node transformations, and prompt benchmarks
+          </p>
         </div>
 
         {/* Top-Right Badges and Filter */}
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {/* Quick interactive filter tabs */}
           <div className="flex items-center p-1 rounded-xl bg-black/50 border border-white/10 text-[11px] font-mono">
             {[
               { id: 'all', label: 'All 16w' },
@@ -200,7 +166,7 @@ export function PromptActivityHeatmap() {
                 className={cn(
                   "px-2.5 py-1 rounded-lg transition-all",
                   filter === tab.id
-                    ? "bg-copper-500/30 text-copper-300 font-semibold border border-copper-500/40 shadow-sm"
+                    ? "bg-white/15 text-white font-semibold border border-white/10 shadow-sm"
                     : "text-gray-400 hover:text-white"
                 )}
               >
@@ -209,8 +175,8 @@ export function PromptActivityHeatmap() {
             ))}
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-semibold bg-gradient-to-r from-copper-500/15 to-emerald-500/10 text-copper-300 border border-copper-500/30 shadow-[0_0_12px_rgba(44,154,139,0.2)]">
-            <Flame className="w-3.5 h-3.5 text-copper-400 animate-bounce" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-semibold bg-white/5 text-copper-300 border border-copper-500/30">
+            <span className="w-1.5 h-1.5 rounded-full bg-copper-400" />
             <span>Active Streak: {activeStreak} Days</span>
           </div>
         </div>
@@ -221,11 +187,10 @@ export function PromptActivityHeatmap() {
         {statChips.map((chip, idx) => (
           <div 
             key={idx}
-            className="p-3 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 transition-all group/stat"
+            className="p-3.5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 transition-all"
           >
-            <div className="flex items-center justify-between text-gray-400 mb-1">
-              <span className="text-[11px] font-medium">{chip.label}</span>
-              <chip.icon className="w-3.5 h-3.5 text-gray-500 group-hover/stat:text-copper-400 transition-colors" />
+            <div className="text-[11px] font-mono uppercase tracking-wider text-gray-500 mb-1">
+              {chip.label}
             </div>
             <div className="flex items-baseline gap-2">
               <span className={cn("text-lg font-bold font-mono tracking-tight", chip.highlight)}>
@@ -257,7 +222,6 @@ export function PromptActivityHeatmap() {
 
             {/* Grid with Weekday Labels on Left */}
             <div className="flex gap-2">
-              {/* Day of Week Labels */}
               <div className="flex flex-col justify-between py-1 text-[10px] font-mono text-gray-500 w-6 select-none">
                 <span className="h-3 leading-none opacity-0">Sun</span>
                 <span className="h-3 leading-none">Mon</span>
@@ -273,7 +237,6 @@ export function PromptActivityHeatmap() {
                 {STATIC_CALENDAR.weeks.map((week, wIndex) => (
                   <div key={wIndex} className="flex flex-col gap-1.5 flex-1">
                     {week.map((item, dIndex) => {
-                      // Rich glowing color assignment
                       let cellStyle = 'bg-white/[0.04] border border-white/[0.04] hover:border-white/30 hover:bg-white/10';
                       
                       if (item.level === 1) {
@@ -320,16 +283,13 @@ export function PromptActivityHeatmap() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -3 }}
                 transition={{ duration: 0.15 }}
-                className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="flex items-center gap-1.5 text-gray-300 font-medium">
-                    <Calendar className="w-3.5 h-3.5 text-copper-400" />
-                    <span>{hoveredCell.fullDate}</span>
-                  </div>
+                  <span className="text-gray-300 font-semibold">{hoveredCell.fullDate}</span>
                   <span className="text-gray-600">•</span>
                   <span className={cn(
-                    "font-mono font-bold px-2 py-0.5 rounded-full text-[11px]",
+                    "font-bold px-2 py-0.5 rounded-full text-[11px]",
                     hoveredCell.runs > 0 ? "bg-copper-500/20 text-copper-300 border border-copper-500/30" : "bg-white/5 text-gray-400"
                   )}>
                     {hoveredCell.runs === 0 ? 'No activity' : `${hoveredCell.runs} executions`}
@@ -337,7 +297,7 @@ export function PromptActivityHeatmap() {
                 </div>
 
                 {hoveredCell.runs > 0 && (
-                  <div className="flex items-center gap-3 text-[11px] font-mono text-gray-400">
+                  <div className="flex items-center gap-3 text-[11px] text-gray-400">
                     <span className="text-gray-300">{hoveredCell.pipelines}</span>
                     <span className="text-gray-600">•</span>
                     <span>Avg {hoveredCell.avgLatency}</span>
@@ -351,9 +311,9 @@ export function PromptActivityHeatmap() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center gap-2 text-xs text-gray-400 font-mono"
+                className="flex items-center gap-2 text-xs text-gray-500 font-mono"
               >
-                <Activity className="w-3.5 h-3.5 text-copper-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-copper-400" />
                 <span>Hover over any calendar cell to inspect pipeline execution telemetry and node statistics</span>
               </motion.div>
             )}
@@ -380,7 +340,7 @@ export function PromptActivityHeatmap() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
-          <span className="text-emerald-400/90 font-medium">Telemetry Synced</span>
+          <span className="text-emerald-400 font-medium">Telemetry Synced</span>
           <span className="text-gray-600">•</span>
           <span className="text-gray-500">Auto-refresh: 60s</span>
         </div>
