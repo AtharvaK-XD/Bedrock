@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RichInput } from '../components/ui/RichInput';
 import { BorderBeam } from 'border-beam';
+import PixelCard from '../components/ui/PixelCard';
 import { generateQuestions, synthesizePrompt } from '../lib/api';
 import type { Question, Answer, IdeaPayload } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -215,6 +216,36 @@ export default function Wizard() {
         </div>
       </div>
       </div>
+
+      {/* PixelCard Loading Overlay for Follow-up Questions and Synthesis */}
+      <AnimatePresence>
+        {(isGenerating || isSynthesizing) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-[#0a0a0a]/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
+          >
+            <PixelCard
+              active={true}
+              variant="copper"
+              gap={5}
+              speed={40}
+              className="w-80 h-52 sm:w-96 sm:h-56 rounded-3xl border border-white/10 shadow-[0_16px_50px_rgba(0,0,0,0.9)] bg-[#111]/95 p-6"
+            >
+              <div className="relative z-10 flex flex-col items-center justify-center text-center">
+                <div className="w-10 h-10 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin"></div>
+                <div className="mt-4 text-white font-display font-medium text-base tracking-tight">
+                  {isGenerating ? 'Generating Follow-Up Questions' : 'Synthesizing Build-Ready Prompt'}
+                </div>
+                <div className="mt-1.5 text-copper-400 font-mono text-xs uppercase tracking-wider animate-pulse">
+                  {isGenerating ? 'Analyzing prompt requirements...' : 'Assembling finalized prompt...'}
+                </div>
+              </div>
+            </PixelCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageTransition>
   );
 }
