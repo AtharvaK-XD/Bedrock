@@ -197,7 +197,7 @@ export default function Landing() {
 
               <div className="hero-fade-up flex flex-col sm:flex-row items-start sm:items-center gap-6">
                 <a 
-                  href="/Bedrock-Windows.zip" 
+                  href="https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/Bedrock-Setup.exe" 
                   download
                   className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-black rounded-full font-semibold text-lg hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
                 >
@@ -346,7 +346,7 @@ export default function Landing() {
             <RevealText text="Ready to build?" />
           </h2>
           <a 
-            href="/Bedrock-Windows.zip" 
+            href="https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/Bedrock-Setup.exe" 
             download
             data-cursor="hover"
             className="inline-flex items-center justify-center gap-2 px-12 py-6 bg-white text-black rounded-full font-bold text-xl hover:bg-gray-100 hover:scale-[1.02] transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.15)]"
