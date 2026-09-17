@@ -382,24 +382,33 @@ export function RichInput({
             </button>
             
             {activeDropdown === 'target' && (
-              <div className="absolute top-full left-0 mt-2 w-52 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-1.5 backdrop-blur-2xl">
-                {targetOptions.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => {
-                      onTargetTypeChange(opt.id);
-                      setActiveDropdown(null);
-                    }}
-                    className={cn(
-                      "w-full flex items-center justify-between px-3 py-2 text-xs sm:text-sm text-left rounded-xl transition-colors",
-                      targetType === opt.id ? "bg-white/10 text-white font-medium" : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                    )}
-                  >
-                    <span>{opt.label}</span>
-                    <span className="font-mono text-[9px] text-zinc-500 uppercase">{opt.tag}</span>
-                  </button>
-                ))}
+              <div 
+                className="absolute top-full left-0 mt-2 w-52 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-1.5 backdrop-blur-2xl"
+                data-lenis-prevent="true"
+              >
+                <div 
+                  className="max-h-[260px] overflow-y-auto custom-scrollbar overscroll-contain flex flex-col gap-0.5 p-0.5"
+                  data-lenis-prevent="true"
+                  onWheel={(e) => e.stopPropagation()}
+                >
+                  {targetOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        onTargetTypeChange(opt.id);
+                        setActiveDropdown(null);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-3 py-2 text-xs sm:text-sm text-left rounded-xl transition-colors",
+                        targetType === opt.id ? "bg-white/10 text-white font-medium" : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                      )}
+                    >
+                      <span>{opt.label}</span>
+                      <span className="font-mono text-[9px] text-zinc-500 uppercase">{opt.tag}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -419,8 +428,15 @@ export function RichInput({
             </button>
             
             {activeDropdown === 'agent' && (
-              <div className="absolute top-full left-0 mt-2 w-80 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-2 backdrop-blur-2xl">
-                <div className="max-h-[380px] overflow-y-auto custom-scrollbar flex flex-col gap-1 p-1" data-lenis-prevent="true">
+              <div 
+                className="absolute top-full left-0 mt-2 w-80 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-2 backdrop-blur-2xl"
+                data-lenis-prevent="true"
+              >
+                <div 
+                  className="max-h-[min(340px,45vh)] overflow-y-auto custom-scrollbar overscroll-contain flex flex-col gap-1 p-1" 
+                  data-lenis-prevent="true"
+                  onWheel={(e) => e.stopPropagation()}
+                >
                   {AI_AGENTS.map((agent) => (
                     <button
                       key={agent.id}
@@ -462,11 +478,18 @@ export function RichInput({
             </button>
 
             {activeDropdown === 'model' && (
-              <div className="absolute top-full left-0 mt-2 w-64 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-2 backdrop-blur-2xl">
+              <div 
+                className="absolute top-full left-0 mt-2 w-72 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-2 backdrop-blur-2xl"
+                data-lenis-prevent="true"
+              >
                 <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1">
                   {selectedAgent.name} Models
                 </div>
-                <div className="max-h-[340px] overflow-y-auto px-1 custom-scrollbar" data-lenis-prevent="true">
+                <div 
+                  className="max-h-[min(300px,40vh)] overflow-y-auto px-1 custom-scrollbar overscroll-contain flex flex-col gap-0.5" 
+                  data-lenis-prevent="true"
+                  onWheel={(e) => e.stopPropagation()}
+                >
                   {selectedAgent.models.map((model) => (
                     <button
                       key={model.id}
