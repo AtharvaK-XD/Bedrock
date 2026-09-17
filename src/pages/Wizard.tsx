@@ -90,7 +90,7 @@ export default function Wizard() {
                 colorVariant="colorful"
                 borderRadius={24}
                 strength={1}
-                className="rounded-3xl"
+                className="rounded-3xl !overflow-visible relative z-30"
               >
                 <RichInput
                   value={idea}
