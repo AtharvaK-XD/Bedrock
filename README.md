@@ -19,7 +19,6 @@ Modern software teams, prompt engineers, and AI developers require structured wo
 - **Target Archetypes**: Tailor generation logic for specific deployment contexts, including autonomous coding agents, freelancer technical briefs, hackathon prototypes, and no-code application specifications.
 - **Dynamic Question Synthesis**: Automatically analyzes initial project ideas and queries the LLM backend to generate 3 to 5 targeted clarifying questions (single select, multi-select, or free-text) to resolve domain ambiguities.
 - **Structured Output Compilation**: Synthesizes responses into production-ready system prompts, requirements documentation, and architecture recommendations.
-- **Iterative Refinement**: In-place modification workflows with feedback tracking, diff generation, and change summaries.
 
 ### 2. Visual Branching Canvas
 - **Graph Topologies**: Powered by `@xyflow/react`, enabling non-linear prompt experimentation, conversational branching, and pipeline design.
