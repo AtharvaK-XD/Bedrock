@@ -27,6 +27,11 @@ const queryClient = new QueryClient();
 function AnimatedRoutes() {
   const location = useLocation();
   
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    ScrollTrigger.refresh();
+  }, [location.pathname]);
+  
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
