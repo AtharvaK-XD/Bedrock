@@ -217,29 +217,31 @@ export function NetworkTopology2D() {
   };
 
   return (
-    <div className="relative w-full bg-[#050608] border border-white/10 overflow-hidden flex flex-col font-sans text-xs text-white/80 select-none shadow-[0_24px_60px_rgba(0,0,0,0.95)] rounded-3xl group">
-      {/* Ambient top edge highlight for glass reflection */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none z-10" />
+    <div className="relative w-full glass-panel-luxury overflow-hidden flex flex-col font-sans text-xs text-white/80 select-none rounded-3xl group shadow-[0_32px_80px_rgba(0,0,0,0.85)]">
+      {/* Ambient glass specular highlight lines */}
+      <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none z-20" />
+      <div className="absolute -top-20 -left-20 w-72 h-72 bg-cyan-500/[0.08] rounded-full blur-3xl pointer-events-none -z-0" />
+      <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-copper-500/[0.08] rounded-full blur-3xl pointer-events-none -z-0" />
 
       {/* Top HUD Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between px-5 py-3.5 border-b border-white/[0.08] bg-[#090b10]/90 backdrop-blur-xl gap-3">
+      <div className="relative z-10 flex flex-wrap items-center justify-between px-5 py-3.5 border-b border-white/[0.08] bg-white/[0.025] backdrop-blur-2xl gap-3">
         {/* Left: Monitor Status */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="relative flex h-2.5 w-2.5">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/10 shadow-sm backdrop-blur-md">
+            <span className="relative flex h-2 w-2">
               {!isPaused && (
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               )}
-              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isPaused ? 'bg-amber-400' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${isPaused ? 'bg-amber-400' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.9)]'}`}></span>
             </span>
-            <span className="text-xs font-semibold tracking-wider text-white font-display uppercase">2D Topology Flow</span>
+            <span className="text-[11px] font-semibold tracking-wider text-white font-display uppercase">2D Topology Flow</span>
           </div>
           <span className="hidden sm:inline-block text-white/20">|</span>
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-white/50">
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-white/60">
             <span className={`w-1.5 h-1.5 rounded-full ${isPaused ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
             {isPaused ? 'Paused' : 'Realtime Routing'}
           </span>
-          <span className="hidden md:inline-flex items-center text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shadow-sm">
+          <span className="hidden md:inline-flex items-center text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/25 shadow-sm backdrop-blur-sm">
             60 FPS SVG
           </span>
         </div>
@@ -247,14 +249,14 @@ export function NetworkTopology2D() {
         {/* Right: Route Filtering & Playback Controls */}
         <div className="flex items-center gap-2">
           {/* Route Filters */}
-          <div className="flex items-center border border-white/10 p-0.5 rounded-xl bg-black/60 backdrop-blur-md text-[11px]">
+          <div className="flex items-center border border-white/10 p-0.5 rounded-xl bg-black/50 backdrop-blur-lg text-[11px] shadow-sm">
             {(['ALL', 'GPT-4', 'GEMINI-2.5'] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setRouteFilter(mode)}
-                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                className={`px-3 py-1 rounded-lg font-medium transition-all ${
                   routeFilter === mode
-                    ? 'bg-white/15 text-white shadow-sm font-semibold'
+                    ? 'bg-white/20 text-white shadow-sm font-semibold border border-white/15'
                     : 'text-white/50 hover:text-white/90 hover:bg-white/5'
                 }`}
               >
@@ -267,9 +269,9 @@ export function NetworkTopology2D() {
           <button
             onClick={() => setSpeedMultiplier((prev) => (prev === 1 ? 1.5 : prev === 1.5 ? 2.5 : 1))}
             title="Cycle simulation speed"
-            className="text-xs border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] px-2.5 py-1 rounded-xl text-white/70 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+            className="text-xs border border-white/10 bg-white/[0.04] hover:bg-white/[0.1] px-2.5 py-1.5 rounded-xl text-white/80 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95 backdrop-blur-md"
           >
-            <span className="text-[10px] text-zinc-500 font-mono">SPEED</span>
+            <span className="text-[10px] text-white/40 font-mono">SPEED</span>
             <span className="font-mono text-[11px] text-cyan-400 font-semibold">{speedMultiplier}x</span>
           </button>
 
@@ -277,7 +279,7 @@ export function NetworkTopology2D() {
           <button
             onClick={() => setIsPaused(!isPaused)}
             title={isPaused ? 'Resume live simulation' : 'Pause simulation'}
-            className="text-xs border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] px-2.5 py-1 rounded-xl text-white/70 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+            className="text-xs border border-white/10 bg-white/[0.04] hover:bg-white/[0.1] px-2.5 py-1.5 rounded-xl text-white/80 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95 backdrop-blur-md"
           >
             <span className={`w-1.5 h-1.5 rounded-full ${isPaused ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
             <span className="text-[11px] font-medium">{isPaused ? 'Resume' : 'Pause'}</span>
@@ -287,15 +289,15 @@ export function NetworkTopology2D() {
           <button
             onClick={handleBurst}
             title="Inject high-volume traffic burst"
-            className="text-xs border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1 rounded-xl text-cyan-300 transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.15)] active:scale-95"
+            className="text-xs border border-cyan-500/35 bg-cyan-500/15 hover:bg-cyan-500/25 px-3 py-1.5 rounded-xl text-cyan-300 transition-all flex items-center gap-1.5 shadow-[0_0_16px_rgba(6,182,212,0.25)] active:scale-95 font-semibold backdrop-blur-md"
           >
-            <span className="font-mono text-[11px] font-semibold tracking-wide">BURST</span>
+            <span className="font-mono text-[11px] tracking-wide">BURST</span>
           </button>
         </div>
       </div>
 
       {/* SVG Canvas Container */}
-      <div className="relative w-full overflow-x-auto overflow-y-hidden bg-[#030305] flex items-center justify-center p-3 sm:p-5 min-h-[340px]">
+      <div className="relative w-full overflow-x-auto overflow-y-hidden bg-gradient-to-b from-[#070910]/95 via-[#04060a]/98 to-[#070910]/95 flex items-center justify-center p-3 sm:p-5 min-h-[340px]">
         <svg
           viewBox="0 0 920 340"
           className="w-full h-auto max-w-[920px] select-none"
@@ -663,18 +665,18 @@ export function NetworkTopology2D() {
       </div>
 
       {/* Bottom Telemetry HUD / Inspector Panel */}
-      <div className="border-t border-white/[0.08] bg-[#090b10]/90 backdrop-blur-xl px-5 py-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+      <div className="relative z-10 border-t border-white/[0.08] bg-white/[0.025] backdrop-blur-2xl px-5 py-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
         {activeNode ? (
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 w-full">
             <div className="flex items-center gap-2">
               <span className="text-white/40 text-[11px] uppercase tracking-wider font-semibold">Inspecting</span>
-              <span className="font-semibold text-xs px-2.5 py-0.5 rounded-lg border shadow-sm" style={{ color: activeNode.color, backgroundColor: `${activeNode.color}15`, borderColor: `${activeNode.color}30` }}>
+              <span className="font-semibold text-xs px-2.5 py-0.5 rounded-lg border shadow-sm backdrop-blur-md" style={{ color: activeNode.color, backgroundColor: `${activeNode.color}20`, borderColor: `${activeNode.color}40` }}>
                 {activeNode.title}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-white/70">
               <span className="text-white/40">Runtime:</span>
-              <span className="text-white font-mono text-[11px] bg-white/5 px-2 py-0.5 rounded border border-white/5">{activeNode.details.model}</span>
+              <span className="text-white font-mono text-[11px] bg-white/5 px-2.5 py-0.5 rounded-lg border border-white/10 backdrop-blur-sm">{activeNode.details.model}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-white/40">P99 Latency:</span>
@@ -691,13 +693,13 @@ export function NetworkTopology2D() {
             <div className="flex items-center gap-1.5 ml-auto">
               <span className="text-white/40">Error Rate:</span>
               <span className="text-white/90 font-mono">{activeNode.details.errorRate}</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-1 inline-block" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-1 inline-block shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
             </div>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-white/50 w-full text-xs">
             <div className="flex items-center gap-2 text-white/80">
-              <span className="w-2 h-2 rounded-full bg-copper-400 inline-block" />
+              <span className="w-2 h-2 rounded-full bg-copper-400 inline-block shadow-[0_0_8px_rgba(200,168,107,0.7)]" />
               <span>Status: <span className="text-emerald-400 font-medium">All Systems Optimal</span></span>
             </div>
             <div className="flex items-center gap-1.5">
