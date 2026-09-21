@@ -4,6 +4,7 @@ import { ArrowRight, Mail, Lock, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/useAuth';
 import { useUserProfile } from '../../lib/useUserProfile';
+import { isDesktopApp } from '../../lib/platform';
 
 interface AuthCardProps {
   initialMode?: 'login' | 'register';
@@ -19,6 +20,8 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   const { updateProfile } = useUserProfile();
   const navigate = useNavigate();
 
+  const targetPath = isDesktopApp() ? '/app/generator' : '/app';
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -28,7 +31,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       login(userEmail, userName);
       updateProfile({ name: userName, email: userEmail });
       setIsLoading(false);
-      navigate('/app/generator');
+      navigate(targetPath);
     }, 600);
   };
 
@@ -145,7 +148,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
           <div className="mt-6 flex flex-col gap-3">
             <button
               type="button"
-              onClick={() => navigate('/app')}
+              onClick={() => navigate(targetPath)}
               className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer"
             >
               <GoogleIcon />
@@ -153,7 +156,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/app')}
+              onClick={() => navigate(targetPath)}
               className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer"
             >
               <GithubIcon />

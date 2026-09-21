@@ -2,11 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Topbar } from './Topbar';
 import { ApiKeyGatewayModal } from '../auth/ApiKeyGatewayModal';
 import { hasApiKeysConfigured } from '../../lib/useAuth';
+import { isDesktopApp } from '../../lib/platform';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showKeyGateway, setShowKeyGateway] = useState(false);
+  const isDesktop = isDesktopApp();
 
   useEffect(() => {
+    // Only enforce API key gateway modal on Desktop App
+    if (!isDesktop) {
+      setShowKeyGateway(false);
+      return;
+    }
+
     const checkKeys = () => {
       setShowKeyGateway(!hasApiKeysConfigured());
     };
@@ -17,7 +25,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       window.removeEventListener('bedrock_api_keys_updated', checkKeys);
       window.removeEventListener('storage', checkKeys);
     };
-  }, []);
+  }, [isDesktop]);
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-copper-500 selection:text-white flex flex-col">
@@ -32,12 +40,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* First-Open Onboarding API Key Gateway Modal */}
-      <ApiKeyGatewayModal
-        isOpen={showKeyGateway}
-        onSuccess={() => setShowKeyGateway(false)}
-        canDismiss={false}
-      />
+      {/* First-Open Onboarding API Key Gateway Modal (Desktop App Only) */}
+      {isDesktop && (
+        <ApiKeyGatewayModal
+          isOpen={showKeyGateway}
+          onSuccess={() => setShowKeyGateway(false)}
+          canDismiss={false}
+        />
+      )}
     </div>
   );
 }
