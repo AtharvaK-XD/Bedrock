@@ -5,20 +5,17 @@ import { AnimatePresence } from 'framer-motion';
 import Lenis from 'lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Landing from './pages/Landing';
-import Dashboard from './pages/Dashboard';
 import Wizard from './pages/Wizard';
 import Result from './pages/Result';
 import BranchingChat from './pages/BranchingChat';
 import PromptTester from './pages/PromptTester';
 import Library from './pages/Library';
-import Pricing from './pages/Pricing';
-import Billing from './pages/Billing';
 import SettingsPage from './pages/Settings';
 import Profile from './pages/Profile';
 import AuthPage from './pages/Auth';
 import { AppLayout } from './components/layout/AppLayout';
 import { checkForUpdates } from './lib/updater';
+import { useAuth } from './lib/useAuth';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -26,6 +23,7 @@ const queryClient = new QueryClient();
 
 function AnimatedRoutes() {
   const location = useLocation();
+  const { isLoggedIn } = useAuth();
   
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -35,40 +33,58 @@ function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* Public Routes (No AppLayout) */}
+        {/* Root entry: If logged in, launch workspace; otherwise, launch login */}
         <Route 
           path="/" 
           element={
-            ('__TAURI_INTERNALS__' in window) ? <Navigate to="/app" replace /> : <Landing />
+            isLoggedIn ? <Navigate to="/app/generator" replace /> : <Navigate to="/login" replace />
           } 
         />
-        <Route path="/login" element={<AuthPage defaultMode="login" />} />
-        <Route path="/signin" element={<AuthPage defaultMode="login" />} />
-        <Route path="/signup" element={<AuthPage defaultMode="register" />} />
-        <Route path="/join" element={<AuthPage defaultMode="register" />} />
-        <Route path="/register" element={<AuthPage defaultMode="register" />} />
-        <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
+        <Route 
+          path="/login" 
+          element={isLoggedIn ? <Navigate to="/app/generator" replace /> : <AuthPage defaultMode="login" />} 
+        />
+        <Route 
+          path="/signin" 
+          element={isLoggedIn ? <Navigate to="/app/generator" replace /> : <AuthPage defaultMode="login" />} 
+        />
+        <Route 
+          path="/signup" 
+          element={isLoggedIn ? <Navigate to="/app/generator" replace /> : <AuthPage defaultMode="register" />} 
+        />
+        <Route 
+          path="/register" 
+          element={isLoggedIn ? <Navigate to="/app/generator" replace /> : <AuthPage defaultMode="register" />} 
+        />
+        <Route path="/join" element={<Navigate to="/login" replace />} />
         
-        {/* App Routes (Wrapped in AppLayout) */}
+        {/* Desktop App Routes (Wrapped in AppLayout & Protected by Auth Guard) */}
         <Route 
           path="/app/*" 
           element={
-            <AppLayout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/generator" element={<Wizard />} />
-                <Route path="/branching" element={<BranchingChat />} />
-                <Route path="/tester" element={<PromptTester />} />
-                <Route path="/library" element={<Library />} />
-                <Route path="/result" element={<Result />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/billing" element={<Billing />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/profile" element={<Profile />} />
-              </Routes>
-            </AppLayout>
+            isLoggedIn ? (
+              <AppLayout>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/app/generator" replace />} />
+                  <Route path="/generator" element={<Wizard />} />
+                  <Route path="/branching" element={<BranchingChat />} />
+                  <Route path="/tester" element={<PromptTester />} />
+                  <Route path="/library" element={<Library />} />
+                  <Route path="/result" element={<Result />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/profile" element={<Profile />} />
+                  {/* Web SaaS-only routes redirect to generator in desktop app */}
+                  <Route path="/pricing" element={<Navigate to="/app/generator" replace />} />
+                  <Route path="/billing" element={<Navigate to="/app/generator" replace />} />
+                  <Route path="*" element={<Navigate to="/app/generator" replace />} />
+                </Routes>
+              </AppLayout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
           } 
         />
+        <Route path="*" element={<Navigate to={isLoggedIn ? "/app/generator" : "/login"} replace />} />
       </Routes>
     </AnimatePresence>
   );

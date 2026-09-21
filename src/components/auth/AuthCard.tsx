@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Mail, Lock, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../lib/useAuth';
+import { useUserProfile } from '../../lib/useUserProfile';
 
 interface AuthCardProps {
   initialMode?: 'login' | 'register';
@@ -9,17 +11,25 @@ interface AuthCardProps {
 
 export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
+  const { updateProfile } = useUserProfile();
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Mock login delay
     setTimeout(() => {
+      const userEmail = email.trim() || 'user@bedrock.app';
+      const userName = name.trim() || userEmail.split('@')[0];
+      login(userEmail, userName);
+      updateProfile({ name: userName, email: userEmail });
       setIsLoading(false);
-      navigate('/app');
-    }, 1000);
+      navigate('/app/generator');
+    }, 600);
   };
 
   const GithubIcon = () => (
@@ -65,6 +75,8 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
                     <input 
                       type="text" 
                       placeholder="Full Name" 
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       required={mode === 'register'}
                       className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
                     />
@@ -78,6 +90,8 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
               <input 
                 type="email" 
                 placeholder="Email address" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
               />
@@ -88,6 +102,8 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
               <input 
                 type="password" 
                 placeholder="Password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
               />
