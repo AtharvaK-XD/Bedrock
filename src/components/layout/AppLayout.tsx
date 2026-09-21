@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Topbar } from './Topbar';
+import { Sidebar } from './Sidebar';
 import { ApiKeyGatewayModal } from '../auth/ApiKeyGatewayModal';
 import { hasApiKeysConfigured } from '../../lib/useAuth';
 import { isDesktopApp } from '../../lib/platform';
@@ -28,17 +29,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [isDesktop]);
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-copper-500 selection:text-white flex flex-col">
+    <div className="bg-black text-white font-sans selection:bg-copper-500 selection:text-white relative">
       {/* Background gradients */}
       <div className="fixed inset-0 z-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-black/80 to-black pointer-events-none"></div>
       <div className="fixed inset-0 z-0 opacity-[0.05] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
-      
-      <Topbar />
 
-      {/* Main Content Area */}
-      <main className="flex-1 relative pt-20">
-        {children}
-      </main>
+      {isDesktop ? (
+        /* Desktop Application Layout: Sleek Left Sidebar + Full Height Workstation View */
+        <div className="flex h-screen w-screen overflow-hidden relative z-10">
+          <Sidebar onOpenKeyModal={() => setShowKeyGateway(true)} />
+          <main className="flex-1 relative h-full overflow-y-auto min-w-0 bg-[#07090e]/40">
+            {children}
+          </main>
+        </div>
+      ) : (
+        /* Website Layout: Traditional Topbar + Scrolling Page */
+        <div className="min-h-screen flex flex-col relative z-10">
+          <Topbar />
+          <main className="flex-1 relative pt-20">
+            {children}
+          </main>
+        </div>
+      )}
 
       {/* First-Open Onboarding API Key Gateway Modal (Desktop App Only) */}
       {isDesktop && (
