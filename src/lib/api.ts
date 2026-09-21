@@ -1,3 +1,5 @@
+import { isDesktopApp } from './platform';
+
 export interface IdeaPayload {
   ideaText: string;
   targetType: 'coding_agent' | 'freelancer_brief' | 'hackathon_pitch' | 'no_code';
@@ -15,12 +17,95 @@ export interface Answer {
   value: string | string[];
 }
 
+export class ApiError extends Error {
+  isApiKeyError: boolean;
+  provider: string;
+  statusCode?: number;
+
+  constructor(message: string, isApiKeyError = false, provider = 'AI Provider', statusCode?: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.isApiKeyError = isApiKeyError;
+    this.provider = provider;
+    this.statusCode = statusCode;
+  }
+}
+
+export function parseApiErrorResponse(provider: string, status: number, rawText: string): ApiError {
+  let message = rawText;
+  let isKeyError = status === 401 || status === 403;
+
+  try {
+    const json = JSON.parse(rawText);
+    if (json?.error?.message) {
+      message = json.error.message;
+    } else if (json?.message) {
+      message = json.message;
+    }
+
+    const reason = json?.error?.details?.[0]?.reason || json?.error?.code || json?.error?.status || '';
+    const fullJsonStr = JSON.stringify(json).toLowerCase();
+
+    if (
+      reason === 'API_KEY_INVALID' ||
+      fullJsonStr.includes('api_key_invalid') ||
+      fullJsonStr.includes('api key not valid') ||
+      fullJsonStr.includes('invalid api key') ||
+      fullJsonStr.includes('incorrect api key') ||
+      fullJsonStr.includes('invalid_api_key') ||
+      fullJsonStr.includes('unauthorized') ||
+      fullJsonStr.includes('authentication') ||
+      fullJsonStr.includes('permission denied')
+    ) {
+      isKeyError = true;
+    }
+  } catch {
+    const lower = rawText.toLowerCase();
+    if (
+      lower.includes('api_key_invalid') ||
+      lower.includes('api key not valid') ||
+      lower.includes('invalid api key') ||
+      lower.includes('incorrect api key') ||
+      lower.includes('invalid_api_key')
+    ) {
+      isKeyError = true;
+    }
+  }
+
+  if (isKeyError) {
+    return new ApiError(
+      `Your ${provider} API key is invalid or not active. Please update your API key to continue.`,
+      true,
+      provider,
+      status
+    );
+  }
+
+  return new ApiError(`${provider} Error (${status}): ${message}`, false, provider, status);
+}
+
 const STORAGE_KEY_API_KEYS = 'bedrock_api_keys';
 
 export function getActiveApiKeys() {
+  const isDesktop = isDesktopApp();
   try {
     const raw = localStorage.getItem(STORAGE_KEY_API_KEYS);
     const parsed = raw ? JSON.parse(raw) : {};
+
+    // In Desktop App, ONLY use keys explicitly configured by the user in the app.
+    // Avoid falling back to baked-in dummy or stale environment variables.
+    if (isDesktop) {
+      return {
+        geminiKey: (parsed.geminiKey || '').trim(),
+        groqKey: (parsed.groqKey || '').trim(),
+        openAiKey: (parsed.openAiKey || '').trim(),
+        anthropicKey: (parsed.anthropicKey || '').trim(),
+        openRouterKey: (parsed.openRouterKey || '').trim(),
+        huggingFaceKey: (parsed.huggingFaceKey || '').trim(),
+        ollamaEndpoint: (parsed.ollamaEndpoint || 'http://localhost:11434').trim(),
+      };
+    }
+
     return {
       geminiKey: (parsed.geminiKey || import.meta.env.VITE_GEMINI_API_KEY || '').trim(),
       groqKey: (parsed.groqKey || import.meta.env.VITE_GROQ_API_KEY || '').trim(),
@@ -32,12 +117,12 @@ export function getActiveApiKeys() {
     };
   } catch {
     return {
-      geminiKey: (import.meta.env.VITE_GEMINI_API_KEY || '').trim(),
-      groqKey: (import.meta.env.VITE_GROQ_API_KEY || '').trim(),
-      openAiKey: (import.meta.env.VITE_OPENAI_API_KEY || '').trim(),
-      anthropicKey: (import.meta.env.VITE_ANTHROPIC_API_KEY || '').trim(),
-      openRouterKey: (import.meta.env.VITE_OPENROUTER_API_KEY || '').trim(),
-      huggingFaceKey: (import.meta.env.VITE_HUGGINGFACE_API_KEY || '').trim(),
+      geminiKey: '',
+      groqKey: '',
+      openAiKey: '',
+      anthropicKey: '',
+      openRouterKey: '',
+      huggingFaceKey: '',
       ollamaEndpoint: 'http://localhost:11434',
     };
   }
@@ -75,7 +160,7 @@ Do not include any markdown formatting, just the raw JSON array.`;
     if (!response.ok) {
       const errText = await response.text();
       console.error('Gemini API Error:', errText);
-      throw new Error(`Gemini API Error: ${errText}`);
+      throw parseApiErrorResponse('Google Gemini', response.status, errText);
     }
 
     const data = await response.json();
@@ -98,7 +183,8 @@ Do not include any markdown formatting, just the raw JSON array.`;
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Groq API Error: ${errText}`);
+      console.error('Groq API Error:', errText);
+      throw parseApiErrorResponse('Groq', response.status, errText);
     }
 
     const data = await response.json();
@@ -121,14 +207,19 @@ Do not include any markdown formatting, just the raw JSON array.`;
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`OpenAI API Error: ${errText}`);
+      console.error('OpenAI API Error:', errText);
+      throw parseApiErrorResponse('OpenAI', response.status, errText);
     }
 
     const data = await response.json();
     content = data.choices?.[0]?.message?.content || '[]';
   } 
   else {
-    throw new Error('No API key found. Please configure your Google Gemini, Groq, or OpenAI API key in Settings.');
+    throw new ApiError(
+      'No API key found. Please enter your Google Gemini or Groq API key in the app.',
+      true,
+      'System'
+    );
   }
 
   try {
@@ -182,7 +273,8 @@ Format this entirely in clean GitHub-flavored Markdown.`;
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Gemini API Error: ${errText}`);
+      console.error('Gemini API Error:', errText);
+      throw parseApiErrorResponse('Google Gemini', response.status, errText);
     }
 
     const data = await response.json();
@@ -203,7 +295,8 @@ Format this entirely in clean GitHub-flavored Markdown.`;
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Groq API Error: ${errText}`);
+      console.error('Groq API Error:', errText);
+      throw parseApiErrorResponse('Groq', response.status, errText);
     }
 
     const data = await response.json();
@@ -224,13 +317,18 @@ Format this entirely in clean GitHub-flavored Markdown.`;
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`OpenAI API Error: ${errText}`);
+      console.error('OpenAI API Error:', errText);
+      throw parseApiErrorResponse('OpenAI', response.status, errText);
     }
 
     const data = await response.json();
     return data.choices?.[0]?.message?.content || '';
   } else {
-    throw new Error('No API key configured. Please set your Gemini, Groq, or OpenAI key.');
+    throw new ApiError(
+      'No API key configured. Please set your Google Gemini or Groq key to synthesize prompt.',
+      true,
+      'System'
+    );
   }
 };
 
@@ -264,7 +362,8 @@ The JSON object must have exactly two keys:
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Gemini API Error: ${errText}`);
+      console.error('Gemini API Error:', errText);
+      throw parseApiErrorResponse('Google Gemini', response.status, errText);
     }
 
     const data = await response.json();
@@ -285,7 +384,8 @@ The JSON object must have exactly two keys:
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Groq API Error: ${errText}`);
+      console.error('Groq API Error:', errText);
+      throw parseApiErrorResponse('Groq', response.status, errText);
     }
 
     const data = await response.json();
@@ -306,13 +406,18 @@ The JSON object must have exactly two keys:
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`OpenAI API Error: ${errText}`);
+      console.error('OpenAI API Error:', errText);
+      throw parseApiErrorResponse('OpenAI', response.status, errText);
     }
 
     const data = await response.json();
     content = data.choices?.[0]?.message?.content || '{}';
   } else {
-    throw new Error('No API key configured for refinement.');
+    throw new ApiError(
+      'No API key configured for prompt refinement. Please enter a valid API key.',
+      true,
+      'System'
+    );
   }
 
   try {
@@ -330,7 +435,7 @@ export const testPrompt = async (modelId: string, systemPrompt: string, userProm
   // Hugging Face serverless models
   if (modelId.startsWith('hf/')) {
     if (!keys.huggingFaceKey) {
-      throw new Error('Please configure your Hugging Face API key in Settings to test this model.');
+      throw new ApiError('Please configure your Hugging Face API key in Settings to test this model.', true, 'Hugging Face');
     }
     const realModelId = modelId.replace('hf/', '');
     const response = await fetch(`https://api-inference.huggingface.co/models/${realModelId}/v1/chat/completions`, {
@@ -351,7 +456,7 @@ export const testPrompt = async (modelId: string, systemPrompt: string, userProm
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Hugging Face Error: ${errText}`);
+      throw parseApiErrorResponse('Hugging Face', response.status, errText);
     }
 
     const data = await response.json();
@@ -361,7 +466,7 @@ export const testPrompt = async (modelId: string, systemPrompt: string, userProm
   // OpenRouter models
   if (modelId.includes('/')) {
     if (!keys.openRouterKey) {
-      throw new Error('Please configure your OpenRouter API key in Settings to test community models.');
+      throw new ApiError('Please configure your OpenRouter API key in Settings to test community models.', true, 'OpenRouter');
     }
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -380,7 +485,7 @@ export const testPrompt = async (modelId: string, systemPrompt: string, userProm
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`OpenRouter Error: ${errText}`);
+      throw parseApiErrorResponse('OpenRouter', response.status, errText);
     }
 
     const data = await response.json();
@@ -391,7 +496,7 @@ export const testPrompt = async (modelId: string, systemPrompt: string, userProm
   const isGemini = modelId.toLowerCase().includes('gemini');
   if (isGemini) {
     if (!keys.geminiKey) {
-      throw new Error('Please configure your Google Gemini API key in Settings to run this benchmark.');
+      throw new ApiError('Please configure your Google Gemini API key in Settings or the API Keys panel.', true, 'Google Gemini');
     }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${keys.geminiKey}`;
     const response = await fetch(url, {
@@ -406,7 +511,7 @@ export const testPrompt = async (modelId: string, systemPrompt: string, userProm
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Gemini Error: ${errText}`);
+      throw parseApiErrorResponse('Google Gemini', response.status, errText);
     }
 
     const data = await response.json();
@@ -415,7 +520,7 @@ export const testPrompt = async (modelId: string, systemPrompt: string, userProm
 
   // Groq LLaMA models
   if (!keys.groqKey) {
-    throw new Error('Please configure your Groq API key in Settings to test LLaMA models.');
+    throw new ApiError('Please configure your Groq API key in Settings or the API Keys panel.', true, 'Groq');
   }
 
   const groqModel = modelId === 'llama-3-70b' ? 'llama-3.3-70b-versatile' 
@@ -440,7 +545,7 @@ export const testPrompt = async (modelId: string, systemPrompt: string, userProm
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Groq Error: ${errText}`);
+    throw parseApiErrorResponse('Groq', response.status, errText);
   }
 
   const data = await response.json();

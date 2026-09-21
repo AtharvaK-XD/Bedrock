@@ -168,6 +168,7 @@ export default function Settings() {
       localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(apiKeys));
       localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(notifications));
       localStorage.setItem(STORAGE_KEY_PRIVACY, JSON.stringify(privacy));
+      window.dispatchEvent(new Event('bedrock_api_keys_updated'));
     } catch (err) {
       console.error('Failed to save settings to localStorage:', err);
     }

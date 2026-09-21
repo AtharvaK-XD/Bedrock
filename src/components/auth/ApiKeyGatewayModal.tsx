@@ -1,48 +1,52 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Key, Eye, EyeOff, Sparkles, ExternalLink, ShieldCheck, CheckCircle2, Cpu } from 'lucide-react';
+import { API_KEYS_UPDATED_EVENT } from '../../lib/apiKeyEvents';
 
 const STORAGE_KEY_API_KEYS = 'bedrock_api_keys';
-const API_KEYS_UPDATED_EVENT = 'bedrock_api_keys_updated';
 
 interface ApiKeyGatewayModalProps {
   isOpen: boolean;
   onSuccess?: () => void;
   canDismiss?: boolean;
+  initialError?: string | null;
 }
 
-export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false }: ApiKeyGatewayModalProps) {
-  const [geminiKey, setGeminiKey] = useState(() => {
+export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, initialError }: ApiKeyGatewayModalProps) {
+  const loadStoredKeys = () => {
     try {
       const data = localStorage.getItem(STORAGE_KEY_API_KEYS);
-      return data ? JSON.parse(data).geminiKey || '' : '';
+      const parsed = data ? JSON.parse(data) : {};
+      return {
+        gemini: parsed.geminiKey || '',
+        groq: parsed.groqKey || '',
+        openai: parsed.openAiKey || '',
+      };
     } catch {
-      return '';
+      return { gemini: '', groq: '', openai: '' };
     }
-  });
+  };
 
-  const [groqKey, setGroqKey] = useState(() => {
-    try {
-      const data = localStorage.getItem(STORAGE_KEY_API_KEYS);
-      return data ? JSON.parse(data).groqKey || '' : '';
-    } catch {
-      return '';
-    }
-  });
-
-  const [openAiKey, setOpenAiKey] = useState(() => {
-    try {
-      const data = localStorage.getItem(STORAGE_KEY_API_KEYS);
-      return data ? JSON.parse(data).openAiKey || '' : '';
-    } catch {
-      return '';
-    }
-  });
-
+  const stored = loadStoredKeys();
+  const [geminiKey, setGeminiKey] = useState(stored.gemini);
+  const [groqKey, setGroqKey] = useState(stored.groq);
+  const [openAiKey, setOpenAiKey] = useState(stored.openai);
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError || null);
   const [isSaved, setIsSaved] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const latest = loadStoredKeys();
+      setGeminiKey(latest.gemini);
+      setGroqKey(latest.groq);
+      setOpenAiKey(latest.openai);
+      if (initialError) {
+        setError(initialError);
+      }
+    }
+  }, [isOpen, initialError]);
 
   const toggleShowKey = (id: string) => {
     setShowKey((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -137,9 +141,12 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false }: Ap
           </div>
 
           {error && (
-            <div className="relative z-10 mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs font-mono flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
-              <span>{error}</span>
+            <div className="relative z-10 mb-4 p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-mono flex items-start gap-2.5 shadow-[0_0_20px_rgba(244,63,94,0.15)]">
+              <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0 mt-1 animate-pulse" />
+              <div className="flex-1">
+                <span className="font-semibold block text-rose-200 mb-0.5">API Key Required / Invalid</span>
+                <span>{error}</span>
+              </div>
             </div>
           )}
 

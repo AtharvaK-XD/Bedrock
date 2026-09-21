@@ -18,6 +18,7 @@ const ALL_TAGS = ['All', 'Coding', 'Marketing', 'Writing', 'Design', 'Database',
 export default function Library() {
   const [search, setSearch] = useState('');
   const [activeTag, setActiveTag] = useState('All');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const filteredPrompts = MOCK_SAVED_PROMPTS.filter(p => {
     const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase()) || p.snippet.toLowerCase().includes(search.toLowerCase());
@@ -25,9 +26,10 @@ export default function Library() {
     return matchesSearch && matchesTag;
   });
 
-  const handleCopy = (snippet: string) => {
+  const handleCopy = (id: string, snippet: string) => {
     navigator.clipboard.writeText(snippet);
-    alert('Prompt copied!');
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -115,10 +117,12 @@ export default function Library() {
               <div className="flex items-center justify-between pt-4 border-t border-white/10">
                 <span className="text-xs font-mono text-gray-500">{prompt.date}</span>
                 <button
-                  onClick={() => handleCopy(prompt.snippet)}
-                  className="text-xs font-mono font-semibold text-copper-400 hover:text-copper-300 uppercase tracking-wider transition-colors"
+                  onClick={() => handleCopy(prompt.id, prompt.snippet)}
+                  className={`text-xs font-mono font-semibold uppercase tracking-wider transition-colors cursor-pointer ${
+                    copiedId === prompt.id ? 'text-emerald-400' : 'text-copper-400 hover:text-copper-300'
+                  }`}
                 >
-                  Copy Prompt
+                  {copiedId === prompt.id ? '✓ Copied' : 'Copy Prompt'}
                 </button>
               </div>
             </div>
