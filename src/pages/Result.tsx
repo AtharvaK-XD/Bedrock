@@ -8,6 +8,8 @@ import { useState } from 'react';
 import PixelCard from '../components/ui/PixelCard';
 import { refinePrompt } from '../lib/api';
 import { PageTransition } from '../components/layout/PageTransition';
+import { cn } from '../lib/utils';
+import { openApiKeyModal } from '../lib/apiKeyEvents';
 
 const TypewriterText = ({ text }: { text: string }) => {
   const words = text.split(' ');
@@ -47,6 +49,8 @@ export default function Result() {
   const [isRefining, setIsRefining] = useState(false);
   const [isSwapped, setIsSwapped] = useState(false);
 
+  const [copied, setCopied] = useState(false);
+
   if (!promptText) {
     return (
       <div className="flex items-center justify-center min-h-screen text-white">
@@ -57,7 +61,8 @@ export default function Result() {
 
   const handleCopy = () => {
     navigator.clipboard.writeText(promptText);
-    alert('Copied to clipboard!');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownload = () => {
@@ -155,9 +160,22 @@ export default function Result() {
               const { updatedMarkdown, summary } = await refinePrompt(promptText, text);
               setPromptText(updatedMarkdown);
               setChatHistory(prev => [...prev, { role: 'ai', content: summary }]);
-            } catch (err) {
-              console.error(err);
-              setChatHistory(prev => [...prev, { role: 'ai', content: "Sorry, I encountered an error while updating the document." }]);
+            } catch (err: any) {
+              console.error('Refinement failed:', err);
+              const isKeyError = Boolean(
+                err?.isApiKeyError ||
+                err?.message?.toLowerCase().includes('api key') ||
+                err?.message?.toLowerCase().includes('api_key')
+              );
+              if (isKeyError) {
+                openApiKeyModal('API key rejected: Please update your key to continue.');
+                setChatHistory(prev => [...prev, { 
+                  role: 'ai', 
+                  content: "⚠️ API Key Error: Your API key is invalid or not configured. Please enter a valid API key in the app to continue refinement." 
+                }]);
+              } else {
+                setChatHistory(prev => [...prev, { role: 'ai', content: "Sorry, I encountered an error while updating the document." }]);
+              }
             } finally {
               setIsRefining(false);
             }
@@ -180,13 +198,18 @@ export default function Result() {
         <div className="flex gap-2">
           <button 
             onClick={handleCopy} 
-            className="px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-xs font-semibold text-gray-200 uppercase tracking-wider"
+            className={cn(
+              "px-3 py-1.5 border transition-colors rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer",
+              copied 
+                ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300" 
+                : "bg-[#222] border-white/10 hover:bg-white/10 text-gray-200"
+            )}
           >
-            Copy
+            {copied ? 'Copied!' : 'Copy'}
           </button>
           <button 
             onClick={handleDownload} 
-            className="px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-xs font-semibold text-gray-200 uppercase tracking-wider"
+            className="px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-xs font-semibold text-gray-200 uppercase tracking-wider cursor-pointer"
           >
             Download
           </button>

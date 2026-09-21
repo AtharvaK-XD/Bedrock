@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { cn } from '../lib/utils';
 import { testPrompt } from '../lib/api';
+import { openApiKeyModal } from '../lib/apiKeyEvents';
 import { PageTransition } from '../components/layout/PageTransition';
 
 export default function PromptTester() {
@@ -22,7 +23,7 @@ export default function PromptTester() {
   const [model1Id, setModel1Id] = useState(defaultGeminiAgent.models[1]?.id || defaultGeminiAgent.models[0].id);
   
   const [agent2Id, setAgent2Id] = useState(defaultLlamaAgent.id);
-  const [model2Id, setModel2Id] = useState(defaultLlamaAgent.models[0]?.id || defaultLlamaAgent.models[0].id);
+  const [model2Id, setModel2Id] = useState(defaultLlamaAgent.models[0]?.id || 'llama-3.3-70b-versatile');
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -49,13 +50,21 @@ export default function PromptTester() {
       if (res1.status === 'fulfilled') {
         setResult1(res1.value);
       } else {
-        setResult1(`Error: ${res1.reason?.message || 'Failed'}`);
+        const msg = res1.reason?.message || 'Failed';
+        setResult1(`Error: ${msg}`);
+        if (res1.reason?.isApiKeyError || msg.toLowerCase().includes('api key')) {
+          openApiKeyModal(msg);
+        }
       }
 
       if (res2.status === 'fulfilled') {
         setResult2(res2.value);
       } else {
-        setResult2(`Error: ${res2.reason?.message || 'Failed'}`);
+        const msg = res2.reason?.message || 'Failed';
+        setResult2(`Error: ${msg}`);
+        if (res2.reason?.isApiKeyError || msg.toLowerCase().includes('api key')) {
+          openApiKeyModal(msg);
+        }
       }
     } catch (err) {
       console.error(err);

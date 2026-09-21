@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { RichInput } from '../components/ui/RichInput';
 import { BorderBeam } from 'border-beam';
 import PixelCard from '../components/ui/PixelCard';
-import { generateQuestions, synthesizePrompt } from '../lib/api';
+import { generateQuestions, synthesizePrompt, getActiveApiKeys } from '../lib/api';
 import type { Question, Answer, IdeaPayload } from '../lib/api';
+import { openApiKeyModal } from '../lib/apiKeyEvents';
 import { cn } from '../lib/utils';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { PageTransition } from '../components/layout/PageTransition';
+import { KeyRound } from 'lucide-react';
 
 export default function Wizard() {
   const navigate = useNavigate();
@@ -24,16 +26,68 @@ export default function Wizard() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [isSynthesizing, setIsSynthesizing] = useState(false);
 
+  const [errorBanner, setErrorBanner] = useState<{
+    type: 'api_key' | 'general';
+    title: string;
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleKeysUpdated = () => {
+      setErrorBanner(null);
+    };
+    window.addEventListener('bedrock_api_keys_updated', handleKeysUpdated);
+    return () => window.removeEventListener('bedrock_api_keys_updated', handleKeysUpdated);
+  }, []);
+
   const handleGenerateQuestions = async () => {
-    if (!idea) return;
+    if (!idea.trim()) return;
+    setErrorBanner(null);
+
+    const keys = getActiveApiKeys();
+    const hasKey = Boolean(keys.geminiKey || keys.groqKey || keys.openAiKey || keys.anthropicKey);
+    if (!hasKey) {
+      const msg = 'Please enter your Google Gemini or Groq API key in the app to start generating prompts.';
+      setErrorBanner({
+        type: 'api_key',
+        title: 'API Key Required',
+        message: msg,
+      });
+      openApiKeyModal(msg);
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const q = await generateQuestions({ ideaText: idea, targetType });
       setQuestions(q);
       setStep(2);
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : 'An error occurred while generating questions.');
+    } catch (err: any) {
+      console.error('Question generation failed:', err);
+      const isKeyError = Boolean(
+        err?.isApiKeyError ||
+        err?.message?.toLowerCase().includes('api key') ||
+        err?.message?.toLowerCase().includes('api_key') ||
+        err?.message?.toLowerCase().includes('unauthorized') ||
+        err?.message?.toLowerCase().includes('forbidden') ||
+        err?.message?.toLowerCase().includes('permission denied')
+      );
+
+      if (isKeyError) {
+        const keyMsg = err?.message || 'Your API key is invalid or not active. Please enter a valid API key.';
+        setErrorBanner({
+          type: 'api_key',
+          title: 'Invalid API Key',
+          message: keyMsg,
+        });
+        openApiKeyModal(keyMsg);
+      } else {
+        setErrorBanner({
+          type: 'general',
+          title: 'Generation Failed',
+          message: err?.message || 'An error occurred while generating questions. Please try again.',
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -49,6 +103,7 @@ export default function Wizard() {
 
   const handleSynthesize = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setErrorBanner(null);
     setIsSynthesizing(true);
     const answersArray: Answer[] = Object.entries(answers).map(([questionId, value]) => ({
       questionId, value
@@ -56,8 +111,28 @@ export default function Wizard() {
     try {
       const promptText = await synthesizePrompt({ ideaText: idea, targetType }, answersArray, questions);
       navigate('/app/result', { state: { promptText, idea } });
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Prompt synthesis failed:', err);
+      const isKeyError = Boolean(
+        err?.isApiKeyError ||
+        err?.message?.toLowerCase().includes('api key') ||
+        err?.message?.toLowerCase().includes('api_key')
+      );
+      if (isKeyError) {
+        const keyMsg = err?.message || 'Unable to synthesize prompt: Your API key is invalid or missing.';
+        setErrorBanner({
+          type: 'api_key',
+          title: 'Invalid API Key',
+          message: keyMsg,
+        });
+        openApiKeyModal(keyMsg);
+      } else {
+        setErrorBanner({
+          type: 'general',
+          title: 'Synthesis Failed',
+          message: err?.message || 'An error occurred while synthesizing prompt. Please try again.',
+        });
+      }
     } finally {
       setIsSynthesizing(false);
     }
@@ -75,11 +150,11 @@ export default function Wizard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="text-center mb-12 transition-all duration-500">
-              <h1 className="text-5xl md:text-6xl font-editorial font-bold text-white mb-6 tracking-tight leading-[1.1]">
+            <div className="text-center mb-8 transition-all duration-500">
+              <h1 className="text-4xl md:text-5xl font-editorial font-bold text-white mb-4 tracking-tight leading-[1.1]">
                 Craft the Perfect Prompt.
               </h1>
-              <p className="text-xl text-gray-400 leading-relaxed max-w-2xl mx-auto mb-0">
+              <p className="text-base md:text-lg text-gray-400 leading-relaxed max-w-xl mx-auto mb-0">
                 Turn a vague idea into a solid, build-ready prompt. Select your target output, type what you want, and let us refine it.
               </p>
             </div>
@@ -101,6 +176,74 @@ export default function Wizard() {
                   onTargetTypeChange={setTargetType}
                 />
               </BorderBeam>
+
+              {/* In-App API Key / Error Banner */}
+              <AnimatePresence>
+                {errorBanner && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                    transition={{ duration: 0.25 }}
+                    className="mt-5"
+                  >
+                    <div className={cn(
+                      "relative rounded-2xl p-4 sm:p-5 border backdrop-blur-xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4",
+                      errorBanner.type === 'api_key'
+                        ? "bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-500/15 border-amber-500/35 shadow-[0_8px_32px_rgba(245,158,11,0.18)]"
+                        : "bg-rose-500/15 border-rose-500/30 shadow-[0_8px_32px_rgba(244,63,94,0.15)]"
+                    )}>
+                      <div className="flex items-start gap-3.5">
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 mt-0.5 shadow-sm",
+                          errorBanner.type === 'api_key'
+                            ? "bg-amber-500/20 border-amber-400/40 text-amber-300 shadow-amber-500/20"
+                            : "bg-rose-500/20 border-rose-400/40 text-rose-300 shadow-rose-500/20"
+                        )}>
+                          <KeyRound className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-display font-bold text-white tracking-wide">{errorBanner.title}</h4>
+                            <span className={cn(
+                              "font-mono text-[10px] px-2 py-0.5 rounded-full uppercase border font-semibold",
+                              errorBanner.type === 'api_key'
+                                ? "text-amber-300 bg-amber-500/20 border-amber-500/35"
+                                : "text-rose-300 bg-rose-500/20 border-rose-500/35"
+                            )}>
+                              {errorBanner.type === 'api_key' ? 'Action Required' : 'Notice'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-white/80 mt-1 leading-relaxed max-w-2xl font-mono">
+                            {errorBanner.message}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+                        {errorBanner.type === 'api_key' && (
+                          <button
+                            type="button"
+                            onClick={() => openApiKeyModal(errorBanner.message)}
+                            className="px-4 py-2 rounded-xl text-xs font-semibold font-display bg-gradient-to-r from-amber-500 to-copper-500 hover:from-amber-400 hover:to-copper-400 text-white shadow-md shadow-amber-500/25 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                          >
+                            <KeyRound className="w-3.5 h-3.5" />
+                            <span>Enter API Keys</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setErrorBanner(null)}
+                          className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer text-xs"
+                          title="Dismiss notice"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         </div>
