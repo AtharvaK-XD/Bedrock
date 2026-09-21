@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AnimatePresence } from 'framer-motion';
 import Lenis from 'lenis';
@@ -144,10 +144,16 @@ function AnimatedRoutes() {
 }
 
 function App() {
+  const isDesktop = isDesktopApp();
+  const RouterComponent = isDesktop ? HashRouter : BrowserRouter;
+
   useEffect(() => {
     // Check for Tauri updates
     checkForUpdates();
     
+    // Only initialize smooth scroll on the web landing page; desktop app uses native scroll
+    if (isDesktop) return;
+
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -173,13 +179,13 @@ function App() {
       gsap.ticker.remove(update);
       lenis.destroy();
     };
-  }, []);
+  }, [isDesktop]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
+      <RouterComponent>
         <AnimatedRoutes />
-      </Router>
+      </RouterComponent>
     </QueryClientProvider>
   );
 }

@@ -15,8 +15,8 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=release\installer
 OutputBaseFilename=Bedrock-Setup
-Compression=lzma
-SolidCompression=yes
+Compression=lzma2/fast
+SolidCompression=no
 WizardStyle=modern
 
 [Languages]
