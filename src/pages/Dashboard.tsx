@@ -6,12 +6,12 @@ import { NetworkTopology2D } from '../components/dashboard/NetworkTopology2D';
 
 // --- MOCK DATA ---
 const INITIAL_EXECUTIONS = [
-  { id: 'TRC-8F72K9', time: '14:22:01.042', node: 'SYSTEM_PROMPT_01', model: 'gpt-4o', tokens: 4021, latency: 843, status: 'OK' },
+  { id: 'TRC-8F72K9', time: '14:22:01.042', node: 'SYSTEM_PROMPT_01', model: 'gemini-2.5-pro', tokens: 4021, latency: 843, status: 'OK' },
   { id: 'TRC-2M9X1B', time: '14:22:00.891', node: 'DATA_EXTRACT_A', model: 'gemini-2.5', tokens: 12402, latency: 1204, status: 'OK' },
-  { id: 'TRC-9P4V0C', time: '14:21:58.112', node: 'ROUTER_NODE', model: 'gpt-4o-mini', tokens: 342, latency: 120, status: 'OK' },
+  { id: 'TRC-9P4V0C', time: '14:21:58.112', node: 'ROUTER_NODE', model: 'llama-3.1-8b', tokens: 342, latency: 120, status: 'OK' },
   { id: 'TRC-5K1B2F', time: '14:21:55.663', node: 'CREATIVE_AGENT', model: 'llama-3-70b', tokens: 2890, latency: 1420, status: 'OK' },
-  { id: 'TRC-3X8M9Z', time: '14:21:50.001', node: 'CODE_REVIEW', model: 'gpt-4o', tokens: 8102, latency: 3411, status: 'ERR_TIMEOUT' },
-  { id: 'TRC-1A2B3C', time: '14:21:48.552', node: 'SYSTEM_PROMPT_01', model: 'gpt-4o', tokens: 412, latency: 198, status: 'OK' },
+  { id: 'TRC-3X8M9Z', time: '14:21:50.001', node: 'CODE_REVIEW', model: 'mistral-large', tokens: 8102, latency: 3411, status: 'ERR_TIMEOUT' },
+  { id: 'TRC-1A2B3C', time: '14:21:48.552', node: 'SYSTEM_PROMPT_01', model: 'qwen-2.5-72b', tokens: 412, latency: 198, status: 'OK' },
 ];
 
 const QUICK_ACTIONS = [
@@ -244,7 +244,7 @@ export default function Dashboard() {
                   Balanced
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 mt-1.5 font-mono">GPT-4o, Gemini 2.5, Mini, LLaMA</p>
+              <p className="text-[11px] text-white/40 mt-1.5 font-mono">Gemini 2.5, LLaMA 3.1, Mistral, Qwen</p>
             </div>
           </div>
           
@@ -419,11 +419,11 @@ export default function Dashboard() {
                           </td>
                           <td className="p-3.5">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[11px] font-mono border backdrop-blur-sm ${
-                              exec.model.includes('gpt-4o')
-                                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/35 shadow-[0_0_8px_rgba(16,185,129,0.15)]'
+                              exec.model.includes('llama')
+                                ? 'bg-purple-500/15 text-purple-300 border-purple-500/35 shadow-[0_0_8px_rgba(168,85,247,0.15)]'
                                 : exec.model.includes('gemini')
                                 ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/35 shadow-[0_0_8px_rgba(6,182,212,0.15)]'
-                                : 'bg-purple-500/15 text-purple-300 border-purple-500/35 shadow-[0_0_8px_rgba(168,85,247,0.15)]'
+                                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/35 shadow-[0_0_8px_rgba(16,185,129,0.15)]'
                             }`}>
                               {exec.model}
                             </span>

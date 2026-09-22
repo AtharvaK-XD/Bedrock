@@ -246,7 +246,7 @@ export default function Landing() {
               <div className="max-w-7xl mx-auto w-full">
                 <div className="reveal-container max-w-2xl">
                   <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="The Arena" /></h3>
-                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Test your prompts against multiple models simultaneously. See how GPT-4, Gemini 2.5, and Llama 3 interpret the exact same instructions, side by side." /></p>
+                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Test your prompts against multiple models simultaneously. See how Gemini 2.5, Llama 3.1, and Mistral interpret the exact same instructions, side by side." /></p>
                 </div>
               </div>
             </div>
@@ -290,7 +290,7 @@ export default function Landing() {
                   <div className="ml-4 text-xs text-gray-500">app.py</div>
                 </div>
                 <div className="p-6 text-gray-300">
-                  <div className="code-line"><span className="text-pink-400">import</span> openai</div>
+                  <div className="code-line"><span className="text-pink-400">import</span> groq</div>
                   <div className="code-line"><span className="text-pink-400">import</span> json</div>
                   <div className="code-line mb-4"></div>
                   <div className="code-line"><span className="text-blue-400">const</span> BEDROCK_PROMPT = <span className="text-yellow-300">"""</span></div>
@@ -300,8 +300,8 @@ export default function Landing() {
                   <div className="code-line text-yellow-300">"""</div>
                   <div className="code-line mb-4"></div>
                   <div className="code-line"><span className="text-pink-400">def</span> <span className="text-green-400">process_data</span>(data):</div>
-                  <div className="code-line pl-4"><span className="text-pink-400">return</span> openai.ChatCompletion.create(</div>
-                  <div className="code-line pl-8">model=<span className="text-yellow-300">"gpt-4"</span>,</div>
+                  <div className="code-line pl-4"><span className="text-pink-400">return</span> groq.chat.completions.create(</div>
+                  <div className="code-line pl-8">model=<span className="text-yellow-300">"llama-3.1-70b"</span>,</div>
                   <div className="code-line pl-8">messages=[</div>
                   <div className="code-line pl-12">{`{"role": "system", "content": BEDROCK_PROMPT},`}</div>
                   <div className="code-line pl-12">{`{"role": "user", "content": data}`}</div>
@@ -323,7 +323,7 @@ export default function Landing() {
             {[
               { icon: <Sparkles className="w-5 h-5" />, title: "Semantic Analysis", desc: "Our engine evaluates your initial thought and identifies missing context automatically." },
               { icon: <Layers className="w-5 h-5" />, title: "Structured Frameworks", desc: "Outputs are formatted using industry-standard prompt structures for maximum reliability." },
-              { icon: <Layout className="w-5 h-5" />, title: "Side-by-Side Arena", desc: "Instantly benchmark your refined prompt across GPT-4, Gemini 2.5, and Llama 3." },
+              { icon: <Layout className="w-5 h-5" />, title: "Side-by-Side Arena", desc: "Instantly benchmark your refined prompt across Gemini 2.5, Llama 3.1, and Mistral." },
               { icon: <Shield className="w-5 h-5" />, title: "Local Privacy", desc: "Built as a native desktop application. Your proprietary prompts never leak." },
               { icon: <Database className="w-5 h-5" />, title: "Vector DB Sync", desc: "Coming soon: Sync your prompt library with your local RAG databases." },
               { icon: <Globe className="w-5 h-5" />, title: "API Integration", desc: "Export straight to your codebase or call the Bedrock proxy API." }

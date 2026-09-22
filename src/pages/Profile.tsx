@@ -62,7 +62,7 @@ const SPECIALIZATION_TAGS = [
   'Multi-Agent Workflows',
   'Tree-of-Thought Eval',
   'Prompt Distillation',
-  'Gemini 2.5 & GPT-4o',
+  'Gemini 2.5 & Llama 3.1',
   'DSPy Pipelines',
   'Adaptive Routing',
 ];
@@ -83,7 +83,7 @@ const RECENT_ACTIVITY = [
     id: 'ACT-02',
     title: 'SQL Code Synthesis & Fallback Branch',
     type: 'Branching Tree',
-    model: 'gpt-4o',
+    model: 'llama-3.1-70b',
     date: '2 hours ago',
     status: '3 Active Nodes',
     path: '/app/branching',
@@ -92,7 +92,7 @@ const RECENT_ACTIVITY = [
     id: 'ACT-03',
     title: 'Financial Document Extractor Benchmark',
     type: 'Prompt Tester',
-    model: 'gpt-4o vs gemini-2.5',
+    model: 'llama-3.1 vs gemini-2.5',
     date: 'Yesterday',
     status: '50 Runs Evaluated',
     path: '/app/tester',
@@ -622,7 +622,7 @@ export default function Profile() {
                     <div className="space-y-4">
                       <div>
                         <div className="flex justify-between text-xs font-mono mb-1.5">
-                          <span className="text-white font-medium">GPT-4o (OpenAI)</span>
+                          <span className="text-white font-medium">Llama 3.1 70B (Groq)</span>
                           <span className="text-copper-400 font-bold">52%</span>
                         </div>
                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
@@ -1059,7 +1059,7 @@ export default function Profile() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { id: 'mistral', name: 'Mistral Large', provider: 'Mistral AI', desc: 'Superior coding, creative depth, and reasoning.' },
-                    { id: 'gpt4o', name: 'GPT-4o Omnimodal', provider: 'OpenAI', desc: 'Fast throughput, tool execution, and multimodal vision.' },
+                    { id: 'qwen', name: 'Qwen 2.5 72B', provider: 'Alibaba Cloud / HF', desc: 'State-of-the-art open-weights reasoning and instruction following.' },
                     { id: 'gemini', name: 'Gemini 1.5 Pro', provider: 'Google', desc: 'Massive context window for deep document synthesis.' },
                     { id: 'llama', name: 'Llama 3 70B', provider: 'Meta / Groq', desc: 'Ultra-low latency inference via specialized LPUs.' },
                   ].map((m, idx) => (
@@ -1088,7 +1088,7 @@ export default function Profile() {
 
                 <div className="pt-6 border-t border-white/10 flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
                   <span className="text-gray-400">
-                    To manage API keys (OpenAI, Gemini, Groq), visit Settings.
+                    To manage API keys (Gemini, Groq, OpenRouter), visit Settings.
                   </span>
 
                   <Link
