@@ -55,7 +55,7 @@ const NODES: NodeInfo[] = [
     box: { x: 265, y: 135, w: 135, h: 70 },
     inPorts: [{ x: 265, y: 170 }],
     outPorts: [
-      { x: 400, y: 155 }, // to GPT-4
+      { x: 400, y: 155 }, // to Llama 3.1
       { x: 400, y: 185 }, // to Gemini
     ],
     details: {
@@ -69,24 +69,24 @@ const NODES: NodeInfo[] = [
     },
   },
   {
-    id: 'GPT-4',
-    title: 'GPT-4O',
-    subtitle: 'OPENAI / 128K',
-    color: '#10b981', // emerald-500
-    glowColor: 'rgba(16, 185, 129, 0.5)',
-    metricPrimary: '843ms',
-    metricSecondary: '8.4k tok/s',
+    id: 'LLAMA-3.1',
+    title: 'LLAMA-3.1',
+    subtitle: 'GROQ / 128K',
+    color: '#a855f7', // purple-500
+    glowColor: 'rgba(168, 85, 247, 0.5)',
+    metricPrimary: '380ms',
+    metricSecondary: '18.4k tok/s',
     box: { x: 495, y: 55, w: 155, h: 70 },
     inPorts: [{ x: 495, y: 90 }],
     outPorts: [{ x: 650, y: 90 }],
     details: {
-      model: 'gpt-4o-2024-08-06',
-      engine: 'OpenAI Direct API',
-      p99Latency: '843ms',
-      throughput: '8,420 tok/s',
-      errorRate: '0.02%',
-      queueDepth: 6,
-      activeConns: 412,
+      model: 'llama-3.1-70b-versatile',
+      engine: 'Groq LPU Direct',
+      p99Latency: '380ms',
+      throughput: '18,420 tok/s',
+      errorRate: '0.01%',
+      queueDepth: 2,
+      activeConns: 520,
     },
   },
   {
@@ -120,7 +120,7 @@ const NODES: NodeInfo[] = [
     metricSecondary: 'STREAM_OK',
     box: { x: 740, y: 135, w: 135, h: 70 },
     inPorts: [
-      { x: 740, y: 155 }, // from GPT-4
+      { x: 740, y: 155 }, // from Llama 3.1
       { x: 740, y: 185 }, // from Gemini
     ],
     outPorts: [{ x: 875, y: 170 }],
@@ -155,11 +155,11 @@ const EDGES: EdgePath[] = [
     speed: 1.4,
   },
   {
-    id: 'path-router-gpt',
+    id: 'path-router-llama',
     source: 'ROUTER',
-    target: 'GPT-4',
+    target: 'LLAMA-3.1',
     d: 'M 400 155 C 450 155, 445 90, 495 90',
-    color: '#10b981',
+    color: '#a855f7',
     speed: 1.8,
   },
   {
@@ -171,11 +171,11 @@ const EDGES: EdgePath[] = [
     speed: 1.6,
   },
   {
-    id: 'path-gpt-egress',
-    source: 'GPT-4',
+    id: 'path-llama-egress',
+    source: 'LLAMA-3.1',
     target: 'EGRESS',
     d: 'M 650 90 C 700 90, 690 155, 740 155',
-    color: '#10b981',
+    color: '#a855f7',
     speed: 1.8,
   },
   {
@@ -191,7 +191,7 @@ const EDGES: EdgePath[] = [
 export function NetworkTopology2D() {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [routeFilter, setRouteFilter] = useState<'ALL' | 'GPT-4' | 'GEMINI-2.5'>('ALL');
+  const [routeFilter, setRouteFilter] = useState<'ALL' | 'LLAMA-3.1' | 'GEMINI-2.5'>('ALL');
   const [isPaused, setIsPaused] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1);
   const [burstKey, setBurstKey] = useState<number>(0);
@@ -204,11 +204,11 @@ export function NetworkTopology2D() {
   };
 
   const isEdgeActive = (edge: EdgePath) => {
-    if (routeFilter === 'GPT-4') {
+    if (routeFilter === 'LLAMA-3.1') {
       if (edge.source === 'GEMINI-2.5' || edge.target === 'GEMINI-2.5') return false;
     }
     if (routeFilter === 'GEMINI-2.5') {
-      if (edge.source === 'GPT-4' || edge.target === 'GPT-4') return false;
+      if (edge.source === 'LLAMA-3.1' || edge.target === 'LLAMA-3.1') return false;
     }
     if (activeNodeId) {
       return edge.source === activeNodeId || edge.target === activeNodeId;
@@ -250,7 +250,7 @@ export function NetworkTopology2D() {
         <div className="flex items-center gap-2">
           {/* Route Filters */}
           <div className="flex items-center border border-white/10 p-0.5 rounded-xl bg-black/50 backdrop-blur-lg text-[11px] shadow-sm">
-            {(['ALL', 'GPT-4', 'GEMINI-2.5'] as const).map((mode) => (
+            {(['ALL', 'LLAMA-3.1', 'GEMINI-2.5'] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setRouteFilter(mode)}
@@ -260,7 +260,7 @@ export function NetworkTopology2D() {
                     : 'text-white/50 hover:text-white/90 hover:bg-white/5'
                 }`}
               >
-                {mode === 'ALL' ? 'All Routes' : mode === 'GPT-4' ? 'GPT-4o' : 'Gemini 2.5'}
+                {mode === 'ALL' ? 'All Routes' : mode === 'LLAMA-3.1' ? 'Llama 3.1' : 'Gemini 2.5'}
               </button>
             ))}
           </div>
@@ -490,8 +490,8 @@ export function NetworkTopology2D() {
 
             // Route filter dimming
             let isDimmed = false;
-            if (routeFilter === 'GPT-4' && node.id === 'GEMINI-2.5') isDimmed = true;
-            if (routeFilter === 'GEMINI-2.5' && node.id === 'GPT-4') isDimmed = true;
+            if (routeFilter === 'LLAMA-3.1' && node.id === 'GEMINI-2.5') isDimmed = true;
+            if (routeFilter === 'GEMINI-2.5' && node.id === 'LLAMA-3.1') isDimmed = true;
 
             return (
               <g
@@ -708,7 +708,7 @@ export function NetworkTopology2D() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-white/40">Active Routes:</span>
-              <span className="text-white/90 font-medium">GPT-4o + Gemini 2.5</span>
+              <span className="text-white/90 font-medium">Llama 3.1 + Gemini 2.5</span>
             </div>
             <div className="hidden lg:flex items-center gap-1.5 ml-auto text-[11px] text-white/40">
               <span>Click or hover any node for live runtime telemetry</span>

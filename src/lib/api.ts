@@ -255,7 +255,7 @@ ${answersText}
 Based on all of this, write a comprehensive, highly-detailed Project Brief and Implementation Plan. 
 Include sections for:
 - Executive Summary
-- Core System Prompt (ready to copy into Claude / Cursor / Windsurf / ChatGPT)
+- Core System Prompt (ready to copy into Claude / Cursor / Windsurf / Gemini)
 - Functional Requirements & Architecture
 - Edge Cases & Quality Rubric.
 Format this entirely in clean GitHub-flavored Markdown.`;
