@@ -475,56 +475,10 @@ function FlowEditor() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col gap-4">
-      {/* Top Header Bar */}
-      <div className="flex items-center justify-between bg-[#1a1a1a]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
-        <input 
-          type="text" 
-          value={workflowTitle}
-          onChange={(e) => setWorkflowTitle(e.target.value)}
-          className="bg-transparent border-none text-white font-display font-semibold text-lg focus:outline-none focus:ring-1 focus:ring-copper-500 rounded px-2 w-64"
-          placeholder="Workflow Title"
-        />
-        <div className="flex items-center gap-3">
-          {savedWorkflows.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 font-mono uppercase">Load:</span>
-              <select 
-                className="bg-black/50 border border-white/10 text-white text-xs rounded-md px-2 py-1.5 focus:outline-none focus:border-copper-500"
-                onChange={(e) => {
-                  const id = e.target.value;
-                  if (!id) return;
-                  const tree = savedWorkflows.find(w => w.id === id);
-                  if (tree) handleLoad(tree);
-                }}
-                value={workflowId || ''}
-              >
-                <option value="">-- Select --</option>
-                {savedWorkflows.map(w => (
-                  <option key={w.id} value={w.id}>{w.title}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          <button 
-            onClick={() => { setNodes([]); setEdges([]); setWorkflowId(undefined); setWorkflowTitle('Untitled Pipeline'); }}
-            className="px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider bg-white/5 border border-white/10 text-gray-300 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-all"
-          >
-            Clear Canvas
-          </button>
-          <button 
-            onClick={handleSave}
-            className="px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider bg-copper-500 hover:bg-copper-400 text-black shadow-lg shadow-copper-500/20 transition-all active:scale-95"
-          >
-            Save Pipeline
-          </button>
-        </div>
-      </div>
-
-      <div className={cn(
-        "w-full flex-1 relative flex flex-col rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] group/flow",
-        toolMode === 'pan' && "is-pan-mode"
-      )}>
+    <div className={cn(
+      "w-full h-full relative flex flex-col rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] group/flow",
+      toolMode === 'pan' && "is-pan-mode"
+    )}>
       <div className="flex-1 w-full bg-transparent">
         <ReactFlow
           nodes={nodes}
@@ -556,11 +510,43 @@ function FlowEditor() {
         className="absolute top-6 left-6 z-10 flex items-center gap-3 nowheel nopan nodrag font-mono text-xs"
       >
         <div className="flex items-center gap-3 px-4 py-2 bg-[#1a1a1a]/80 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-lg shadow-black/20">
-          <span className={toolMode === 'select' ? "text-white font-semibold" : ""}>V : Select</span>
-          <div className="w-1 h-1 rounded-full bg-white/20"></div>
-          <span className={toolMode === 'pan' ? "text-white font-semibold" : ""}>H : Pan</span>
-          <div className="w-1 h-1 rounded-full bg-white/20"></div>
-          <span>DEL : Remove</span>
+          <input 
+            type="text" 
+            value={workflowTitle}
+            onChange={(e) => setWorkflowTitle(e.target.value)}
+            className="bg-transparent border-none text-white font-display font-semibold focus:outline-none focus:ring-1 focus:ring-copper-500 rounded px-1 w-32 md:w-48 placeholder-gray-500"
+            placeholder="Untitled"
+          />
+          <div className="w-[1px] h-4 bg-white/20"></div>
+          {savedWorkflows.length > 0 && (
+            <>
+              <select 
+                className="bg-transparent border-none text-gray-400 font-mono text-[10px] uppercase focus:outline-none focus:text-white cursor-pointer"
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const tree = savedWorkflows.find(w => w.id === id);
+                  if (tree) handleLoad(tree);
+                }}
+                value={workflowId || ''}
+              >
+                <option value="">Load...</option>
+                {savedWorkflows.map(w => (
+                  <option key={w.id} value={w.id}>{w.title}</option>
+                ))}
+              </select>
+              <div className="w-[1px] h-4 bg-white/20"></div>
+            </>
+          )}
+          <button onClick={handleSave} className="hover:text-copper-400 transition-colors">Save</button>
+          <div className="w-[1px] h-4 bg-white/20"></div>
+          <button onClick={() => { setNodes([]); setEdges([]); setWorkflowId(undefined); setWorkflowTitle('Untitled Pipeline'); }} className="hover:text-red-400 transition-colors">Clear</button>
+          <div className="w-[1px] h-4 bg-white/20"></div>
+          <span className={toolMode === 'select' ? "text-white font-semibold" : ""}>V:Select</span>
+          <div className="w-[1px] h-4 bg-white/20"></div>
+          <span className={toolMode === 'pan' ? "text-white font-semibold" : ""}>H:Pan</span>
+          <div className="w-[1px] h-4 bg-white/20"></div>
+          <span>DEL:Remove</span>
         </div>
       </motion.div>
 
@@ -720,7 +706,6 @@ function FlowEditor() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
     </div>
   );
 }
