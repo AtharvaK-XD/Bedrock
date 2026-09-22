@@ -50,16 +50,6 @@ export const AI_AGENTS = [
     ]
   },
   {
-    id: 'chatgpt',
-    name: 'ChatGPT',
-    description: 'Versatile all-rounder for most tasks',
-    models: [
-      { id: 'gpt-4o', name: 'GPT-4o' },
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' }
-    ]
-  },
-  {
     id: 'nvidia',
     name: 'Nvidia',
     description: 'High-performance reasoning and instruction following',

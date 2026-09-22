@@ -9,7 +9,7 @@ interface RefinementInputProps {
 
 export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
   const [input, setInput] = useState('');
-  const [model, setModel] = useState('GPT-4o');
+  const [model, setModel] = useState('Gemini 2.5 Flash');
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
