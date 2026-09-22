@@ -64,7 +64,7 @@ export function useUserProfile() {
     };
   }, []);
 
-  const updateProfile = (updates: Partial<UserProfile>) => {
+  const updateProfile = async (updates: Partial<UserProfile>) => {
     const current = getStoredProfile();
     const nextInitials = updates.name
       ? updates.name
@@ -83,9 +83,18 @@ export function useUserProfile() {
     };
 
     try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (!res.ok) {
+        console.warn('API update failed, saving locally as fallback');
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } catch (e) {
-      console.error('Failed to save user profile to localStorage', e);
+      console.error('Failed to save user profile to backend', e);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     }
 
     setProfileState(updated);

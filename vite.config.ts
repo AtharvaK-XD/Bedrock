@@ -9,25 +9,9 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/api/groq': {
-        target: 'https://api.groq.com',
+      '/api': {
+        target: 'http://localhost:3000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/groq/, '')
-      },
-      '/api/gemini': {
-        target: 'https://generativelanguage.googleapis.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/gemini/, '')
-      },
-      '/api/openrouter': {
-        target: 'https://openrouter.ai/api',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/openrouter/, '')
-      },
-      '/api/huggingface': {
-        target: 'https://api-inference.huggingface.co',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/huggingface/, '')
       }
     }
   }

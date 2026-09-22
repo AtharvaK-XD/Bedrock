@@ -56,27 +56,39 @@ export function useAuth() {
     };
   }, []);
 
-  const login = (email: string, name?: string) => {
-    const newSession: AuthSession = {
-      isLoggedIn: true,
-      email,
-      name: name || email.split('@')[0],
-      loginTime: new Date().toISOString(),
-    };
+  const login = async (email: string, password?: string, name?: string, mode: 'login'|'register' = 'login') => {
     try {
+      const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: password || 'default_pass', name: name || email.split('@')[0] })
+      });
+      if (!res.ok) throw new Error('Auth failed');
+      const data = await res.json();
+      
+      const newSession: AuthSession = {
+        isLoggedIn: true,
+        email: data.user.email,
+        name: data.user.name,
+        loginTime: new Date().toISOString(),
+      };
+      
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newSession));
+      setSession(newSession);
+      window.dispatchEvent(new Event(AUTH_UPDATE_EVENT));
     } catch (e) {
-      console.error('Failed to save auth session', e);
+      console.error('Failed to auth', e);
+      throw e;
     }
-    setSession(newSession);
-    window.dispatchEvent(new Event(AUTH_UPDATE_EVENT));
   };
 
-  const logout = () => {
+  const logout = async () => {
     try {
+      await fetch('/api/auth/logout', { method: 'POST' });
       localStorage.removeItem(AUTH_STORAGE_KEY);
     } catch (e) {
-      console.error('Failed to remove auth session', e);
+      console.error('Failed to logout', e);
     }
     setSession({ isLoggedIn: false });
     window.dispatchEvent(new Event(AUTH_UPDATE_EVENT));

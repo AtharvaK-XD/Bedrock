@@ -129,106 +129,20 @@ export function getActiveApiKeys() {
 }
 
 export const generateQuestions = async (payload: IdeaPayload): Promise<Question[]> => {
-  const keys = getActiveApiKeys();
+  const response = await fetch('/api/ai/generate-questions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 
-  const prompt = `You are an expert product manager. The user has an idea for a ${payload.targetType}. 
-Idea: ${payload.ideaText}
-
-Generate exactly 3 to 5 highly relevant questions to refine this idea.
-Respond ONLY with a valid JSON array of objects. Each object must have:
-- "id": a unique string (e.g. "q1")
-- "questionText": the string question
-- "questionType": strictly one of "free_text", "single_select", or "multi_select"
-- "options": an array of strings (only required if questionType is single_select or multi_select).
-
-Do not include any markdown formatting, just the raw JSON array.`;
-
-  let content = '';
-
-  // 1. Try Gemini if key configured
-  if (keys.geminiKey) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${keys.geminiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3 },
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Gemini API Error:', errText);
-      throw parseApiErrorResponse('Google Gemini', response.status, errText);
-    }
-
-    const data = await response.json();
-    content = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-  } 
-  // 2. Fallback to Groq if key configured
-  else if (keys.groqKey) {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${keys.groqKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Groq API Error:', errText);
-      throw parseApiErrorResponse('Groq', response.status, errText);
-    }
-
-    const data = await response.json();
-    content = data.choices?.[0]?.message?.content || '[]';
-  } 
-  // 3. Fallback to OpenAI if key configured
-  else if (keys.openAiKey) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${keys.openAiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('OpenAI API Error:', errText);
-      throw parseApiErrorResponse('OpenAI', response.status, errText);
-    }
-
-    const data = await response.json();
-    content = data.choices?.[0]?.message?.content || '[]';
-  } 
-  else {
-    throw new ApiError(
-      'No API key found. Please enter your Google Gemini or Groq API key in the app.',
-      true,
-      'System'
-    );
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('Backend Proxy API Error:', errText);
+    throw new ApiError('Failed to generate questions via backend', true, 'Backend API', response.status);
   }
 
-  try {
-    const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    return JSON.parse(jsonStr) as Question[];
-  } catch {
-    console.error('Failed to parse JSON', content);
-    throw new Error('Invalid JSON received from AI engine.');
-  }
+  const data = await response.json();
+  return data as Question[];
 };
 
 export const synthesizePrompt = async (
