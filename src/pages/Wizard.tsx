@@ -140,8 +140,11 @@ export default function Wizard() {
 
   return (
     <PageTransition>
-      <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]">
-      <div className="w-full flex flex-col gap-12 transition-all duration-500">
+      <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)] flex flex-col">
+      <div className={cn(
+        "w-full flex flex-col gap-12 transition-all duration-500",
+        questions.length === 0 ? "flex-1 justify-center" : ""
+      )}>
         
         {/* Top Section (Input) */}
         <div className="w-full relative z-20 transition-all duration-500">
