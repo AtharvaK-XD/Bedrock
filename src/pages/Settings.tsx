@@ -456,11 +456,6 @@ export default function Settings() {
                               <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
                               <option value="mixtral-8x7b-32768">Mixtral 8x7B (32k)</option>
                             </optgroup>
-                            <optgroup label="OpenAI">
-                              <option value="gpt-4o">OpenAI GPT-4o (Omni Flagship)</option>
-                              <option value="gpt-4o-mini">OpenAI GPT-4o Mini</option>
-                              <option value="o1-preview">OpenAI o1 Reasoning</option>
-                            </optgroup>
                             <optgroup label="Anthropic">
                               <option value="claude-3-5-sonnet">Anthropic Claude 3.5 Sonnet</option>
                               <option value="claude-3-5-haiku">Anthropic Claude 3.5 Haiku</option>
@@ -611,7 +606,7 @@ export default function Settings() {
                             </div>
                           </div>
                           <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Powers GPT-4o, GPT-4o Mini, and o1 reasoning models.</p>
+                            <p className="text-xs text-gray-500 font-mono">Powers direct OpenAI API completions if configured.</p>
                             <a
                               href="https://platform.openai.com/api-keys"
                               target="_blank"

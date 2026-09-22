@@ -348,8 +348,8 @@ const initialNodes: Node<PromptNodeData>[] = [
     data: { 
       title: 'Base Persona', 
       description: 'You are an expert React developer. Write concise, modern code.',
-      agentId: 'chatgpt',
-      modelId: 'gpt-4o',
+      agentId: 'gemini',
+      modelId: 'gemini-2.5-flash',
       nodeType: 'system',
       status: 'idle'
     },
@@ -403,8 +403,8 @@ function FlowEditor() {
       data: { 
         title: `New ${config.title}`, 
         description: '',
-        agentId: 'chatgpt',
-        modelId: 'gpt-4o',
+        agentId: 'gemini',
+        modelId: 'gemini-2.5-flash',
         nodeType: type,
         status: 'idle'
       },
