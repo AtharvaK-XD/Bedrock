@@ -200,7 +200,7 @@ export default function Settings() {
 
   return (
     <PageTransition>
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 lg:py-12 min-h-[calc(100vh-80px)] flex flex-col pb-24">
+      <div className="w-full px-4 sm:px-8 py-8 lg:py-12 min-h-[calc(100vh-80px)] flex flex-col pb-24">
         {/* Header Breadcrumbs & Title */}
         <div className="mb-8">
           <div className="flex items-center gap-2 text-xs font-mono text-gray-400 uppercase tracking-wider mb-2">
