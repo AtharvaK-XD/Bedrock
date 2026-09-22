@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  name          String
+  avatar_url    String?
+  plan          String   @default("free")
+  role          String   @default("Prompt Designer")
+  created_at    DateTime @default(now())
+
+  prompts       Prompt[]
+  traces        Trace[]
+  branchingTrees BranchingTree[]
+}
+
+model Prompt {
+  id           String   @id @default(uuid())
+  user_id      String
+  user         User     @relation(fields: [user_id], references: [id])
+  title        String
+  snippet      String
+  full_content String
+  tags         String   // Storing JSON string or comma-separated for SQLite
+  target_type  String
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+}
+
+model Trace {
+  id           String   @id // Using Trace IDs like TRC-...
+  user_id      String
+  user         User     @relation(fields: [user_id], references: [id])
+  node_origin  String
+  model_target String
+  tokens_used  Int
+  latency_ms   Int
+  status       String
+  created_at   DateTime @default(now())
+}
+
+model BranchingTree {
+  id           String   @id @default(uuid())
+  user_id      String
+  user         User     @relation(fields: [user_id], references: [id])
+  title        String
+  nodes        String   // Stored as JSON string
+  edges        String   // Stored as JSON string
+  updated_at   DateTime @updatedAt
+}

@@ -22,17 +22,21 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
 
   const targetPath = isDesktopApp() ? '/app/generator' : '/app';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
+    try {
       const userEmail = email.trim() || 'user@bedrock.app';
       const userName = name.trim() || userEmail.split('@')[0];
-      login(userEmail, userName);
-      updateProfile({ name: userName, email: userEmail });
+      await login(userEmail, password, userName, mode);
+      await updateProfile({ name: userName, email: userEmail });
       setIsLoading(false);
       navigate(targetPath);
-    }, 600);
+    } catch (err) {
+      console.error('Auth error', err);
+      setIsLoading(false);
+      // Optional: show toast here
+    }
   };
 
   const GithubIcon = () => (
