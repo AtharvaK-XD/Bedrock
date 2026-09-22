@@ -247,221 +247,58 @@ Format this entirely in clean GitHub-flavored Markdown.`;
 };
 
 export const refinePrompt = async (currentPrompt: string, followUp: string): Promise<{updatedMarkdown: string, summary: string}> => {
-  const keys = getActiveApiKeys();
-
-  const prompt = `You are an expert prompt engineer. You have drafted this markdown document:
-${currentPrompt}
-
-The user has provided this follow-up feedback:
-"${followUp}"
-
-Please completely rewrite the markdown document incorporating this feedback. 
-Respond ONLY with a valid JSON object. Do not include any conversational filler or markdown formatting around the JSON (e.g. no \`\`\`json).
-The JSON object must have exactly two keys:
-- "updatedMarkdown": The complete updated markdown document as a string.
-- "summary": A detailed summary (2-3 sentences) explaining exactly what you added, changed, or removed based on the user's feedback.`;
-
-  let content = '';
-
-  if (keys.geminiKey) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${keys.geminiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.5 },
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Gemini API Error:', errText);
-      throw parseApiErrorResponse('Google Gemini', response.status, errText);
-    }
-
-    const data = await response.json();
-    content = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-  } else if (keys.groqKey) {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${keys.groqKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.5,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Groq API Error:', errText);
-      throw parseApiErrorResponse('Groq', response.status, errText);
-    }
-
-    const data = await response.json();
-    content = data.choices?.[0]?.message?.content || '{}';
-  } else if (keys.openAiKey) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${keys.openAiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.5,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('OpenAI API Error:', errText);
-      throw parseApiErrorResponse('OpenAI', response.status, errText);
-    }
-
-    const data = await response.json();
-    content = data.choices?.[0]?.message?.content || '{}';
-  } else {
-    throw new ApiError(
-      'No API key configured for prompt refinement. Please enter a valid API key.',
-      true,
-      'System'
-    );
-  }
-
-  try {
-    const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    return JSON.parse(jsonStr) as {updatedMarkdown: string, summary: string};
-  } catch {
-    console.error('Failed to parse JSON', content);
-    throw new Error('Invalid JSON received from AI engine.');
-  }
-};
-
-export const testPrompt = async (modelId: string, systemPrompt: string, userPrompt: string): Promise<string> => {
-  const keys = getActiveApiKeys();
-
-  // Hugging Face serverless models
-  if (modelId.startsWith('hf/')) {
-    if (!keys.huggingFaceKey) {
-      throw new ApiError('Please configure your Hugging Face API key in Settings to test this model.', true, 'Hugging Face');
-    }
-    const realModelId = modelId.replace('hf/', '');
-    const response = await fetch(`https://api-inference.huggingface.co/models/${realModelId}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${keys.huggingFaceKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: realModelId,
-        messages: [
-          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: 1024
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw parseApiErrorResponse('Hugging Face', response.status, errText);
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || '';
-  }
-
-  // OpenRouter models
-  if (modelId.includes('/')) {
-    if (!keys.openRouterKey) {
-      throw new ApiError('Please configure your OpenRouter API key in Settings to test community models.', true, 'OpenRouter');
-    }
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${keys.openRouterKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: modelId,
-        messages: [
-          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-          { role: 'user', content: userPrompt }
-        ]
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw parseApiErrorResponse('OpenRouter', response.status, errText);
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || '';
-  }
-
-  // Google Gemini models
-  const isGemini = modelId.toLowerCase().includes('gemini');
-  if (isGemini) {
-    if (!keys.geminiKey) {
-      throw new ApiError('Please configure your Google Gemini API key in Settings or the API Keys panel.', true, 'Google Gemini');
-    }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${keys.geminiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
-        contents: [{ parts: [{ text: userPrompt }] }],
-        generationConfig: { temperature: 0.7 }
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw parseApiErrorResponse('Google Gemini', response.status, errText);
-    }
-
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  }
-
-  // Groq LLaMA models
-  if (!keys.groqKey) {
-    throw new ApiError('Please configure your Groq API key in Settings or the API Keys panel.', true, 'Groq');
-  }
-
-  const groqModel = modelId === 'llama-3-70b' ? 'llama-3.3-70b-versatile' 
-    : modelId === 'llama-3-8b' ? 'llama-3.1-8b-instant'
-    : 'llama-3.3-70b-versatile';
-
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetch('/api/ai/refine', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${keys.groqKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: groqModel,
-      messages: [
-        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.7,
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPrompt, followUp }),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    throw parseApiErrorResponse('Groq', response.status, errText);
+    console.error('Backend Proxy API Error:', errText);
+    throw new ApiError('Failed to refine prompt via backend', true, 'Backend API', response.status);
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  return data as {updatedMarkdown: string, summary: string};
+};
+
+export const testPrompt = async (modelId: string, systemPrompt: string, userPrompt: string): Promise<string> => {
+  const response = await fetch('/api/ai/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ modelId, systemPrompt, userPrompt }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('Backend Proxy API Error:', errText);
+    throw new ApiError('Failed to test prompt via backend', true, 'Backend API', response.status);
+  }
+
+  const data = await response.json();
+  return data.content || '';
+};
+
+// Workflows API
+export const loadWorkflows = async () => {
+  const response = await fetch('/api/workflows');
+  if (!response.ok) throw new Error('Failed to load workflows');
+  return response.json();
+};
+
+export const saveWorkflow = async (workflow: { id?: string, title: string, nodes: any[], edges: any[] }) => {
+  const response = await fetch('/api/workflows', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(workflow)
+  });
+  if (!response.ok) throw new Error('Failed to save workflow');
+  return response.json();
+};
+
+export const deleteWorkflow = async (id: string) => {
+  const response = await fetch(`/api/workflows/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error('Failed to delete workflow');
+  return response.json();
 };

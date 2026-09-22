@@ -9,6 +9,7 @@ import aiRoutes from './routes/ai';
 import userRoutes from './routes/user';
 import promptRoutes from './routes/prompts';
 import traceRoutes from './routes/traces';
+import workflowRoutes from './routes/workflows';
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/prompts', promptRoutes);
 app.use('/api/traces', traceRoutes);
+app.use('/api/workflows', workflowRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

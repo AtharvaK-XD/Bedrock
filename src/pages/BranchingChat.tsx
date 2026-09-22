@@ -27,6 +27,7 @@ import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
+import { testPrompt, saveWorkflow, loadWorkflows } from '../lib/api';
 
 export const NODE_CONFIG = {
   system: { 
@@ -171,28 +172,45 @@ const DeletableEdge = ({
 
 // Generic Node component with 4 handles
 const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData, selected: boolean }) => {
-  const { setNodes } = useReactFlow();
+  const { setNodes, getNodes, getEdges } = useReactFlow();
   
   const agent = AI_AGENTS.find(a => a.id === data.agentId) || AI_AGENTS[0];
   const model = agent.models.find(m => m.id === data.modelId) || agent.models[0];
   
   const config = NODE_CONFIG[data.nodeType] || NODE_CONFIG.prompt;
 
-  const handleRun = () => {
-    setNodes(nodes => nodes.map(n => {
-      if (n.id === id) {
-        return { ...n, data: { ...n.data, status: 'running' } };
-      }
-      return n;
-    }));
-    setTimeout(() => {
-      setNodes(nodes => nodes.map(n => {
-        if (n.id === id) {
-          return { ...n, data: { ...n.data, status: 'success', output: `Simulated ${config.title} execution for:\n` + (data.description || data.title) } };
+  const handleRun = async () => {
+    setNodes(nodes => nodes.map(n => n.id === id ? { ...n, data: { ...n.data, status: 'running', output: undefined } } : n));
+    
+    try {
+      const edges = getEdges();
+      const allNodes = getNodes() as Node<PromptNodeData>[];
+      
+      const getUpstreamText = (nodeId: string, visited: Set<string> = new Set()): string => {
+        if (visited.has(nodeId)) return '';
+        visited.add(nodeId);
+        const incomingEdges = edges.filter(e => e.target === nodeId);
+        let context = '';
+        for (const edge of incomingEdges) {
+          const parentNode = allNodes.find(n => n.id === edge.source);
+          if (parentNode) {
+            context += getUpstreamText(parentNode.id, visited);
+            context += `\n[Context from ${parentNode.data.title}]:\n${parentNode.data.output || parentNode.data.description}\n`;
+          }
         }
-        return n;
-      }));
-    }, 2000);
+        return context;
+      };
+
+      const systemPrompt = getUpstreamText(id);
+      const userPrompt = data.description || data.title;
+
+      const output = await testPrompt(data.modelId, systemPrompt, userPrompt);
+      
+      setNodes(nodes => nodes.map(n => n.id === id ? { ...n, data: { ...n.data, status: 'success', output } } : n));
+    } catch (err: any) {
+      console.error(err);
+      setNodes(nodes => nodes.map(n => n.id === id ? { ...n, data: { ...n.data, status: 'error', output: err.message || 'Execution failed' } } : n));
+    }
   };
 
   return (
@@ -361,6 +379,37 @@ function FlowEditor() {
   const [nodes, setNodes] = useState<Node<PromptNodeData>[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [toolMode, setToolMode] = useState<'pan' | 'select'>('select');
+  const [workflowTitle, setWorkflowTitle] = useState('Untitled Pipeline');
+  const [workflowId, setWorkflowId] = useState<string | undefined>();
+  const [savedWorkflows, setSavedWorkflows] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadWorkflows().then(data => setSavedWorkflows(data)).catch(console.error);
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      const res = await saveWorkflow({
+        id: workflowId,
+        title: workflowTitle,
+        nodes,
+        edges
+      });
+      setWorkflowId(res.id);
+      alert('Workflow saved successfully!');
+      const updated = await loadWorkflows();
+      setSavedWorkflows(updated);
+    } catch (e) {
+      alert('Failed to save workflow.');
+    }
+  };
+
+  const handleLoad = (tree: any) => {
+    setWorkflowId(tree.id);
+    setWorkflowTitle(tree.title);
+    setNodes(JSON.parse(tree.nodes));
+    setEdges(JSON.parse(tree.edges));
+  };
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as Node<PromptNodeData>[]),
@@ -426,10 +475,56 @@ function FlowEditor() {
   };
 
   return (
-    <div className={cn(
-      "w-full h-full relative flex flex-col rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] group/flow",
-      toolMode === 'pan' && "is-pan-mode"
-    )}>
+    <div className="w-full h-full flex flex-col gap-4">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between bg-[#1a1a1a]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+        <input 
+          type="text" 
+          value={workflowTitle}
+          onChange={(e) => setWorkflowTitle(e.target.value)}
+          className="bg-transparent border-none text-white font-display font-semibold text-lg focus:outline-none focus:ring-1 focus:ring-copper-500 rounded px-2 w-64"
+          placeholder="Workflow Title"
+        />
+        <div className="flex items-center gap-3">
+          {savedWorkflows.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 font-mono uppercase">Load:</span>
+              <select 
+                className="bg-black/50 border border-white/10 text-white text-xs rounded-md px-2 py-1.5 focus:outline-none focus:border-copper-500"
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const tree = savedWorkflows.find(w => w.id === id);
+                  if (tree) handleLoad(tree);
+                }}
+                value={workflowId || ''}
+              >
+                <option value="">-- Select --</option>
+                {savedWorkflows.map(w => (
+                  <option key={w.id} value={w.id}>{w.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button 
+            onClick={() => { setNodes([]); setEdges([]); setWorkflowId(undefined); setWorkflowTitle('Untitled Pipeline'); }}
+            className="px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider bg-white/5 border border-white/10 text-gray-300 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-all"
+          >
+            Clear Canvas
+          </button>
+          <button 
+            onClick={handleSave}
+            className="px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider bg-copper-500 hover:bg-copper-400 text-black shadow-lg shadow-copper-500/20 transition-all active:scale-95"
+          >
+            Save Pipeline
+          </button>
+        </div>
+      </div>
+
+      <div className={cn(
+        "w-full flex-1 relative flex flex-col rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] group/flow",
+        toolMode === 'pan' && "is-pan-mode"
+      )}>
       <div className="flex-1 w-full bg-transparent">
         <ReactFlow
           nodes={nodes}
@@ -572,15 +667,19 @@ function FlowEditor() {
                 </div>
                 
                 <button 
-                  onClick={() => {
+                  onClick={async () => {
                     const cfg = NODE_CONFIG[selectedNode.data.nodeType];
                     onNodeDataChange(selectedNode.id, { status: 'running', output: undefined });
-                    setTimeout(() => {
-                      onNodeDataChange(selectedNode.id, { 
-                        status: 'success', 
-                        output: `Simulated ${cfg.title} execution for: "${selectedNode.data.title}"\n\nBased on your prompt: ${selectedNode.data.description}` 
-                      });
-                    }, 2000);
+                    
+                    try {
+                      // We don't have direct access to edges here easily without context,
+                      // so we'll just run this node's description for now in the panel.
+                      // For full graph traversal, use the run button on the node itself.
+                      const output = await testPrompt(selectedNode.data.modelId, '', selectedNode.data.description);
+                      onNodeDataChange(selectedNode.id, { status: 'success', output });
+                    } catch (err: any) {
+                      onNodeDataChange(selectedNode.id, { status: 'error', output: err.message || 'Execution failed' });
+                    }
                   }}
                   className="w-full py-3 bg-white text-black rounded-xl font-semibold text-xs uppercase tracking-wider flex items-center justify-center hover:bg-gray-200 transition-colors shadow-lg shrink-0 mt-6 active:scale-[0.98]"
                 >
