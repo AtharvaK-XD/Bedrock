@@ -668,7 +668,6 @@ function FlowEditor() {
                 
                 <button 
                   onClick={async () => {
-                    const cfg = NODE_CONFIG[selectedNode.data.nodeType];
                     onNodeDataChange(selectedNode.id, { status: 'running', output: undefined });
                     
                     try {
@@ -721,6 +720,7 @@ function FlowEditor() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
     </div>
   );
 }
