@@ -46,50 +46,92 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       const clientSignIn: any = signIn || client?.signIn;
       const clientSignUp: any = signUp || client?.signUp;
 
-      const redirectUrl = '/sso-callback';
-      const redirectUrlComplete = targetPath;
+      const callbackUrl = `${window.location.origin}/sso-callback`;
+      const targetUrl = targetPath;
 
-      // 1. Try modern Clerk Core 3 sso()
-      if (typeof clientSignIn?.sso === 'function') {
-        await clientSignIn.sso({
+      // Dimensions & centering for the Google accounts popup window
+      const width = 500;
+      const height = 650;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+
+      let authUrl: string | null = null;
+
+      try {
+        const targetClient = mode === 'register' ? clientSignUp : clientSignIn;
+        const res = await targetClient?.create({
           strategy: 'oauth_google',
-          redirectUrl: targetPath,
-          redirectCallbackUrl: redirectUrl,
+          redirectUrl: callbackUrl,
         });
-        return;
+        authUrl = res?.firstFactorVerification?.externalVerificationRedirectURL || null;
+      } catch (e: any) {
+        if (e?.errors?.[0]?.code === 'session_exists') {
+          navigate(targetUrl);
+          return;
+        }
+        try {
+          const fallbackClient = mode === 'register' ? clientSignIn : clientSignUp;
+          const fallbackRes = await fallbackClient?.create({
+            strategy: 'oauth_google',
+            redirectUrl: callbackUrl,
+          });
+          authUrl = fallbackRes?.firstFactorVerification?.externalVerificationRedirectURL || null;
+        } catch {
+          // ignore
+        }
       }
 
-      // 2. Try authenticateWithRedirect() on signIn
+      // If we received Google's OAuth URL, open the popup window!
+      if (authUrl) {
+        const popup = window.open(
+          authUrl,
+          'google_oauth_popup',
+          `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=yes`
+        );
+
+        if (popup) {
+          const pollTimer = setInterval(() => {
+            if (popup.closed) {
+              clearInterval(pollTimer);
+              setIsLoading(false);
+              if (clerk.session || clerk.user) {
+                navigate(targetUrl);
+              }
+            }
+          }, 500);
+
+          const messageHandler = (event: MessageEvent) => {
+            if (event.data === 'clerk-auth-complete') {
+              clearInterval(pollTimer);
+              window.removeEventListener('message', messageHandler);
+              if (!popup.closed) popup.close();
+              setIsLoading(false);
+              navigate(targetUrl);
+            }
+          };
+          window.addEventListener('message', messageHandler);
+          return;
+        }
+      }
+
+      // Fallback: standard direct redirect if popup is blocked
       if (typeof clientSignIn?.authenticateWithRedirect === 'function') {
         await clientSignIn.authenticateWithRedirect({
           strategy: 'oauth_google',
-          redirectUrl,
-          redirectUrlComplete,
+          redirectUrl: '/sso-callback',
+          redirectUrlComplete: targetPath,
         });
         return;
       }
 
-      // 3. Try authenticateWithRedirect() on signUp
       if (typeof clientSignUp?.authenticateWithRedirect === 'function') {
         await clientSignUp.authenticateWithRedirect({
           strategy: 'oauth_google',
-          redirectUrl,
-          redirectUrlComplete,
+          redirectUrl: '/sso-callback',
+          redirectUrlComplete: targetPath,
         });
         return;
       }
-
-      // 4. Try authenticateWithRedirect() on top-level Clerk
-      if (typeof (clerkInstance as any)?.authenticateWithRedirect === 'function') {
-        await (clerkInstance as any).authenticateWithRedirect({
-          strategy: 'oauth_google',
-          redirectUrl,
-          redirectUrlComplete,
-        });
-        return;
-      }
-
-      console.error('Clerk Google OAuth handler is not available yet');
     } catch (err) {
       console.error('Failed to initiate Google OAuth:', err);
     } finally {
