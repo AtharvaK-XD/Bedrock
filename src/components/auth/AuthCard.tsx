@@ -32,103 +32,118 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     try {
       setIsLoading(true);
 
+      const targetUrl = targetPath;
+      const callbackUrl = `${window.location.origin}/sso-callback`;
+
+      // Dimensions & centering for the Google accounts popup window
+      const width = 500;
+      const height = 650;
+      const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
+      const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
+
+      // Open a blank popup window SYNCHRONOUSLY in user gesture call stack to prevent browser popup blockers
+      const popup = window.open(
+        'about:blank',
+        'google_oauth_popup',
+        `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=yes,resizable=yes`
+      );
+
       // Wait if Clerk is still initializing
       if (!clerk.loaded) {
         let attempts = 0;
-        while (!clerk.loaded && attempts < 30) {
+        while (!clerk.loaded && attempts < 20) {
           await new Promise((r) => setTimeout(r, 100));
           attempts++;
         }
       }
 
-      const clerkInstance = clerk || (typeof window !== 'undefined' ? (window as any).Clerk : null);
-      const client = clerkInstance?.client;
-      const clientSignIn: any = signIn || client?.signIn;
-      const clientSignUp: any = signUp || client?.signUp;
+      const client = (clerk as any)?.client || (typeof window !== 'undefined' ? (window as any).Clerk?.client : null);
+      const clientSignIn = client?.signIn;
+      const clientSignUp = client?.signUp;
 
-      const callbackUrl = `${window.location.origin}/sso-callback`;
-      const targetUrl = targetPath;
+      const primaryClient = mode === 'register' ? (clientSignUp || clientSignIn) : (clientSignIn || clientSignUp);
+      const fallbackClient = mode === 'register' ? clientSignIn : clientSignUp;
 
-      // Dimensions & centering for the Google accounts popup window
-      const width = 500;
-      const height = 650;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
+      let popupStarted = false;
 
-      let authUrl: string | null = null;
-
-      try {
-        const targetClient = mode === 'register' ? clientSignUp : clientSignIn;
-        const res = await targetClient?.create({
-          strategy: 'oauth_google',
-          redirectUrl: callbackUrl,
-        });
-        authUrl = res?.firstFactorVerification?.externalVerificationRedirectURL || null;
-      } catch (e: any) {
-        if (e?.errors?.[0]?.code === 'session_exists') {
-          navigate(targetUrl);
-          return;
-        }
+      if (popup && typeof primaryClient?.authenticateWithPopup === 'function') {
         try {
-          const fallbackClient = mode === 'register' ? clientSignIn : clientSignUp;
-          const fallbackRes = await fallbackClient?.create({
+          await primaryClient.authenticateWithPopup({
             strategy: 'oauth_google',
             redirectUrl: callbackUrl,
+            redirectUrlComplete: targetUrl,
+            continueSignUp: true,
+            continueSignIn: true,
+            popup,
           });
-          authUrl = fallbackRes?.firstFactorVerification?.externalVerificationRedirectURL || null;
-        } catch {
-          // ignore
+          popupStarted = true;
+        } catch (popupErr) {
+          console.warn('Primary popup auth failed, trying fallback client:', popupErr);
+          if (fallbackClient && typeof fallbackClient.authenticateWithPopup === 'function') {
+            try {
+              await fallbackClient.authenticateWithPopup({
+                strategy: 'oauth_google',
+                redirectUrl: callbackUrl,
+                redirectUrlComplete: targetUrl,
+                continueSignUp: true,
+                continueSignIn: true,
+                popup,
+              });
+              popupStarted = true;
+            } catch (fbErr) {
+              console.warn('Fallback popup auth failed:', fbErr);
+            }
+          }
         }
       }
 
-      // If we received Google's OAuth URL, open the popup window!
-      if (authUrl) {
-        const popup = window.open(
-          authUrl,
-          'google_oauth_popup',
-          `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=yes`
-        );
-
-        if (popup) {
-          const pollTimer = setInterval(() => {
-            if (popup.closed) {
-              clearInterval(pollTimer);
-              setIsLoading(false);
-              if (clerk.session || clerk.user) {
-                navigate(targetUrl);
-              }
-            }
-          }, 500);
-
-          const messageHandler = (event: MessageEvent) => {
-            if (event.data === 'clerk-auth-complete') {
-              clearInterval(pollTimer);
-              window.removeEventListener('message', messageHandler);
-              if (!popup.closed) popup.close();
-              setIsLoading(false);
+      if (popupStarted && popup) {
+        const pollTimer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(pollTimer);
+            setIsLoading(false);
+            if (clerk.session || clerk.user) {
               navigate(targetUrl);
             }
-          };
-          window.addEventListener('message', messageHandler);
-          return;
-        }
+          }
+        }, 500);
+
+        const messageHandler = (event: MessageEvent) => {
+          if (event.data === 'clerk-auth-complete') {
+            clearInterval(pollTimer);
+            window.removeEventListener('message', messageHandler);
+            if (!popup.closed) popup.close();
+            setIsLoading(false);
+            navigate(targetUrl);
+          }
+        };
+        window.addEventListener('message', messageHandler);
+        return;
       }
 
-      // Fallback: standard direct redirect if popup is blocked
-      if (typeof clientSignIn?.authenticateWithRedirect === 'function') {
-        await clientSignIn.authenticateWithRedirect({
+      // If popup was blocked or failed, close the blank popup and perform standard full-page redirect
+      if (popup && !popup.closed) {
+        popup.close();
+      }
+
+      if (typeof primaryClient?.authenticateWithRedirect === 'function') {
+        await primaryClient.authenticateWithRedirect({
           strategy: 'oauth_google',
-          redirectUrl: '/sso-callback',
-          redirectUrlComplete: targetPath,
+          redirectUrl: callbackUrl,
+          redirectUrlComplete: targetUrl,
+          continueSignUp: true,
+          continueSignIn: true,
         });
         return;
       }
 
-      if (typeof clientSignUp?.authenticateWithRedirect === 'function') {
-        await clientSignUp.authenticateWithRedirect({
+      if (typeof fallbackClient?.authenticateWithRedirect === 'function') {
+        await fallbackClient.authenticateWithRedirect({
           strategy: 'oauth_google',
-          redirectUrl: '/sso-callback',
-          redirectUrlComplete: targetPath,
+          redirectUrl: callbackUrl,
+          redirectUrlComplete: targetUrl,
+          continueSignUp: true,
+          continueSignIn: true,
         });
         return;
       }
