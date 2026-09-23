@@ -31,12 +31,37 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
+
+      // Wait if Clerk is still initializing
+      if (!clerk.loaded) {
+        let attempts = 0;
+        while (!clerk.loaded && attempts < 30) {
+          await new Promise((r) => setTimeout(r, 100));
+          attempts++;
+        }
+      }
+
+      const clerkInstance = clerk || (typeof window !== 'undefined' ? (window as any).Clerk : null);
+      const client = clerkInstance?.client;
+      const clientSignIn: any = signIn || client?.signIn;
+      const clientSignUp: any = signUp || client?.signUp;
+
       const redirectUrl = '/sso-callback';
       const redirectUrlComplete = targetPath;
 
-      // Primary: Clerk client level OAuth redirect
-      if (typeof (clerk as any)?.authenticateWithRedirect === 'function') {
-        await (clerk as any).authenticateWithRedirect({
+      // 1. Try modern Clerk Core 3 sso()
+      if (typeof clientSignIn?.sso === 'function') {
+        await clientSignIn.sso({
+          strategy: 'oauth_google',
+          redirectUrl: targetPath,
+          redirectCallbackUrl: redirectUrl,
+        });
+        return;
+      }
+
+      // 2. Try authenticateWithRedirect() on signIn
+      if (typeof clientSignIn?.authenticateWithRedirect === 'function') {
+        await clientSignIn.authenticateWithRedirect({
           strategy: 'oauth_google',
           redirectUrl,
           redirectUrlComplete,
@@ -44,25 +69,27 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         return;
       }
 
-      // Secondary: signIn / signUp resource level
-      if (mode === 'register' && signUp && typeof (signUp as any).authenticateWithRedirect === 'function') {
-        await (signUp as any).authenticateWithRedirect({
+      // 3. Try authenticateWithRedirect() on signUp
+      if (typeof clientSignUp?.authenticateWithRedirect === 'function') {
+        await clientSignUp.authenticateWithRedirect({
           strategy: 'oauth_google',
           redirectUrl,
           redirectUrlComplete,
         });
-      } else if (signIn && typeof (signIn as any).authenticateWithRedirect === 'function') {
-        await (signIn as any).authenticateWithRedirect({
-          strategy: 'oauth_google',
-          redirectUrl,
-          redirectUrlComplete,
-        });
-      } else if (typeof (clerk as any)?.redirectToSignIn === 'function') {
-        await (clerk as any).redirectToSignIn({
-          signInFallbackRedirectUrl: targetPath,
-          signInForceRedirectUrl: targetPath,
-        });
+        return;
       }
+
+      // 4. Try authenticateWithRedirect() on top-level Clerk
+      if (typeof (clerkInstance as any)?.authenticateWithRedirect === 'function') {
+        await (clerkInstance as any).authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl,
+          redirectUrlComplete,
+        });
+        return;
+      }
+
+      console.error('Clerk Google OAuth handler is not available yet');
     } catch (err) {
       console.error('Failed to initiate Google OAuth:', err);
     } finally {
