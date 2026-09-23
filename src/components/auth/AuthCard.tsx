@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/useAuth';
 import { useUserProfile } from '../../lib/useUserProfile';
 import { isDesktopApp } from '../../lib/platform';
+import { useSignIn } from '@clerk/react';
 
 interface AuthCardProps {
   initialMode?: 'login' | 'register';
@@ -19,8 +20,20 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   const { login } = useAuth();
   const { updateProfile } = useUserProfile();
   const navigate = useNavigate();
+  // @ts-ignore
+  const { isLoaded, signIn } = useSignIn();
 
   const targetPath = isDesktopApp() ? '/app/generator' : '/app';
+
+  const handleGoogleSignIn = () => {
+    if (!isLoaded || !signIn) return;
+    // @ts-ignore
+    signIn.authenticateWithRedirect({
+      strategy: 'oauth_google',
+      redirectUrl: '/sso-callback',
+      redirectUrlComplete: targetPath,
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,7 +165,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
           <div className="mt-6 flex flex-col gap-3">
             <button
               type="button"
-              onClick={() => navigate(targetPath)}
+              onClick={handleGoogleSignIn}
               className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer"
             >
               <GoogleIcon />
