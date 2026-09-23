@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/useAuth';
 import { useUserProfile } from '../../lib/useUserProfile';
 import { isDesktopApp } from '../../lib/platform';
-import { useSignIn } from '@clerk/react';
+import { useSignIn, useSignUp, useClerk } from '@clerk/react';
 
 interface AuthCardProps {
   initialMode?: 'login' | 'register';
@@ -20,19 +20,54 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   const { login } = useAuth();
   const { updateProfile } = useUserProfile();
   const navigate = useNavigate();
+  const clerk = useClerk();
   // @ts-ignore
-  const { isLoaded, signIn } = useSignIn();
+  const { signIn } = useSignIn();
+  // @ts-ignore
+  const { signUp } = useSignUp();
 
   const targetPath = isDesktopApp() ? '/app/generator' : '/app';
 
-  const handleGoogleSignIn = () => {
-    if (!isLoaded || !signIn) return;
-    // @ts-ignore
-    signIn.authenticateWithRedirect({
-      strategy: 'oauth_google',
-      redirectUrl: '/sso-callback',
-      redirectUrlComplete: targetPath,
-    });
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      const redirectUrl = '/sso-callback';
+      const redirectUrlComplete = targetPath;
+
+      // Primary: Clerk client level OAuth redirect
+      if (typeof (clerk as any)?.authenticateWithRedirect === 'function') {
+        await (clerk as any).authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl,
+          redirectUrlComplete,
+        });
+        return;
+      }
+
+      // Secondary: signIn / signUp resource level
+      if (mode === 'register' && signUp && typeof (signUp as any).authenticateWithRedirect === 'function') {
+        await (signUp as any).authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl,
+          redirectUrlComplete,
+        });
+      } else if (signIn && typeof (signIn as any).authenticateWithRedirect === 'function') {
+        await (signIn as any).authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl,
+          redirectUrlComplete,
+        });
+      } else if (typeof (clerk as any)?.redirectToSignIn === 'function') {
+        await (clerk as any).redirectToSignIn({
+          signInFallbackRedirectUrl: targetPath,
+          signInForceRedirectUrl: targetPath,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to initiate Google OAuth:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
