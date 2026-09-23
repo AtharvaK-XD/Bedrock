@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useAuth as useClerkAuth, useUser } from '@clerk/react';
 
-const AUTH_STORAGE_KEY = 'bedrock_auth_session';
-const AUTH_UPDATE_EVENT = 'bedrock_auth_update';
 const API_KEYS_STORAGE_KEY = 'bedrock_api_keys';
 
 export interface AuthSession {
@@ -29,73 +27,33 @@ export function hasApiKeysConfigured(): boolean {
   }
 }
 
-function getStoredSession(): AuthSession {
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return { isLoggedIn: false };
-    return JSON.parse(raw);
-  } catch {
-    return { isLoggedIn: false };
-  }
-}
-
 export function useAuth() {
-  const [session, setSession] = useState<AuthSession>(getStoredSession);
+  const { userId, signOut } = useClerkAuth();
+  const { user } = useUser();
 
-  useEffect(() => {
-    const syncAuth = () => {
-      setSession(getStoredSession());
-    };
+  const isLoggedIn = !!userId;
 
-    window.addEventListener(AUTH_UPDATE_EVENT, syncAuth);
-    window.addEventListener('storage', syncAuth);
+  const session: AuthSession = {
+    isLoggedIn,
+    email: user?.primaryEmailAddress?.emailAddress,
+    name: user?.fullName || user?.firstName || undefined,
+    loginTime: user?.lastSignInAt ? new Date(user.lastSignInAt).toISOString() : undefined,
+  };
 
-    return () => {
-      window.removeEventListener(AUTH_UPDATE_EVENT, syncAuth);
-      window.removeEventListener('storage', syncAuth);
-    };
-  }, []);
-
-  const login = async (email: string, password?: string, name?: string, mode: 'login'|'register' = 'login') => {
-    try {
-      const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: password || 'default_pass', name: name || email.split('@')[0] })
-      });
-      if (!res.ok) throw new Error('Auth failed');
-      const data = await res.json();
-      
-      const newSession: AuthSession = {
-        isLoggedIn: true,
-        email: data.user.email,
-        name: data.user.name,
-        loginTime: new Date().toISOString(),
-      };
-      
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newSession));
-      setSession(newSession);
-      window.dispatchEvent(new Event(AUTH_UPDATE_EVENT));
-    } catch (e) {
-      console.error('Failed to auth', e);
-      throw e;
-    }
+  const login = async (_email: string, _password?: string, _name?: string, _mode: 'login'|'register' = 'login') => {
+    console.warn("Traditional login called - please use Clerk components for authentication.");
   };
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      await signOut();
     } catch (e) {
-      console.error('Failed to logout', e);
+      console.error('Failed to logout via Clerk', e);
     }
-    setSession({ isLoggedIn: false });
-    window.dispatchEvent(new Event(AUTH_UPDATE_EVENT));
   };
 
   return {
-    isLoggedIn: session.isLoggedIn,
+    isLoggedIn,
     session,
     login,
     logout,

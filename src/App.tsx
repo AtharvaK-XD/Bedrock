@@ -18,9 +18,16 @@ import SettingsPage from './pages/Settings';
 import Profile from './pages/Profile';
 import AuthPage from './pages/Auth';
 import { AppLayout } from './components/layout/AppLayout';
+import SSOCallback from './pages/SSOCallback';
+import { ClerkProvider } from '@clerk/react';
 import { checkForUpdates } from './lib/updater';
 import { useAuth } from './lib/useAuth';
 import { isDesktopApp } from './lib/platform';
+
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+if (!PUBLISHABLE_KEY) {
+  console.warn("Missing VITE_CLERK_PUBLISHABLE_KEY in .env.local");
+}
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -80,6 +87,7 @@ function AnimatedRoutes() {
           } 
         />
         <Route path="/join" element={<AuthPage defaultMode="register" />} />
+        <Route path="/sso-callback" element={<SSOCallback />} />
         <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
         
         {/* App Routes (Wrapped in AppLayout) */}
@@ -182,11 +190,13 @@ function App() {
   }, [isDesktop]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <RouterComponent>
-        <AnimatedRoutes />
-      </RouterComponent>
-    </QueryClientProvider>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
+      <QueryClientProvider client={queryClient}>
+        <RouterComponent>
+          <AnimatedRoutes />
+        </RouterComponent>
+      </QueryClientProvider>
+    </ClerkProvider>
   );
 }
 
