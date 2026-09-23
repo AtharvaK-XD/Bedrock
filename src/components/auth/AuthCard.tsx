@@ -41,12 +41,55 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
       const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
 
-      // Open a blank popup window SYNCHRONOUSLY in user gesture call stack to prevent browser popup blockers
+      // Open a popup window SYNCHRONOUSLY in user gesture call stack to prevent browser popup blockers
       const popup = window.open(
-        'about:blank',
+        '',
         'google_oauth_popup',
         `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=yes,resizable=yes`
       );
+
+      // Render dark Bedrock loading screen in the popup while Google loads so it's never blank
+      if (popup) {
+        try {
+          popup.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Bedrock — Sign in with Google</title>
+                <style>
+                  body {
+                    margin: 0;
+                    background: #050505;
+                    color: #ffffff;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                  }
+                  .spinner {
+                    width: 36px;
+                    height: 36px;
+                    border: 3px solid rgba(255, 255, 255, 0.1);
+                    border-top-color: #d97706;
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                  }
+                  @keyframes spin { to { transform: rotate(360deg); } }
+                  p { margin-top: 16px; font-size: 14px; color: #a1a1aa; font-weight: 500; }
+                </style>
+              </head>
+              <body>
+                <div class="spinner"></div>
+                <p>Connecting to Google...</p>
+              </body>
+            </html>
+          `);
+        } catch {
+          // ignore if document write fails
+        }
+      }
 
       // Wait if Clerk is still initializing
       if (!clerk.loaded) {
@@ -61,67 +104,82 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       const clientSignIn = client?.signIn;
       const clientSignUp = client?.signUp;
 
-      const primaryClient = mode === 'register' ? (clientSignUp || clientSignIn) : (clientSignIn || clientSignUp);
+      const primaryClient = mode === 'register' ? clientSignUp : clientSignIn;
       const fallbackClient = mode === 'register' ? clientSignIn : clientSignUp;
 
-      let popupStarted = false;
+      let authUrl: string | null = null;
 
-      if (popup && typeof primaryClient?.authenticateWithPopup === 'function') {
+      try {
+        const res = await primaryClient?.create({
+          strategy: 'oauth_google',
+          redirectUrl: callbackUrl,
+          oidcPrompt: 'consent select_account',
+        });
+        authUrl = res?.firstFactorVerification?.externalVerificationRedirectURL || res?.verifications?.externalAccount?.externalVerificationRedirectURL || null;
+      } catch (e: any) {
+        if (e?.errors?.[0]?.code === 'session_exists') {
+          if (popup && !popup.closed) popup.close();
+          navigate(targetUrl);
+          return;
+        }
         try {
-          await primaryClient.authenticateWithPopup({
+          const res = await fallbackClient?.create({
             strategy: 'oauth_google',
             redirectUrl: callbackUrl,
-            redirectUrlComplete: targetUrl,
-            continueSignUp: true,
-            continueSignIn: true,
-            popup,
+            oidcPrompt: 'consent select_account',
           });
-          popupStarted = true;
-        } catch (popupErr) {
-          console.warn('Primary popup auth failed, trying fallback client:', popupErr);
-          if (fallbackClient && typeof fallbackClient.authenticateWithPopup === 'function') {
-            try {
-              await fallbackClient.authenticateWithPopup({
-                strategy: 'oauth_google',
-                redirectUrl: callbackUrl,
-                redirectUrlComplete: targetUrl,
-                continueSignUp: true,
-                continueSignIn: true,
-                popup,
-              });
-              popupStarted = true;
-            } catch (fbErr) {
-              console.warn('Fallback popup auth failed:', fbErr);
-            }
+          authUrl = res?.firstFactorVerification?.externalVerificationRedirectURL || res?.verifications?.externalAccount?.externalVerificationRedirectURL || null;
+        } catch (e2: any) {
+          if (e2?.errors?.[0]?.code === 'session_exists') {
+            if (popup && !popup.closed) popup.close();
+            navigate(targetUrl);
+            return;
           }
         }
       }
 
-      if (popupStarted && popup) {
-        const pollTimer = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(pollTimer);
-            setIsLoading(false);
-            if (clerk.session || clerk.user) {
+      if (authUrl) {
+        const urlStr = authUrl.toString();
+        if (popup) {
+          popup.location.href = urlStr;
+
+          const pollTimer = setInterval(() => {
+            try {
+              if (popup.closed) {
+                clearInterval(pollTimer);
+                setIsLoading(false);
+                if (clerk.session || clerk.user) {
+                  navigate(targetUrl);
+                }
+              }
+            } catch {
+              // COOP policy protects cross-origin properties; messageHandler will catch completion
+            }
+          }, 500);
+
+          const messageHandler = (event: MessageEvent) => {
+            if (event.data === 'clerk-auth-complete') {
+              clearInterval(pollTimer);
+              window.removeEventListener('message', messageHandler);
+              try {
+                if (!popup.closed) popup.close();
+              } catch {
+                // ignore
+              }
+              setIsLoading(false);
               navigate(targetUrl);
             }
-          }
-        }, 500);
-
-        const messageHandler = (event: MessageEvent) => {
-          if (event.data === 'clerk-auth-complete') {
-            clearInterval(pollTimer);
-            window.removeEventListener('message', messageHandler);
-            if (!popup.closed) popup.close();
-            setIsLoading(false);
-            navigate(targetUrl);
-          }
-        };
-        window.addEventListener('message', messageHandler);
-        return;
+          };
+          window.addEventListener('message', messageHandler);
+          return;
+        } else {
+          // Popup was blocked by browser, redirect full page directly to Google OAuth:
+          window.location.href = urlStr;
+          return;
+        }
       }
 
-      // If popup was blocked or failed, close the blank popup and perform standard full-page redirect
+      // Fallback if authUrl couldn't be created: standard redirect
       if (popup && !popup.closed) {
         popup.close();
       }
@@ -131,8 +189,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
           strategy: 'oauth_google',
           redirectUrl: callbackUrl,
           redirectUrlComplete: targetUrl,
-          continueSignUp: true,
-          continueSignIn: true,
+          oidcPrompt: 'consent select_account',
         });
         return;
       }
@@ -142,8 +199,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
           strategy: 'oauth_google',
           redirectUrl: callbackUrl,
           redirectUrlComplete: targetUrl,
-          continueSignUp: true,
-          continueSignIn: true,
+          oidcPrompt: 'consent select_account',
         });
         return;
       }
