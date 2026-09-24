@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AgentIcon } from '../ui/ModelLogos';
 
 
 interface NodeInfo {
@@ -260,7 +261,16 @@ export function NetworkTopology2D() {
                     : 'text-white/50 hover:text-white/90 hover:bg-white/5'
                 }`}
               >
-                {mode === 'ALL' ? 'All Routes' : mode === 'LLAMA-3.1' ? 'Llama 3.1' : 'Gemini 2.5'}
+                <span className="flex items-center gap-1.5">
+                  {mode !== 'ALL' && (
+                    <AgentIcon
+                      model={mode === 'LLAMA-3.1' ? 'llama' : 'gemini'}
+                      className="w-3 h-3"
+                      badgeClassName="w-3.5 h-3.5 p-0 bg-transparent border-0 shadow-none"
+                    />
+                  )}
+                  <span>{mode === 'ALL' ? 'All Routes' : mode === 'LLAMA-3.1' ? 'Llama 3.1' : 'Gemini 2.5'}</span>
+                </span>
               </button>
             ))}
           </div>

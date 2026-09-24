@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Activity, Zap, ShieldCheck, Cpu } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { NetworkTopology2D } from '../components/dashboard/NetworkTopology2D';
+import { AgentIcon } from '../components/ui/ModelLogos';
 
 // --- MOCK DATA ---
 const INITIAL_EXECUTIONS = [
@@ -418,13 +419,14 @@ export default function Dashboard() {
                             {exec.node}
                           </td>
                           <td className="p-3.5">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[11px] font-mono border backdrop-blur-sm ${
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-mono border backdrop-blur-sm ${
                               exec.model.includes('llama')
                                 ? 'bg-purple-500/15 text-purple-300 border-purple-500/35 shadow-[0_0_8px_rgba(168,85,247,0.15)]'
                                 : exec.model.includes('gemini')
                                 ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/35 shadow-[0_0_8px_rgba(6,182,212,0.15)]'
                                 : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/35 shadow-[0_0_8px_rgba(16,185,129,0.15)]'
                             }`}>
+                              <AgentIcon model={exec.model} className="w-3 h-3" badgeClassName="w-3.5 h-3.5 bg-transparent border-0 shadow-none p-0" />
                               {exec.model}
                             </span>
                           </td>
