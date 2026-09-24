@@ -30,3 +30,4 @@ release
 # Build Artifacts
 public/*.zip
 public/*.exe
+scratch/

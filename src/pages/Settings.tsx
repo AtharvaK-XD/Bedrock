@@ -15,9 +15,9 @@ import {
   Sparkles,
   Cpu,
   ExternalLink,
-  Server,
   Check
 } from 'lucide-react';
+import { AgentIcon } from '../components/ui/ModelLogos';
 
 type Tab = 'account' | 'api-keys' | 'notifications' | 'privacy';
 
@@ -437,7 +437,7 @@ export default function Settings() {
                         <div className="p-4 rounded-2xl bg-[#0a0b0e] border border-white/10 space-y-2.5">
                           <div className="flex items-center justify-between">
                             <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider flex items-center gap-2">
-                              <Sparkles className="w-3.5 h-3.5 text-copper-400" />
+                              <AgentIcon model={apiKeys.defaultModel} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
                               <span>Default Workspace Model</span>
                             </label>
                             <span className="text-[11px] font-mono text-gray-400">Primary model for generation</span>
@@ -476,7 +476,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-blue-400" />
+                              <AgentIcon agent={{ id: 'gemini' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Google Gemini API Key
                               </label>
@@ -525,7 +525,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-amber-400" />
+                              <AgentIcon agent={{ id: 'groq' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Groq Cloud API Key
                               </label>
@@ -574,7 +574,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                              <AgentIcon agent={{ id: 'chatgpt' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 OpenAI API Key
                               </label>
@@ -623,7 +623,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-orange-400" />
+                              <AgentIcon agent={{ id: 'claude' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Anthropic API Key
                               </label>
@@ -672,7 +672,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-purple-400" />
+                              <AgentIcon agent={{ id: 'openrouter' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 OpenRouter API Key
                               </label>
@@ -721,7 +721,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Server className="w-3.5 h-3.5 text-gray-300" />
+                              <AgentIcon agent={{ id: 'ollama' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Local Ollama Base URL
                               </label>

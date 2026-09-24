@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { useUserProfile } from '../lib/useUserProfile';
 import { PromptActivityHeatmap } from '../components/profile/PromptActivityHeatmap';
 import { processAvatarImage } from '../lib/imageUtils';
+import { AgentIcon } from '../components/ui/ModelLogos';
 
 const BANNER_THEMES = [
   {
@@ -593,7 +594,10 @@ export default function Profile() {
                               </span>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-gray-500 font-mono">
-                              <span>Model: {act.model}</span>
+                              <span className="flex items-center gap-1.5 text-gray-400">
+                                <AgentIcon model={act.model} className="w-3 h-3" badgeClassName="w-4 h-4 bg-white/5 border-white/10" />
+                                <span>{act.model}</span>
+                              </span>
                               <span>•</span>
                               <span>{act.date}</span>
                             </div>

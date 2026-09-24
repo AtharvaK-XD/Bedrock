@@ -243,7 +243,7 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
            </span>
         </div>
         <div className="flex items-center gap-1.5 bg-[#111] px-2 py-1 rounded-md border border-white/5">
-           <AgentIcon agent={agent} />
+           <AgentIcon agent={agent} model={model.id} className="w-3 h-3" badgeClassName="w-4 h-4" />
            <span className="text-[10px] font-mono text-gray-400 truncate max-w-[80px]">{model.name}</span>
         </div>
       </div>
@@ -621,13 +621,13 @@ function FlowEditor() {
                       }}
                       renderValue={(agent) => (
                         <>
-                          <AgentIcon agent={agent} />
+                          <AgentIcon agent={agent} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
                           <span>{agent.name}</span>
                         </>
                       )}
                       renderOption={(agent) => (
                         <>
-                          <AgentIcon agent={agent} />
+                          <AgentIcon agent={agent} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
                           <span>{agent.name}</span>
                         </>
                       )}
@@ -637,6 +637,24 @@ function FlowEditor() {
                       value={selectedNode.data.modelId}
                       options={(AI_AGENTS.find(a => a.id === selectedNode.data.agentId) || AI_AGENTS[0]).models}
                       onChange={(modelId) => onNodeDataChange(selectedNode.id, { modelId })}
+                      renderValue={(model) => {
+                        const currentAgent = AI_AGENTS.find(a => a.id === selectedNode.data.agentId) || AI_AGENTS[0];
+                        return (
+                          <>
+                            <AgentIcon agent={currentAgent} model={model?.id} className="w-3 h-3" badgeClassName="w-4 h-4" />
+                            <span className="font-mono text-xs">{model?.name}</span>
+                          </>
+                        );
+                      }}
+                      renderOption={(model) => {
+                        const currentAgent = AI_AGENTS.find(a => a.id === selectedNode.data.agentId) || AI_AGENTS[0];
+                        return (
+                          <>
+                            <AgentIcon agent={currentAgent} model={model.id} className="w-3 h-3" badgeClassName="w-4 h-4" />
+                            <span className="font-mono text-xs">{model.name}</span>
+                          </>
+                        );
+                      }}
                     />
                   </div>
                 </div>
