@@ -19,6 +19,7 @@ import {
   EdgeLabelRenderer,
   getBezierPath,
   useReactFlow,
+  useUpdateNodeInternals,
   type EdgeProps,
   SelectionMode,
 } from '@xyflow/react';
@@ -173,11 +174,16 @@ const DeletableEdge = ({
 // Generic Node component with 4 handles
 const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData, selected: boolean }) => {
   const { setNodes, getNodes, getEdges } = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
   
   const agent = AI_AGENTS.find(a => a.id === data.agentId) || AI_AGENTS[0];
   const model = agent.models.find(m => m.id === data.modelId) || agent.models[0];
   
   const config = NODE_CONFIG[data.nodeType] || NODE_CONFIG.prompt;
+
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, data, updateNodeInternals]);
 
   const handleRun = async () => {
     setNodes(nodes => nodes.map(n => n.id === id ? { ...n, data: { ...n.data, status: 'running', output: undefined } } : n));
@@ -214,20 +220,37 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8, y: 10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+    <div
       className={cn(
-        "relative flex flex-col rounded-xl border w-[280px] bg-[#1a1a1a]/90 backdrop-blur-xl transition-colors duration-200 shadow-2xl",
-        selected ? 'border-copper-500 shadow-[0_0_30px_rgba(255,165,0,0.15)]' : 'border-white/10 hover:border-white/30'
+        "relative flex flex-col rounded-xl border w-[280px] bg-[#1a1a1a]/95 backdrop-blur-xl transition-all duration-200 shadow-2xl animate-in fade-in duration-150",
+        selected ? 'border-copper-500 shadow-[0_0_30px_rgba(255,165,0,0.15)] ring-1 ring-copper-500/50' : 'border-white/10 hover:border-white/30'
       )}
     >
-      {/* 4 Handles for loose connection mode */}
-      <Handle type="source" id="top" position={Position.Top} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 transition-colors hover:border-copper-400 !transform-none" style={{ left: 'calc(50% - 6px)', top: '-6px' }} />
-      <Handle type="source" id="right" position={Position.Right} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 transition-colors hover:border-copper-400 !transform-none" style={{ top: 'calc(50% - 6px)', right: '-6px' }} />
-      <Handle type="source" id="bottom" position={Position.Bottom} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 transition-colors hover:border-copper-400 !transform-none" style={{ left: 'calc(50% - 6px)', bottom: '-6px' }} />
-      <Handle type="source" id="left" position={Position.Left} className="w-3 h-3 bg-zinc-900 border-2 border-zinc-400 transition-colors hover:border-copper-400 !transform-none" style={{ top: 'calc(50% - 6px)', left: '-6px' }} />
+      {/* 4 Handles for loose connection mode - Perfect Dot to Dot Alignment */}
+      <Handle
+        type="target"
+        id="top"
+        position={Position.Top}
+        className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-20"
+      />
+      <Handle
+        type="source"
+        id="right"
+        position={Position.Right}
+        className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-20"
+      />
+      <Handle
+        type="source"
+        id="bottom"
+        position={Position.Bottom}
+        className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-20"
+      />
+      <Handle
+        type="target"
+        id="left"
+        position={Position.Left}
+        className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-20"
+      />
 
       {/* Node Header */}
       <div className={cn(
@@ -282,7 +305,7 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
           Run
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
@@ -490,6 +513,7 @@ function FlowEditor() {
           edgeTypes={edgeTypes}
           defaultEdgeOptions={{ type: 'deletableEdge' }}
           connectionMode={ConnectionMode.Loose}
+          connectionLineStyle={{ stroke: '#ff9b71', strokeWidth: 2 }}
           panOnDrag={toolMode === 'pan' ? true : [1, 2]}
           selectionOnDrag={toolMode === 'select'}
           selectionMode={SelectionMode.Partial}
