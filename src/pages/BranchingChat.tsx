@@ -932,6 +932,7 @@ function FlowEditor() {
   const [workflowTitle, setWorkflowTitle] = useState('Untitled Pipeline');
   const [workflowId, setWorkflowId] = useState<string | undefined>();
   const [savedWorkflows, setSavedWorkflows] = useState<any[]>([]);
+  const [activeSettingsNodeId, setActiveSettingsNodeId] = useState<string | null>(null);
 
   useEffect(() => {
     loadWorkflows().then(data => setSavedWorkflows(data)).catch(console.error);
@@ -959,10 +960,17 @@ function FlowEditor() {
     setWorkflowTitle(tree.title);
     setNodes(JSON.parse(tree.nodes));
     setEdges(JSON.parse(tree.edges));
+    setActiveSettingsNodeId(null);
   };
 
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as Node<PromptNodeData>[]),
+    (changes: NodeChange[]) => {
+      const removedIds = new Set(changes.filter(c => c.type === 'remove').map(c => c.id));
+      if (removedIds.size > 0) {
+        setActiveSettingsNodeId((curr) => (curr && removedIds.has(curr) ? null : curr));
+      }
+      setNodes((nds) => applyNodeChanges(changes, nds) as Node<PromptNodeData>[]);
+    },
     []
   );
   const onEdgesChange = useCallback(
@@ -971,6 +979,12 @@ function FlowEditor() {
   );
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({ ...params, type: 'deletableEdge', animated: true, style: { stroke: '#ff9b71', strokeWidth: 2 } }, eds)),
+    []
+  );
+  const onNodeClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      setActiveSettingsNodeId(node.id);
+    },
     []
   );
 
@@ -985,7 +999,13 @@ function FlowEditor() {
       } else if (e.key.toLowerCase() === 'v') {
         setToolMode('select');
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
-        setNodes((nds) => nds.filter((node) => !node.selected));
+        setNodes((nds) => {
+          const toDelete = new Set(nds.filter((node) => node.selected).map(n => n.id));
+          if (toDelete.size > 0) {
+            setActiveSettingsNodeId((curr) => (curr && toDelete.has(curr) ? null : curr));
+          }
+          return nds.filter((node) => !node.selected);
+        });
         setEdges((eds) => eds.filter((edge) => !edge.selected));
       }
     };
@@ -1058,11 +1078,10 @@ function FlowEditor() {
       },
     };
     setNodes((nds) => [...nds.map(n => ({...n, selected: false})), { ...newNode, selected: true }]);
+    setActiveSettingsNodeId(newNode.id);
   };
 
-  const selectedNodes = nodes.filter(n => n.selected);
-  const selectedNode = selectedNodes.length === 1 ? selectedNodes[0] : null;
-  const isMultiSelect = selectedNodes.length > 1;
+  const activeNode = nodes.find(n => n.id === activeSettingsNodeId) || null;
 
   const onNodeDataChange = (id: string, newData: Partial<PromptNodeData>) => {
     setNodes(nds => nds.map(n => {
@@ -1085,6 +1104,7 @@ function FlowEditor() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={{ type: 'deletableEdge' }}
@@ -1140,7 +1160,7 @@ function FlowEditor() {
           )}
           <button onClick={handleSave} className="hover:text-copper-400 transition-colors">Save</button>
           <div className="w-[1px] h-4 bg-white/20"></div>
-          <button onClick={() => { setNodes([]); setEdges([]); setWorkflowId(undefined); setWorkflowTitle('Untitled Pipeline'); }} className="hover:text-red-400 transition-colors">Clear</button>
+          <button onClick={() => { setNodes([]); setEdges([]); setWorkflowId(undefined); setWorkflowTitle('Untitled Pipeline'); setActiveSettingsNodeId(null); }} className="hover:text-red-400 transition-colors">Clear</button>
           <div className="w-[1px] h-4 bg-white/20"></div>
           <span className={toolMode === 'select' ? "text-white font-semibold" : ""}>V:Select</span>
           <div className="w-[1px] h-4 bg-white/20"></div>
@@ -1150,34 +1170,80 @@ function FlowEditor() {
         </div>
       </motion.div>
 
-      {/* Right UI Overlays */}
-      <AnimatePresence mode="wait">
-        {isMultiSelect ? null : selectedNode ? (
-          /* Node Settings Editor */
+      {/* Floating Node Palette with Distinct Shapes for Each Archetype */}
+      <div
+        onWheel={(e) => e.stopPropagation()}
+        className={cn(
+          "absolute top-6 flex flex-col items-end gap-2.5 z-20 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar p-2 -mr-2 nowheel nopan nodrag transition-all duration-300",
+          activeNode ? "right-[404px] max-md:hidden" : "right-6"
+        )}
+      >
+        {Object.entries(NODE_CONFIG).map(([type, item]) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={type}
+              onClick={() => addNode(type as keyof typeof NODE_CONFIG)}
+              className={cn(
+                "group flex items-center p-2 rounded-xl border bg-[#1a1a1a]/90 backdrop-blur-xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap shrink-0",
+                "w-[52px] hover:w-[250px]",
+                item.bg, item.border, item.hoverBorder
+              )}
+              title={item.desc}
+            >
+              {/* Distinctive mini shape badge reflecting the node's geometry */}
+              <div className={cn(
+                "w-8 h-8 shrink-0 bg-black/60 border flex items-center justify-center font-mono text-[9px] font-bold transition-transform group-hover:scale-105",
+                item.border,
+                item.color,
+                item.paletteShape
+              )}>
+                <div className={type === 'condition' ? '-rotate-45' : ''}>
+                  <Icon className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100 text-left">
+                <div className={cn("text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5", item.color)}>
+                  <span>{item.title}</span>
+                  <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-black/50 border border-white/10 opacity-70">
+                    {item.tag}
+                  </span>
+                </div>
+                <div className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[170px]">{item.desc}</div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Node Settings Editor Sidebar (Sliding strictly from the RIGHT, persists until cross button is clicked) */}
+      <AnimatePresence>
+        {activeNode && (
           <motion.div
-            key="editor"
-            initial={{ x: 420, opacity: 0 }}
+            key="node-settings-editor"
+            initial={{ x: 450, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 420, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            exit={{ x: 450, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 350, damping: 32 }}
             onWheel={(e) => e.stopPropagation()}
-            className="absolute top-4 right-4 bottom-4 w-84 md:w-96 bg-[#16181d]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-20 overflow-hidden nowheel nopan nodrag"
+            className="absolute top-4 right-4 bottom-4 w-[380px] max-w-[calc(100vw-32px)] bg-[#16181d]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-30 overflow-hidden nowheel nopan nodrag"
           >
             <div className="flex flex-col h-full w-full">
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
+              <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5 shrink-0">
                 <div className="flex items-center gap-2">
-                  <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center border font-mono text-[10px] font-bold", NODE_CONFIG[selectedNode.data.nodeType]?.bg, NODE_CONFIG[selectedNode.data.nodeType]?.border, NODE_CONFIG[selectedNode.data.nodeType]?.color)}>
-                    {NODE_CONFIG[selectedNode.data.nodeType]?.tag}
+                  <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center border font-mono text-[10px] font-bold", NODE_CONFIG[activeNode.data.nodeType]?.bg, NODE_CONFIG[activeNode.data.nodeType]?.border, NODE_CONFIG[activeNode.data.nodeType]?.color)}>
+                    {NODE_CONFIG[activeNode.data.nodeType]?.tag}
                   </div>
                   <div>
                     <h3 className="font-display font-semibold text-white text-sm">Node Settings</h3>
-                    <p className="text-[10px] text-gray-400 font-mono">{NODE_CONFIG[selectedNode.data.nodeType]?.title}</p>
+                    <p className="text-[10px] text-gray-400 font-mono">{NODE_CONFIG[activeNode.data.nodeType]?.title}</p>
                   </div>
                 </div>
                 <button 
-                  onClick={() => setNodes(nds => nds.map(n => ({...n, selected: false})))} 
-                  className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors font-mono text-sm"
+                  onClick={() => setActiveSettingsNodeId(null)} 
+                  className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors font-mono text-base leading-none active:scale-95"
+                  title="Close Settings (×)"
                 >
                   ×
                 </button>
@@ -1189,8 +1255,8 @@ function FlowEditor() {
                   <label className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider">Node Title</label>
                   <input 
                     type="text" 
-                    value={selectedNode.data.title}
-                    onChange={(e) => onNodeDataChange(selectedNode.id, { title: e.target.value })}
+                    value={activeNode.data.title}
+                    onChange={(e) => onNodeDataChange(activeNode.id, { title: e.target.value })}
                     className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-copper-500/50 focus:ring-1 focus:ring-copper-500/50 transition-all"
                   />
                 </div>
@@ -1201,11 +1267,11 @@ function FlowEditor() {
                   <div className="grid grid-cols-4 gap-1.5">
                     {Object.entries(NODE_CONFIG).map(([type, cfg]) => {
                       const Icon = cfg.icon;
-                      const isSelected = selectedNode.data.nodeType === type;
+                      const isSelected = activeNode.data.nodeType === type;
                       return (
                         <button
                           key={type}
-                          onClick={() => onNodeDataChange(selectedNode.id, { nodeType: type as keyof typeof NODE_CONFIG })}
+                          onClick={() => onNodeDataChange(activeNode.id, { nodeType: type as keyof typeof NODE_CONFIG })}
                           className={cn(
                             "py-2 px-1 rounded-lg text-[10px] font-mono border transition-all flex flex-col items-center justify-center gap-1",
                             isSelected 
@@ -1225,7 +1291,7 @@ function FlowEditor() {
                 {/* ROLE-SPECIFIC CONTROLS */}
 
                 {/* 1. SYSTEM ROLE CONTROLS */}
-                {selectedNode.data.nodeType === 'system' && (
+                {activeNode.data.nodeType === 'system' && (
                   <div className="space-y-2 p-3 bg-blue-500/5 rounded-xl border border-blue-500/20">
                     <label className="text-xs font-mono font-semibold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Bot className="w-3.5 h-3.5 text-blue-400" />
@@ -1235,10 +1301,10 @@ function FlowEditor() {
                       {SYSTEM_PERSONAS.map(p => (
                         <button
                           key={p.id}
-                          onClick={() => onNodeDataChange(selectedNode.id, { systemPersona: p.id, description: p.desc })}
+                          onClick={() => onNodeDataChange(activeNode.id, { systemPersona: p.id, description: p.desc })}
                           className={cn(
                             "text-left p-2 rounded-lg border text-xs transition-all",
-                            selectedNode.data.systemPersona === p.id 
+                            activeNode.data.systemPersona === p.id 
                               ? "bg-blue-500/20 border-blue-400/60 text-white font-medium shadow-sm" 
                               : "bg-black/30 border-white/5 text-gray-300 hover:bg-white/5 hover:text-white"
                           )}
@@ -1252,7 +1318,7 @@ function FlowEditor() {
                 )}
 
                 {/* 2. DATA ROLE CONTROLS */}
-                {selectedNode.data.nodeType === 'data' && (
+                {activeNode.data.nodeType === 'data' && (
                   <div className="space-y-2 p-3 bg-purple-500/5 rounded-xl border border-purple-500/20">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-mono font-semibold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -1261,14 +1327,14 @@ function FlowEditor() {
                       </label>
                       <div className="flex gap-1">
                         <button
-                          onClick={() => onNodeDataChange(selectedNode.id, { dataMode: 'json' })}
-                          className={cn("px-2 py-0.5 rounded text-[10px] font-mono", selectedNode.data.dataMode !== 'kv' ? "bg-purple-500/30 text-purple-200 border border-purple-400/40" : "text-gray-400")}
+                          onClick={() => onNodeDataChange(activeNode.id, { dataMode: 'json' })}
+                          className={cn("px-2 py-0.5 rounded text-[10px] font-mono", activeNode.data.dataMode !== 'kv' ? "bg-purple-500/30 text-purple-200 border border-purple-400/40" : "text-gray-400")}
                         >
                           JSON
                         </button>
                         <button
-                          onClick={() => onNodeDataChange(selectedNode.id, { dataMode: 'kv' })}
-                          className={cn("px-2 py-0.5 rounded text-[10px] font-mono", selectedNode.data.dataMode === 'kv' ? "bg-purple-500/30 text-purple-200 border border-purple-400/40" : "text-gray-400")}
+                          onClick={() => onNodeDataChange(activeNode.id, { dataMode: 'kv' })}
+                          className={cn("px-2 py-0.5 rounded text-[10px] font-mono", activeNode.data.dataMode === 'kv' ? "bg-purple-500/30 text-purple-200 border border-purple-400/40" : "text-gray-400")}
                         >
                           KV
                         </button>
@@ -1279,7 +1345,7 @@ function FlowEditor() {
                       {DATA_PRESETS.map(preset => (
                         <button
                           key={preset.id}
-                          onClick={() => onNodeDataChange(selectedNode.id, { dataPayload: preset.data, description: preset.name })}
+                          onClick={() => onNodeDataChange(activeNode.id, { dataPayload: preset.data, description: preset.name })}
                           className="px-2 py-1 bg-black/40 hover:bg-purple-500/20 text-[10px] font-mono text-purple-300 rounded border border-purple-500/30 transition-colors"
                         >
                           + {preset.name}
@@ -1288,8 +1354,8 @@ function FlowEditor() {
                     </div>
 
                     <textarea
-                      value={selectedNode.data.dataPayload || selectedNode.data.description}
-                      onChange={(e) => onNodeDataChange(selectedNode.id, { dataPayload: e.target.value })}
+                      value={activeNode.data.dataPayload || activeNode.data.description}
+                      onChange={(e) => onNodeDataChange(activeNode.id, { dataPayload: e.target.value })}
                       rows={6}
                       className="w-full bg-black/60 border border-purple-500/20 rounded-lg p-2.5 font-mono text-xs text-purple-200 focus:outline-none focus:border-purple-400 custom-scrollbar leading-relaxed"
                       placeholder="Enter JSON or key-values..."
@@ -1298,7 +1364,7 @@ function FlowEditor() {
                 )}
 
                 {/* 3. BRANCH CONDITION CONTROLS */}
-                {selectedNode.data.nodeType === 'condition' && (
+                {activeNode.data.nodeType === 'condition' && (
                   <div className="space-y-3 p-3 bg-amber-500/5 rounded-xl border border-amber-500/20">
                     <label className="text-xs font-mono font-semibold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                       <GitFork className="w-3.5 h-3.5 text-amber-400" />
@@ -1308,8 +1374,8 @@ function FlowEditor() {
                     <div className="space-y-1.5">
                       <span className="text-[10px] font-mono text-gray-400">Condition Type</span>
                       <select
-                        value={selectedNode.data.conditionRule || 'contains'}
-                        onChange={(e) => onNodeDataChange(selectedNode.id, { conditionRule: e.target.value as any })}
+                        value={activeNode.data.conditionRule || 'contains'}
+                        onChange={(e) => onNodeDataChange(activeNode.id, { conditionRule: e.target.value as any })}
                         className="w-full bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400 font-mono"
                       >
                         <option value="contains">Contains String</option>
@@ -1323,8 +1389,8 @@ function FlowEditor() {
                       <span className="text-[10px] font-mono text-gray-400">Target Match Value</span>
                       <input
                         type="text"
-                        value={selectedNode.data.conditionValue || ''}
-                        onChange={(e) => onNodeDataChange(selectedNode.id, { conditionValue: e.target.value })}
+                        value={activeNode.data.conditionValue || ''}
+                        onChange={(e) => onNodeDataChange(activeNode.id, { conditionValue: e.target.value })}
                         placeholder="e.g. success or 200"
                         className="w-full bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400 font-mono"
                       />
@@ -1344,7 +1410,7 @@ function FlowEditor() {
                 )}
 
                 {/* 4. CODE SCRIPT CONTROLS */}
-                {selectedNode.data.nodeType === 'code' && (
+                {activeNode.data.nodeType === 'code' && (
                   <div className="space-y-2 p-3 bg-rose-500/5 rounded-xl border border-rose-500/20">
                     <label className="text-xs font-mono font-semibold text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Code2 className="w-3.5 h-3.5 text-rose-400" />
@@ -1355,7 +1421,7 @@ function FlowEditor() {
                       {CODE_TEMPLATES.map(tmpl => (
                         <button
                           key={tmpl.id}
-                          onClick={() => onNodeDataChange(selectedNode.id, { codeScript: tmpl.code, description: tmpl.name })}
+                          onClick={() => onNodeDataChange(activeNode.id, { codeScript: tmpl.code, description: tmpl.name })}
                           className="px-2 py-1 bg-black/40 hover:bg-rose-500/20 text-[10px] font-mono text-rose-300 rounded border border-rose-500/30 transition-colors"
                         >
                           + {tmpl.name}
@@ -1364,8 +1430,8 @@ function FlowEditor() {
                     </div>
 
                     <textarea
-                      value={selectedNode.data.codeScript || ''}
-                      onChange={(e) => onNodeDataChange(selectedNode.id, { codeScript: e.target.value })}
+                      value={activeNode.data.codeScript || ''}
+                      onChange={(e) => onNodeDataChange(activeNode.id, { codeScript: e.target.value })}
                       rows={6}
                       className="w-full bg-black/70 border border-rose-500/20 rounded-lg p-2.5 font-mono text-xs text-rose-200 focus:outline-none focus:border-rose-400 custom-scrollbar leading-relaxed"
                       placeholder="// Write JS here. 'input' contains upstream text.\nreturn input.toUpperCase();"
@@ -1374,7 +1440,7 @@ function FlowEditor() {
                 )}
 
                 {/* 5. MERGE AGGREGATOR CONTROLS */}
-                {selectedNode.data.nodeType === 'merge' && (
+                {activeNode.data.nodeType === 'merge' && (
                   <div className="space-y-2 p-3 bg-teal-500/5 rounded-xl border border-teal-500/20">
                     <label className="text-xs font-mono font-semibold text-teal-300 uppercase tracking-wider flex items-center gap-1.5">
                       <GitMerge className="w-3.5 h-3.5 text-teal-400" />
@@ -1385,10 +1451,10 @@ function FlowEditor() {
                       {MERGE_STRATEGIES.map(s => (
                         <button
                           key={s.id}
-                          onClick={() => onNodeDataChange(selectedNode.id, { mergeStrategy: s.id as any })}
+                          onClick={() => onNodeDataChange(activeNode.id, { mergeStrategy: s.id as any })}
                           className={cn(
                             "text-left p-2 rounded-lg border text-xs font-mono transition-all",
-                            selectedNode.data.mergeStrategy === s.id
+                            activeNode.data.mergeStrategy === s.id
                               ? "bg-teal-500/20 border-teal-400/60 text-white font-medium shadow-sm"
                               : "bg-black/30 border-white/5 text-gray-300 hover:bg-white/5 hover:text-white"
                           )}
@@ -1401,7 +1467,7 @@ function FlowEditor() {
                 )}
 
                 {/* 6. EVALUATION CONTROLS */}
-                {selectedNode.data.nodeType === 'evaluation' && (
+                {activeNode.data.nodeType === 'evaluation' && (
                   <div className="space-y-2 p-3 bg-indigo-500/5 rounded-xl border border-indigo-500/20">
                     <label className="text-xs font-mono font-semibold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
                       <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
@@ -1412,10 +1478,10 @@ function FlowEditor() {
                       {EVAL_CRITERIA.map(c => (
                         <button
                           key={c.id}
-                          onClick={() => onNodeDataChange(selectedNode.id, { evalCriteria: c.id })}
+                          onClick={() => onNodeDataChange(activeNode.id, { evalCriteria: c.id })}
                           className={cn(
                             "text-left p-2 rounded-lg border text-xs font-mono transition-all",
-                            selectedNode.data.evalCriteria === c.id
+                            activeNode.data.evalCriteria === c.id
                               ? "bg-indigo-500/20 border-indigo-400/60 text-white font-medium shadow-sm"
                               : "bg-black/30 border-white/5 text-gray-300 hover:bg-white/5 hover:text-white"
                           )}
@@ -1428,16 +1494,16 @@ function FlowEditor() {
                 )}
 
                 {/* AI Model Selection (For Prompt, System, Evaluation, Merge) */}
-                {['prompt', 'system', 'evaluation', 'merge'].includes(selectedNode.data.nodeType) && (
+                {['prompt', 'system', 'evaluation', 'merge'].includes(activeNode.data.nodeType) && (
                   <div className="space-y-2">
                     <label className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider">AI Model</label>
                     <div className="space-y-2">
                       <CustomSelect 
-                        value={selectedNode.data.agentId}
+                        value={activeNode.data.agentId}
                         options={AI_AGENTS}
                         onChange={(agentId) => {
                           const newAgent = AI_AGENTS.find(a => a.id === agentId)!;
-                          onNodeDataChange(selectedNode.id, { agentId: newAgent.id, modelId: newAgent.models[0].id });
+                          onNodeDataChange(activeNode.id, { agentId: newAgent.id, modelId: newAgent.models[0].id });
                         }}
                         renderValue={(agent) => (
                           <>
@@ -1454,11 +1520,11 @@ function FlowEditor() {
                       />
                       
                       <CustomSelect 
-                        value={selectedNode.data.modelId}
-                        options={(AI_AGENTS.find(a => a.id === selectedNode.data.agentId) || AI_AGENTS[0]).models}
-                        onChange={(modelId) => onNodeDataChange(selectedNode.id, { modelId })}
+                        value={activeNode.data.modelId}
+                        options={(AI_AGENTS.find(a => a.id === activeNode.data.agentId) || AI_AGENTS[0]).models}
+                        onChange={(modelId) => onNodeDataChange(activeNode.id, { modelId })}
                         renderValue={(model) => {
-                          const currentAgent = AI_AGENTS.find(a => a.id === selectedNode.data.agentId) || AI_AGENTS[0];
+                          const currentAgent = AI_AGENTS.find(a => a.id === activeNode.data.agentId) || AI_AGENTS[0];
                           return (
                             <>
                               <AgentIcon agent={currentAgent} model={model?.id} className="w-3 h-3" badgeClassName="w-4 h-4" />
@@ -1467,7 +1533,7 @@ function FlowEditor() {
                           );
                         }}
                         renderOption={(model) => {
-                          const currentAgent = AI_AGENTS.find(a => a.id === selectedNode.data.agentId) || AI_AGENTS[0];
+                          const currentAgent = AI_AGENTS.find(a => a.id === activeNode.data.agentId) || AI_AGENTS[0];
                           return (
                             <>
                               <AgentIcon agent={currentAgent} model={model.id} className="w-3 h-3" badgeClassName="w-4 h-4" />
@@ -1483,15 +1549,15 @@ function FlowEditor() {
                 {/* Description / Prompt Context */}
                 <div className="space-y-2 flex flex-col">
                   <label className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider">
-                    {selectedNode.data.nodeType === 'system' ? 'Persona Rules' : 
-                     selectedNode.data.nodeType === 'output' ? 'Terminal Label / Note' :
-                     selectedNode.data.nodeType === 'code' ? 'Function Description' :
-                     selectedNode.data.nodeType === 'data' ? 'Dataset Note' :
+                    {activeNode.data.nodeType === 'system' ? 'Persona Rules' : 
+                     activeNode.data.nodeType === 'output' ? 'Terminal Label / Note' :
+                     activeNode.data.nodeType === 'code' ? 'Function Description' :
+                     activeNode.data.nodeType === 'data' ? 'Dataset Note' :
                      'Prompt Context / Template'}
                   </label>
                   <textarea 
-                    value={selectedNode.data.description}
-                    onChange={(e) => onNodeDataChange(selectedNode.id, { description: e.target.value })}
+                    value={activeNode.data.description}
+                    onChange={(e) => onNodeDataChange(activeNode.id, { description: e.target.value })}
                     className="w-full min-h-[140px] bg-black/50 border border-white/10 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-copper-500/50 focus:ring-1 focus:ring-copper-500/50 transition-all resize-y custom-scrollbar font-mono text-xs leading-relaxed"
                     placeholder="Enter instructions, parameters or context for this node..."
                   />
@@ -1499,12 +1565,12 @@ function FlowEditor() {
                 
                 <button 
                   onClick={async () => {
-                    onNodeDataChange(selectedNode.id, { status: 'running', output: undefined });
+                    onNodeDataChange(activeNode.id, { status: 'running', output: undefined });
                     try {
-                      const output = await testPrompt(selectedNode.data.modelId, '', selectedNode.data.description || selectedNode.data.title);
-                      onNodeDataChange(selectedNode.id, { status: 'success', output });
+                      const output = await testPrompt(activeNode.data.modelId, '', activeNode.data.description || activeNode.data.title);
+                      onNodeDataChange(activeNode.id, { status: 'success', output });
                     } catch (err: any) {
-                      onNodeDataChange(selectedNode.id, { status: 'error', output: err.message || 'Execution failed' });
+                      onNodeDataChange(activeNode.id, { status: 'error', output: err.message || 'Execution failed' });
                     }
                   }}
                   className="w-full py-3 bg-white text-black rounded-xl font-semibold text-xs uppercase tracking-wider flex items-center justify-center hover:bg-gray-200 transition-colors shadow-lg shrink-0 mt-4 active:scale-[0.98]"
@@ -1513,54 +1579,6 @@ function FlowEditor() {
                 </button>
               </div>
             </div>
-          </motion.div>
-        ) : (
-          /* Floating Node Palette with Distinct Shapes for Each Archetype */
-          <motion.div
-            key="palette"
-            initial={{ x: 50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 50, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            onWheel={(e) => e.stopPropagation()}
-            className="absolute top-6 right-6 flex flex-col items-end gap-2.5 z-20 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar p-2 -mr-2 nowheel nopan nodrag"
-          >
-            {Object.entries(NODE_CONFIG).map(([type, item]) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={type}
-                  onClick={() => addNode(type as keyof typeof NODE_CONFIG)}
-                  className={cn(
-                    "group flex items-center p-2 rounded-xl border bg-[#1a1a1a]/90 backdrop-blur-xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap shrink-0",
-                    "w-[52px] hover:w-[250px]",
-                    item.bg, item.border, item.hoverBorder
-                  )}
-                  title={item.desc}
-                >
-                  {/* Distinctive mini shape badge reflecting the node's geometry */}
-                  <div className={cn(
-                    "w-8 h-8 shrink-0 bg-black/60 border flex items-center justify-center font-mono text-[9px] font-bold transition-transform group-hover:scale-105",
-                    item.border,
-                    item.color,
-                    item.paletteShape
-                  )}>
-                    <div className={type === 'condition' ? '-rotate-45' : ''}>
-                      <Icon className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                  <div className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100 text-left">
-                    <div className={cn("text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5", item.color)}>
-                      <span>{item.title}</span>
-                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-black/50 border border-white/10 opacity-70">
-                        {item.tag}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[170px]">{item.desc}</div>
-                  </div>
-                </button>
-              );
-            })}
           </motion.div>
         )}
       </AnimatePresence>
