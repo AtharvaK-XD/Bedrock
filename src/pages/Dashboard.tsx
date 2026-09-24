@@ -112,8 +112,7 @@ export default function Dashboard() {
         </div>
 
         {/* SUBHEADER / GLASS COMMAND BAR */}
-        <header className="relative w-full border-b border-white/[0.08] px-4 sm:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 bg-[#07090e]/75 backdrop-blur-2xl z-20 shadow-[0_12px_36px_rgba(0,0,0,0.5)]">
-          <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
+        <div className="relative w-full px-4 sm:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 bg-transparent z-20">
           
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-pill shadow-sm">
@@ -168,7 +167,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </header>
+        </div>
 
         {/* MAIN DASHBOARD CONTENT */}
         <div className="relative z-10 w-full px-4 sm:px-8 pt-6 flex flex-col gap-8">
