@@ -18,8 +18,7 @@ export default function AuthPage({ defaultMode = 'register' }: AuthPageProps) {
       
       {/* Header / Brand */}
       <header className="relative z-10 w-full flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5 text-white group">
-          <span className="w-2 h-2 rounded-full bg-copper-400" />
+        <Link to="/" className="flex items-center text-white group">
           <span className="font-display font-bold text-lg tracking-wider uppercase">Bedrock</span>
         </Link>
       </header>

@@ -63,8 +63,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
 
       {/* Brand Header */}
       <div className="p-5 pb-4 flex items-center justify-between border-b border-white/[0.06]">
-        <Link to="/app/generator" className="flex items-center gap-2.5 group">
-          <span className="w-2.5 h-2.5 rounded-full bg-copper-400 shadow-[0_0_10px_rgba(200,168,107,0.9)] transition-transform group-hover:scale-125" />
+        <Link to="/app/generator" className="flex items-center group">
           <div className="flex flex-col">
             <span className="font-display font-bold text-base tracking-wider uppercase text-white leading-tight">Bedrock</span>
             <span className="text-[10px] font-mono text-gray-500 tracking-wider uppercase">Workstation</span>
