@@ -167,13 +167,12 @@ export default function Landing() {
   const statementText = "Bedrock bridges the gap between human intent and machine understanding, turning chaotic ideas into structured, high-performance prompts.";
 
   return (
-    <PageTransition className="bg-[#050505] text-white font-sans selection:bg-copper-500/40 selection:text-white relative overflow-hidden flex flex-col min-h-screen">
+    <PageTransition className="bg-black text-white font-sans selection:bg-copper-500/40 selection:text-white relative overflow-hidden flex flex-col min-h-screen">
       <div ref={containerRef} className="relative z-10 w-full">
         
         {/* Realistic 3D Background Element */}
         <div className="fixed inset-0 w-full h-screen pointer-events-none z-0 overflow-hidden">
           <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-10"></div>
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-copper-500/10 blur-[150px] z-0"></div>
           <Scene3D />
         </div>
 
