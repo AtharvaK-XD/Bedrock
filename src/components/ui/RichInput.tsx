@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Mic } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { IdeaPayload } from '../../lib/mockApi';
+import { usePromptQuota } from '../../lib/usePromptQuota';
+import { QuotaLimitModal } from './QuotaLimitModal';
 
 interface RichInputProps {
   value: string;
@@ -165,103 +167,37 @@ export function RichInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
 
-  // Token Tracking State
-  const SESSION_LIMIT = 50000;
-  const WEEKLY_LIMIT = 200000;
-  const [sessionTokens, setSessionTokens] = useState(0);
-  const [weeklyTokens, setWeeklyTokens] = useState(0);
-  const [, setSessionResetTime] = useState<Date | null>(null);
-  const [weeklyResetTime, setWeeklyResetTime] = useState<Date | null>(null);
-  const [timeUntilWeekly, setTimeUntilWeekly] = useState("");
+  // Prompt Quota Hook
+  const {
+    sessionPrompts,
+    weeklyPrompts,
+    sessionLimit,
+    weeklyLimit,
+    sessionPercent,
+    weeklyPercent,
+    timeUntilSession,
+    timeUntilWeekly,
+    isFreeTier,
+    isWeeklyLimitReached,
+    isLimitReached,
+    recordPromptUsage,
+  } = usePromptQuota();
 
-  useEffect(() => {
-    const loadTokens = () => {
-      const now = new Date();
-      
-      const nextSessionReset = new Date(now);
-      const currentHour = now.getHours();
-      const nextResetHour = Math.floor(currentHour / 5) * 5 + 5;
-      nextSessionReset.setHours(nextResetHour, 0, 0, 0);
-      setSessionResetTime(nextSessionReset);
-
-      const nextWeeklyReset = new Date(now);
-      nextWeeklyReset.setDate(now.getDate() + ((7 - now.getDay()) % 7));
-      if (now.getDay() === 0 && now.getHours() > 0) {
-        nextWeeklyReset.setDate(nextWeeklyReset.getDate() + 7);
-      }
-      nextWeeklyReset.setHours(0, 0, 0, 0);
-      setWeeklyResetTime(nextWeeklyReset);
-
-      const lastSessionResetStr = localStorage.getItem('lastSessionReset');
-      const lastWeeklyResetStr = localStorage.getItem('lastWeeklyReset');
-      
-      let currentSessionTokens = parseInt(localStorage.getItem('sessionTokens') || '0', 10);
-      let currentWeeklyTokens = parseInt(localStorage.getItem('weeklyTokens') || '0', 10);
-
-      if (lastSessionResetStr) {
-        const lastSessionReset = new Date(lastSessionResetStr);
-        if (now > lastSessionReset) {
-          currentSessionTokens = 0;
-          localStorage.setItem('lastSessionReset', nextSessionReset.toISOString());
-        }
-      } else {
-        localStorage.setItem('lastSessionReset', nextSessionReset.toISOString());
-      }
-
-      if (lastWeeklyResetStr) {
-        const lastWeeklyReset = new Date(lastWeeklyResetStr);
-        if (now > lastWeeklyReset) {
-          currentWeeklyTokens = 0;
-          localStorage.setItem('lastWeeklyReset', nextWeeklyReset.toISOString());
-        }
-      } else {
-        localStorage.setItem('lastWeeklyReset', nextWeeklyReset.toISOString());
-      }
-
-      setSessionTokens(currentSessionTokens);
-      setWeeklyTokens(currentWeeklyTokens);
-      localStorage.setItem('sessionTokens', currentSessionTokens.toString());
-      localStorage.setItem('weeklyTokens', currentWeeklyTokens.toString());
-    };
-
-    loadTokens();
-    const interval = setInterval(loadTokens, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (!weeklyResetTime) return;
-    
-    const updateCountdown = () => {
-      const now = new Date();
-      const diffMs = weeklyResetTime.getTime() - now.getTime();
-      
-      if (diffMs <= 0) {
-        setTimeUntilWeekly("0h 0m");
-        return;
-      }
-      
-      const hours = Math.floor(diffMs / (1000 * 60 * 60));
-      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-      setTimeUntilWeekly(`${hours}h ${minutes}m`);
-    };
-    
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 60000);
-    return () => clearInterval(interval);
-  }, [weeklyResetTime]);
+  const [showQuotaModal, setShowQuotaModal] = useState(false);
 
   const handleActionSubmit = () => {
     if (value.trim() && !isLoading) {
-      const usedTokens = Math.max(1, Math.floor(value.length * 0.25));
-      const newSessionTokens = Math.min(sessionTokens + usedTokens, SESSION_LIMIT);
-      const newWeeklyTokens = Math.min(weeklyTokens + usedTokens, WEEKLY_LIMIT);
-      
-      setSessionTokens(newSessionTokens);
-      setWeeklyTokens(newWeeklyTokens);
-      localStorage.setItem('sessionTokens', newSessionTokens.toString());
-      localStorage.setItem('weeklyTokens', newWeeklyTokens.toString());
-      
+      if (isLimitReached) {
+        setShowQuotaModal(true);
+        return;
+      }
+
+      const allowed = recordPromptUsage(1);
+      if (!allowed) {
+        setShowQuotaModal(true);
+        return;
+      }
+
       onSubmit();
     }
   };
@@ -578,39 +514,74 @@ export function RichInput({
             type="button"
             onClick={handleActionSubmit}
             disabled={!value.trim() || isLoading}
-            className="flex items-center gap-2 px-6 py-2.5 bg-white text-zinc-950 hover:bg-zinc-100 rounded-xl text-sm font-semibold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+            className={cn(
+              "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 active:scale-[0.98]",
+              isLimitReached
+                ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
+                : "bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed"
+            )}
+            title={isLimitReached ? `Limit reached. Resets in ${timeUntilSession}` : undefined}
           >
             {isLoading && (
               <span className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-zinc-950 rounded-full animate-spin inline-block"></span>
             )}
-            Generate
+            {isLimitReached ? 'Limit Reached' : 'Generate'}
           </button>
         </div>
 
         {/* Token Quota Progress */}
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 pb-4 pt-1 text-[11px] font-mono text-zinc-500 gap-4 sm:gap-8 bg-transparent">
-          <div className="flex items-center gap-3 flex-1 w-full">
-            <span className="whitespace-nowrap w-20">Session: {Math.round((sessionTokens / SESSION_LIMIT) * 100)}%</span>
+          <div 
+            className="flex items-center gap-3 flex-1 w-full cursor-pointer hover:text-zinc-400 transition-colors"
+            onClick={() => isLimitReached && setShowQuotaModal(true)}
+            title={`Session: ${sessionPrompts}/${sessionLimit} prompts used. Resets every 5 hours (in ${timeUntilSession}).`}
+          >
+            <span className="whitespace-nowrap">
+              Session: {sessionPercent}% {isFreeTier && `(${sessionPrompts}/${sessionLimit})`}
+            </span>
             <div className="h-1.5 flex-1 bg-white/[0.05] rounded-full overflow-hidden border border-white/[0.05]">
               <div 
-                className="h-full bg-blue-500/80 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min(100, (sessionTokens / SESSION_LIMIT) * 100)}%` }} 
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  sessionPercent >= 100 ? "bg-red-500 shadow-sm shadow-red-500/50" : sessionPercent >= 80 ? "bg-amber-500" : "bg-blue-500/80"
+                )} 
+                style={{ width: `${Math.min(100, sessionPercent)}%` }} 
               />
             </div>
           </div>
-          <div className="flex items-center gap-3 flex-1 w-full justify-end">
+          <div 
+            className="flex items-center gap-3 flex-1 w-full justify-end cursor-pointer hover:text-zinc-400 transition-colors"
+            onClick={() => isLimitReached && setShowQuotaModal(true)}
+            title={`Weekly: ${weeklyPrompts}/${weeklyLimit} prompts used. Resets weekly (in ${timeUntilWeekly}).`}
+          >
             <div className="h-1.5 flex-1 bg-white/[0.05] rounded-full overflow-hidden border border-white/[0.05]">
               <div 
-                className="h-full bg-blue-500/80 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min(100, (weeklyTokens / WEEKLY_LIMIT) * 100)}%` }} 
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  weeklyPercent >= 100 ? "bg-red-500 shadow-sm shadow-red-500/50" : weeklyPercent >= 80 ? "bg-amber-500" : "bg-blue-500/80"
+                )} 
+                style={{ width: `${Math.min(100, weeklyPercent)}%` }} 
               />
             </div>
             <span className="whitespace-nowrap text-right">
-              Weekly: {Math.round((weeklyTokens / WEEKLY_LIMIT) * 100)}% · resets in {timeUntilWeekly}
+              Weekly: {weeklyPercent}% · resets in {timeUntilWeekly}
             </span>
           </div>
         </div>
       </div>
+
+      <QuotaLimitModal
+        isOpen={showQuotaModal}
+        onClose={() => setShowQuotaModal(false)}
+        sessionPrompts={sessionPrompts}
+        sessionLimit={sessionLimit}
+        weeklyPrompts={weeklyPrompts}
+        weeklyLimit={weeklyLimit}
+        timeUntilSession={timeUntilSession}
+        timeUntilWeekly={timeUntilWeekly}
+        isWeeklyLimitReached={isWeeklyLimitReached}
+      />
     </div>
   );
 }
+
