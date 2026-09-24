@@ -63,8 +63,7 @@ export function Topbar() {
       <div className="w-full px-4 sm:px-8 h-full flex items-center justify-between">
         
         {/* Brand */}
-        <Link to={brandLink} className="flex items-center gap-2.5 text-white group">
-          <span className="w-2.5 h-2.5 rounded-full bg-copper-400 shadow-[0_0_10px_rgba(200,168,107,0.9)] transition-transform group-hover:scale-125" />
+        <Link to={brandLink} className="flex items-center text-white group">
           <span className="font-display font-bold text-lg tracking-wider uppercase text-white">Bedrock</span>
         </Link>
 
