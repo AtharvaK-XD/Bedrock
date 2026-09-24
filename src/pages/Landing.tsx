@@ -180,11 +180,6 @@ export default function Landing() {
         <section className="hero-section relative z-10 w-full min-h-screen flex items-center justify-center pt-32 pb-20 px-8 lg:px-24">
           <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-8">
             <div className="w-full lg:w-[50%] flex flex-col justify-center max-w-2xl lg:pr-10 z-10 mix-blend-difference">
-              <div className="hero-fade-up inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-md text-gray-300 text-xs font-medium tracking-wide uppercase mb-8">
-                <div className="w-1.5 h-1.5 rounded-full bg-copper-500"></div>
-                Bedrock 2.0 Available
-              </div>
-              
               <h1 className="hero-title-parallax font-display font-medium text-[clamp(4.5rem,9vw,9rem)] leading-[0.85] tracking-tight mb-8 text-white -ml-1">
                 Intelligence, <br />
                 <span className="text-gray-400">shaped by you.</span>
