@@ -1,40 +1,59 @@
 import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
-import authRoutes from './routes/auth';
-import aiRoutes from './routes/ai';
-import userRoutes from './routes/user';
-import promptRoutes from './routes/prompts';
-import traceRoutes from './routes/traces';
-import workflowRoutes from './routes/workflows';
+import { config } from './config.js';
+import { initDb, prisma, logSecurityEvent } from './db.js';
+import {
+  helmetMiddleware,
+  corsMiddleware,
+  hppMiddleware,
+  sanitizePayloads,
+} from './middleware/security.js';
+import { generalLimiter } from './middleware/rateLimiter.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
-dotenv.config();
+// Route imports
+import authRoutes from './routes/auth.js';
+import aiRoutes from './routes/ai.js';
+import userRoutes from './routes/user.js';
+import promptRoutes from './routes/prompts.js';
+import traceRoutes from './routes/traces.js';
+import workflowRoutes from './routes/workflows.js';
+import healthRoutes from './routes/health.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Security Middlewares
-app.use(helmet());
-app.use(
-  cors({
-    origin: ['http://localhost:5173', 'http://localhost:1420', 'tauri://localhost'],
-    credentials: true,
-  })
-);
-app.use(express.json());
+// Disable framework fingerprinting
+app.disable('x-powered-by');
+
+// Trust reverse proxy (Vite proxy, Tauri, Electron)
+app.set('trust proxy', 1);
+
+// =================== Security Middlewares ===================
+app.use(helmetMiddleware);
+app.use(corsMiddleware);
+app.use(hppMiddleware);
+
+// Strict payload size limits (prevent DoS memory exhaustion)
+app.use(express.json({ limit: config.limits.jsonPayloadLimit }));
+app.use(express.urlencoded({ extended: true, limit: config.limits.urlEncodedLimit }));
 app.use(cookieParser());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-});
-app.use(limiter);
+// Deep sanitization against Prototype Pollution & Malicious injections
+app.use(sanitizePayloads);
 
-// Routes
+// Global rate limiting
+app.use(generalLimiter);
+
+// Request audit logger (in development / debug)
+app.use((req, res, next) => {
+  if (!config.isProduction) {
+    console.log(`[BedrockServer] ${new Date().toISOString()} ${req.method} ${req.originalUrl}`);
+  }
+  next();
+});
+
+// =================== API Routes ===================
+app.use('/api', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/user', userRoutes);
@@ -42,10 +61,77 @@ app.use('/api/prompts', promptRoutes);
 app.use('/api/traces', traceRoutes);
 app.use('/api/workflows', workflowRoutes);
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+// 404 Route Handler for undefined API routes
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint Not Found',
+    message: `The API endpoint ${req.method} ${req.originalUrl} does not exist.`,
+  });
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend server securely running on http://localhost:${PORT}`);
+// =================== Global Error Handler ===================
+app.use(errorHandler);
+
+// =================== Anti-Crash Process Protection ===================
+process.on('uncaughtException', (err: Error) => {
+  console.error('[FATAL] Uncaught Exception:', err);
+  logSecurityEvent({
+    eventType: 'UNCAUGHT_EXCEPTION',
+    severity: 'CRITICAL',
+    message: `Uncaught Exception: ${err.message}\n${err.stack || ''}`,
+  }).catch(() => {});
 });
+
+process.on('unhandledRejection', (reason: any) => {
+  console.error('[WARN] Unhandled Rejection:', reason);
+  logSecurityEvent({
+    eventType: 'UNHANDLED_REJECTION',
+    severity: 'WARN',
+    message: `Unhandled Promise Rejection: ${String(reason)}`,
+  }).catch(() => {});
+});
+
+// =================== Graceful Shutdown ===================
+async function gracefulShutdown(signal: string) {
+  console.log(`[BedrockServer] Received ${signal}. Gracefully shutting down...`);
+  try {
+    await prisma.$disconnect();
+    console.log('[BedrockServer] Database connections closed.');
+    process.exit(0);
+  } catch (err) {
+    console.error('[BedrockServer] Error during graceful shutdown:', err);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// =================== Start Server ===================
+async function startServer() {
+  await initDb();
+
+  const server = app.listen(config.port, () => {
+    console.log(`
+╔══════════════════════════════════════════════════════════════════╗
+║  BEDROCK ENTERPRISE BACKEND - MAXIMUM SECURITY ACTIVE           ║
+║  URL: http://localhost:${config.port}                                    ║
+║  Environment: ${(config.nodeEnv).toUpperCase().padEnd(16)} Mode: Hardened Vault      ║
+║  Database: SQLite (Encrypted/Isolated) + Prisma ORM              ║
+║  AI Gateway: Multi-Provider Resilient Proxy Enabled              ║
+╚══════════════════════════════════════════════════════════════════╝
+    `);
+  });
+
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[BedrockServer] Port ${config.port} is already in use. Please close the existing process.`);
+    } else {
+      console.error('[BedrockServer] Server startup error:', err);
+    }
+  });
+}
+
+startServer();
+
+export default app;
