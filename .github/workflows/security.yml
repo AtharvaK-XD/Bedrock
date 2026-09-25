@@ -24,6 +24,9 @@ jobs:
       - name: Run Secret Leak Scanner
         run: npm run scan:secrets
 
+      - name: Check Dependencies Security Audit
+        run: npm audit --audit-level=critical || true
+
       - name: Validate TypeScript Compilation
         run: npm run build
 
@@ -31,4 +34,5 @@ jobs:
         working-directory: ./server
         run: |
           npm ci
+          npm audit --audit-level=critical || true
           npx tsc --noEmit
