@@ -34,5 +34,6 @@ jobs:
         working-directory: ./server
         run: |
           npm ci
+          npx prisma generate
           npm audit --audit-level=critical || true
           npx tsc --noEmit
