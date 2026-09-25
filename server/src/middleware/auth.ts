@@ -29,12 +29,20 @@ export async function requireAuth(
         email: string;
         name?: string;
         role?: string;
+        iat?: number;
       };
 
-      // Verify user actually exists in the database
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
-        select: { id: true, email: true, name: true, role: true },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          email_verified: true,
+          mfa_enabled: true,
+          subscription_tier: true,
+        },
       });
 
       if (user) {
@@ -43,6 +51,10 @@ export async function requireAuth(
           email: user.email,
           name: user.name,
           role: user.role,
+          emailVerified: user.email_verified,
+          mfaEnabled: user.mfa_enabled,
+          subscriptionTier: user.subscription_tier,
+          tokenIssuedAt: decoded.iat,
           isGuest: false,
         };
         return next();
@@ -55,11 +67,10 @@ export async function requireAuth(
         endpoint: req.originalUrl,
         message: `Token verification failed: ${err.message}`,
       });
-      // Fall through to desktop fallback or 401
     }
   }
 
-  // Check if request is originating from local desktop / Vite dev server
+  // Local desktop fallback
   const origin = req.headers.origin || req.headers.host || '';
   const isLocalRequest =
     origin.includes('localhost') ||
@@ -71,12 +82,14 @@ export async function requireAuth(
     req.ip === '::ffff:127.0.0.1';
 
   if (isLocalRequest) {
-    // Provide isolated default desktop session
     req.user = {
       id: DEFAULT_USER_ID,
       email: 'local-user@bedrock.app',
       name: 'Atharva K.',
       role: 'Lead Prompt Architect',
+      emailVerified: true,
+      mfaEnabled: true,
+      subscriptionTier: 'free',
       isGuest: true,
     };
     return next();
@@ -89,8 +102,7 @@ export async function requireAuth(
 }
 
 /**
- * Strict authentication middleware:
- * Requires an active, cryptographically verified user token with no local fallback.
+ * Strict authentication: No local guest fallback
  */
 export async function requireStrictAuth(
   req: AuthRequest,
@@ -116,11 +128,21 @@ export async function requireStrictAuth(
       id: string;
       email: string;
       name?: string;
+      role?: string;
+      iat?: number;
     };
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, email: true, name: true, role: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        email_verified: true,
+        mfa_enabled: true,
+        subscription_tier: true,
+      },
     });
 
     if (!user) {
@@ -133,10 +155,117 @@ export async function requireStrictAuth(
       email: user.email,
       name: user.name,
       role: user.role,
+      emailVerified: user.email_verified,
+      mfaEnabled: user.mfa_enabled,
+      subscriptionTier: user.subscription_tier,
+      tokenIssuedAt: decoded.iat,
       isGuest: false,
     };
     next();
   } catch (err: any) {
     res.status(401).json({ error: 'Invalid or expired session token' });
   }
+}
+
+/**
+ * Section 1: Requires verified email before granting access to paid-tier operations or elevated quotas
+ */
+export function requireVerifiedEmail(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): void {
+  if (!req.user) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  // Local desktop or verified users pass
+  if (req.user.isGuest || req.user.emailVerified) {
+    return next();
+  }
+
+  logSecurityEvent({
+    userId: req.user.id,
+    eventType: 'UNVERIFIED_EMAIL_BLOCKED',
+    severity: 'WARN',
+    ipAddress: req.ip,
+    endpoint: req.originalUrl,
+    message: `Attempt to access elevated tier without verified email: ${req.user.email}`,
+  });
+
+  res.status(403).json({
+    error: 'Email Verification Required',
+    message: 'Please verify your email address to upgrade your plan or access elevated usage quotas.',
+    requiresEmailVerification: true,
+  });
+}
+
+/**
+ * Section 1: Requires recent authentication (< 15 min) for sensitive actions (billing change, email change, key rotation)
+ */
+export function requireRecentAuth(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): void {
+  if (!req.user) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  // Local guest allowed in desktop mode
+  if (req.user.isGuest) {
+    return next();
+  }
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const issuedAt = req.user.tokenIssuedAt || 0;
+  const maxSessionAgeSeconds = 15 * 60; // 15 minutes
+
+  if (nowSeconds - issuedAt > maxSessionAgeSeconds) {
+    res.status(403).json({
+      error: 'Re-authentication Required',
+      message: 'For your security, please re-authenticate to confirm this sensitive action.',
+      requiresReauth: true,
+    });
+    return;
+  }
+
+  next();
+}
+
+/**
+ * Section 1: Requires MFA for internal / admin accounts
+ */
+export function requireAdminMfa(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): void {
+  if (!req.user) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const isAdminRole = req.user.role === 'admin' || req.user.role === 'Lead Prompt Architect';
+  if (isAdminRole && !req.user.isGuest && !req.user.mfaEnabled) {
+    logSecurityEvent({
+      userId: req.user.id,
+      eventType: 'ADMIN_MFA_REQUIRED',
+      severity: 'WARN',
+      ipAddress: req.ip,
+      endpoint: req.originalUrl,
+      message: `Admin access blocked: MFA not enabled for ${req.user.email}`,
+    });
+
+    res.status(403).json({
+      error: 'MFA Required',
+      message: 'Multi-Factor Authentication (MFA) is strictly required for administrative accounts.',
+      requiresMfa: true,
+    });
+    return;
+  }
+
+  next();
 }

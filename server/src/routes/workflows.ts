@@ -18,7 +18,7 @@ router.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       orderBy: { updated_at: 'desc' },
     });
 
-    const parsedTrees = trees.map((tree) => {
+    const parsedTrees = trees.map((tree: any) => {
       let nodes = [];
       let edges = [];
       try {

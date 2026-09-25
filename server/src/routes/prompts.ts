@@ -18,7 +18,7 @@ router.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       orderBy: { created_at: 'desc' },
     });
 
-    const parsedPrompts = prompts.map((p) => {
+    const parsedPrompts = prompts.map((p: any) => {
       let tags: string[] = [];
       try {
         tags = JSON.parse(p.tags);

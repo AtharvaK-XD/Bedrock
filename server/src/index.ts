@@ -10,6 +10,7 @@ import {
 } from './middleware/security.js';
 import { generalLimiter } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { MetricsService } from './services/metricsService.js';
 
 // Route imports
 import authRoutes from './routes/auth.js';
@@ -19,14 +20,25 @@ import promptRoutes from './routes/prompts.js';
 import traceRoutes from './routes/traces.js';
 import workflowRoutes from './routes/workflows.js';
 import healthRoutes from './routes/health.js';
+import billingRoutes from './routes/billing.js';
 
 const app = express();
 
 // Disable framework fingerprinting
 app.disable('x-powered-by');
 
-// Trust reverse proxy (Vite proxy, Tauri, Electron)
+// Trust reverse proxy (Vite, Cloudflare, Tauri, Electron)
 app.set('trust proxy', 1);
+
+// =================== Section 5: HTTPS Enforcement ===================
+if (config.isProduction) {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https' && !req.secure) {
+      return res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+}
 
 // =================== Security Middlewares ===================
 app.use(helmetMiddleware);
@@ -44,8 +56,19 @@ app.use(sanitizePayloads);
 // Global rate limiting
 app.use(generalLimiter);
 
-// Request audit logger (in development / debug)
+// Observability: Request metric recorder & audit logger
 app.use((req, res, next) => {
+  const startTime = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    MetricsService.recordRequest(req.originalUrl, res.statusCode, duration);
+
+    // Track failed logins for credential stuffing detection
+    if (req.originalUrl.includes('/api/auth/login') && res.statusCode === 401) {
+      MetricsService.recordAuthFailure(req.ip || '127.0.0.1');
+    }
+  });
+
   if (!config.isProduction) {
     console.log(`[BedrockServer] ${new Date().toISOString()} ${req.method} ${req.originalUrl}`);
   }
@@ -60,6 +83,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/prompts', promptRoutes);
 app.use('/api/traces', traceRoutes);
 app.use('/api/workflows', workflowRoutes);
+app.use('/api/billing', billingRoutes);
 
 // 404 Route Handler for undefined API routes
 app.use('/api', (req, res) => {
@@ -95,7 +119,7 @@ process.on('unhandledRejection', (reason: any) => {
 async function gracefulShutdown(signal: string) {
   console.log(`[BedrockServer] Received ${signal}. Gracefully shutting down...`);
   try {
-    await prisma.$disconnect();
+    await (prisma as any).$disconnect();
     console.log('[BedrockServer] Database connections closed.');
     process.exit(0);
   } catch (err) {
@@ -114,18 +138,19 @@ async function startServer() {
   const server = app.listen(config.port, () => {
     console.log(`
 ╔══════════════════════════════════════════════════════════════════╗
-║  BEDROCK ENTERPRISE BACKEND - MAXIMUM SECURITY ACTIVE           ║
+║  BEDROCK ENTERPRISE BACKEND - PRODUCTION HARDENED                ║
 ║  URL: http://localhost:${config.port}                                    ║
 ║  Environment: ${(config.nodeEnv).toUpperCase().padEnd(16)} Mode: Hardened Vault      ║
-║  Database: SQLite (Encrypted/Isolated) + Prisma ORM              ║
-║  AI Gateway: Multi-Provider Resilient Proxy Enabled              ║
+║  Database: SQLite/Neon Pool + Query Timeout Protections         ║
+║  AI Gateway: Multi-Key Round Robin + Injection Defense Guard     ║
+║  Billing: Razorpay Webhook HMAC SHA256 Signature Verification   ║
 ╚══════════════════════════════════════════════════════════════════╝
     `);
   });
 
   server.on('error', (err: any) => {
     if (err.code === 'EADDRINUSE') {
-      console.error(`[BedrockServer] Port ${config.port} is already in use. Please close the existing process.`);
+      console.error(`[BedrockServer] Port ${config.port} is already in use.`);
     } else {
       console.error('[BedrockServer] Server startup error:', err);
     }

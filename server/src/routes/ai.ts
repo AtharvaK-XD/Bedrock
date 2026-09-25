@@ -1,8 +1,14 @@
 import { Router } from 'express';
 import { AiService } from '../services/aiService.js';
+import { QueueService } from '../services/queueService.js';
 import { requireAuth, AuthRequest } from '../middleware/auth.js';
-import { aiLimiter } from '../middleware/rateLimiter.js';
-import { prisma, logSecurityEvent } from '../db.js';
+import {
+  questionsLimiter,
+  synthesizeLimiter,
+  refineLimiter,
+  testPromptLimiter,
+} from '../middleware/rateLimiter.js';
+import { prisma } from '../db.js';
 import { config } from '../config.js';
 import {
   GenerateQuestionsSchema,
@@ -13,29 +19,30 @@ import {
 
 const router = Router();
 
-// Apply AI rate limiter to all AI routes
-router.use(aiLimiter);
+// Section 11: Queue & Concurrency status
+router.get('/queue-status', (req, res) => {
+  res.json(QueueService.getStats());
+});
 
-// Generate Clarifying Questions
-router.post('/generate-questions', requireAuth, async (req: AuthRequest, res, next) => {
+// Generate Clarifying Questions (per-endpoint rate limited)
+router.post('/generate-questions', questionsLimiter, requireAuth, async (req: AuthRequest, res, next) => {
   const startTime = Date.now();
   try {
     const validated = GenerateQuestionsSchema.parse(req.body);
     const questions = await AiService.generateQuestions(validated.ideaText, validated.targetType);
 
-    // Record performance trace
     if (req.user?.id) {
       await prisma.trace.create({
         data: {
           id: `TRC-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           user_id: req.user.id,
           node_origin: 'Wizard.generateQuestions',
-          model_target: 'Groq/Llama-3.3-70b',
+          model_target: 'Groq/GPT-OSS',
           tokens_used: 350,
           latency_ms: Date.now() - startTime,
           status: 'success',
         },
-      }).catch((e) => console.error('[Trace] Failed to log question trace:', e));
+      }).catch((e: any) => console.error('[Trace] Failed to log question trace:', e));
     }
 
     res.json(questions);
@@ -44,8 +51,8 @@ router.post('/generate-questions', requireAuth, async (req: AuthRequest, res, ne
   }
 });
 
-// Synthesize Master Prompt & Project Brief
-router.post('/synthesize', requireAuth, async (req: AuthRequest, res, next) => {
+// Synthesize Master Prompt & Project Brief (per-endpoint rate limited)
+router.post('/synthesize', synthesizeLimiter, requireAuth, async (req: AuthRequest, res, next) => {
   const startTime = Date.now();
   try {
     const validated = SynthesizeSchema.parse(req.body);
@@ -61,12 +68,12 @@ router.post('/synthesize', requireAuth, async (req: AuthRequest, res, next) => {
           id: `TRC-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           user_id: req.user.id,
           node_origin: 'Wizard.synthesize',
-          model_target: 'Groq/Llama-3.3-70b',
+          model_target: 'Groq/GPT-OSS',
           tokens_used: 1200,
           latency_ms: Date.now() - startTime,
           status: 'success',
         },
-      }).catch((e) => console.error('[Trace] Failed to log synthesize trace:', e));
+      }).catch((e: any) => console.error('[Trace] Failed to log synthesize trace:', e));
     }
 
     res.json({ content });
@@ -75,8 +82,8 @@ router.post('/synthesize', requireAuth, async (req: AuthRequest, res, next) => {
   }
 });
 
-// Refine Prompt with user feedback
-router.post('/refine', requireAuth, async (req: AuthRequest, res, next) => {
+// Refine Prompt with user feedback (per-endpoint rate limited)
+router.post('/refine', refineLimiter, requireAuth, async (req: AuthRequest, res, next) => {
   const startTime = Date.now();
   try {
     const validated = RefineSchema.parse(req.body);
@@ -88,12 +95,12 @@ router.post('/refine', requireAuth, async (req: AuthRequest, res, next) => {
           id: `TRC-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           user_id: req.user.id,
           node_origin: 'RefineModal.refine',
-          model_target: 'Groq/Llama-3.3-70b',
+          model_target: 'Groq/GPT-OSS',
           tokens_used: 800,
           latency_ms: Date.now() - startTime,
           status: 'success',
         },
-      }).catch((e) => console.error('[Trace] Failed to log refine trace:', e));
+      }).catch((e: any) => console.error('[Trace] Failed to log refine trace:', e));
     }
 
     res.json(result);
@@ -102,8 +109,8 @@ router.post('/refine', requireAuth, async (req: AuthRequest, res, next) => {
   }
 });
 
-// Test Prompt across multiple target models
-router.post('/test', requireAuth, async (req: AuthRequest, res, next) => {
+// Test Prompt across multiple target models (per-endpoint rate limited)
+router.post('/test', testPromptLimiter, requireAuth, async (req: AuthRequest, res, next) => {
   const startTime = Date.now();
   try {
     const validated = TestPromptSchema.parse(req.body);
@@ -124,7 +131,7 @@ router.post('/test', requireAuth, async (req: AuthRequest, res, next) => {
           latency_ms: Date.now() - startTime,
           status: 'success',
         },
-      }).catch((e) => console.error('[Trace] Failed to log test trace:', e));
+      }).catch((e: any) => console.error('[Trace] Failed to log test trace:', e));
     }
 
     res.json({ content });
@@ -137,13 +144,12 @@ router.post('/test', requireAuth, async (req: AuthRequest, res, next) => {
 router.get('/models', requireAuth, (req, res) => {
   res.json({
     models: [
-      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', provider: 'Groq', available: Boolean(config.ai.groqKey) },
-      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'Groq', available: Boolean(config.ai.groqKey) },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', available: Boolean(config.ai.geminiKey) },
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', available: Boolean(config.ai.geminiKey) },
-      { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (OpenRouter)', provider: 'OpenRouter', available: Boolean(config.ai.openRouterKey) },
-      { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (OpenRouter)', provider: 'OpenRouter', available: Boolean(config.ai.openRouterKey) },
-      { id: 'hf/meta-llama/Llama-3.2-3B-Instruct', name: 'Llama 3.2 3B Instruct', provider: 'HuggingFace', available: Boolean(config.ai.huggingFaceKey) },
+      { id: 'openai/gpt-oss-120b', name: 'GPT OSS 120B (Groq)', provider: 'Groq', available: config.ai.groqKeys.length > 0 },
+      { id: 'openai/gpt-oss-20b', name: 'GPT OSS 20B (Groq)', provider: 'Groq', available: config.ai.groqKeys.length > 0 },
+      { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (Groq)', provider: 'Groq', available: config.ai.groqKeys.length > 0 },
+      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (OpenRouter)', provider: 'OpenRouter', available: config.ai.openRouterKeys.length > 0 },
+      { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (OpenRouter)', provider: 'OpenRouter', available: config.ai.openRouterKeys.length > 0 },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', available: config.ai.geminiKeys.length > 0 },
     ],
   });
 });
