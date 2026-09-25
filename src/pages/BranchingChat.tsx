@@ -1127,7 +1127,10 @@ function FlowEditor() {
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
-        className="absolute top-6 left-6 z-10 flex items-center gap-3 nowheel nopan nodrag font-mono text-xs"
+        className={cn(
+          "absolute top-6 z-10 flex items-center gap-3 nowheel nopan nodrag font-mono text-xs transition-all duration-300",
+          activeNode ? "left-[404px]" : "left-6"
+        )}
       >
         <div className="flex items-center gap-3 px-4 py-2 bg-[#1a1a1a]/80 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-lg shadow-black/20">
           <input 
@@ -1173,10 +1176,7 @@ function FlowEditor() {
       {/* Floating Node Palette with Distinct Shapes for Each Archetype */}
       <div
         onWheel={(e) => e.stopPropagation()}
-        className={cn(
-          "absolute top-6 flex flex-col items-end gap-2.5 z-20 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar p-2 -mr-2 nowheel nopan nodrag transition-all duration-300",
-          activeNode ? "right-[404px] max-md:hidden" : "right-6"
-        )}
+        className="absolute top-6 right-6 flex flex-col items-end gap-2.5 z-20 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar p-2 -mr-2 nowheel nopan nodrag"
       >
         {Object.entries(NODE_CONFIG).map(([type, item]) => {
           const Icon = item.icon;
@@ -1216,17 +1216,17 @@ function FlowEditor() {
         })}
       </div>
 
-      {/* Node Settings Editor Sidebar (Sliding strictly from the RIGHT, persists until cross button is clicked) */}
+      {/* Node Settings Editor Sidebar (Sliding from the LEFT, persists until cross button is clicked) */}
       <AnimatePresence>
         {activeNode && (
           <motion.div
             key="node-settings-editor"
-            initial={{ x: 450, opacity: 0 }}
+            initial={{ x: -450, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 450, opacity: 0 }}
+            exit={{ x: -450, opacity: 0 }}
             transition={{ type: "spring", stiffness: 350, damping: 32 }}
             onWheel={(e) => e.stopPropagation()}
-            className="absolute top-4 right-4 bottom-4 w-[380px] max-w-[calc(100vw-32px)] bg-[#16181d]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-30 overflow-hidden nowheel nopan nodrag"
+            className="absolute top-4 left-4 bottom-4 w-[380px] max-w-[calc(100vw-32px)] bg-[#16181d]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-30 overflow-hidden nowheel nopan nodrag"
           >
             <div className="flex flex-col h-full w-full">
               {/* Header */}
