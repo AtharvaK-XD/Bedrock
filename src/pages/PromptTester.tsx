@@ -23,7 +23,7 @@ export default function PromptTester() {
   const [model1Id, setModel1Id] = useState(defaultGeminiAgent.models[1]?.id || defaultGeminiAgent.models[0].id);
   
   const [agent2Id, setAgent2Id] = useState(defaultLlamaAgent.id);
-  const [model2Id, setModel2Id] = useState(defaultLlamaAgent.models[0]?.id || 'llama-3.3-70b-versatile');
+  const [model2Id, setModel2Id] = useState(defaultLlamaAgent.models[0]?.id || 'openai/gpt-oss-120b');
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

@@ -184,7 +184,8 @@ router.get('/models', requireAuth, (req, res) => {
       { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (Groq)', provider: 'Groq', available: config.ai.groqKeys.length > 0 },
       { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (OpenRouter)', provider: 'OpenRouter', available: config.ai.openRouterKeys.length > 0 },
       { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (OpenRouter)', provider: 'OpenRouter', available: config.ai.openRouterKeys.length > 0 },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', available: config.ai.geminiKeys.length > 0 },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', provider: 'Google', available: config.ai.geminiKeys.length > 0 },
+      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', provider: 'Google', available: config.ai.geminiKeys.length > 0 },
     ],
   });
 });

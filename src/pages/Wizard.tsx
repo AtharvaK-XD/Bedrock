@@ -13,6 +13,7 @@ import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { PageTransition } from '../components/layout/PageTransition';
 import { KeyRound } from 'lucide-react';
+import { isDesktopApp } from '../lib/platform';
 
 export default function Wizard() {
   const navigate = useNavigate();
@@ -138,14 +139,14 @@ export default function Wizard() {
     }
   };
 
-  const isDesktopApp = typeof window !== 'undefined' && !!(window as any).__TAURI__;
+  const isDesktop = isDesktopApp();
 
   return (
     <PageTransition>
-      <div className={cn("w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]", isDesktopApp ? "flex flex-col" : "")}>
+      <div className={cn("w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]", isDesktop ? "flex flex-col" : "")}>
       <div className={cn(
         "w-full flex flex-col gap-12 transition-all duration-500",
-        isDesktopApp && questions.length === 0 ? "flex-1 justify-center" : ""
+        isDesktop && questions.length === 0 ? "flex-1 justify-center" : ""
       )}>
         
         {/* Top Section (Input) */}

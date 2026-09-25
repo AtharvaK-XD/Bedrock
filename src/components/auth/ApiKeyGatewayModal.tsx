@@ -18,12 +18,16 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
       const data = localStorage.getItem(STORAGE_KEY_API_KEYS);
       const parsed = data ? JSON.parse(data) : {};
       return {
-        gemini: parsed.geminiKey || '',
-        groq: parsed.groqKey || '',
-        openai: parsed.openAiKey || '',
+        gemini: parsed.geminiKey || import.meta.env.VITE_GEMINI_API_KEY || '',
+        groq: parsed.groqKey || import.meta.env.VITE_GROQ_API_KEY || '',
+        openai: parsed.openAiKey || import.meta.env.VITE_OPENAI_API_KEY || '',
       };
     } catch {
-      return { gemini: '', groq: '', openai: '' };
+      return {
+        gemini: import.meta.env.VITE_GEMINI_API_KEY || '',
+        groq: import.meta.env.VITE_GROQ_API_KEY || '',
+        openai: import.meta.env.VITE_OPENAI_API_KEY || '',
+      };
     }
   };
 
@@ -77,7 +81,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
         geminiKey: gTrimmed,
         groqKey: grTrimmed,
         openAiKey: oTrimmed,
-        defaultModel: gTrimmed ? 'gemini-2.5-flash' : 'llama-3.3-70b-versatile',
+        defaultModel: gTrimmed ? 'gemini-3.5-flash-lite' : 'openai/gpt-oss-120b',
       };
 
       localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(updated));

@@ -33,7 +33,7 @@ interface ApiKeysState {
 }
 
 const DEFAULT_API_KEYS: ApiKeysState = {
-  defaultModel: 'gemini-2.5-flash',
+  defaultModel: 'gemini-3.5-flash-lite',
   geminiKey: '',
   groqKey: '',
   openAiKey: '',
@@ -448,13 +448,17 @@ export default function Settings() {
                             className="w-full px-4 py-3 bg-[#13151b] border border-white/10 text-white rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono cursor-pointer"
                           >
                             <optgroup label="Google DeepMind (Recommended)">
-                              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Ultra Fast, High Context)</option>
-                              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Reasoning & Multimodal)</option>
+                              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Ultra Fast)</option>
+                              <option value="gemini-flash-latest">Gemini Flash Latest</option>
+                              <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+                              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                             </optgroup>
                             <optgroup label="Groq (Lightning Fast Open Source)">
-                              <option value="llama-3.1-70b-versatile">Llama 3.1 70B (Versatile, 128k)</option>
+                              <option value="openai/gpt-oss-120b">GPT-OSS 120B (Groq)</option>
+                              <option value="openai/gpt-oss-20b">GPT-OSS 20B (Groq)</option>
+                              <option value="qwen/qwen3.8-27b">Qwen 3.8 27B (Groq)</option>
+                              <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
                               <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
-                              <option value="mixtral-8x7b-32768">Mixtral 8x7B (32k)</option>
                             </optgroup>
                             <optgroup label="Anthropic">
                               <option value="claude-3-5-sonnet">Anthropic Claude 3.5 Sonnet</option>
