@@ -45,7 +45,7 @@ jobs:
           & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /f cert.pfx /p $env:CERT_PASSWORD /fd SHA256 /t http://timestamp.digicert.com src-tauri/target/release/bundle/nsis/*.exe
 
       - name: Upload Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             src-tauri/target/release/bundle/nsis/*.exe
