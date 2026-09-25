@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { Prisma } from '@prisma/client';
 import { logSecurityEvent } from '../db.js';
 
 export function errorHandler(
@@ -24,15 +23,16 @@ export function errorHandler(
   }
 
   // 2. Prisma Database Errors
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    if (err.code === 'P2002') {
+  if (err && typeof err === 'object' && 'code' in err && typeof (err as any).code === 'string') {
+    const code = (err as any).code;
+    if (code === 'P2002') {
       res.status(409).json({
         error: 'Conflict',
         message: 'A record with that unique value already exists.',
       });
       return;
     }
-    if (err.code === 'P2025') {
+    if (code === 'P2025') {
       res.status(404).json({
         error: 'Not Found',
         message: 'The requested resource was not found.',
