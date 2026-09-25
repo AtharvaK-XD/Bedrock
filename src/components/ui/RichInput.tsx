@@ -65,17 +65,22 @@ export const AI_AGENTS = [
     name: 'Gemini',
     description: 'Multimodal and tight Google integration',
     models: [
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite' },
+      { id: 'gemini-flash-latest', name: 'Gemini Flash Latest' },
+      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
     ]
   },
   {
     id: 'llama',
-    name: 'Llama',
-    description: 'Open-weight and self-hosting friendly',
+    name: 'Groq / LLaMA & OSS',
+    description: 'Ultra-low latency open models via Groq',
     models: [
-      { id: 'llama-3-70b', name: 'Llama 3 70B' },
-      { id: 'llama-3-8b', name: 'Llama 3 8B' }
+      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Groq)' },
+      { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B (Groq)' },
+      { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (Groq)' },
+      { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3.3 70B' },
+      { id: 'llama-3.1-8b-instant', name: 'LLaMA 3.1 8B' },
     ]
   },
   {

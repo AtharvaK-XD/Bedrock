@@ -17,7 +17,7 @@ async function testGroq() {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{role: 'user', content: 'Hi'}] })
+    body: JSON.stringify({ model: 'openai/gpt-oss-120b', messages: [{role: 'user', content: 'Hi'}] })
   });
   if (!res.ok) throw new Error(`Groq Error: ${await res.text()}`);
   console.log('✅ Groq works!');
@@ -25,7 +25,7 @@ async function testGroq() {
 
 async function testGemini() {
   console.log('Testing Gemini...');
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_KEY}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: 'Hi' }] }] })
@@ -39,7 +39,7 @@ async function testOpenRouter() {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'google/gemma-2-9b-it:free', messages: [{role: 'user', content: 'Hi'}] })
+    body: JSON.stringify({ model: 'deepseek/deepseek-r1:free', messages: [{role: 'user', content: 'Hi'}] })
   });
   if (!res.ok) throw new Error(`OpenRouter Error: ${await res.text()}`);
   console.log('✅ OpenRouter works!');
