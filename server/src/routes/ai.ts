@@ -1,310 +1,151 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth';
+import { AiService } from '../services/aiService.js';
+import { requireAuth, AuthRequest } from '../middleware/auth.js';
+import { aiLimiter } from '../middleware/rateLimiter.js';
+import { prisma, logSecurityEvent } from '../db.js';
+import { config } from '../config.js';
+import {
+  GenerateQuestionsSchema,
+  SynthesizeSchema,
+  RefineSchema,
+  TestPromptSchema,
+} from '../types.js';
 
 const router = Router();
 
-// Replaces generateQuestions in api.ts
-router.post('/generate-questions', requireAuth, async (req, res) => {
-  const { ideaText, targetType } = req.body;
-  if (!ideaText) {
-    res.status(400).json({ error: 'Idea text is required' });
-    return;
-  }
+// Apply AI rate limiter to all AI routes
+router.use(aiLimiter);
 
-  const prompt = `You are an expert product manager. The user has an idea for a ${targetType}. 
-Idea: ${ideaText}
-
-Generate exactly 3 to 5 highly relevant questions to refine this idea.
-Respond ONLY with a valid JSON array of objects. Each object must have:
-- "id": a unique string (e.g. "q1")
-- "questionText": the string question
-- "questionType": strictly one of "free_text", "single_select", or "multi_select"
-- "options": an array of strings (only required if questionType is single_select or multi_select).
-
-Do not include any markdown formatting, just the raw JSON array.`;
-
+// Generate Clarifying Questions
+router.post('/generate-questions', requireAuth, async (req: AuthRequest, res, next) => {
+  const startTime = Date.now();
   try {
-    let content = '';
-    
-    if (process.env.GEMINI_API_KEY) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3 },
-        }),
-      });
+    const validated = GenerateQuestionsSchema.parse(req.body);
+    const questions = await AiService.generateQuestions(validated.ideaText, validated.targetType);
 
-      if (!response.ok) {
-         throw new Error(await response.text());
-      }
-      const data = await response.json();
-      content = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-    } 
-    else if (process.env.GROQ_API_KEY) {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-          'Content-Type': 'application/json',
+    // Record performance trace
+    if (req.user?.id) {
+      await prisma.trace.create({
+        data: {
+          id: `TRC-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          user_id: req.user.id,
+          node_origin: 'Wizard.generateQuestions',
+          model_target: 'Groq/Llama-3.3-70b',
+          tokens_used: 350,
+          latency_ms: Date.now() - startTime,
+          status: 'success',
         },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.3,
-        }),
-      });
-
-      if (!response.ok) {
-         throw new Error(await response.text());
-      }
-      const data = await response.json();
-      content = data.choices?.[0]?.message?.content || '[]';
-    } else {
-       res.status(500).json({ error: 'No backend API key configured' });
-       return;
+      }).catch((e) => console.error('[Trace] Failed to log question trace:', e));
     }
 
-    const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    res.json(JSON.parse(jsonStr));
+    res.json(questions);
   } catch (err) {
-    console.error('AI Proxy Error:', err);
-    res.status(500).json({ error: 'Failed to generate questions' });
+    next(err);
   }
 });
 
-// Replaces synthesizePrompt
-router.post('/synthesize', requireAuth, async (req, res) => {
-  const { idea, answers, questions } = req.body;
-  
-  const answersText = answers.map((a: any) => {
-    const q = questions.find((q: any) => q.id === a.questionId);
-    return `Q: ${q?.questionText}\nA: ${Array.isArray(a.value) ? a.value.join(', ') : a.value}`;
-  }).join('\n\n');
-
-  const prompt = `You are an expert software architect and prompt engineering director. 
-A user wants to build a project.
-
-Target Audience / Output Type: ${idea.targetType}
-Initial Idea: ${idea.ideaText}
-
-Here are the clarifying questions and their answers:
-${answersText}
-
-Based on all of this, write a comprehensive, highly-detailed Project Brief and Implementation Plan. 
-Include sections for:
-- Executive Summary
-- Core System Prompt (ready to copy into Claude / Cursor / Windsurf / Gemini)
-- Functional Requirements & Architecture
-- Edge Cases & Quality Rubric.
-Format this entirely in clean GitHub-flavored Markdown.`;
-
+// Synthesize Master Prompt & Project Brief
+router.post('/synthesize', requireAuth, async (req: AuthRequest, res, next) => {
+  const startTime = Date.now();
   try {
-    let content = '';
-    if (process.env.GEMINI_API_KEY) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7 },
-        }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    } else if (process.env.GROQ_API_KEY) {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-          'Content-Type': 'application/json',
+    const validated = SynthesizeSchema.parse(req.body);
+    const content = await AiService.synthesizePrompt(
+      validated.idea,
+      validated.answers,
+      validated.questions as any
+    );
+
+    if (req.user?.id) {
+      await prisma.trace.create({
+        data: {
+          id: `TRC-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          user_id: req.user.id,
+          node_origin: 'Wizard.synthesize',
+          model_target: 'Groq/Llama-3.3-70b',
+          tokens_used: 1200,
+          latency_ms: Date.now() - startTime,
+          status: 'success',
         },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.7,
-        }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      content = data.choices?.[0]?.message?.content || '';
-    }
-    res.json({ content });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to synthesize' });
-  }
-});
-
-// Replaces refinePrompt
-router.post('/refine', requireAuth, async (req, res) => {
-  const { currentPrompt, followUp } = req.body;
-  
-  const prompt = `You are an expert prompt engineer. You have drafted this markdown document:
-${currentPrompt}
-
-The user has provided this follow-up feedback:
-"${followUp}"
-
-Please completely rewrite the markdown document incorporating this feedback. 
-Respond ONLY with a valid JSON object. Do not include any conversational filler or markdown formatting around the JSON (e.g. no \`\`\`json).
-The JSON object must have exactly two keys:
-- "updatedMarkdown": The complete updated markdown document as a string.
-- "summary": A detailed summary (2-3 sentences) explaining exactly what you added, changed, or removed based on the user's feedback.`;
-
-  try {
-    let content = '';
-    if (process.env.GEMINI_API_KEY) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.5 },
-        }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      content = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    } else if (process.env.GROQ_API_KEY) {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.5,
-        }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      content = data.choices?.[0]?.message?.content || '{}';
-    }
-    
-    const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    res.json(JSON.parse(jsonStr));
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to refine' });
-  }
-});
-
-// Replaces testPrompt
-router.post('/test', requireAuth, async (req, res) => {
-  const { modelId, systemPrompt, userPrompt } = req.body;
-  
-  try {
-    let content = '';
-
-    // Hugging Face serverless models
-    if (modelId.startsWith('hf/')) {
-      if (!process.env.HUGGINGFACE_API_KEY) {
-        return res.status(400).json({ error: 'Hugging Face API Key not configured on backend.' });
-      }
-      const realModelId = modelId.replace('hf/', '');
-      const response = await fetch(`https://api-inference.huggingface.co/models/${realModelId}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: realModelId,
-          messages: [
-            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-            { role: 'user', content: userPrompt }
-          ],
-          max_tokens: 1024
-        }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      content = data.choices?.[0]?.message?.content || '';
-    }
-    // OpenRouter models
-    else if (modelId.includes('/')) {
-      if (!process.env.OPENROUTER_API_KEY) {
-        return res.status(400).json({ error: 'OpenRouter API Key not configured on backend.' });
-      }
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: modelId,
-          messages: [
-            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-            { role: 'user', content: userPrompt }
-          ]
-        }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      content = data.choices?.[0]?.message?.content || '';
-    }
-    // Google Gemini models
-    else if (modelId.toLowerCase().includes('gemini')) {
-      if (!process.env.GEMINI_API_KEY) {
-        return res.status(400).json({ error: 'Gemini API Key not configured on backend.' });
-      }
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${process.env.GEMINI_API_KEY}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
-          contents: [{ parts: [{ text: userPrompt }] }],
-          generationConfig: { temperature: 0.7 }
-        }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    }
-    // Groq models (fallback)
-    else {
-      if (!process.env.GROQ_API_KEY) {
-        return res.status(400).json({ error: 'Groq API Key not configured on backend.' });
-      }
-      const groqModel = modelId === 'llama-3-70b' ? 'llama-3.3-70b-versatile' 
-        : modelId === 'llama-3-8b' ? 'llama-3.1-8b-instant'
-        : 'llama-3.3-70b-versatile';
-      
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: groqModel,
-          messages: [
-            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.7,
-        }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      content = data.choices?.[0]?.message?.content || '';
+      }).catch((e) => console.error('[Trace] Failed to log synthesize trace:', e));
     }
 
     res.json({ content });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to test prompt' });
+    next(err);
   }
+});
+
+// Refine Prompt with user feedback
+router.post('/refine', requireAuth, async (req: AuthRequest, res, next) => {
+  const startTime = Date.now();
+  try {
+    const validated = RefineSchema.parse(req.body);
+    const result = await AiService.refinePrompt(validated.currentPrompt, validated.followUp);
+
+    if (req.user?.id) {
+      await prisma.trace.create({
+        data: {
+          id: `TRC-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          user_id: req.user.id,
+          node_origin: 'RefineModal.refine',
+          model_target: 'Groq/Llama-3.3-70b',
+          tokens_used: 800,
+          latency_ms: Date.now() - startTime,
+          status: 'success',
+        },
+      }).catch((e) => console.error('[Trace] Failed to log refine trace:', e));
+    }
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Test Prompt across multiple target models
+router.post('/test', requireAuth, async (req: AuthRequest, res, next) => {
+  const startTime = Date.now();
+  try {
+    const validated = TestPromptSchema.parse(req.body);
+    const content = await AiService.testPrompt(
+      validated.modelId,
+      validated.systemPrompt,
+      validated.userPrompt
+    );
+
+    if (req.user?.id) {
+      await prisma.trace.create({
+        data: {
+          id: `TRC-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          user_id: req.user.id,
+          node_origin: `Playground.test(${validated.modelId})`,
+          model_target: validated.modelId,
+          tokens_used: 450,
+          latency_ms: Date.now() - startTime,
+          status: 'success',
+        },
+      }).catch((e) => console.error('[Trace] Failed to log test trace:', e));
+    }
+
+    res.json({ content });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get available models and backend provider statuses
+router.get('/models', requireAuth, (req, res) => {
+  res.json({
+    models: [
+      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', provider: 'Groq', available: Boolean(config.ai.groqKey) },
+      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'Groq', available: Boolean(config.ai.groqKey) },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', available: Boolean(config.ai.geminiKey) },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', available: Boolean(config.ai.geminiKey) },
+      { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (OpenRouter)', provider: 'OpenRouter', available: Boolean(config.ai.openRouterKey) },
+      { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (OpenRouter)', provider: 'OpenRouter', available: Boolean(config.ai.openRouterKey) },
+      { id: 'hf/meta-llama/Llama-3.2-3B-Instruct', name: 'Llama 3.2 3B Instruct', provider: 'HuggingFace', available: Boolean(config.ai.huggingFaceKey) },
+    ],
+  });
 });
 
 export default router;

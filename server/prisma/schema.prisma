@@ -8,37 +8,48 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  password_hash String
-  name          String
-  avatar_url    String?
-  plan          String   @default("free")
-  role          String   @default("Prompt Designer")
-  created_at    DateTime @default(now())
+  id              String   @id @default(uuid())
+  email           String   @unique
+  password_hash   String
+  name            String
+  username        String?
+  avatar_url      String?
+  avatar_initials String?
+  plan            String   @default("Free Plan")
+  role            String   @default("Lead Prompt Architect")
+  bio             String?
+  location        String?
+  organization    String?
+  github          String?
+  huggingface     String?
+  website         String?
+  joined_date     String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
-  prompts       Prompt[]
-  traces        Trace[]
-  branchingTrees BranchingTree[]
+  prompts         Prompt[]
+  traces          Trace[]
+  branchingTrees  BranchingTree[]
+  securityLogs    SecurityLog[]
 }
 
 model Prompt {
   id           String   @id @default(uuid())
   user_id      String
-  user         User     @relation(fields: [user_id], references: [id])
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   title        String
   snippet      String
   full_content String
-  tags         String   // Storing JSON string or comma-separated for SQLite
+  tags         String   // JSON string array
   target_type  String
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 }
 
 model Trace {
-  id           String   @id // Using Trace IDs like TRC-...
+  id           String   @id
   user_id      String
-  user         User     @relation(fields: [user_id], references: [id])
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   node_origin  String
   model_target String
   tokens_used  Int
@@ -50,9 +61,22 @@ model Trace {
 model BranchingTree {
   id           String   @id @default(uuid())
   user_id      String
-  user         User     @relation(fields: [user_id], references: [id])
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   title        String
-  nodes        String   // Stored as JSON string
-  edges        String   // Stored as JSON string
+  nodes        String   // JSON string
+  edges        String   // JSON string
+  created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
+}
+
+model SecurityLog {
+  id         String   @id @default(uuid())
+  user_id    String?
+  user       User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  event_type String   // e.g., "AUTH_FAIL", "RATE_LIMIT", "INVALID_INPUT", "SUSPICIOUS_PAYLOAD", "AI_EXEC"
+  severity   String   @default("INFO") // "INFO", "WARN", "CRITICAL"
+  ip_address String?
+  endpoint   String?
+  message    String
+  created_at DateTime @default(now())
 }
