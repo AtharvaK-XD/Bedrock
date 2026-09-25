@@ -27,7 +27,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "scan:secrets": "node scripts/scan-secrets.js",
-    "test:injection": "cd server && npx tsx tests/prompt-injection-runner.ts"
+    "test:injection": "cd server && npx tsx tests/prompt-injection-runner.ts",
+    "test:attacks": "cd server && npx tsx tests/security-attack-suite.ts"
   },
   "dependencies": {
     "@clerk/react": "^6.17.0",
