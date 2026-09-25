@@ -28,7 +28,7 @@ import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
-import { testPrompt, saveWorkflow, loadWorkflows } from '../lib/api';
+import { testPrompt, saveWorkflow, loadWorkflows, deleteWorkflow } from '../lib/api';
 import {
   Bot,
   Sparkles,
@@ -42,6 +42,22 @@ import {
   Copy,
   CheckCircle2,
   XCircle,
+  Plus,
+  Search,
+  Trash2,
+  ArrowLeft,
+  Clock,
+  Layers,
+  FolderOpen,
+  ChevronRight,
+  ExternalLink,
+  X,
+  LayoutGrid,
+  List,
+  RefreshCw,
+  GitBranch,
+  Cpu,
+  Boxes,
 } from 'lucide-react';
 
 export const NODE_CONFIG = {
@@ -894,6 +910,469 @@ function CustomSelect({
   );
 }
 
+export const CURATED_TEMPLATES = [
+  {
+    id: 'template-consensus',
+    title: 'Multi-Model Consensus & Synthesizer',
+    description: 'Dispatches identical reasoning prompts in parallel to Gemini 3.5 & Groq GPT-OSS, aggregates outputs via Synthesizer, and evaluates consensus with Quality Judge.',
+    category: 'Consensus',
+    tag: 'PARALLEL',
+    complexity: 'Advanced',
+    archetypes: ['system', 'prompt', 'merge', 'evaluation', 'output'],
+    nodes: [
+      {
+        id: 'node-sys',
+        type: 'genericNode',
+        position: { x: 80, y: 160 },
+        data: {
+          title: 'Architect Persona',
+          description: 'You are a Principal Distributed Systems Engineer. Provide rigorous, fault-tolerant analysis.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'system',
+          status: 'idle',
+          systemPersona: 'architect',
+        },
+      },
+      {
+        id: 'node-prompt-input',
+        type: 'genericNode',
+        position: { x: 80, y: 380 },
+        data: {
+          title: 'Distributed Problem Input',
+          description: 'Analyze potential split-brain failure modes in a multi-region Raft cluster and outline mitigation protocols.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'prompt',
+          status: 'idle',
+        },
+      },
+      {
+        id: 'node-worker-gemini',
+        type: 'genericNode',
+        position: { x: 440, y: 140 },
+        data: {
+          title: 'Gemini 3.5 Engine',
+          description: 'Analyze Raft consensus failure modes with focus on network partitions and quorum leasing.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'prompt',
+          status: 'idle',
+        },
+      },
+      {
+        id: 'node-worker-groq',
+        type: 'genericNode',
+        position: { x: 440, y: 400 },
+        data: {
+          title: 'Groq GPT-OSS Engine',
+          description: 'Examine Raft leader election race conditions and heartbeat latency thresholds under split-brain partitions.',
+          agentId: 'llama',
+          modelId: 'openai/gpt-oss-120b',
+          nodeType: 'prompt',
+          status: 'idle',
+        },
+      },
+      {
+        id: 'node-merge',
+        type: 'genericNode',
+        position: { x: 800, y: 270 },
+        data: {
+          title: 'Stream Synthesizer',
+          description: 'Synthesize insights from both engines into a unified architecture recommendation.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'merge',
+          status: 'idle',
+          mergeStrategy: 'synthesize',
+        },
+      },
+      {
+        id: 'node-eval',
+        type: 'genericNode',
+        position: { x: 1120, y: 270 },
+        data: {
+          title: 'Quality Judge',
+          description: 'Audit output for technical accuracy, clarity, and guardrails compliance.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'evaluation',
+          status: 'idle',
+          evalCriteria: 'accuracy',
+        },
+      },
+      {
+        id: 'node-out',
+        type: 'genericNode',
+        position: { x: 1440, y: 270 },
+        data: {
+          title: 'Terminal Report',
+          description: 'Render synthesized architectural review with markdown formatting.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'output',
+          status: 'idle',
+          outputFormat: 'markdown',
+        },
+      },
+    ],
+    edges: [
+      { id: 'e-sys-gemini', source: 'node-sys', target: 'node-worker-gemini', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-sys-groq', source: 'node-sys', target: 'node-worker-groq', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-p-gemini', source: 'node-prompt-input', target: 'node-worker-gemini', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-p-groq', source: 'node-prompt-input', target: 'node-worker-groq', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-gemini-merge', source: 'node-worker-gemini', target: 'node-merge', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-groq-merge', source: 'node-worker-groq', target: 'node-merge', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-merge-eval', source: 'node-merge', target: 'node-eval', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-eval-out', source: 'node-eval', target: 'node-out', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+    ],
+  },
+  {
+    id: 'template-audit',
+    title: 'Code Extraction & Quality Audit',
+    description: 'Generates TypeScript implementation, strips markdown code fences using JavaScript regex, and scores safety & code quality with Quality Judge.',
+    category: 'Code Review',
+    tag: 'CODE AUDIT',
+    complexity: 'Beginner',
+    archetypes: ['system', 'prompt', 'code', 'evaluation', 'output'],
+    nodes: [
+      {
+        id: 'node-sys',
+        type: 'genericNode',
+        position: { x: 100, y: 220 },
+        data: {
+          title: 'Code Reviewer Persona',
+          description: 'You are a Senior Security & Performance Code Reviewer.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'system',
+          status: 'idle',
+          systemPersona: 'reviewer',
+        },
+      },
+      {
+        id: 'node-prompt',
+        type: 'genericNode',
+        position: { x: 440, y: 220 },
+        data: {
+          title: 'JWT Auth Middleware',
+          description: 'Generate an Express/Node.js authentication middleware with RS256 token verification and token expiration checking.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'prompt',
+          status: 'idle',
+        },
+      },
+      {
+        id: 'node-code',
+        type: 'genericNode',
+        position: { x: 780, y: 220 },
+        data: {
+          title: 'Fenced Code Extractor',
+          description: 'Extract raw TypeScript from markdown fences.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'code',
+          status: 'idle',
+          codeScript: CODE_TEMPLATES[3].code,
+        },
+      },
+      {
+        id: 'node-eval',
+        type: 'genericNode',
+        position: { x: 1100, y: 220 },
+        data: {
+          title: 'Quality Judge',
+          description: 'Audit extracted code for security vulnerabilities, OWASP compliance, and memory leaks.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'evaluation',
+          status: 'idle',
+          evalCriteria: 'code_quality',
+        },
+      },
+      {
+        id: 'node-out',
+        type: 'genericNode',
+        position: { x: 1420, y: 220 },
+        data: {
+          title: 'Terminal Display',
+          description: 'Inspection CRT terminal for audited code.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'output',
+          status: 'idle',
+          outputFormat: 'markdown',
+        },
+      },
+    ],
+    edges: [
+      { id: 'e-sys-prompt', source: 'node-sys', target: 'node-prompt', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-prompt-code', source: 'node-prompt', target: 'node-code', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-code-eval', source: 'node-code', target: 'node-eval', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-eval-out', source: 'node-eval', target: 'node-out', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+    ],
+  },
+  {
+    id: 'template-router',
+    title: 'Adaptive Conditional Router',
+    description: 'Classifies incoming request context and routes dynamically to specialized high-priority escalation or standard ticket paths.',
+    category: 'Routing',
+    tag: 'CONDITIONAL',
+    complexity: 'Intermediate',
+    archetypes: ['prompt', 'condition', 'output'],
+    nodes: [
+      {
+        id: 'node-prompt-input',
+        type: 'genericNode',
+        position: { x: 100, y: 260 },
+        data: {
+          title: 'Triage Classifier',
+          description: 'Evaluate if the incident report contains critical security keywords (e.g. "CRITICAL", "EXPLOIT", "SECURITY").',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'prompt',
+          status: 'idle',
+        },
+      },
+      {
+        id: 'node-branch',
+        type: 'genericNode',
+        position: { x: 440, y: 260 },
+        data: {
+          title: 'Critical Incident Filter',
+          description: 'Branch if response contains CRITICAL',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'condition',
+          status: 'idle',
+          conditionRule: 'contains',
+          conditionValue: 'CRITICAL',
+        },
+      },
+      {
+        id: 'node-route-true',
+        type: 'genericNode',
+        position: { x: 780, y: 140 },
+        data: {
+          title: 'Sev-1 Dispatch Runbook',
+          description: 'Generate high-urgency mitigation checklist, notify on-call SRE, and trigger isolation protocol.',
+          agentId: 'llama',
+          modelId: 'openai/gpt-oss-120b',
+          nodeType: 'prompt',
+          status: 'idle',
+        },
+      },
+      {
+        id: 'node-route-false',
+        type: 'genericNode',
+        position: { x: 780, y: 380 },
+        data: {
+          title: 'Standard Ticket Workflow',
+          description: 'Draft standard triage summary and add to regular sprint backlog.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'prompt',
+          status: 'idle',
+        },
+      },
+      {
+        id: 'node-out',
+        type: 'genericNode',
+        position: { x: 1120, y: 260 },
+        data: {
+          title: 'Resolution Screen',
+          description: 'Final execution terminal',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'output',
+          status: 'idle',
+          outputFormat: 'markdown',
+        },
+      },
+    ],
+    edges: [
+      { id: 'e-in-branch', source: 'node-prompt-input', target: 'node-branch', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-branch-true', source: 'node-branch', sourceHandle: 'true', target: 'node-route-true', animated: true, type: 'deletableEdge', style: { stroke: '#34d399', strokeWidth: 2 } },
+      { id: 'e-branch-false', source: 'node-branch', sourceHandle: 'false', target: 'node-route-false', animated: true, type: 'deletableEdge', style: { stroke: '#f87171', strokeWidth: 2 } },
+      { id: 'e-true-out', source: 'node-route-true', target: 'node-out', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-false-out', source: 'node-route-false', target: 'node-out', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+    ],
+  },
+  {
+    id: 'template-etl',
+    title: 'Structured JSON ETL & Data Pipeline',
+    description: 'Injects mock JSON payload from Data Store, normalizes and counts telemetry via Transform Script, and generates an executive summary.',
+    category: 'Data Processing',
+    tag: 'DATA PIPELINE',
+    complexity: 'Beginner',
+    archetypes: ['data', 'code', 'prompt', 'output'],
+    nodes: [
+      {
+        id: 'node-data',
+        type: 'genericNode',
+        position: { x: 100, y: 220 },
+        data: {
+          title: 'API Response Payload',
+          description: 'Raw JSON data store from API',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'data',
+          status: 'idle',
+          dataMode: 'json',
+          dataPayload: DATA_PRESETS[1].data,
+        },
+      },
+      {
+        id: 'node-code',
+        type: 'genericNode',
+        position: { x: 440, y: 220 },
+        data: {
+          title: 'Format & Stats Script',
+          description: 'Pretty print and calculate telemetry count',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'code',
+          status: 'idle',
+          codeScript: CODE_TEMPLATES[2].code,
+        },
+      },
+      {
+        id: 'node-prompt',
+        type: 'genericNode',
+        position: { x: 780, y: 220 },
+        data: {
+          title: 'Executive Summarizer',
+          description: 'Summarize key entities and operational health from the processed telemetry records.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'prompt',
+          status: 'idle',
+        },
+      },
+      {
+        id: 'node-out',
+        type: 'genericNode',
+        position: { x: 1120, y: 220 },
+        data: {
+          title: 'Executive Briefing',
+          description: 'Terminal output for executive briefing.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'output',
+          status: 'idle',
+          outputFormat: 'markdown',
+        },
+      },
+    ],
+    edges: [
+      { id: 'e-data-code', source: 'node-data', target: 'node-code', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-code-prompt', source: 'node-code', target: 'node-prompt', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-prompt-out', source: 'node-prompt', target: 'node-out', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+    ],
+  },
+  {
+    id: 'template-refinement',
+    title: 'Prompt Refinement & Rubric Loop',
+    description: 'Drafts a base prompt, subjects it to an adversarial critique persona, merges the revision, and scores against quality criteria.',
+    category: 'Prompt Engineering',
+    tag: 'PROMPT REFINER',
+    complexity: 'Intermediate',
+    archetypes: ['system', 'prompt', 'merge', 'evaluation', 'output'],
+    nodes: [
+      {
+        id: 'node-sys',
+        type: 'genericNode',
+        position: { x: 100, y: 160 },
+        data: {
+          title: 'Prompt Engineering Persona',
+          description: 'You are an elite Prompt Engineer. Optimize for clarity, deterministic constraints, and zero fluff.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'system',
+          status: 'idle',
+          systemPersona: 'architect',
+        },
+      },
+      {
+        id: 'node-prompt-v1',
+        type: 'genericNode',
+        position: { x: 100, y: 380 },
+        data: {
+          title: 'Base Prompt Concept',
+          description: 'Draft a prompt that directs an LLM to generate production-ready PostgreSQL migration scripts.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'prompt',
+          status: 'idle',
+        },
+      },
+      {
+        id: 'node-critique',
+        type: 'genericNode',
+        position: { x: 440, y: 260 },
+        data: {
+          title: 'Adversarial Critique',
+          description: 'Critique the draft prompt for ambiguity, missing edge cases (e.g. rollback, locks, zero-downtime), and safety.',
+          agentId: 'llama',
+          modelId: 'openai/gpt-oss-120b',
+          nodeType: 'prompt',
+          status: 'idle',
+        },
+      },
+      {
+        id: 'node-merge',
+        type: 'genericNode',
+        position: { x: 780, y: 260 },
+        data: {
+          title: 'Merge Critique & Draft',
+          description: 'Synthesize critique into polished final prompt version.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'merge',
+          status: 'idle',
+          mergeStrategy: 'synthesize',
+        },
+      },
+      {
+        id: 'node-eval',
+        type: 'genericNode',
+        position: { x: 1100, y: 260 },
+        data: {
+          title: 'Quality Judge',
+          description: 'Score the refined prompt for completeness and safety rubric.',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'evaluation',
+          status: 'idle',
+          evalCriteria: 'accuracy',
+        },
+      },
+      {
+        id: 'node-out',
+        type: 'genericNode',
+        position: { x: 1420, y: 260 },
+        data: {
+          title: 'Final Production Prompt',
+          description: 'Copy-ready system prompt terminal',
+          agentId: 'gemini',
+          modelId: 'gemini-3.5-flash-lite',
+          nodeType: 'output',
+          status: 'idle',
+          outputFormat: 'markdown',
+        },
+      },
+    ],
+    edges: [
+      { id: 'e-sys-v1', source: 'node-sys', target: 'node-prompt-v1', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-v1-critique', source: 'node-prompt-v1', target: 'node-critique', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-critique-merge', source: 'node-critique', target: 'node-merge', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-merge-eval', source: 'node-merge', target: 'node-eval', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+      { id: 'e-eval-out', source: 'node-eval', target: 'node-out', animated: true, type: 'deletableEdge', style: { stroke: '#ff9b71', strokeWidth: 2 } },
+    ],
+  },
+];
+
 const initialNodes: Node<PromptNodeData>[] = [
   {
     id: 'node-1',
@@ -903,7 +1382,7 @@ const initialNodes: Node<PromptNodeData>[] = [
       title: 'Base Persona', 
       description: 'You are an expert AI Architect. Build robust, clean system architectures.',
       agentId: 'gemini',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-3.5-flash-lite',
       nodeType: 'system',
       status: 'idle',
       systemPersona: 'architect',
@@ -917,7 +1396,7 @@ const initialNodes: Node<PromptNodeData>[] = [
       title: 'User Prompt', 
       description: 'Generate an API schema for neural workflow graphs.',
       agentId: 'gemini',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-3.5-flash-lite',
       nodeType: 'prompt',
       status: 'idle',
     },
@@ -925,20 +1404,59 @@ const initialNodes: Node<PromptNodeData>[] = [
 ];
 const initialEdges: Edge[] = [];
 
-function FlowEditor() {
-  const [nodes, setNodes] = useState<Node<PromptNodeData>[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+interface FlowEditorProps {
+  initialWorkflow?: {
+    id?: string;
+    title: string;
+    nodes: any;
+    edges: any;
+  } | null;
+  onBackToDashboard: () => void;
+}
+
+function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
+  const parseNodes = (raw: any): Node<PromptNodeData>[] => {
+    if (!raw) return initialNodes;
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch { return initialNodes; }
+    }
+    return Array.isArray(raw) ? raw : initialNodes;
+  };
+
+  const parseEdges = (raw: any): Edge[] => {
+    if (!raw) return initialEdges;
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch { return initialEdges; }
+    }
+    return Array.isArray(raw) ? raw : initialEdges;
+  };
+
+  const [nodes, setNodes] = useState<Node<PromptNodeData>[]>(() => parseNodes(initialWorkflow?.nodes));
+  const [edges, setEdges] = useState<Edge[]>(() => parseEdges(initialWorkflow?.edges));
   const [toolMode, setToolMode] = useState<'pan' | 'select'>('select');
-  const [workflowTitle, setWorkflowTitle] = useState('Untitled Pipeline');
-  const [workflowId, setWorkflowId] = useState<string | undefined>();
+  const [workflowTitle, setWorkflowTitle] = useState(initialWorkflow?.title || 'Untitled Pipeline');
+  const [workflowId, setWorkflowId] = useState<string | undefined>(initialWorkflow?.id);
   const [savedWorkflows, setSavedWorkflows] = useState<any[]>([]);
   const [activeSettingsNodeId, setActiveSettingsNodeId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
     loadWorkflows().then(data => setSavedWorkflows(data)).catch(console.error);
   }, []);
 
-  const handleSave = async () => {
+  useEffect(() => {
+    if (initialWorkflow) {
+      setWorkflowId(initialWorkflow.id);
+      setWorkflowTitle(initialWorkflow.title || 'Untitled Pipeline');
+      setNodes(parseNodes(initialWorkflow.nodes));
+      setEdges(parseEdges(initialWorkflow.edges));
+      setActiveSettingsNodeId(null);
+    }
+  }, [initialWorkflow]);
+
+  const handleSave = async (silent = false) => {
+    setIsSaving(true);
     try {
       const res = await saveWorkflow({
         id: workflowId,
@@ -947,21 +1465,28 @@ function FlowEditor() {
         edges
       });
       setWorkflowId(res.id);
-      alert('Workflow saved successfully!');
       const updated = await loadWorkflows();
       setSavedWorkflows(updated);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+      return res;
     } catch (e) {
-      alert('Failed to save workflow.');
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+      if (!silent) alert('Failed to save workflow.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleLoad = (tree: any) => {
     setWorkflowId(tree.id);
     setWorkflowTitle(tree.title);
-    setNodes(JSON.parse(tree.nodes));
-    setEdges(JSON.parse(tree.edges));
+    setNodes(parseNodes(tree.nodes));
+    setEdges(parseEdges(tree.edges));
     setActiveSettingsNodeId(null);
   };
+
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -1071,7 +1596,7 @@ function FlowEditor() {
         title: `New ${config.title}`, 
         description: '',
         agentId: 'gemini',
-        modelId: 'gemini-2.5-flash',
+        modelId: 'gemini-3.5-flash-lite',
         nodeType: type,
         status: 'idle',
         ...extraInitial,
@@ -1132,19 +1657,32 @@ function FlowEditor() {
           activeNode ? "left-[404px]" : "left-6"
         )}
       >
-        <div className="flex items-center gap-3 px-4 py-2 bg-[#1a1a1a]/80 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-lg shadow-black/20">
+        <div className="flex items-center gap-2.5 px-3 py-2 bg-[#1a1a1a]/90 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-xl shadow-black/40">
+          <button
+            onClick={onBackToDashboard}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white transition-all text-xs font-sans font-medium active:scale-[0.97] shrink-0 border border-white/5"
+            title="Return to Workflows Dashboard"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-copper-400" />
+            <span>Dashboard</span>
+          </button>
+          
+          <div className="w-[1px] h-4 bg-white/15"></div>
+
           <input 
             type="text" 
             value={workflowTitle}
             onChange={(e) => setWorkflowTitle(e.target.value)}
-            className="bg-transparent border-none text-white font-display font-semibold focus:outline-none focus:ring-1 focus:ring-copper-500 rounded px-1 w-32 md:w-48 placeholder-gray-500"
-            placeholder="Untitled"
+            className="bg-transparent border border-transparent hover:border-white/10 focus:border-copper-500/50 text-white font-display font-semibold focus:outline-none focus:ring-1 focus:ring-copper-500 rounded px-2 py-0.5 w-32 md:w-44 placeholder-gray-500 transition-colors"
+            placeholder="Untitled Pipeline"
           />
-          <div className="w-[1px] h-4 bg-white/20"></div>
+          
+          <div className="w-[1px] h-4 bg-white/15"></div>
+          
           {savedWorkflows.length > 0 && (
             <>
               <select 
-                className="bg-transparent border-none text-gray-400 font-mono text-[10px] uppercase focus:outline-none focus:text-white cursor-pointer"
+                className="bg-transparent border-none text-gray-400 font-mono text-[10px] uppercase focus:outline-none focus:text-white cursor-pointer max-w-[130px] truncate"
                 onChange={(e) => {
                   const id = e.target.value;
                   if (!id) return;
@@ -1153,22 +1691,53 @@ function FlowEditor() {
                 }}
                 value={workflowId || ''}
               >
-                <option value="">Load...</option>
+                <option value="" className="bg-[#1a1a1a]">Load Saved...</option>
                 {savedWorkflows.map(w => (
-                  <option key={w.id} value={w.id}>{w.title}</option>
+                  <option key={w.id} value={w.id} className="bg-[#1a1a1a]">{w.title}</option>
                 ))}
               </select>
-              <div className="w-[1px] h-4 bg-white/20"></div>
+              <div className="w-[1px] h-4 bg-white/15"></div>
             </>
           )}
-          <button onClick={handleSave} className="hover:text-copper-400 transition-colors">Save</button>
-          <div className="w-[1px] h-4 bg-white/20"></div>
-          <button onClick={() => { setNodes([]); setEdges([]); setWorkflowId(undefined); setWorkflowTitle('Untitled Pipeline'); setActiveSettingsNodeId(null); }} className="hover:text-red-400 transition-colors">Clear</button>
-          <div className="w-[1px] h-4 bg-white/20"></div>
+
+          <button 
+            onClick={() => handleSave(false)} 
+            disabled={isSaving}
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1 active:scale-[0.97]",
+              saveStatus === 'saved' 
+                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" 
+                : "bg-copper-500/20 text-copper-300 hover:bg-copper-500/30 border border-copper-500/30"
+            )}
+          >
+            {saveStatus === 'saved' ? (
+              <>
+                <Check className="w-3 h-3 text-emerald-400" />
+                <span>Saved</span>
+              </>
+            ) : isSaving ? (
+              <>
+                <RefreshCw className="w-3 h-3 animate-spin text-copper-400" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <span>Save</span>
+            )}
+          </button>
+
+          <div className="w-[1px] h-4 bg-white/15"></div>
+          <button 
+            onClick={() => { setNodes([]); setEdges([]); setWorkflowId(undefined); setWorkflowTitle('Untitled Pipeline'); setActiveSettingsNodeId(null); }} 
+            className="hover:text-red-400 transition-colors px-1"
+          >
+            Clear
+          </button>
+          
+          <div className="w-[1px] h-4 bg-white/15"></div>
           <span className={toolMode === 'select' ? "text-white font-semibold" : ""}>V:Select</span>
-          <div className="w-[1px] h-4 bg-white/20"></div>
+          <div className="w-[1px] h-4 bg-white/15"></div>
           <span className={toolMode === 'pan' ? "text-white font-semibold" : ""}>H:Pan</span>
-          <div className="w-[1px] h-4 bg-white/20"></div>
+          <div className="w-[1px] h-4 bg-white/15"></div>
           <span>DEL:Remove</span>
         </div>
       </motion.div>
@@ -1586,14 +2155,752 @@ function FlowEditor() {
   );
 }
 
+function formatRelativeTime(dateString?: string): string {
+  if (!dateString) return 'Recently';
+  try {
+    const diffMs = Date.now() - new Date(dateString).getTime();
+    if (isNaN(diffMs)) return 'Recently';
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return 'Just now';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 30) return `${diffDays}d ago`;
+    return new Date(dateString).toLocaleDateString();
+  } catch {
+    return 'Recently';
+  }
+}
+
+function getWorkflowArchetypes(nodesRaw: any): string[] {
+  let nodes: any[] = [];
+  if (Array.isArray(nodesRaw)) {
+    nodes = nodesRaw;
+  } else if (typeof nodesRaw === 'string') {
+    try {
+      nodes = JSON.parse(nodesRaw);
+    } catch {
+      nodes = [];
+    }
+  }
+  const types = new Set<string>();
+  nodes.forEach(n => {
+    if (n?.data?.nodeType) types.add(n.data.nodeType);
+  });
+  return Array.from(types);
+}
+
+function getNodeCount(nodesRaw: any): number {
+  if (Array.isArray(nodesRaw)) return nodesRaw.length;
+  if (typeof nodesRaw === 'string') {
+    try {
+      return JSON.parse(nodesRaw).length;
+    } catch {
+      return 0;
+    }
+  }
+  return 0;
+}
+
+function getEdgeCount(edgesRaw: any): number {
+  if (Array.isArray(edgesRaw)) return edgesRaw.length;
+  if (typeof edgesRaw === 'string') {
+    try {
+      return JSON.parse(edgesRaw).length;
+    } catch {
+      return 0;
+    }
+  }
+  return 0;
+}
+
+interface WorkflowDashboardProps {
+  onOpenWorkflow: (wf: { id?: string; title: string; nodes: any; edges: any }) => void;
+  onCreateNew: () => void;
+}
+
+function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardProps) {
+  const [savedWorkflows, setSavedWorkflows] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'saved' | 'templates'>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchWorkflows = async () => {
+    try {
+      const data = await loadWorkflows();
+      setSavedWorkflows(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Failed to load workflows', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWorkflows();
+  }, []);
+
+  // Keyboard shortcut '/' to search, 'Esc' to clear/cancel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement !== searchInputRef.current) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === 'Escape') {
+        setDeleteConfirmId(null);
+        if (document.activeElement === searchInputRef.current) {
+          searchInputRef.current?.blur();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await deleteWorkflow(id);
+      setSavedWorkflows(prev => prev.filter(w => w.id !== id));
+      setDeleteConfirmId(null);
+    } catch (err) {
+      console.error('Failed to delete workflow', err);
+    }
+  };
+
+  const handleDuplicate = async (wf: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const nodes = typeof wf.nodes === 'string' ? JSON.parse(wf.nodes) : wf.nodes;
+      const edges = typeof wf.edges === 'string' ? JSON.parse(wf.edges) : wf.edges;
+      const clone = {
+        title: `${wf.title || 'Pipeline'} (Copy)`,
+        nodes,
+        edges,
+      };
+      const created = await saveWorkflow(clone);
+      setSavedWorkflows(prev => [created, ...prev]);
+      setCopiedId(created.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Failed to duplicate workflow', err);
+    }
+  };
+
+  // Filter saved workflows
+  const filteredSaved = savedWorkflows.filter(wf => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const titleMatch = (wf.title || '').toLowerCase().includes(q);
+    const nodesStr = typeof wf.nodes === 'string' ? wf.nodes.toLowerCase() : JSON.stringify(wf.nodes || []).toLowerCase();
+    return titleMatch || nodesStr.includes(q);
+  });
+
+  // Filter curated templates
+  const filteredTemplates = CURATED_TEMPLATES.filter(tpl => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      tpl.title.toLowerCase().includes(q) ||
+      tpl.description.toLowerCase().includes(q) ||
+      tpl.tag.toLowerCase().includes(q) ||
+      tpl.category.toLowerCase().includes(q)
+    );
+  });
+
+  const hasAnyMatches = filteredSaved.length > 0 || filteredTemplates.length > 0;
+
+  return (
+    <div className="w-full h-full flex flex-col min-h-0 bg-[#0c0c0c] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+      {/* Top Header Bar */}
+      <div className="px-5 py-3.5 border-b border-white/10 bg-[#121212]/95 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-copper-500/10 border border-copper-500/30 text-copper-400 flex items-center justify-center shrink-0 shadow-sm">
+            <GitBranch className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-bold font-mono tracking-wider uppercase text-white">
+                Workflows Dashboard
+              </h1>
+              <span className="px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded bg-white/5 border border-white/10 text-gray-400">
+                v2.4 Canvas Hub
+              </span>
+            </div>
+            <p className="text-[11px] font-mono text-gray-400 mt-0.5">
+              Manage saved neural execution graphs, inspect pipelines & load curated templates
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={fetchWorkflows}
+            title="Refresh saved pipelines"
+            className="p-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin text-copper-400")} />
+          </button>
+          <button
+            onClick={onCreateNew}
+            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-copper-500 to-copper-600 hover:from-copper-400 hover:to-copper-500 text-white font-medium text-xs font-mono flex items-center gap-1.5 shadow-md shadow-copper-500/15 active:scale-[0.98] transition-all"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Create Blank Pipeline</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Body with High Density & No Empty Wasted Space */}
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-5 space-y-5">
+        {/* KPI / Architecture Status Ribbon */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-[#141414] border border-white/5 rounded-xl p-3 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">Your Workflows</div>
+              <div className="text-lg font-bold font-display text-white mt-0.5">
+                {savedWorkflows.length} <span className="text-xs font-mono font-normal text-gray-400">saved</span>
+              </div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-copper-500/10 border border-copper-500/20 text-copper-400 flex items-center justify-center">
+              <Layers className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="bg-[#141414] border border-white/5 rounded-xl p-3 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">Curated Library</div>
+              <div className="text-lg font-bold font-display text-white mt-0.5">
+                {CURATED_TEMPLATES.length} <span className="text-xs font-mono font-normal text-gray-400">templates</span>
+              </div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+              <Boxes className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="bg-[#141414] border border-white/5 rounded-xl p-3 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">Node Archetypes</div>
+              <div className="text-lg font-bold font-display text-white mt-0.5">
+                7 <span className="text-xs font-mono font-normal text-gray-400">types ready</span>
+              </div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
+              <GitFork className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="bg-[#141414] border border-white/5 rounded-xl p-3 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">Execution Core</div>
+              <div className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5 mt-1 font-mono">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                BYOK & Local Sync
+              </div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <Cpu className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+
+        {/* Search, Filter Tabs & View Controls */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#131313] p-2.5 rounded-xl border border-white/10">
+          {/* Search Bar */}
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search workflows, nodes, or templates..."
+              className="w-full pl-9 pr-8 py-1.5 text-xs bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-copper-500/50 font-mono transition-colors"
+            />
+            {searchQuery ? (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-gray-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 pointer-events-none">
+                /
+              </span>
+            )}
+          </div>
+
+          {/* Filter Tabs & Layout View Mode */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-0.5 font-mono text-xs">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={cn(
+                  "px-2.5 py-1 rounded-md transition-colors",
+                  activeTab === 'all' ? "bg-white/10 text-white font-medium shadow-sm" : "text-gray-400 hover:text-gray-200"
+                )}
+              >
+                All ({filteredSaved.length + filteredTemplates.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('saved')}
+                className={cn(
+                  "px-2.5 py-1 rounded-md transition-colors",
+                  activeTab === 'saved' ? "bg-white/10 text-white font-medium shadow-sm" : "text-gray-400 hover:text-gray-200"
+                )}
+              >
+                Saved ({filteredSaved.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('templates')}
+                className={cn(
+                  "px-2.5 py-1 rounded-md transition-colors",
+                  activeTab === 'templates' ? "bg-white/10 text-white font-medium shadow-sm" : "text-gray-400 hover:text-gray-200"
+                )}
+              >
+                Templates ({filteredTemplates.length})
+              </button>
+            </div>
+
+            <div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors",
+                  viewMode === 'grid' ? "bg-white/10 text-white" : "text-gray-400 hover:text-gray-300"
+                )}
+                title="Grid View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors",
+                  viewMode === 'list' ? "bg-white/10 text-white" : "text-gray-400 hover:text-gray-300"
+                )}
+                title="List View"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Global Empty State if Search yields 0 */}
+        {!hasAnyMatches && searchQuery.trim() && (
+          <div className="border border-white/10 rounded-xl p-8 text-center flex flex-col items-center justify-center bg-[#151515]">
+            <Search className="w-8 h-8 text-gray-500 mb-2" />
+            <div className="text-sm font-semibold text-white">No matching pipelines found</div>
+            <div className="text-xs text-gray-400 mt-1 max-w-sm">
+              No saved workflows or templates matched "{searchQuery}". Try a different keyword or create a blank pipeline.
+            </div>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="mt-4 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-mono transition-colors"
+            >
+              Clear Search
+            </button>
+          </div>
+        )}
+
+        {/* Section 1: Saved Workflows */}
+        {activeTab !== 'templates' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-400">
+                  Your Saved Workflows
+                </h2>
+                <span className="px-1.5 py-0.2 text-[10px] font-mono rounded bg-white/5 border border-white/5 text-gray-400">
+                  {filteredSaved.length}
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-gray-400">Auto-saved to local storage & backend</span>
+            </div>
+
+            {filteredSaved.length > 0 ? (
+              viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filteredSaved.map(wf => {
+                    const archetypes = getWorkflowArchetypes(wf.nodes);
+                    const nodeCount = getNodeCount(wf.nodes);
+                    const edgeCount = getEdgeCount(wf.edges);
+                    const isConfirming = deleteConfirmId === wf.id;
+
+                    return (
+                      <div
+                        key={wf.id}
+                        onClick={() => onOpenWorkflow(wf)}
+                        className="group bg-[#151515] hover:bg-[#1a1a1a] border border-white/10 hover:border-copper-500/40 rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-lg shadow-black/20 hover:shadow-copper-500/5 relative overflow-hidden"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-semibold font-display text-white group-hover:text-copper-400 transition-colors truncate">
+                                {wf.title || 'Untitled Pipeline'}
+                              </h3>
+                              <div className="flex items-center gap-1.5 text-[11px] font-mono text-gray-400 mt-1">
+                                <Clock className="w-3 h-3 text-gray-400 shrink-0" />
+                                <span>{formatRelativeTime(wf.updatedAt)}</span>
+                                <span>•</span>
+                                <span>{nodeCount} {nodeCount === 1 ? 'node' : 'nodes'}</span>
+                                <span>•</span>
+                                <span>{edgeCount} {edgeCount === 1 ? 'edge' : 'edges'}</span>
+                              </div>
+                            </div>
+                            <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-copper-500/20 text-gray-400 group-hover:text-copper-400 flex items-center justify-center transition-colors shrink-0">
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+
+                          {/* Archetypes pills */}
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {archetypes.length > 0 ? (
+                              archetypes.map(t => {
+                                const cfg = (NODE_CONFIG as any)[t];
+                                if (!cfg) return null;
+                                return (
+                                  <span
+                                    key={t}
+                                    className={cn(
+                                      "px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded border uppercase tracking-wider",
+                                      cfg.bg, cfg.color, cfg.border
+                                    )}
+                                  >
+                                    {cfg.tag}
+                                  </span>
+                                );
+                              })
+                            ) : (
+                              <span className="text-[10px] font-mono text-gray-600">Custom graph</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Card Footer Actions */}
+                        <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between">
+                          <span className="text-[10px] font-mono text-gray-400 group-hover:text-copper-400 flex items-center gap-1">
+                            Open Canvas <ChevronRight className="w-3 h-3" />
+                          </span>
+
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            {isConfirming ? (
+                              <div className="flex items-center gap-1 animate-fadeIn">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
+                                  className="px-2 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-gray-300 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={(e) => handleDelete(wf.id, e)}
+                                  className="px-2 py-0.5 text-[10px] font-mono rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={(e) => handleDuplicate(wf, e)}
+                                  title="Duplicate Pipeline"
+                                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                                >
+                                  {copiedId === wf.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(wf.id); }}
+                                  title="Delete Pipeline"
+                                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden bg-[#151515]">
+                  {filteredSaved.map(wf => {
+                    const archetypes = getWorkflowArchetypes(wf.nodes);
+                    const nodeCount = getNodeCount(wf.nodes);
+                    const edgeCount = getEdgeCount(wf.edges);
+                    const isConfirming = deleteConfirmId === wf.id;
+
+                    return (
+                      <div
+                        key={wf.id}
+                        onClick={() => onOpenWorkflow(wf)}
+                        className="px-4 py-2.5 hover:bg-white/5 cursor-pointer flex items-center justify-between gap-4 transition-colors group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-7 h-7 rounded-lg bg-copper-500/10 border border-copper-500/20 text-copper-400 flex items-center justify-center shrink-0">
+                            <GitFork className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-white group-hover:text-copper-400 transition-colors truncate">
+                              {wf.title || 'Untitled Pipeline'}
+                            </div>
+                            <div className="text-[10px] font-mono text-gray-400 flex items-center gap-2 mt-0.5">
+                              <span>{nodeCount} nodes</span>
+                              <span>•</span>
+                              <span>{edgeCount} edges</span>
+                              <span>•</span>
+                              <span>{formatRelativeTime(wf.updatedAt)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="hidden sm:flex items-center gap-1">
+                            {archetypes.slice(0, 4).map(t => {
+                              const cfg = (NODE_CONFIG as any)[t];
+                              if (!cfg) return null;
+                              return (
+                                <span
+                                  key={t}
+                                  className={cn(
+                                    "px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded border uppercase",
+                                    cfg.bg, cfg.color, cfg.border
+                                  )}
+                                >
+                                  {cfg.tag}
+                                </span>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            {isConfirming ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
+                                  className="px-2 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-gray-300"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={(e) => handleDelete(wf.id, e)}
+                                  className="px-2 py-0.5 text-[10px] font-mono rounded bg-red-500/20 text-red-300 border border-red-500/30"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={(e) => handleDuplicate(wf, e)}
+                                  title="Duplicate Pipeline"
+                                  className="p-1.5 text-gray-400 hover:text-white rounded hover:bg-white/5"
+                                >
+                                  {copiedId === wf.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(wf.id); }}
+                                  title="Delete Pipeline"
+                                  className="p-1.5 text-gray-400 hover:text-red-400 rounded hover:bg-red-500/10"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => onOpenWorkflow(wf)}
+                                  className="px-2.5 py-1 rounded bg-white/5 hover:bg-copper-500/20 text-gray-300 hover:text-copper-300 text-xs font-mono font-medium flex items-center gap-1"
+                                >
+                                  Open <ChevronRight className="w-3 h-3" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              !searchQuery.trim() && (
+                <div className="border border-dashed border-white/10 rounded-xl p-5 text-center flex flex-col items-center justify-center bg-white/[0.01]">
+                  <FolderOpen className="w-7 h-7 text-gray-600 mb-2" />
+                  <div className="text-xs font-medium text-gray-300">No saved workflows yet</div>
+                  <div className="text-[11px] font-mono text-gray-500 max-w-sm mt-0.5">
+                    Start by creating a blank canvas or jumpstart from any curated template below.
+                  </div>
+                  <button
+                    onClick={onCreateNew}
+                    className="mt-3 px-3 py-1.5 rounded-lg bg-copper-500/10 hover:bg-copper-500/20 text-copper-400 border border-copper-500/30 text-xs font-mono font-medium transition-colors flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create Your First Workflow</span>
+                  </button>
+                </div>
+              )
+            )}
+          </div>
+        )}
+
+        {/* Section 2: Curated Pipeline Templates (Library of Pre-existing Workflows) */}
+        {activeTab !== 'saved' && filteredTemplates.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-400">
+                  Curated Pipeline Library
+                </h2>
+                <span className="px-1.5 py-0.2 text-[10px] font-mono rounded bg-copper-500/10 text-copper-400 border border-copper-500/20">
+                  {filteredTemplates.length} Pre-Configured
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-gray-400">Production-tested multi-model architectures</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredTemplates.map(tpl => (
+                <div
+                  key={tpl.id}
+                  onClick={() => onOpenWorkflow({
+                    id: undefined,
+                    title: tpl.title,
+                    nodes: tpl.nodes,
+                    edges: tpl.edges,
+                  })}
+                  className="group bg-[#151515] hover:bg-[#1a1a1a] border border-white/10 hover:border-copper-500/40 rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-lg shadow-black/20 hover:shadow-copper-500/5 relative overflow-hidden"
+                >
+                  <div className="space-y-3">
+                    {/* Top Badges */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="px-2 py-0.5 text-[9px] font-mono font-bold tracking-wider uppercase rounded bg-copper-500/10 text-copper-400 border border-copper-500/20">
+                        {tpl.tag}
+                      </span>
+                      <span className="text-[10px] font-mono text-gray-400">
+                        {tpl.nodes.length} nodes · {tpl.edges.length} edges
+                      </span>
+                    </div>
+
+                    {/* Title & Desc */}
+                    <div>
+                      <h3 className="text-sm font-semibold font-display text-white group-hover:text-copper-400 transition-colors">
+                        {tpl.title}
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">
+                        {tpl.description}
+                      </p>
+                    </div>
+
+                    {/* Architecture Pipeline Pills */}
+                    <div className="pt-2 border-t border-white/5">
+                      <div className="text-[9px] font-mono text-gray-400 uppercase tracking-wider mb-1.5">
+                        Architecture Flow:
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {tpl.archetypes.map((type, idx) => {
+                          const cfg = (NODE_CONFIG as any)[type];
+                          if (!cfg) return null;
+                          return (
+                            <div key={idx} className="flex items-center gap-1">
+                              <span
+                                className={cn(
+                                  "px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded border uppercase",
+                                  cfg.bg, cfg.color, cfg.border
+                                )}
+                              >
+                                {cfg.tag}
+                              </span>
+                              {idx < tpl.archetypes.length - 1 && (
+                                <span className="text-[10px] text-gray-600 font-mono">→</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Footer */}
+                  <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-gray-400">
+                      Category: <span className="text-gray-300">{tpl.category}</span>
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenWorkflow({
+                          id: undefined,
+                          title: tpl.title,
+                          nodes: tpl.nodes,
+                          edges: tpl.edges,
+                        });
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white/5 group-hover:bg-copper-500 text-gray-300 group-hover:text-black font-semibold text-xs font-mono transition-all flex items-center gap-1 shadow-sm active:scale-[0.97]"
+                    >
+                      <span>Load Template</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function BranchingChat() {
+  const [view, setView] = useState<'dashboard' | 'editor'>('dashboard');
+  const [currentWorkflow, setCurrentWorkflow] = useState<{
+    id?: string;
+    title: string;
+    nodes: any;
+    edges: any;
+  } | null>(null);
+
+  const handleOpenWorkflow = (wf: { id?: string; title: string; nodes: any; edges: any }) => {
+    setCurrentWorkflow(wf);
+    setView('editor');
+  };
+
+  const handleCreateNew = () => {
+    setCurrentWorkflow({
+      id: undefined,
+      title: 'New Pipeline',
+      nodes: initialNodes,
+      edges: initialEdges,
+    });
+    setView('editor');
+  };
+
   return (
     <PageTransition>
-      <div className="w-full p-4 sm:p-6 flex flex-col h-[calc(100vh-80px)]">
-        <ReactFlowProvider>
-          <FlowEditor />
-        </ReactFlowProvider>
+      <div className="w-full p-4 sm:p-6 flex flex-col h-[calc(100vh-80px)] min-h-0">
+        {view === 'dashboard' ? (
+          <WorkflowDashboard
+            onOpenWorkflow={handleOpenWorkflow}
+            onCreateNew={handleCreateNew}
+          />
+        ) : (
+          <ReactFlowProvider>
+            <FlowEditor
+              initialWorkflow={currentWorkflow}
+              onBackToDashboard={() => setView('dashboard')}
+            />
+          </ReactFlowProvider>
+        )}
       </div>
     </PageTransition>
   );
 }
+
