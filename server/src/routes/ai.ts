@@ -51,10 +51,41 @@ router.post('/generate-questions', questionsLimiter, requireAuth, async (req: Au
   }
 });
 
+// Helper: Enforce 10 prompt quota limit per 5-hour session for free tier users
+async function enforcePromptQuota(req: AuthRequest, res: any): Promise<boolean> {
+  if (!req.user || req.user.subscriptionTier !== 'free') {
+    return true;
+  }
+
+  const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  const promptCount = await prisma.trace.count({
+    where: {
+      user_id: req.user.id,
+      node_origin: { in: ['Wizard.synthesize', 'RefineModal.refine', 'Tester.test'] },
+      created_at: { gte: fiveHoursAgo },
+    },
+  });
+
+  if (promptCount >= 10) {
+    res.status(429).json({
+      error: 'Free Tier Limit Reached',
+      code: 'FREE_TIER_QUOTA_EXCEEDED',
+      message: 'Free tier accounts can generate up to 10 prompts per 5-hour session. Please upgrade to Pro for unlimited prompts.',
+      sessionLimit: 10,
+      sessionPrompts: promptCount,
+    });
+    return false;
+  }
+
+  return true;
+}
+
 // Synthesize Master Prompt & Project Brief (per-endpoint rate limited)
 router.post('/synthesize', synthesizeLimiter, requireAuth, async (req: AuthRequest, res, next) => {
   const startTime = Date.now();
   try {
+    if (!(await enforcePromptQuota(req, res))) return;
+
     const validated = SynthesizeSchema.parse(req.body);
     const content = await AiService.synthesizePrompt(
       validated.idea,
@@ -86,6 +117,8 @@ router.post('/synthesize', synthesizeLimiter, requireAuth, async (req: AuthReque
 router.post('/refine', refineLimiter, requireAuth, async (req: AuthRequest, res, next) => {
   const startTime = Date.now();
   try {
+    if (!(await enforcePromptQuota(req, res))) return;
+
     const validated = RefineSchema.parse(req.body);
     const result = await AiService.refinePrompt(validated.currentPrompt, validated.followUp);
 
@@ -113,6 +146,8 @@ router.post('/refine', refineLimiter, requireAuth, async (req: AuthRequest, res,
 router.post('/test', testPromptLimiter, requireAuth, async (req: AuthRequest, res, next) => {
   const startTime = Date.now();
   try {
+    if (!(await enforcePromptQuota(req, res))) return;
+
     const validated = TestPromptSchema.parse(req.body);
     const content = await AiService.testPrompt(
       validated.modelId,

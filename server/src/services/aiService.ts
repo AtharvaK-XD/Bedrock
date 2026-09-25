@@ -1,6 +1,8 @@
 import { config } from '../config.js';
 import { QueueService } from './queueService.js';
 import { z } from 'zod';
+import { CircuitBreaker } from './circuitBreaker.js';
+import { CacheService } from './cacheService.js';
 
 export interface Question {
   id: string;
@@ -90,9 +92,16 @@ ${sanitized}
 
   /**
    * Section 12: Resilient completion engine with Multi-Key Round Robin,
-   * Fallback Chain, and Paid-Tier Overflow Model
+   * Circuit Breakers, Response Caching, and Paid-Tier Overflow Model
    */
   public static async complete(prompt: string, systemPrompt?: string): Promise<string> {
+    // Check Prompt Semantic Cache (sub-15ms resolution)
+    const cacheKey = CacheService.generatePromptHash('complete', prompt, { systemPrompt });
+    const cached = CacheService.get<string>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const messages: Array<{ role: 'system' | 'user'; content: string }> = [];
     if (systemPrompt) {
       messages.push({
@@ -102,8 +111,8 @@ ${sanitized}
     }
     messages.push({ role: 'user', content: prompt });
 
-    // 1. Primary: Groq with Round-Robin Keys
-    if (config.ai.groqKeys.length > 0) {
+    // 1. Primary: Groq with Round-Robin Keys & Circuit Breaker
+    if (config.ai.groqKeys.length > 0 && CircuitBreaker.canAttempt('groq')) {
       const { key, nextIndex } = this.getRoundRobinKey(config.ai.groqKeys, this.groqKeyIndex);
       this.groqKeyIndex = nextIndex;
 
@@ -126,16 +135,23 @@ ${sanitized}
           if (res.ok) {
             const data = (await res.json()) as any;
             const content = data.choices?.[0]?.message?.content;
-            if (content) return content;
+            if (content) {
+              CircuitBreaker.recordSuccess('groq');
+              CacheService.set(cacheKey, content, 3600000, 7200000);
+              return content;
+            }
+          } else {
+            CircuitBreaker.recordFailure('groq', `HTTP ${res.status}`);
           }
         } catch (err: any) {
+          CircuitBreaker.recordFailure('groq', err.message);
           console.warn(`[AiService] Groq model ${model} failed (${err.message}), attempting fallback...`);
         }
       }
     }
 
-    // 2. Secondary: OpenRouter with Round-Robin Keys
-    if (config.ai.openRouterKeys.length > 0) {
+    // 2. Secondary: OpenRouter with Round-Robin Keys & Circuit Breaker
+    if (config.ai.openRouterKeys.length > 0 && CircuitBreaker.canAttempt('openrouter')) {
       const { key, nextIndex } = this.getRoundRobinKey(config.ai.openRouterKeys, this.openRouterKeyIndex);
       this.openRouterKeyIndex = nextIndex;
 
@@ -160,42 +176,59 @@ ${sanitized}
           if (res.ok) {
             const data = (await res.json()) as any;
             const content = data.choices?.[0]?.message?.content;
-            if (content) return content;
+            if (content) {
+              CircuitBreaker.recordSuccess('openrouter');
+              CacheService.set(cacheKey, content, 3600000, 7200000);
+              return content;
+            }
+          } else {
+            CircuitBreaker.recordFailure('openrouter', `HTTP ${res.status}`);
           }
         } catch (err: any) {
+          CircuitBreaker.recordFailure('openrouter', err.message);
           console.warn(`[AiService] OpenRouter model ${model} failed (${err.message})`);
         }
       }
     }
 
-    // 3. Tertiary: Gemini with Round-Robin Keys
-    if (config.ai.geminiKeys.length > 0) {
+    // 3. Tertiary: Gemini with Round-Robin Keys & Circuit Breaker
+    if (config.ai.geminiKeys.length > 0 && CircuitBreaker.canAttempt('gemini')) {
       const { key, nextIndex } = this.getRoundRobinKey(config.ai.geminiKeys, this.geminiKeyIndex);
       this.geminiKeyIndex = nextIndex;
 
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
-        const body: any = {
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.5 },
-        };
-        if (systemPrompt) {
-          body.systemInstruction = { parts: [{ text: systemPrompt }] };
-        }
+      const geminiModels = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-2.5-flash'];
+      for (const model of geminiModels) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+          const body: any = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.5 },
+          };
+          if (systemPrompt) {
+            body.systemInstruction = { parts: [{ text: systemPrompt }] };
+          }
 
-        const res = await this.safeFetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
+          const res = await this.safeFetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
 
-        if (res.ok) {
-          const data = (await res.json()) as any;
-          const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (content) return content;
+          if (res.ok) {
+            const data = (await res.json()) as any;
+            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (content) {
+              CircuitBreaker.recordSuccess('gemini');
+              CacheService.set(cacheKey, content, 3600000, 7200000);
+              return content;
+            }
+          } else {
+            CircuitBreaker.recordFailure('gemini', `HTTP ${res.status}`);
+          }
+        } catch (err: any) {
+          CircuitBreaker.recordFailure('gemini', err.message);
+          console.warn(`[AiService] Gemini model ${model} failed (${err.message})`);
         }
-      } catch (err: any) {
-        console.warn(`[AiService] Gemini fallback failed (${err.message})`);
       }
     }
 
@@ -221,7 +254,10 @@ ${sanitized}
         if (res.ok) {
           const data = (await res.json()) as any;
           const content = data.choices?.[0]?.message?.content;
-          if (content) return content;
+          if (content) {
+            CacheService.set(cacheKey, content, 3600000, 7200000);
+            return content;
+          }
         }
       } catch (err: any) {
         console.error(`[AiService] Paid overflow model failed: ${err.message}`);
@@ -417,6 +453,28 @@ Respond ONLY with a valid JSON object matching this schema:
         if (!res.ok) throw new Error(`OpenRouter error (${res.status}): ${await res.text()}`);
         const data = (await res.json()) as any;
         return data.choices?.[0]?.message?.content || '';
+      }
+
+      // 3. Google Gemini models
+      if (modelId.toLowerCase().includes('gemini')) {
+        const { key } = this.getRoundRobinKey(config.ai.geminiKeys, this.geminiKeyIndex);
+        if (!key) throw new Error('Google Gemini API Key is not configured on backend.');
+
+        const targetModel = modelId === 'gemini-2.5-flash' ? 'gemini-3.5-flash-lite' : modelId;
+        const res = await this.safeFetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${key}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: delimitedUser }] }],
+              ...(systemPrompt ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
+            }),
+          }
+        );
+        if (!res.ok) throw new Error(`Google Gemini error (${res.status}): ${await res.text()}`);
+        const data = (await res.json()) as any;
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
       }
 
       // Default completion

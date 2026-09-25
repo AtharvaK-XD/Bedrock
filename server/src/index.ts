@@ -8,6 +8,7 @@ import {
   hppMiddleware,
   sanitizePayloads,
 } from './middleware/security.js';
+import { wafShield } from './middleware/wafShield.js';
 import { generalLimiter } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { MetricsService } from './services/metricsService.js';
@@ -52,6 +53,9 @@ app.use(cookieParser());
 
 // Deep sanitization against Prototype Pollution & Malicious injections
 app.use(sanitizePayloads);
+
+// Multi-Vector Web Application Firewall (WAF) Shield & Automated IP Jail
+app.use(wafShield);
 
 // Global rate limiting
 app.use(generalLimiter);

@@ -3,6 +3,8 @@ import { prisma } from '../db.js';
 import { config } from '../config.js';
 import { MetricsService } from '../services/metricsService.js';
 import { CacheService } from '../services/cacheService.js';
+import { ThreatIntelligence } from '../services/threatIntelligence.js';
+import { CircuitBreaker } from '../services/circuitBreaker.js';
 
 const router = Router();
 
@@ -34,6 +36,22 @@ router.get('/health', async (req, res) => {
       heapUsedMb: Math.round((memory.heapUsed / 1024 / 1024) * 100) / 100,
       rssMb: Math.round((memory.rss / 1024 / 1024) * 100) / 100,
     },
+  });
+});
+
+// GET /api/health/providers - Circuit Breaker telemetry
+router.get('/health/providers', (req, res) => {
+  res.json({
+    timestamp: new Date().toISOString(),
+    providers: CircuitBreaker.getAllStatuses(),
+  });
+});
+
+// GET /api/health/threats - Real-time Threat Intelligence and Jailed IPs
+router.get('/health/threats', (req, res) => {
+  res.json({
+    timestamp: new Date().toISOString(),
+    ...ThreatIntelligence.getStats(),
   });
 });
 
@@ -93,6 +111,8 @@ router.get('/security/status', async (req, res) => {
   res.json({
     securityLevel: 'MAXIMUM',
     protections: {
+      wafShield: true,
+      circuitBreaker: true,
       helmetCsp: true,
       corsWhitelisting: true,
       hppProtection: true,
@@ -105,6 +125,7 @@ router.get('/security/status', async (req, res) => {
       emailVerificationEnforced: true,
       adminMfaEnforced: true,
     },
+    threats: ThreatIntelligence.getStats(),
     auditLogCount: recentAuditEvents,
   });
 });
