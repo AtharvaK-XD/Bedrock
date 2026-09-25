@@ -3,25 +3,50 @@ import argon2 from 'argon2';
 
 declare global {
   // eslint-disable-next-line no-var
-  var __prismaClient: PrismaClient | undefined;
+  var __prismaClient: any;
 }
 
-export const prisma =
+const basePrisma =
   global.__prismaClient ||
   new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   });
 
+// Section 13: Database Scaling & Resilience
+// Add explicit 5000ms query timeout to prevent hanging connections under launch traffic
+export const prisma: PrismaClient = (basePrisma.$extends({
+  query: {
+    async $allOperations({ operation, model, args, query }: any) {
+      const timeoutMs = 5000;
+      let timer: NodeJS.Timeout;
+      const timeoutPromise = new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`[DatabaseTimeout] Query ${model}.${operation} exceeded ${timeoutMs}ms limit.`));
+        }, timeoutMs);
+      });
+
+      try {
+        const result = await Promise.race([query(args), timeoutPromise]);
+        clearTimeout(timer!);
+        return result;
+      } catch (err) {
+        clearTimeout(timer!);
+        throw err;
+      }
+    },
+  },
+}) as any);
+
 if (process.env.NODE_ENV !== 'production') {
-  global.__prismaClient = prisma;
+  global.__prismaClient = basePrisma;
 }
 
 export const DEFAULT_USER_ID = 'default-local-user';
 
 export async function initDb(): Promise<void> {
   try {
-    await prisma.$connect();
-    console.log('[Database] Connected to SQLite database successfully.');
+    await (prisma as any).$connect();
+    console.log('[Database] Connected to database with query timeout & pooling enabled.');
 
     // Ensure default local user exists for local desktop usage
     const defaultUser = await prisma.user.findUnique({
@@ -47,6 +72,8 @@ export async function initDb(): Promise<void> {
           huggingface: 'atharvak',
           website: 'https://bedrock.ai',
           joined_date: 'January 2025',
+          email_verified: true,
+          mfa_enabled: true,
         },
       });
       console.log('[Database] Initialized default local user profile.');

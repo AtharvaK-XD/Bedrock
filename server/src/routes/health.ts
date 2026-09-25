@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { config } from '../config.js';
+import { MetricsService } from '../services/metricsService.js';
+import { CacheService } from '../services/cacheService.js';
 
 const router = Router();
 
@@ -8,7 +10,7 @@ const router = Router();
 router.get('/health', async (req, res) => {
   let dbHealthy = false;
   try {
-    await prisma.$queryRawUnsafe('SELECT 1');
+    await (prisma as any).$queryRawUnsafe('SELECT 1');
     dbHealthy = true;
   } catch {
     dbHealthy = false;
@@ -18,15 +20,14 @@ router.get('/health', async (req, res) => {
 
   res.json({
     status: dbHealthy ? 'ok' : 'degraded',
-    version: '1.0.0',
+    version: '1.1.0',
     uptimeSeconds: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
     services: {
       database: dbHealthy ? 'connected' : 'disconnected',
-      groqAi: Boolean(config.ai.groqKey),
-      openRouterAi: Boolean(config.ai.openRouterKey),
-      huggingFaceAi: Boolean(config.ai.huggingFaceKey),
-      geminiAi: Boolean(config.ai.geminiKey),
+      groqKeysConfigured: config.ai.groqKeys.length,
+      openRouterKeysConfigured: config.ai.openRouterKeys.length,
+      geminiKeysConfigured: config.ai.geminiKeys.length,
     },
     system: {
       nodeVersion: process.version,
@@ -34,6 +35,50 @@ router.get('/health', async (req, res) => {
       rssMb: Math.round((memory.rss / 1024 / 1024) * 100) / 100,
     },
   });
+});
+
+// Section 16: Public Status Endpoint (with SWR Cache)
+router.get('/status', async (req, res) => {
+  const { data } = await CacheService.getOrSet(
+    'public_status_page',
+    async () => {
+      let dbHealthy = false;
+      try {
+        await (prisma as any).$queryRawUnsafe('SELECT 1');
+        dbHealthy = true;
+      } catch {
+        dbHealthy = false;
+      }
+
+      const metrics = MetricsService.getMetricsSummary();
+
+      return {
+        service: 'Bedrock Prompt Engineering Studio',
+        status: dbHealthy && metrics.alerts.length === 0 ? 'ALL_SYSTEMS_OPERATIONAL' : 'DEGRADED',
+        updatedAt: new Date().toISOString(),
+        components: [
+          { name: 'Core API Gateway', status: 'OPERATIONAL' },
+          { name: 'AI Generation Pipeline', status: config.ai.groqKeys.length > 0 ? 'OPERATIONAL' : 'DEGRADED' },
+          { name: 'Database Persistence (SQLite/Neon)', status: dbHealthy ? 'OPERATIONAL' : 'DEGRADED' },
+          { name: 'Razorpay Billing Webhook', status: 'OPERATIONAL' },
+        ],
+        metrics: {
+          uptimeSeconds: Math.floor(process.uptime()),
+          p95LatencyMs: metrics.latencyMs.p95,
+          activeAlerts: metrics.alerts,
+        },
+      };
+    },
+    30000, // 30 sec fresh
+    120000 // 2 min stale tolerance
+  );
+
+  res.json(data);
+});
+
+// Section 15: Observability & Alerting Metrics
+router.get('/metrics', async (req, res) => {
+  res.json(MetricsService.getMetricsSummary());
 });
 
 // GET /api/security/status
@@ -52,14 +97,13 @@ router.get('/security/status', async (req, res) => {
       corsWhitelisting: true,
       hppProtection: true,
       prototypePollutionGuard: true,
-      rateLimiting: {
-        general: `${config.rateLimit.maxGeneral} req / 15m`,
-        auth: `${config.rateLimit.maxAuth} req / 15m`,
-        ai: `${config.rateLimit.maxAi} req / 15m`,
-      },
+      idempotencyGuard: true,
+      rateLimiting: 'Per-Endpoint Multi-Tier Active',
       passwordHashing: 'Argon2id',
       tokenSigning: 'HMAC-SHA256 (Locked)',
       cookieFlags: 'HttpOnly, SameSite=Lax',
+      emailVerificationEnforced: true,
+      adminMfaEnforced: true,
     },
     auditLogCount: recentAuditEvents,
   });

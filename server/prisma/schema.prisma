@@ -8,29 +8,35 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(uuid())
-  email           String   @unique
-  password_hash   String
-  name            String
-  username        String?
-  avatar_url      String?
-  avatar_initials String?
-  plan            String   @default("Free Plan")
-  role            String   @default("Lead Prompt Architect")
-  bio             String?
-  location        String?
-  organization    String?
-  github          String?
-  huggingface     String?
-  website         String?
-  joined_date     String?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  id                      String   @id @default(uuid())
+  email                   String   @unique
+  password_hash           String
+  name                    String
+  username                String?
+  avatar_url              String?
+  avatar_initials         String?
+  plan                    String   @default("Free Plan")
+  role                    String   @default("Lead Prompt Architect")
+  bio                     String?
+  location                String?
+  organization            String?
+  github                  String?
+  huggingface             String?
+  website                 String?
+  joined_date             String?
+  email_verified          Boolean  @default(false)
+  mfa_enabled             Boolean  @default(false)
+  razorpay_customer_id    String?
+  razorpay_subscription_id String?
+  subscription_tier       String   @default("free")
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
 
-  prompts         Prompt[]
-  traces          Trace[]
-  branchingTrees  BranchingTree[]
-  securityLogs    SecurityLog[]
+  prompts                 Prompt[]
+  traces                  Trace[]
+  branchingTrees          BranchingTree[]
+  securityLogs            SecurityLog[]
+  payments                PaymentRecord[]
 }
 
 model Prompt {
@@ -79,4 +85,31 @@ model SecurityLog {
   endpoint   String?
   message    String
   created_at DateTime @default(now())
+}
+
+model IdempotencyKey {
+  id            String    @id @default(uuid())
+  key           String    @unique
+  user_id       String?
+  endpoint      String
+  status        String    // "PENDING", "COMPLETED", "FAILED"
+  response_body String?   // Serialized JSON response
+  response_code Int?
+  created_at    DateTime  @default(now())
+  expires_at    DateTime
+}
+
+model PaymentRecord {
+  id            String   @id @default(uuid())
+  user_id       String
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  order_id      String   @unique
+  payment_id    String?  @unique
+  signature     String?
+  amount        Int      // In paise (e.g. 39900 = ₹399)
+  currency      String   @default("INR")
+  status        String   // "created", "captured", "failed"
+  tier          String   // "advanced", "ultimate"
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 }

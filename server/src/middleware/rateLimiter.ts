@@ -11,66 +11,50 @@ function getClientIp(req: Request): string {
   return req.ip || '127.0.0.1';
 }
 
-export const generalLimiter = rateLimit({
-  windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.maxGeneral,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
-    const ip = getClientIp(req);
-    logSecurityEvent({
-      eventType: 'RATE_LIMIT_EXCEEDED',
-      severity: 'WARN',
-      ipAddress: ip,
-      endpoint: req.originalUrl,
-      message: `General rate limit exceeded: ${req.method} ${req.originalUrl}`,
-    });
-    res.status(429).json({
-      error: 'Too many requests',
-      message: 'Rate limit exceeded. Please wait a few moments before trying again.',
-      retryAfterSeconds: Math.ceil(config.rateLimit.windowMs / 1000),
-    });
-  },
-});
+function createLimiter(
+  endpointName: string,
+  maxRequests: number,
+  windowMs = config.rateLimit.windowMs,
+  severity: 'INFO' | 'WARN' | 'CRITICAL' = 'WARN'
+) {
+  return rateLimit({
+    windowMs,
+    max: maxRequests,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req: Request, res: Response) => {
+      const ip = getClientIp(req);
+      logSecurityEvent({
+        eventType: `${endpointName.toUpperCase()}_RATE_LIMIT_EXCEEDED`,
+        severity,
+        ipAddress: ip,
+        endpoint: req.originalUrl,
+        message: `Rate limit of ${maxRequests} requests reached for ${endpointName} by ${ip}`,
+      });
+      res.status(429).json({
+        error: 'Rate Limit Exceeded',
+        message: `Too many requests to ${endpointName}. Limit: ${maxRequests} requests per ${Math.round(windowMs / 60000)} minutes. Please wait before retrying.`,
+        retryAfterSeconds: Math.ceil(windowMs / 1000),
+      });
+    },
+  });
+}
 
-export const authLimiter = rateLimit({
-  windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.maxAuth,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
-    const ip = getClientIp(req);
-    logSecurityEvent({
-      eventType: 'AUTH_RATE_LIMIT_EXCEEDED',
-      severity: 'CRITICAL',
-      ipAddress: ip,
-      endpoint: req.originalUrl,
-      message: `Authentication brute-force limit reached from ${ip}`,
-    });
-    res.status(429).json({
-      error: 'Too many authentication attempts',
-      message: 'Too many login attempts. Account temporarily throttled for security.',
-    });
-  },
-});
+// Global baseline limiter
+export const generalLimiter = createLimiter('General API', 300, 15 * 60 * 1000, 'INFO');
 
-export const aiLimiter = rateLimit({
-  windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.maxAi,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
-    const ip = getClientIp(req);
-    logSecurityEvent({
-      eventType: 'AI_RATE_LIMIT_EXCEEDED',
-      severity: 'WARN',
-      ipAddress: ip,
-      endpoint: req.originalUrl,
-      message: `AI generation quota exceeded: ${req.method} ${req.originalUrl}`,
-    });
-    res.status(429).json({
-      error: 'AI Rate Limit Exceeded',
-      message: 'You have reached the AI generation request rate limit. Please pause before submitting more requests.',
-    });
-  },
-});
+// Authentication brute force protection
+export const authLimiter = createLimiter('Auth API', 15, 15 * 60 * 1000, 'CRITICAL');
+
+// Billing & checkout limiter (prevents fraudulent card testing)
+export const billingLimiter = createLimiter('Billing API', 20, 15 * 60 * 1000, 'CRITICAL');
+
+// Per-endpoint LLM rate limiters
+export const synthesizeLimiter = createLimiter('Synthesize Prompt', 15, 15 * 60 * 1000, 'WARN');
+export const refineLimiter = createLimiter('Refine Prompt', 30, 15 * 60 * 1000, 'WARN');
+export const questionsLimiter = createLimiter('Generate Questions', 30, 15 * 60 * 1000, 'WARN');
+export const testPromptLimiter = createLimiter('Test Prompt Playground', 25, 15 * 60 * 1000, 'WARN');
+
+// Workflows & Library limiters
+export const workflowsLimiter = createLimiter('Workflows API', 60, 15 * 60 * 1000, 'INFO');
+export const promptsLimiter = createLimiter('Prompts API', 60, 15 * 60 * 1000, 'INFO');

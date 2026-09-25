@@ -25,7 +25,9 @@
     "build": "tsc -b && vite build",
     "tauri": "tauri",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "scan:secrets": "node scripts/scan-secrets.js",
+    "test:injection": "cd server && npx tsx tests/prompt-injection-runner.ts"
   },
   "dependencies": {
     "@clerk/react": "^6.17.0",

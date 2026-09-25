@@ -1,0 +1,34 @@
+name: Bedrock Production Security & Secret Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Secret Leak Scanner
+        run: npm run scan:secrets
+
+      - name: Validate TypeScript Compilation
+        run: npm run build
+
+      - name: Run Server Typechecks
+        working-directory: ./server
+        run: |
+          npm ci
+          npx tsc --noEmit
