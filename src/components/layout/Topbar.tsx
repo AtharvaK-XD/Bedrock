@@ -59,7 +59,7 @@ export function Topbar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 h-20 bg-transparent pointer-events-none">
-      <div className="w-full px-4 sm:px-8 h-full flex items-center justify-between">
+      <div className="relative w-full px-4 sm:px-8 h-full flex items-center justify-between">
         
         {/* Brand - Floating Air Island */}
         <Link 
@@ -69,8 +69,8 @@ export function Topbar() {
           <span className="font-display font-bold text-base tracking-wider uppercase text-white group-hover:text-copper-400 transition-colors">Bedrock</span>
         </Link>
 
-        {/* Center Nav - Floating Air Island */}
-        <nav className="pointer-events-auto hidden md:flex items-center gap-1 bg-black/45 p-1.5 rounded-2xl border border-white/10 shadow-lg shadow-black/30 backdrop-blur-xl">
+        {/* Center Nav - Floating Air Island (Centered at true 50% horizontal axis) */}
+        <nav className="pointer-events-auto hidden md:flex items-center gap-1 bg-black/45 p-1.5 rounded-2xl border border-white/10 shadow-lg shadow-black/30 backdrop-blur-xl absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           {navItems.map((item) => {
             const isActive = item.path === '/app' 
               ? location.pathname === '/app' 
@@ -80,7 +80,7 @@ export function Topbar() {
                 key={item.label}
                 to={item.path}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200",
+                  "px-3.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-medium transition-all duration-200 whitespace-nowrap",
                   isActive 
                     ? "bg-white/15 text-white shadow-sm font-semibold border border-white/15" 
                     : "text-gray-400 hover:text-white hover:bg-white/5"
