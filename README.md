@@ -1,27 +1,54 @@
 # Bedrock
 
-Bedrock is a specialized prompt engineering workstation and orchestration platform packaged as a cross-platform desktop application. Built on Tauri 2.0, React 19, and TypeScript, Bedrock provides tools for requirements extraction, automated prompt synthesis, visual node-based execution graphs, and parallel multi-model benchmarking.
+Bedrock is an enterprise-grade prompt engineering workstation and orchestration platform. Available as a cross-platform desktop application and full-stack web service, Bedrock bridges the gap between raw LLM APIs and structured prompt architecture through automated synthesis, visual node-based execution graphs, parallel multi-model benchmarking, and a hardened production backend.
 
 ---
 
-## Overview
+## Architecture Overview
 
-Modern software teams, prompt engineers, and AI developers require structured workflows to draft, test, branch, and optimize prompts across diverse large language models. Bedrock bridges the gap between raw LLM APIs and structured prompt architecture through four core operational pillars:
+```
+                                    ┌────────────────────────────────────────────────────────┐
+                                    │               BEDROCK PRESENTATION LAYER               │
+                                    │    React 19 + TypeScript + Vite + Tailwind CSS + GSAP  │
+                                    └───────────────────┬────────────────────────────────────┘
+                                                        │
+                         ┌──────────────────────────────┴──────────────────────────────┐
+                         ▼                                                             ▼
+       ┌───────────────────────────────────┐                         ┌───────────────────────────────────┐
+       │      NATIVE DESKTOP RUNTIME       │                         │     HARDENED EXPRESS 5 API        │
+       │     Tauri 2.0 / Electron Core     │                         │        Node.js + TypeScript       │
+       ├───────────────────────────────────┤                         ├───────────────────────────────────┤
+       │ • Operating System Sandboxing     │                         │ • Multi-Provider AI Proxy Layer   │
+       │ • Zero DevTools / Debug Tampering │                         │ • Anti-Prompt Injection Engine    │
+       │ • Native Process & Auto-Updater   │                         │ • Argon2 + JWT HttpOnly Auth      │
+       │ • Hardware-Accelerated Physics    │                         │ • Razorpay Webhook Signatures     │
+       └───────────────────────────────────┘                         │ • Sliding-Window Rate Limiters    │
+                                                                     │ • Prisma ORM (SQLite / Postgres)  │
+                                                                     └─────────────────┬─────────────────┘
+                                                                                       │
+                                         ┌─────────────────────────────────────────────┴─────────────────┐
+                                         ▼                                                               ▼
+                       ┌───────────────────────────────────┐                           ┌───────────────────────────────────┐
+                       │        AI PROVIDER MATRIX         │                           │        PERSISTENCE & AUDIT        │
+                       ├───────────────────────────────────┤                           ├───────────────────────────────────┤
+                       │ • Groq (Llama 3.1 70B / 8B)       │                           │ • Prisma ORM (SQLite / Neon PG)   │
+                       │ • OpenRouter (Gemma, Mistral, ...)│                           │ • In-Memory TTL Query Cache       │
+                       │ • Google Gemini (2.5 Pro / Flash) │                           │ • Execution Traces & Metrics      │
+                       │ • Hugging Face Serverless         │                           │ • Tamper-Evident Security Logs    │
+                       └───────────────────────────────────┘                           └───────────────────────────────────┘
+```
 
-1. **System Prompt Synthesis**: Interactive, persona-driven requirement elicitation and automated prompt compilation.
-2. **Visual Flow Orchestration**: Node-based canvas for chaining prompts, conditional routing, data injection, and automated evaluation.
-3. **Multi-Model Benchmarking**: Side-by-side prompt execution and diff evaluation across heterogeneous providers.
 ---
 
 ## Core Capabilities
 
-### 1. Prompt Generation Engine
-- **Target Archetypes**: Tailor generation logic for specific deployment contexts, including autonomous coding agents, freelancer technical briefs, hackathon prototypes, and no-code application specifications.
-- **Dynamic Question Synthesis**: Automatically analyzes initial project ideas and queries the LLM backend to generate 3 to 5 targeted clarifying questions (single select, multi-select, or free-text) to resolve domain ambiguities.
-- **Structured Output Compilation**: Synthesizes responses into production-ready system prompts, requirements documentation, and architecture recommendations.
+### 1. System Prompt Synthesis Engine
+- **Target Archetypes**: Tailor generation logic for specific deployment targets: autonomous coding agents, freelancer technical briefs, hackathon prototypes, and structured enterprise specifications.
+- **Dynamic Question Synthesis**: Analyzes project briefs in real-time, calling LLM backends to generate 3 to 5 targeted clarifying questions to eliminate ambiguities before prompt compilation.
+- **Structured Output Generation**: Synthesizes responses into production-ready system instructions, XML delimiter boundaries, few-shot examples, and architectural constraints.
 
 ### 2. Visual Branching Canvas
-- **Graph Topologies**: Powered by `@xyflow/react`, enabling non-linear prompt experimentation, conversational branching, and pipeline design.
+- **Graph Topologies**: Powered by `@xyflow/react`, enabling non-linear prompt experimentation, conversational branching, and pipeline chaining.
 - **Node Taxonomy**:
   - **System Persona**: Configures underlying system context, boundaries, and behavioral constraints.
   - **User Prompt**: Primary user input instructions and variable injection targets.
@@ -31,10 +58,10 @@ Modern software teams, prompt engineers, and AI developers require structured wo
   - **Code Script**: Executes transformations and custom formatting logic between nodes.
   - **Merge**: Combines multiple branch outputs into a unified input payload.
   - **Evaluation**: Performs rubric-based scoring and quality grading on generation results.
-- **Execution States**: Real-time status indicators (idle, running, success, error) with execution controls.
+- **Execution States**: Real-time visual status indicators (idle, running, success, error) with per-node execution controls.
 
-### 3. Multi-Model Prompt Tester
-- **Parallel Execution**: Dispatches identical prompt configurations across two distinct model providers simultaneously to evaluate variance, formatting fidelity, and latency.
+### 3. Multi-Model Prompt Benchmark Console
+- **Parallel Dual Execution**: Dispatches identical prompt configurations across two distinct model providers simultaneously to benchmark variance, latency, formatting compliance, and token efficiency.
 - **Supported Model Providers**:
   - **Google Gemini**: Gemini 2.5 Pro, Gemini 2.5 Flash
   - **Groq**: Llama 3.1 70B Versatile, Llama 3.1 8B Instant
@@ -42,44 +69,30 @@ Modern software teams, prompt engineers, and AI developers require structured wo
   - **Hugging Face Serverless**: Mistral 7B Instruct, Qwen 2.5 72B, Meta Llama 3 8B, Zephyr 7B
 - **Configuration Controls**: Independent adjustment of system instructions, temperature, token limits, and target credentials per model instance.
 
-### 4. Native Desktop Experience
-- **Tauri 2.0 Foundation**: Minimal memory footprint, native window decorations, and operating system sandboxing via Rust.
-- **UI Architecture**: Glassmorphism and hardware-accelerated transitions utilizing Tailwind CSS, Framer Motion, GSAP ScrollTrigger, and Lenis smooth scrolling.
+### 4. Enterprise Production Backend (`server/`)
+- **Express 5 + TypeScript ESM**: High-performance REST API built with NodeNext module resolution.
+- **Prisma ORM**: Strongly-typed database layer with support for local SQLite development and serverless Neon PostgreSQL production deployments.
+- **Multi-Provider AI Proxy**: Shields API keys on the server side, handles round-robin key pooling across provider accounts, and implements automatic fallbacks upon rate limiting.
+- **In-Memory TTL Cache & Queue**: Deduplicates identical prompt synthesis queries and buffers concurrent inference requests.
+- **Razorpay Payments & Webhooks**: Handles subscription lifecycle, automatic quota allocations, and cryptographically verified webhook signatures (`X-Razorpay-Signature`).
 
 ---
 
-## Architecture and Technology Stack
+## Production Security & Hardening
 
-```
-Bedrock Desktop Architecture
-├── Frontend Presentation Layer (React 19 + TypeScript + Vite)
-│   ├── Routing & Layouts (React Router DOM, AppLayout, PageTransitions)
-│   ├── Canvas Engine (@xyflow/react)
-│   ├── Motion & Smooth Physics (GSAP, ScrollTrigger, Lenis, Framer Motion)
-│   └── Form & State Management (TanStack React Query, React Hook Form, Zod)
-├── API Proxy & Integration Layer
-│   ├── Google Gemini API (Direct & Vite Reverse Proxy)
-│   ├── Groq API (High-throughput inference)
-│   ├── OpenRouter & Hugging Face Serverless Endpoints
-│   └── Offline / Mock Fallbacks (mockApi.ts)
-└── Native Runtime Layer (Tauri 2.0 / Rust)
-    ├── Window & Process Management (@tauri-apps/plugin-process)
-    ├── Native Updater (@tauri-apps/plugin-updater)
-    └── OS Target Bundlers (Windows NSIS/MSI, macOS DMG/App, Linux AppImage/Deb)
-```
+Bedrock implements defense-in-depth across the client, network, application, and database tiers:
 
-### Component Breakdown
-
-| Layer | Technologies |
+| Security Vector | Implementation Detail |
 | :--- | :--- |
-| **Desktop Runtime** | Tauri 2.0 (Rust), Tauri Process & Updater Plugins |
-| **Frontend Framework** | React 19, TypeScript 6.0, Vite 8.2 |
-| **Styling & Icons** | Tailwind CSS 3.4, Lucide React, React Resizable Panels |
-| **Graph / Flow Engine** | `@xyflow/react` 12.x |
-| **Animations & Scroll** | GSAP 3.15, Framer Motion 12.x, Lenis 1.3 |
-| **State & Networking** | TanStack React Query 5.x, React Hook Form 7.x, Zod 3.x |
-| **3D Rendering** | Three.js, React Three Fiber, React Three Drei |
-| **Quality & Linters** | Oxlint, TypeScript Compiler (`tsc -b`) |
+| **Prompt Injection Defense** | Server-side adversarial regex heuristics, delimiter escape sanitizer (`### USER INPUT BEGIN ###`), and automated regression tests (`npm run test:injection`). |
+| **Authentication & Sessions** | Argon2 password hashing, JWTs stored in `HttpOnly`, `SameSite=Strict`, `Secure` cookies with 7-day expiration and automatic account lockout after 5 consecutive failures. |
+| **API Key Cryptography** | User API keys are prefixed with `bdk_live_`, masked in UI responses, and stored exclusively as SHA-256 cryptographic hashes. |
+| **Rate Limiting & DDoS Shield** | Layer-7 tiered sliding-window rate limiters: General endpoints (300 req / 15 min), Auth routes (15 req / 15 min), and Webhook endpoints. |
+| **Desktop Lockdown** | Electron & Tauri runtimes enforce context isolation, disable `nodeIntegration`, block remote modules, and lock out DevTools / debugger shortcuts in production builds. |
+| **HTTP Security Headers** | Helmet-enforced Content Security Policy (CSP), HTTP Strict Transport Security (HSTS), and HTTP Parameter Pollution (`hpp`) protection. |
+| **CORS Policy** | Strict origin whitelisting supporting desktop custom protocols (`tauri://localhost`, `electron://localhost`) and official domains. |
+| **Input Validation** | All requests are validated at the gateway using strict Zod schemas with JSON payload size caps (2MB limit). |
+| **Automated Secret Scanning** | Continuous CI scanning across 790+ files (`npm run scan:secrets`) to prevent credentials, private keys, or API tokens from being committed. |
 
 ---
 
@@ -87,171 +100,193 @@ Bedrock Desktop Architecture
 
 ```
 Bedrock/
-├── public/                 # Static public assets and application icons
-├── src/
-│   ├── assets/             # Bundled visual assets and styles
-│   ├── components/
-│   │   ├── auth/           # Authentication and credential modals
-│   │   ├── landing/        # Marketing and landing page components
-│   │   ├── layout/         # Shell layout, navigation bar, and page wrappers
-│   │   ├── ui/             # Reusable primitives (buttons, inputs, rich selectors)
-│   │   └── workspace/      # Canvas panels, node drawers, and inspector widgets
-│   ├── lib/
-│   │   ├── api.ts          # LLM provider clients, prompt synthesis, and test runners
-│   │   ├── mockApi.ts      # Offline mock client for local UI testing
-│   │   ├── updater.ts      # Tauri native update checker integration
-│   │   └── utils.ts        # Class merging and utility helpers
-│   ├── pages/
-│   │   ├── Billing.tsx     # Account tiers and subscription management
-│   │   ├── BranchingChat.tsx # Graph-based prompt chaining and canvas workspace
-│   │   ├── Dashboard.tsx   # Workspace hub, recent runs, and quick actions
-│   │   ├── Landing.tsx     # Web entrypoint and product showcase
-│   │   ├── Library.tsx     # Saved prompt templates and persona database
-│   │   ├── Pricing.tsx     # Tier comparison matrix
-│   │   ├── PromptTester.tsx# Dual-model parallel prompt benchmark console
-│   │   ├── Result.tsx      # Synthesis review, markdown preview, and refinement
-│   │   ├── Settings.tsx    # API key configuration, preferences, and telemetry
-│   │   └── Wizard.tsx      # Step-by-step prompt synthesis generator
-│   ├── App.tsx             # Root router, query client, and Lenis integration
-│   ├── index.css           # Global design system tokens and Tailwind directives
-│   └── main.tsx            # React application entry point
-├── src-tauri/
-│   ├── capabilities/       # Tauri permissions and security manifests
-│   ├── icons/              # Multi-resolution application icons
-│   ├── src/                # Rust backend entry point and command handlers
-│   ├── Cargo.toml          # Rust dependencies and crate definitions
-│   └── tauri.conf.json     # Tauri runtime and bundle packaging configuration
-├── vite.config.ts          # Vite configuration with API reverse proxies
-├── tailwind.config.js      # Design tokens, color palettes, and typography rules
-└── package.json            # Project dependencies and script declarations
+├── docs/                        # Compliance, legal, and operational documentation
+│   ├── DATA_RETENTION_POLICY.md # Data lifecycle, export, and deletion policies
+│   ├── INCIDENT_RESPONSE.md     # Security incident escalation and containment playbook
+│   ├── PRIVACY_POLICY.md        # GDPR, CCPA, and DPDP-compliant privacy policy
+│   └── TERMS_OF_SERVICE.md      # Platform usage terms and SLA specifications
+├── public/                      # Static branding assets and application icons
+├── scripts/
+│   └── scan-secrets.js          # Automated pre-commit and CI credential leak scanner
+├── server/                      # Hardened Express 5 production backend
+│   ├── prisma/                  # Prisma ORM schema and migrations (SQLite / PostgreSQL)
+│   ├── src/
+│   │   ├── middleware/          # Security headers, auth verification, rate limiters, error handling
+│   │   ├── routes/              # Modular API endpoints (ai, auth, billing, health, prompts, workflows)
+│   │   ├── services/            # AI provider proxy, TTL cache, metrics collection, queues
+│   │   ├── config.ts            # Environment validation and security configuration
+│   │   ├── db.ts                # Prisma client singleton and security audit logger
+│   │   └── index.ts             # Server entry point and graceful shutdown hooks
+│   ├── tests/
+│   │   └── prompt-injection-runner.ts # Automated 4-vector adversarial prompt injection test suite
+│   ├── .env.example             # Server environment template
+│   └── package.json             # Server dependencies and scripts
+├── src/                         # Frontend application (React 19 + TypeScript)
+│   ├── components/              # UI primitives, canvas nodes, and auth modals
+│   ├── lib/                     # Client API adapters, mock handlers, and updater hooks
+│   ├── pages/                   # Application views (Wizard, Canvas, Tester, Billing, Settings)
+│   ├── App.tsx                  # Root layout, routing, and Lenis smooth scroll
+│   └── index.css                # Global design system tokens and Tailwind CSS rules
+├── src-tauri/                   # Rust native desktop runtime (Tauri 2.0)
+│   ├── capabilities/            # OS permissions and sandboxing manifests
+│   └── tauri.conf.json          # Desktop packaging and bundle configuration
+├── .github/
+│   └── workflows/
+│       ├── release.yml          # Automated multi-platform desktop release builder
+│       └── security.yml         # Continuous secret scanning, dependency audit, and build check
+├── vite.config.ts               # Vite configuration with API reverse proxies
+└── package.json                 # Project scripts and dependencies
 ```
 
 ---
 
-## Prerequisites
+## API Endpoints Reference (`server/`)
 
-Ensure the following tools are installed on your host system before configuring the development environment:
+### Authentication (`/api/auth`)
+- `POST /api/auth/register` — Registers a user account with Argon2 password hashing.
+- `POST /api/auth/login` — Authenticates user, enforces lockout counters, and sets secure JWT cookie.
+- `POST /api/auth/logout` — Invalidates user session and clears authentication cookies.
+- `GET  /api/auth/me` — Retrieves authenticated user profile and subscription status.
 
-1. **Node.js**: `v18.0.0` or later (LTS recommended).
-2. **Package Manager**: `npm` (bundled with Node.js), `pnpm`, or `yarn`.
-3. **Rust Toolchain** (Required for Tauri desktop builds):
-   - Install Rust via [rustup.rs](https://rustup.rs/):
-     ```bash
-     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-     ```
-4. **Platform-Specific Dependencies**:
-   - **Windows**: Microsoft Visual Studio C++ Build Tools or Visual Studio Community with the "Desktop development with C++" workload installed, plus the WebView2 Runtime.
-   - **macOS**: Xcode Command Line Tools (`xcode-select --install`).
-   - **Linux**: Standard build tools and WebKitGTK libraries:
-     ```bash
-     sudo apt update && sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libayatana-appindicator3-dev librsvg2-dev
-     ```
+### AI Proxy & Inference (`/api/ai`)
+- `POST /api/ai/generate` — Dispatches prompt generation through server proxy with prompt injection sanitization.
+- `POST /api/ai/test` — Benchmarks prompts across dual model providers simultaneously.
+- `POST /api/ai/refine` — Iteratively improves existing system prompts based on user feedback.
+- `GET  /api/ai/models` — Lists available LLM providers, active models, and operational status.
 
----
+### Workflows & Canvas (`/api/workflows`)
+- `GET  /api/workflows` — Lists all visual workflow graphs for the authenticated user.
+- `POST /api/workflows` — Saves a new visual node graph topology.
+- `PUT  /api/workflows/:id` — Updates node configurations, connections, and metadata.
+- `POST /api/workflows/:id/execute` — Triggers server-side sequential/parallel execution of a node graph.
 
-## Environment Configuration
+### Billing & Razorpay (`/api/billing`)
+- `POST /api/billing/create-order` — Creates a Razorpay subscription payment order.
+- `POST /api/billing/webhook` — Verifies HMAC-SHA256 signature and provisions plan quotas.
+- `GET  /api/billing/invoices` — Retrieves payment receipts and transaction history.
 
-Bedrock communicates with LLM providers either through local API proxy routes during development or direct endpoints in native builds.
-
-Create a `.env.local` file in the root directory:
-
-```env
-# Google Gemini API Key (Used for question generation and prompt synthesis)
-VITE_GEMINI_API_KEY=your_gemini_api_key_here
-
-# Groq API Key (Used for high-speed Llama inference)
-VITE_GROQ_API_KEY=your_groq_api_key_here
-
-# OpenRouter API Key (Used for multi-model open-source routing)
-VITE_OPENROUTER_API_KEY=your_openrouter_api_key_here
-
-# Hugging Face User Access Token (Used for serverless inference endpoints)
-VITE_HUGGINGFACE_API_KEY=your_huggingface_api_token_here
-```
-
-### Environment Variable Reference
-
-| Variable Name | Required | Purpose |
-| :--- | :--- | :--- |
-| `VITE_GEMINI_API_KEY` | Optional | Powers the primary wizard generation and refinement workflows via `gemini-2.5-flash` / `gemini-2.5-pro`. |
-| `VITE_GROQ_API_KEY` | Optional | Enables low-latency execution for Llama-based benchmarks in the Prompt Tester. |
-| `VITE_OPENROUTER_API_KEY` | Optional | Grants access to community models (Gemma, Mistral, Phi-3, Nemotron) in the Tester and Branching Canvas. |
-| `VITE_HUGGINGFACE_API_KEY` | Optional | Connects to Hugging Face Serverless Inference API for specialized open models. |
+### Observability & Health (`/api/health`)
+- `GET /health` — Liveness probe (returns 200 OK with server uptime).
+- `GET /health/ready` — Readiness probe (checks active database connectivity).
+- `GET /health/metrics` — Returns memory usage, active connections, and request latency stats.
 
 ---
 
 ## Getting Started
 
-### 1. Clone the Repository
+### 1. Prerequisites
+- **Node.js**: `v20.0.0` or higher (LTS recommended).
+- **npm**: `v10.0.0` or higher.
+- **Rust Toolchain**: Optional, required only for native Tauri desktop packaging ([rustup.rs](https://rustup.rs/)).
+
+### 2. Installation
+Clone the repository and install both frontend and backend dependencies:
 
 ```bash
+# Clone the repository
 git clone https://github.com/AtharvaK-XD/Bedrock.git
 cd Bedrock
+
+# Install frontend dependencies
+npm install
+
+# Install backend dependencies
+cd server
+npm install
+cd ..
 ```
 
-### 2. Install Dependencies
+### 3. Environment Setup
+
+#### Frontend Configuration (`.env.local` in root)
+```env
+# Optional client-side API keys for direct browser development
+VITE_GEMINI_API_KEY=your_gemini_api_key
+VITE_GROQ_API_KEY=your_groq_api_key
+VITE_OPENROUTER_API_KEY=your_openrouter_api_key
+VITE_HUGGINGFACE_API_KEY=your_huggingface_api_key
+```
+
+#### Backend Configuration (`server/.env`)
+Copy the example template:
+```bash
+cp server/.env.example server/.env
+```
+Fill in your configuration:
+```env
+DATABASE_URL="file:./dev.db"
+PORT=3000
+NODE_ENV=development
+JWT_SECRET=your_secure_random_jwt_secret
+
+# AI Provider Keys (Server-side proxy)
+GROQ_API_KEY=your_groq_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
+GEMINI_API_KEY=your_gemini_api_key
+
+# Razorpay (Optional - for billing)
+RAZORPAY_KEY_ID=rzp_test_xxx
+RAZORPAY_KEY_SECRET=your_razorpay_secret
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
+```
+
+### 4. Database Setup
+Initialize the SQLite database schema via Prisma:
 
 ```bash
-npm install
+cd server
+npx prisma db push
+npx prisma generate
+cd ..
 ```
 
-### 3. Run in Development Mode
+---
 
-#### Option A: Web-Only Development
-Starts the Vite development server in standard browser mode:
+## Running Bedrock
+
+### Run Backend API
+```bash
+cd server
+npm run dev
+```
+The backend API boots on `http://localhost:3000`.
+
+### Run Frontend Web App
+In a separate terminal:
 ```bash
 npm run dev
 ```
-Access the application at `http://localhost:5173`.
+Access the application in your browser at `http://localhost:5173`.
 
-#### Option B: Full Tauri Desktop Development
-Compiles the Rust bridge and opens the native desktop window:
+### Run Native Desktop Client (Tauri)
 ```bash
 npm run tauri dev
 ```
 
 ---
 
-## Building and Packaging
+## Testing & Quality Assurance
 
-### 1. Type Check and Web Asset Compilation
-
-```bash
-npm run build
-```
-This runs `tsc -b` to enforce TypeScript integrity followed by `vite build` to output production assets to `dist/`.
-
-### 2. Compile Desktop Application (Tauri)
-
-```bash
-npm run tauri build
-```
-
-Compiled binaries and platform installers will be generated under:
-- **Windows**: `src-tauri/target/release/bundle/nsis/` or `msi/`
-- **macOS**: `src-tauri/target/release/bundle/dmg/` or `macos/`
-- **Linux**: `src-tauri/target/release/bundle/appimage/` or `deb/`
-
----
-
-## Development Scripts
-
-| Command | Description |
+| Command | Purpose |
 | :--- | :--- |
-| `npm run dev` | Starts the Vite development server with hot module replacement (HMR). |
-| `npm run tauri dev` | Boots the Tauri desktop client connected to the Vite development server. |
-| `npm run build` | Compiles TypeScript types and bundles the frontend application. |
-| `npm run preview` | Runs a local static server to preview the compiled `dist/` production assets. |
-| `npm run tauri build` | Creates release-optimized desktop binaries and platform installer bundles. |
-| `npm run lint` | Runs Oxlint to inspect codebase syntax and ensure high code quality standards. |
+| `npm run scan:secrets` | Scans all repository files for accidental secret or API key leaks. |
+| `npm run test:injection` | Executes automated adversarial prompt injection attack suites against the backend parser. |
+| `npm run build` | Validates TypeScript type compliance (`tsc -b`) and compiles production web assets. |
+| `npm run lint` | Runs Oxlint across the frontend codebase for high-performance static analysis. |
+| `npm run tauri build` | Packages release-optimized native desktop installers (`.msi`, `.dmg`, `.AppImage`). |
 
 ---
 
-## Network and Proxy Architecture
+## Compliance & Legal Policies
 
-During development in browser environments, cross-origin resource sharing (CORS) policies may restrict direct browser-to-LLM API requests. Bedrock handles this seamlessly via Vite's development proxy layer in `vite.config.ts`:
+All policies governing user data protection, retention schedules, and incident protocols are located in the [`docs/`](./docs) directory:
+- [Privacy Policy](./docs/PRIVACY_POLICY.md)
+- [Data Retention & Deletion Policy](./docs/DATA_RETENTION_POLICY.md)
+- [Security Incident Response Playbook](./docs/INCIDENT_RESPONSE.md)
+- [Terms of Service](./docs/TERMS_OF_SERVICE.md)
 
-- `/api/gemini/*` -> Proxied to `https://generativelanguage.googleapis.com`
-- `/api/groq/*` -> Proxied to `https://api.groq.com`
-- `/api/openrouter/*` -> Proxied to `https://openrouter.ai/api`
-- `/api/huggingface/*` -> Proxied to `https://api-inference.huggingface.co`
+---
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
