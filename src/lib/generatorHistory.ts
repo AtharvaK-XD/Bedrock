@@ -12,124 +12,33 @@ export interface HistoryPromptItem {
 const STORAGE_KEY = 'bedrock_generator_history';
 export const HISTORY_UPDATE_EVENT = 'bedrock_generator_history_updated';
 
-export const DEFAULT_GENERATOR_HISTORY: HistoryPromptItem[] = [
-  // Pinned items from screenshot
-  {
-    id: 'pin-1',
-    title: 'Interactive prompt refinement',
-    ideaText: 'Interactive prompt refinement system with multi-turn feedback and structural improvisation',
-    targetType: 'coding_agent',
-    isPinned: true,
-    createdAt: Date.now() - 1000 * 60 * 60 * 2,
-  },
-  {
-    id: 'pin-2',
-    title: 'Selection operator examples',
-    ideaText: 'Selection operator examples and genetic algorithm optimization pipeline in TypeScript',
-    targetType: 'coding_agent',
-    isPinned: true,
-    createdAt: Date.now() - 1000 * 60 * 60 * 5,
-  },
-  {
-    id: 'pin-3',
-    title: 'Sutradhar study guide prep',
-    ideaText: 'Sutradhar study guide preparation with comprehensive chapter-by-chapter analysis',
-    targetType: 'freelance_sow',
-    isPinned: true,
-    createdAt: Date.now() - 1000 * 60 * 60 * 12,
-  },
-  {
-    id: 'pin-4',
-    title: 'Presentation explanation notes',
-    ideaText: 'Executive presentation explanation notes and slide-by-slide speaker talking points',
-    targetType: 'freelance_sow',
-    isPinned: true,
-    createdAt: Date.now() - 1000 * 60 * 60 * 24,
-  },
-  {
-    id: 'pin-5',
-    title: 'Hackathon problem statement',
-    ideaText: 'AI agentic workflow hackathon problem statement and lean 24-hour MVP sprint plan',
-    targetType: 'hackathon_mvp',
-    isPinned: true,
-    createdAt: Date.now() - 1000 * 60 * 60 * 36,
-  },
-  // Chats and tasks from screenshot
-  {
-    id: 'chat-1',
-    title: 'Laptop purchase feedback',
-    ideaText: 'Comprehensive laptop purchase feedback and hardware benchmark analysis',
-    targetType: 'coding_agent',
-    isPinned: false,
-    createdAt: Date.now() - 1000 * 60 * 60 * 48,
-  },
-  {
-    id: 'chat-2',
-    title: 'Node MCU LED pin definition',
-    ideaText: 'NodeMCU ESP8266 LED pin definitions, GPIO mapping, and PWM controller firmware',
-    targetType: 'cli_tool',
-    isPinned: false,
-    createdAt: Date.now() - 1000 * 60 * 60 * 60,
-  },
-  {
-    id: 'chat-3',
-    title: 'Project explanation and technical specs',
-    ideaText: 'Project explanation and technical specification blueprint with Mermaid architecture',
-    targetType: 'full_stack',
-    isPinned: false,
-    createdAt: Date.now() - 1000 * 60 * 60 * 72,
-  },
-  {
-    id: 'chat-4',
-    title: 'Clarification needed',
-    ideaText: 'Clarification needed on authentication architecture and session tokens',
-    targetType: 'full_stack',
-    isPinned: false,
-    statusColor: '#e5ad65',
-    createdAt: Date.now() - 1000 * 60 * 60 * 84,
-  },
-  {
-    id: 'chat-5',
-    title: 'Greeting exchange',
-    ideaText: 'Greeting exchange and welcome onboard flow with personalized onboarding wizard',
-    targetType: 'coding_agent',
-    isPinned: false,
-    statusColor: '#e5ad65',
-    createdAt: Date.now() - 1000 * 60 * 60 * 96,
-  },
-  {
-    id: 'chat-6',
-    title: 'Detailed explanations in simple terms',
-    ideaText: 'Detailed technical explanations broken down in simple, accessible terms for stakeholders',
-    targetType: 'freelance_sow',
-    isPinned: false,
-    createdAt: Date.now() - 1000 * 60 * 60 * 110,
-  },
-  {
-    id: 'chat-7',
-    title: 'Miniterm and macterm definitions',
-    ideaText: 'Miniterm and maxterm Boolean algebra definitions with Karnaugh map simplification examples',
-    targetType: 'coding_agent',
-    isPinned: false,
-    createdAt: Date.now() - 1000 * 60 * 60 * 130,
-  },
-];
+// Mock seed IDs to purge for all existing and new users
+const LEGACY_MOCK_IDS = new Set([
+  'pin-1', 'pin-2', 'pin-3', 'pin-4', 'pin-5',
+  'chat-1', 'chat-2', 'chat-3', 'chat-4', 'chat-5', 'chat-6', 'chat-7'
+]);
+
+export const DEFAULT_GENERATOR_HISTORY: HistoryPromptItem[] = [];
 
 export function getStoredGeneratorHistory(): HistoryPromptItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_GENERATOR_HISTORY));
-      return DEFAULT_GENERATOR_HISTORY;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+    if (Array.isArray(parsed)) {
+      // Purge any mock/seed items from previous mock sessions for all users
+      const sanitized = parsed.filter(item => item && !LEGACY_MOCK_IDS.has(item.id));
+      if (sanitized.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+      }
+      return sanitized;
     }
   } catch (err) {
     console.error('Error loading generator history:', err);
   }
-  return DEFAULT_GENERATOR_HISTORY;
+  return [];
 }
 
 export function saveGeneratorHistory(items: HistoryPromptItem[]): void {

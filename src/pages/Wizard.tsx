@@ -37,7 +37,7 @@ export default function Wizard() {
       return false;
     }
   });
-  const [activePromptId, setActivePromptId] = useState<string | null>('pin-1');
+  const [activePromptId, setActivePromptId] = useState<string | null>(null);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(prev => {
@@ -101,12 +101,13 @@ export default function Wizard() {
 
     setIsGenerating(true);
     try {
-      addPromptToHistory({
+      const createdItem = addPromptToHistory({
         title: idea.length > 36 ? idea.slice(0, 36) + '...' : idea,
         ideaText: idea,
         targetType,
         isPinned: false,
       });
+      setActivePromptId(createdItem.id);
       const q = await generateQuestions({ ideaText: idea, targetType });
       setQuestions(q);
       setStep(2);
@@ -158,14 +159,16 @@ export default function Wizard() {
     }));
     try {
       const promptText = await synthesizePrompt({ ideaText: idea, targetType }, answersArray, questions);
-      addPromptToHistory({
+      const updatedItem = addPromptToHistory({
+        id: activePromptId || undefined,
         title: idea.length > 36 ? idea.slice(0, 36) + '...' : idea,
         ideaText: idea,
         targetType,
         promptText,
         isPinned: false,
       });
-      navigate('/app/result', { state: { promptText, idea } });
+      setActivePromptId(updatedItem.id);
+      navigate('/app/result', { state: { promptText, idea, historyId: updatedItem.id } });
     } catch (err: any) {
       console.error('Prompt synthesis failed:', err);
       const isKeyError = Boolean(

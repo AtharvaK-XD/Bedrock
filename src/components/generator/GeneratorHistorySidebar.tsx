@@ -317,8 +317,12 @@ export function GeneratorHistorySidebar({
             })}
 
             {chatItems.length === 0 && (
-              <div className="px-3 py-6 text-center text-xs text-neutral-500 font-mono">
-                {searchQuery ? "No matching prompts found" : "No previous prompts"}
+              <div className="px-3 py-10 text-center text-xs text-neutral-500 font-mono flex flex-col items-center justify-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-neutral-600 mb-1" />
+                <span>{searchQuery ? "No matching prompts found" : "No previous prompts"}</span>
+                {!searchQuery && (
+                  <span className="text-[11px] text-neutral-600">Created prompts will appear here</span>
+                )}
               </div>
             )}
           </div>
