@@ -10,6 +10,7 @@ import { refinePrompt } from '../lib/api';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
+import { addPromptToHistory } from '../lib/generatorHistory';
 
 const TypewriterText = ({ text }: { text: string }) => {
   const words = text.split(' ');
@@ -41,6 +42,7 @@ export default function Result() {
   const navigate = useNavigate();
   const [promptText, setPromptText] = useState<string>(location.state?.promptText || '');
   const idea = location.state?.idea as string | undefined;
+  const historyId = location.state?.historyId as string | undefined;
 
   const [chatHistory, setChatHistory] = useState<Array<{ role: string; content: string }>>([
     { role: 'user', content: idea || 'Initial Project Request' },
@@ -158,6 +160,15 @@ export default function Result() {
               const { updatedMarkdown, summary } = await refinePrompt(promptText, text, nextHistory);
               setPromptText(updatedMarkdown);
               setChatHistory(prev => [...prev, { role: 'ai', content: summary }]);
+              if (idea || historyId) {
+                addPromptToHistory({
+                  id: historyId,
+                  title: (idea && idea.length > 36 ? idea.slice(0, 36) + '...' : idea) || 'Refined Prompt',
+                  ideaText: idea || 'Refined Prompt',
+                  promptText: updatedMarkdown,
+                  isPinned: false,
+                });
+              }
             } catch (err: any) {
               console.error('Refinement failed:', err);
               const isKeyError = Boolean(
