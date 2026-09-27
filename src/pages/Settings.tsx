@@ -200,24 +200,24 @@ export default function Settings() {
 
   return (
     <PageTransition>
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 lg:py-12 min-h-[calc(100vh-80px)] flex flex-col pb-24">
+      <div className="w-full px-4 sm:px-8 py-6 lg:py-8 min-h-[calc(100vh-80px)] flex flex-col pb-16">
         {/* Header Breadcrumbs & Title */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center gap-2 text-xs font-mono text-gray-400 uppercase tracking-wider mb-2">
             <Link to="/app" className="hover:text-white transition-colors">Workspace</Link>
             <span>/</span>
             <span className="text-white font-semibold">Settings</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-editorial font-bold text-white">Settings</h1>
-          <p className="text-gray-400 mt-2 text-sm">
+          <p className="text-gray-400 mt-1 text-sm font-sans">
             Manage your account credentials, AI model endpoints, and API keys.
           </p>
         </div>
 
         {/* Main Grid: Sidebar + Content */}
-        <div className="flex flex-col md:flex-row gap-8 flex-1 items-start">
+        <div className="flex flex-col md:flex-row gap-6 lg:gap-8 flex-1 items-start w-full">
           {/* Sidebar Navigation */}
-          <aside className="w-full md:w-64 shrink-0">
+          <aside className="w-full md:w-64 lg:w-72 shrink-0">
             <nav className="flex flex-col gap-1.5 sticky top-28 bg-[#0e1014]/60 backdrop-blur-xl border border-white/5 p-2 rounded-2xl">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
