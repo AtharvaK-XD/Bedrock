@@ -1,5 +1,5 @@
 #define MyAppName "Bedrock"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "Bedrock Inc"
 #define MyAppURL "https://bedrock.app"
 #define MyAppExeName "Bedrock.exe"

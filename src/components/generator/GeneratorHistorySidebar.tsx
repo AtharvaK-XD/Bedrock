@@ -25,6 +25,7 @@ import {
   HISTORY_UPDATE_EVENT 
 } from '../../lib/generatorHistory';
 import { useUserProfile } from '../../lib/useUserProfile';
+import { isDesktopApp } from '../../lib/platform';
 
 interface GeneratorHistorySidebarProps {
   isCollapsed: boolean;
@@ -133,16 +134,21 @@ export function GeneratorHistorySidebar({
   const displayName = profile?.name ? profile.name.split(' ')[0] : 'Atharva';
   const displayPlan = profile?.plan?.toLowerCase().includes('pro') ? 'Pro' : 'Free';
   const displayInitial = profile?.avatarInitials ? profile.avatarInitials[0] : (displayName[0] || 'A');
+  const isDesktop = isDesktopApp();
 
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 bottom-0 z-30 w-64 sm:w-72 bg-[#0c0d10] border-r border-white/[0.08] flex flex-col transition-transform duration-300 ease-in-out select-none shadow-[6px_0_32px_rgba(0,0,0,0.65)]",
+        "fixed top-0 bottom-0 z-30 w-64 sm:w-72 bg-[#0c0d10] border-r border-white/[0.08] flex flex-col transition-transform duration-300 ease-in-out select-none shadow-[6px_0_32px_rgba(0,0,0,0.65)]",
+        isDesktop ? "left-64" : "left-0",
         isCollapsed ? "-translate-x-full pointer-events-none" : "translate-x-0 pointer-events-auto"
       )}
     >
-      {/* Top Header Controls (starts at pt-20 to cleanly sit below the fixed Topbar brand) */}
-      <div className="pt-20 px-3 pb-2.5 flex items-center justify-between border-b border-white/[0.06]">
+      {/* Top Header Controls (starts at pt-20 on web for fixed Topbar, pt-4 on desktop) */}
+      <div className={cn(
+        "px-3 pb-2.5 flex items-center justify-between border-b border-white/[0.06]",
+        isDesktop ? "pt-4" : "pt-20"
+      )}>
         <button
           type="button"
           onClick={onNewPrompt}

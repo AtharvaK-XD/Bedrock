@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useUserProfile } from '../../lib/useUserProfile';
 import { useAuth } from '../../lib/useAuth';
 import { 
+  LayoutDashboard,
   Wand2, 
   GitBranch, 
   FlaskConical, 
@@ -15,10 +16,11 @@ import {
 } from 'lucide-react';
 
 const desktopNavItems = [
-  { label: 'Generator', path: '/app/generator', icon: Wand2, shortcut: '⌘1' },
-  { label: 'Branching', path: '/app/branching', icon: GitBranch, shortcut: '⌘2' },
-  { label: 'Prompt Tester', path: '/app/tester', icon: FlaskConical, shortcut: '⌘3' },
-  { label: 'Library', path: '/app/library', icon: Bookmark, shortcut: '⌘4' },
+  { label: 'Dashboard', path: '/app', icon: LayoutDashboard, shortcut: '⌘1' },
+  { label: 'Generator', path: '/app/generator', icon: Wand2, shortcut: '⌘2' },
+  { label: 'Branching', path: '/app/branching', icon: GitBranch, shortcut: '⌘3' },
+  { label: 'Prompt Tester', path: '/app/tester', icon: FlaskConical, shortcut: '⌘4' },
+  { label: 'Library', path: '/app/library', icon: Bookmark, shortcut: '⌘5' },
 ];
 
 interface SidebarProps {
@@ -63,14 +65,14 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
 
       {/* Brand Header */}
       <div className="p-5 pb-4 flex items-center justify-between border-b border-white/[0.06]">
-        <Link to="/app/generator" className="flex items-center group">
+        <Link to="/app" className="flex items-center group">
           <div className="flex flex-col">
             <span className="font-display font-bold text-base tracking-wider uppercase text-white leading-tight">Bedrock</span>
             <span className="text-[10px] font-mono text-gray-500 tracking-wider uppercase">Workstation</span>
           </div>
         </Link>
         <span className="px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-[10px] font-mono text-copper-300">
-          v2.0
+          v1.2.0
         </span>
       </div>
 
@@ -82,7 +84,9 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
           </p>
           <nav className="space-y-1">
             {desktopNavItems.map((item) => {
-              const isActive = location.pathname.startsWith(item.path);
+              const isActive = item.path === '/app'
+                ? (location.pathname === '/app' || location.pathname === '/app/')
+                : location.pathname.startsWith(item.path);
               const Icon = item.icon;
               return (
                 <Link
