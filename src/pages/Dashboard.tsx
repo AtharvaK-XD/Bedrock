@@ -91,83 +91,13 @@ export default function Dashboard() {
 
   return (
     <PageTransition>
-      <div className="relative w-full h-full min-h-screen overflow-y-auto bg-[#07090e] text-white font-sans selection:bg-copper-500/30 selection:text-white custom-scrollbar pb-16">
+      <div className="relative w-full h-full min-h-screen overflow-y-auto bg-black text-white font-sans selection:bg-copper-500/30 selection:text-white custom-scrollbar pb-16">
         
-        {/* Ambient Glassmorphic Lighting & Atmospheric Glow Orbs (Diffusion layer) */}
+        {/* Subtle geometric dot grid on pure black */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden -z-0">
-          {/* Warm amber/golden architectural light (inspired by Reference Image 2) */}
-          <div className="absolute -top-[10%] right-[10%] w-[680px] h-[600px] bg-gradient-to-br from-amber-500/10 via-yellow-600/5 to-transparent rounded-full blur-[140px] mix-blend-screen" />
-          
-          {/* Deep emerald/cyan routing cluster light (cool accent) */}
-          <div className="absolute top-[25%] -left-[10%] w-[620px] h-[580px] bg-gradient-to-tr from-emerald-500/10 via-cyan-500/6 to-transparent rounded-full blur-[140px] mix-blend-screen" />
-          
-          {/* Subtle violet/copper ground glow */}
-          <div className="absolute bottom-[5%] left-[25%] w-[700px] h-[550px] bg-gradient-to-t from-copper-500/8 via-purple-600/5 to-transparent rounded-full blur-[160px] mix-blend-screen" />
-
-          {/* Tactile Frosted Glass Micro-Noise */}
-          <div className="absolute inset-0 glass-noise opacity-50 pointer-events-none mix-blend-overlay" />
-          
-          {/* Geometric dot grid */}
-          <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:28px_28px] opacity-30 pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:28px_28px] opacity-20 pointer-events-none" />
         </div>
 
-        {/* SUBHEADER / GLASS COMMAND BAR */}
-        <div className="relative w-full px-4 sm:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 bg-transparent z-20">
-          
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-pill shadow-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.9)]"></span>
-              </span>
-              <span className="text-[11px] font-semibold tracking-wide text-emerald-400 uppercase font-mono">OPERATIONAL</span>
-            </div>
-            <div className="h-4 w-px bg-white/15 hidden sm:block" />
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-display font-semibold text-white tracking-tight">Command Center</span>
-              <span className="text-xs text-white/40 hidden sm:inline">· Dynamic Multi-Cluster Routing</span>
-            </div>
-          </div>
-          
-          {/* Real-time KPI Metric Badges */}
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
-            {/* Latency */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl glass-pill shadow-sm hover:border-white/20 transition-colors">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[10px] text-white/40 font-mono font-medium uppercase tracking-wider">P99 LAT</span>
-                <span className="font-mono text-xs font-semibold text-white">242ms</span>
-              </div>
-            </div>
-
-            {/* Throughput */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl glass-pill shadow-sm hover:border-white/20 transition-colors">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[10px] text-white/40 font-mono font-medium uppercase tracking-wider">THROUGHPUT</span>
-                <span className="font-mono text-xs font-semibold text-white">14.2K<span className="text-[10px] font-sans font-normal text-white/40">/s</span></span>
-              </div>
-            </div>
-
-            {/* Error Rate */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl glass-pill shadow-sm hover:border-white/20 transition-colors">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[10px] text-white/40 font-mono font-medium uppercase tracking-wider">ERROR RATE</span>
-                <span className="font-mono text-xs font-semibold text-emerald-400">0.04%</span>
-              </div>
-            </div>
-
-            {/* Region */}
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl glass-pill shadow-sm hover:border-white/20 transition-colors">
-              <span className="w-1.5 h-1.5 rounded-full bg-copper-400 shadow-[0_0_8px_rgba(200,168,107,0.8)]" />
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[10px] text-white/40 font-mono font-medium uppercase tracking-wider">CLUSTER</span>
-                <span className="font-mono text-xs font-medium text-white/80">us-east-1</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* MAIN DASHBOARD CONTENT */}
         <div className="relative z-10 w-full px-4 sm:px-8 pt-6 flex flex-col gap-8">

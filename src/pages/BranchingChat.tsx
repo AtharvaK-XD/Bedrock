@@ -47,17 +47,12 @@ import {
   Trash2,
   ArrowLeft,
   Clock,
-  Layers,
   FolderOpen,
   ChevronRight,
-  ExternalLink,
   X,
   LayoutGrid,
   List,
   RefreshCw,
-  GitBranch,
-  Cpu,
-  Boxes,
 } from 'lucide-react';
 
 export const NODE_CONFIG = {
@@ -2204,18 +2199,6 @@ function getNodeCount(nodesRaw: any): number {
   return 0;
 }
 
-function getEdgeCount(edgesRaw: any): number {
-  if (Array.isArray(edgesRaw)) return edgesRaw.length;
-  if (typeof edgesRaw === 'string') {
-    try {
-      return JSON.parse(edgesRaw).length;
-    } catch {
-      return 0;
-    }
-  }
-  return 0;
-}
-
 interface WorkflowDashboardProps {
   onOpenWorkflow: (wf: { id?: string; title: string; nodes: any; edges: any }) => void;
   onCreateNew: () => void;
@@ -2317,165 +2300,106 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
   const hasAnyMatches = filteredSaved.length > 0 || filteredTemplates.length > 0;
 
   return (
-    <div className="w-full h-full flex flex-col min-h-0 bg-[#0c0c0c] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+    <div className="w-full h-full flex flex-col min-h-0 bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
       {/* Top Header Bar */}
-      <div className="px-5 py-3.5 border-b border-white/10 bg-[#121212]/95 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-copper-500/10 border border-copper-500/30 text-copper-400 flex items-center justify-center shrink-0 shadow-sm">
-            <GitBranch className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold font-mono tracking-wider uppercase text-white">
-                Workflows Dashboard
-              </h1>
-              <span className="px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded bg-white/5 border border-white/10 text-gray-400">
-                v2.4 Canvas Hub
-              </span>
-            </div>
-            <p className="text-[11px] font-mono text-gray-400 mt-0.5">
-              Manage saved neural execution graphs, inspect pipelines & load curated templates
-            </p>
-          </div>
+      <div className="px-6 py-4 border-b border-white/10 bg-[#111111]/80 backdrop-blur-xl flex flex-wrap items-center justify-between gap-4 shrink-0">
+        <div>
+          <h1 className="text-base font-semibold text-white tracking-tight">
+            Workflows
+          </h1>
+          <p className="text-xs text-neutral-400 mt-0.5">
+            Design, test, and run multi-step prompt pipelines.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={fetchWorkflows}
-            title="Refresh saved pipelines"
-            className="p-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            title="Refresh workflows"
+            className="p-2 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors"
           >
             <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin text-copper-400")} />
           </button>
           <button
             onClick={onCreateNew}
-            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-copper-500 to-copper-600 hover:from-copper-400 hover:to-copper-500 text-white font-medium text-xs font-mono flex items-center gap-1.5 shadow-md shadow-copper-500/15 active:scale-[0.98] transition-all"
+            className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-neutral-200 text-black font-medium text-xs flex items-center gap-1.5 transition-colors shadow-sm active:scale-[0.98]"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Create Blank Pipeline</span>
+            <span>New Workflow</span>
           </button>
         </div>
       </div>
 
-      {/* Main Body with High Density & No Empty Wasted Space */}
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-5 space-y-5">
-        {/* KPI / Architecture Status Ribbon */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-[#141414] border border-white/5 rounded-xl p-3 flex items-center justify-between">
-            <div>
-              <div className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">Your Workflows</div>
-              <div className="text-lg font-bold font-display text-white mt-0.5">
-                {savedWorkflows.length} <span className="text-xs font-mono font-normal text-gray-400">saved</span>
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-copper-500/10 border border-copper-500/20 text-copper-400 flex items-center justify-center">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-
-          <div className="bg-[#141414] border border-white/5 rounded-xl p-3 flex items-center justify-between">
-            <div>
-              <div className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">Curated Library</div>
-              <div className="text-lg font-bold font-display text-white mt-0.5">
-                {CURATED_TEMPLATES.length} <span className="text-xs font-mono font-normal text-gray-400">templates</span>
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
-              <Boxes className="w-4 h-4" />
-            </div>
-          </div>
-
-          <div className="bg-[#141414] border border-white/5 rounded-xl p-3 flex items-center justify-between">
-            <div>
-              <div className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">Node Archetypes</div>
-              <div className="text-lg font-bold font-display text-white mt-0.5">
-                7 <span className="text-xs font-mono font-normal text-gray-400">types ready</span>
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
-              <GitFork className="w-4 h-4" />
-            </div>
-          </div>
-
-          <div className="bg-[#141414] border border-white/5 rounded-xl p-3 flex items-center justify-between">
-            <div>
-              <div className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">Execution Core</div>
-              <div className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5 mt-1 font-mono">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                BYOK & Local Sync
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <Cpu className="w-4 h-4" />
-            </div>
-          </div>
-        </div>
-
-        {/* Search, Filter Tabs & View Controls */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#131313] p-2.5 rounded-xl border border-white/10">
-          {/* Search Bar */}
-          <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+      {/* Main Content Area */}
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6 space-y-6">
+        {/* Controls Toolbar: Search, Filters, View Mode */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Search */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search workflows, nodes, or templates..."
-              className="w-full pl-9 pr-8 py-1.5 text-xs bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-copper-500/50 font-mono transition-colors"
+              placeholder="Search workflows and templates..."
+              className="w-full pl-9 pr-8 py-1.5 text-xs bg-white/[0.03] border border-white/10 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-white/25 focus:bg-white/[0.05] transition-colors"
             />
             {searchQuery ? (
               <button 
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             ) : (
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-gray-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 pointer-events-none">
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-neutral-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 pointer-events-none">
                 /
               </span>
             )}
           </div>
 
-          {/* Filter Tabs & Layout View Mode */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-0.5 font-mono text-xs">
+          {/* Filter Tabs & Layout Toggle */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-white/[0.03] border border-white/10 rounded-lg p-0.5 text-xs">
               <button
                 onClick={() => setActiveTab('all')}
                 className={cn(
-                  "px-2.5 py-1 rounded-md transition-colors",
-                  activeTab === 'all' ? "bg-white/10 text-white font-medium shadow-sm" : "text-gray-400 hover:text-gray-200"
+                  "px-3 py-1 rounded-md transition-colors text-xs font-medium",
+                  activeTab === 'all' ? "bg-white/10 text-white shadow-sm" : "text-neutral-400 hover:text-neutral-200"
                 )}
               >
-                All ({filteredSaved.length + filteredTemplates.length})
+                All
               </button>
               <button
                 onClick={() => setActiveTab('saved')}
                 className={cn(
-                  "px-2.5 py-1 rounded-md transition-colors",
-                  activeTab === 'saved' ? "bg-white/10 text-white font-medium shadow-sm" : "text-gray-400 hover:text-gray-200"
+                  "px-3 py-1 rounded-md transition-colors text-xs font-medium flex items-center gap-1.5",
+                  activeTab === 'saved' ? "bg-white/10 text-white shadow-sm" : "text-neutral-400 hover:text-neutral-200"
                 )}
               >
-                Saved ({filteredSaved.length})
+                <span>Saved</span>
+                {savedWorkflows.length > 0 && (
+                  <span className="text-[10px] text-neutral-400">({savedWorkflows.length})</span>
+                )}
               </button>
               <button
                 onClick={() => setActiveTab('templates')}
                 className={cn(
-                  "px-2.5 py-1 rounded-md transition-colors",
-                  activeTab === 'templates' ? "bg-white/10 text-white font-medium shadow-sm" : "text-gray-400 hover:text-gray-200"
+                  "px-3 py-1 rounded-md transition-colors text-xs font-medium",
+                  activeTab === 'templates' ? "bg-white/10 text-white shadow-sm" : "text-neutral-400 hover:text-neutral-200"
                 )}
               >
-                Templates ({filteredTemplates.length})
+                Templates ({CURATED_TEMPLATES.length})
               </button>
             </div>
 
-            <div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-0.5">
+            <div className="flex items-center bg-white/[0.03] border border-white/10 rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode('grid')}
                 className={cn(
                   "p-1.5 rounded-md transition-colors",
-                  viewMode === 'grid' ? "bg-white/10 text-white" : "text-gray-400 hover:text-gray-300"
+                  viewMode === 'grid' ? "bg-white/10 text-white" : "text-neutral-400 hover:text-neutral-200"
                 )}
                 title="Grid View"
               >
@@ -2485,7 +2409,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
                 onClick={() => setViewMode('list')}
                 className={cn(
                   "p-1.5 rounded-md transition-colors",
-                  viewMode === 'list' ? "bg-white/10 text-white" : "text-gray-400 hover:text-gray-300"
+                  viewMode === 'list' ? "bg-white/10 text-white" : "text-neutral-400 hover:text-neutral-200"
                 )}
                 title="List View"
               >
@@ -2497,204 +2421,156 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
 
         {/* Global Empty State if Search yields 0 */}
         {!hasAnyMatches && searchQuery.trim() && (
-          <div className="border border-white/10 rounded-xl p-8 text-center flex flex-col items-center justify-center bg-[#151515]">
-            <Search className="w-8 h-8 text-gray-500 mb-2" />
-            <div className="text-sm font-semibold text-white">No matching pipelines found</div>
-            <div className="text-xs text-gray-400 mt-1 max-w-sm">
-              No saved workflows or templates matched "{searchQuery}". Try a different keyword or create a blank pipeline.
+          <div className="border border-white/10 rounded-xl p-10 text-center flex flex-col items-center justify-center bg-white/[0.02]">
+            <Search className="w-6 h-6 text-neutral-500 mb-2" />
+            <div className="text-sm font-medium text-white">No matching workflows</div>
+            <div className="text-xs text-neutral-400 mt-1 max-w-sm">
+              No workflows or templates matched "{searchQuery}".
             </div>
             <button
               onClick={() => setSearchQuery('')}
-              className="mt-4 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-mono transition-colors"
+              className="mt-4 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition-colors"
             >
-              Clear Search
+              Clear search
             </button>
           </div>
         )}
 
         {/* Section 1: Saved Workflows */}
         {activeTab !== 'templates' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-400">
-                  Your Saved Workflows
-                </h2>
-                <span className="px-1.5 py-0.2 text-[10px] font-mono rounded bg-white/5 border border-white/5 text-gray-400">
-                  {filteredSaved.length}
-                </span>
-              </div>
-              <span className="text-[10px] font-mono text-gray-400">Auto-saved to local storage & backend</span>
-            </div>
-
+          <>
             {filteredSaved.length > 0 ? (
-              viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {filteredSaved.map(wf => {
-                    const archetypes = getWorkflowArchetypes(wf.nodes);
-                    const nodeCount = getNodeCount(wf.nodes);
-                    const edgeCount = getEdgeCount(wf.edges);
-                    const isConfirming = deleteConfirmId === wf.id;
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                    My Workflows ({filteredSaved.length})
+                  </h2>
+                </div>
 
-                    return (
-                      <div
-                        key={wf.id}
-                        onClick={() => onOpenWorkflow(wf)}
-                        className="group bg-[#151515] hover:bg-[#1a1a1a] border border-white/10 hover:border-copper-500/40 rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-lg shadow-black/20 hover:shadow-copper-500/5 relative overflow-hidden"
-                      >
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-sm font-semibold font-display text-white group-hover:text-copper-400 transition-colors truncate">
+                {viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {filteredSaved.map(wf => {
+                      const archetypes = getWorkflowArchetypes(wf.nodes);
+                      const nodeCount = getNodeCount(wf.nodes);
+                      const isConfirming = deleteConfirmId === wf.id;
+
+                      return (
+                        <div
+                          key={wf.id}
+                          onClick={() => onOpenWorkflow(wf)}
+                          className="group bg-[#131313] hover:bg-[#171717] border border-white/[0.08] hover:border-white/20 rounded-xl p-4 transition-all duration-150 cursor-pointer flex flex-col justify-between"
+                        >
+                          <div className="space-y-2.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="text-sm font-medium text-white group-hover:text-copper-400 transition-colors truncate">
                                 {wf.title || 'Untitled Pipeline'}
                               </h3>
-                              <div className="flex items-center gap-1.5 text-[11px] font-mono text-gray-400 mt-1">
-                                <Clock className="w-3 h-3 text-gray-400 shrink-0" />
-                                <span>{formatRelativeTime(wf.updatedAt)}</span>
-                                <span>•</span>
-                                <span>{nodeCount} {nodeCount === 1 ? 'node' : 'nodes'}</span>
-                                <span>•</span>
-                                <span>{edgeCount} {edgeCount === 1 ? 'edge' : 'edges'}</span>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                {isConfirming ? (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
+                                      className="px-2 py-0.5 text-[10px] rounded bg-white/10 hover:bg-white/20 text-neutral-300 transition-colors"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      onClick={(e) => handleDelete(wf.id, e)}
+                                      className="px-2 py-0.5 text-[10px] rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 transition-colors"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={(e) => handleDuplicate(wf, e)}
+                                      title="Duplicate"
+                                      className="p-1 rounded text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+                                    >
+                                      {copiedId === wf.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(wf.id); }}
+                                      title="Delete"
+                                      className="p-1 rounded text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
-                            <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-copper-500/20 text-gray-400 group-hover:text-copper-400 flex items-center justify-center transition-colors shrink-0">
-                              <ExternalLink className="w-3.5 h-3.5" />
+
+                            <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+                              <Clock className="w-3 h-3 text-neutral-500 shrink-0" />
+                              <span>{formatRelativeTime(wf.updatedAt)}</span>
+                              <span>•</span>
+                              <span>{nodeCount} {nodeCount === 1 ? 'node' : 'nodes'}</span>
                             </div>
-                          </div>
 
-                          {/* Archetypes pills */}
-                          <div className="flex flex-wrap gap-1 items-center">
-                            {archetypes.length > 0 ? (
-                              archetypes.map(t => {
-                                const cfg = (NODE_CONFIG as any)[t];
-                                if (!cfg) return null;
-                                return (
-                                  <span
-                                    key={t}
-                                    className={cn(
-                                      "px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded border uppercase tracking-wider",
-                                      cfg.bg, cfg.color, cfg.border
-                                    )}
-                                  >
-                                    {cfg.tag}
-                                  </span>
-                                );
-                              })
-                            ) : (
-                              <span className="text-[10px] font-mono text-gray-600">Custom graph</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Card Footer Actions */}
-                        <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between">
-                          <span className="text-[10px] font-mono text-gray-400 group-hover:text-copper-400 flex items-center gap-1">
-                            Open Canvas <ChevronRight className="w-3 h-3" />
-                          </span>
-
-                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            {isConfirming ? (
-                              <div className="flex items-center gap-1 animate-fadeIn">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
-                                  className="px-2 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-gray-300 transition-colors"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  onClick={(e) => handleDelete(wf.id, e)}
-                                  className="px-2 py-0.5 text-[10px] font-mono rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 transition-colors"
-                                >
-                                  Delete
-                                </button>
+                            {/* Minimal Archetype tags */}
+                            {archetypes.length > 0 && (
+                              <div className="flex flex-wrap gap-1 pt-0.5">
+                                {archetypes.map(t => {
+                                  const cfg = (NODE_CONFIG as any)[t];
+                                  if (!cfg) return null;
+                                  return (
+                                    <span
+                                      key={t}
+                                      className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-white/[0.04] text-neutral-400 border border-white/5"
+                                    >
+                                      {cfg.title.split(' ')[0]}
+                                    </span>
+                                  );
+                                })}
                               </div>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={(e) => handleDuplicate(wf, e)}
-                                  title="Duplicate Pipeline"
-                                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                                >
-                                  {copiedId === wf.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(wf.id); }}
-                                  title="Delete Pipeline"
-                                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </>
                             )}
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden bg-[#151515]">
-                  {filteredSaved.map(wf => {
-                    const archetypes = getWorkflowArchetypes(wf.nodes);
-                    const nodeCount = getNodeCount(wf.nodes);
-                    const edgeCount = getEdgeCount(wf.edges);
-                    const isConfirming = deleteConfirmId === wf.id;
 
-                    return (
-                      <div
-                        key={wf.id}
-                        onClick={() => onOpenWorkflow(wf)}
-                        className="px-4 py-2.5 hover:bg-white/5 cursor-pointer flex items-center justify-between gap-4 transition-colors group"
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="w-7 h-7 rounded-lg bg-copper-500/10 border border-copper-500/20 text-copper-400 flex items-center justify-center shrink-0">
-                            <GitFork className="w-3.5 h-3.5" />
+                          <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-xs text-neutral-400 group-hover:text-white transition-colors">
+                            <span>Open workflow</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
                           </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-white group-hover:text-copper-400 transition-colors truncate">
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden bg-[#131313]">
+                    {filteredSaved.map(wf => {
+                      const nodeCount = getNodeCount(wf.nodes);
+                      const isConfirming = deleteConfirmId === wf.id;
+
+                      return (
+                        <div
+                          key={wf.id}
+                          onClick={() => onOpenWorkflow(wf)}
+                          className="px-4 py-3 hover:bg-white/[0.04] cursor-pointer flex items-center justify-between gap-4 transition-colors group"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-medium text-white group-hover:text-copper-400 transition-colors truncate">
                               {wf.title || 'Untitled Pipeline'}
                             </div>
-                            <div className="text-[10px] font-mono text-gray-400 flex items-center gap-2 mt-0.5">
+                            <div className="text-[11px] text-neutral-400 flex items-center gap-2 mt-0.5">
                               <span>{nodeCount} nodes</span>
                               <span>•</span>
-                              <span>{edgeCount} edges</span>
-                              <span>•</span>
-                              <span>{formatRelativeTime(wf.updatedAt)}</span>
+                              <span>Updated {formatRelativeTime(wf.updatedAt)}</span>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="hidden sm:flex items-center gap-1">
-                            {archetypes.slice(0, 4).map(t => {
-                              const cfg = (NODE_CONFIG as any)[t];
-                              if (!cfg) return null;
-                              return (
-                                <span
-                                  key={t}
-                                  className={cn(
-                                    "px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded border uppercase",
-                                    cfg.bg, cfg.color, cfg.border
-                                  )}
-                                >
-                                  {cfg.tag}
-                                </span>
-                              );
-                            })}
-                          </div>
-
-                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                             {isConfirming ? (
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
-                                  className="px-2 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-gray-300"
+                                  className="px-2 py-0.5 text-[10px] rounded bg-white/10 hover:bg-white/20 text-neutral-300"
                                 >
                                   Cancel
                                 </button>
                                 <button
                                   onClick={(e) => handleDelete(wf.id, e)}
-                                  className="px-2 py-0.5 text-[10px] font-mono rounded bg-red-500/20 text-red-300 border border-red-500/30"
+                                  className="px-2 py-0.5 text-[10px] rounded bg-red-500/20 text-red-300 border border-red-500/30"
                                 >
                                   Delete
                                 </button>
@@ -2703,155 +2579,156 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
                               <>
                                 <button
                                   onClick={(e) => handleDuplicate(wf, e)}
-                                  title="Duplicate Pipeline"
-                                  className="p-1.5 text-gray-400 hover:text-white rounded hover:bg-white/5"
+                                  title="Duplicate"
+                                  className="p-1.5 text-neutral-400 hover:text-white rounded hover:bg-white/5"
                                 >
-                                  {copiedId === wf.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                                  {copiedId === wf.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(wf.id); }}
-                                  title="Delete Pipeline"
-                                  className="p-1.5 text-gray-400 hover:text-red-400 rounded hover:bg-red-500/10"
+                                  title="Delete"
+                                  className="p-1.5 text-neutral-400 hover:text-red-400 rounded hover:bg-red-500/10"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => onOpenWorkflow(wf)}
-                                  className="px-2.5 py-1 rounded bg-white/5 hover:bg-copper-500/20 text-gray-300 hover:text-copper-300 text-xs font-mono font-medium flex items-center gap-1"
+                                  className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-medium flex items-center gap-1"
                                 >
-                                  Open <ChevronRight className="w-3 h-3" />
+                                  <span>Open</span>
+                                  <ChevronRight className="w-3 h-3" />
                                 </button>
                               </>
                             )}
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-            ) : (
-              !searchQuery.trim() && (
-                <div className="border border-dashed border-white/10 rounded-xl p-5 text-center flex flex-col items-center justify-center bg-white/[0.01]">
-                  <FolderOpen className="w-7 h-7 text-gray-600 mb-2" />
-                  <div className="text-xs font-medium text-gray-300">No saved workflows yet</div>
-                  <div className="text-[11px] font-mono text-gray-500 max-w-sm mt-0.5">
-                    Start by creating a blank canvas or jumpstart from any curated template below.
+                      );
+                    })}
                   </div>
+                )}
+              </div>
+            ) : (
+              activeTab === 'saved' && !searchQuery.trim() && (
+                <div className="py-16 text-center flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-neutral-400 flex items-center justify-center mb-3">
+                    <FolderOpen className="w-5 h-5" />
+                  </div>
+                  <div className="text-sm font-medium text-white">No saved workflows</div>
+                  <p className="text-xs text-neutral-400 max-w-sm mt-1">
+                    Create a blank workflow or start from a curated template.
+                  </p>
                   <button
                     onClick={onCreateNew}
-                    className="mt-3 px-3 py-1.5 rounded-lg bg-copper-500/10 hover:bg-copper-500/20 text-copper-400 border border-copper-500/30 text-xs font-mono font-medium transition-colors flex items-center gap-1.5"
+                    className="mt-4 px-3.5 py-1.5 rounded-lg bg-white text-black hover:bg-neutral-200 text-xs font-medium transition-colors flex items-center gap-1.5"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Create Your First Workflow</span>
+                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Create Workflow</span>
                   </button>
                 </div>
               )
             )}
-          </div>
+          </>
         )}
 
-        {/* Section 2: Curated Pipeline Templates (Library of Pre-existing Workflows) */}
+        {/* Section 2: Templates */}
         {activeTab !== 'saved' && filteredTemplates.length > 0 && (
-          <div className="space-y-3 pt-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-400">
-                  Curated Pipeline Library
-                </h2>
-                <span className="px-1.5 py-0.2 text-[10px] font-mono rounded bg-copper-500/10 text-copper-400 border border-copper-500/20">
-                  {filteredTemplates.length} Pre-Configured
-                </span>
-              </div>
-              <span className="text-[10px] font-mono text-gray-400">Production-tested multi-model architectures</span>
+              <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                Templates ({filteredTemplates.length})
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredTemplates.map(tpl => (
-                <div
-                  key={tpl.id}
-                  onClick={() => onOpenWorkflow({
-                    id: undefined,
-                    title: tpl.title,
-                    nodes: tpl.nodes,
-                    edges: tpl.edges,
-                  })}
-                  className="group bg-[#151515] hover:bg-[#1a1a1a] border border-white/10 hover:border-copper-500/40 rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-lg shadow-black/20 hover:shadow-copper-500/5 relative overflow-hidden"
-                >
-                  <div className="space-y-3">
-                    {/* Top Badges */}
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="px-2 py-0.5 text-[9px] font-mono font-bold tracking-wider uppercase rounded bg-copper-500/10 text-copper-400 border border-copper-500/20">
-                        {tpl.tag}
-                      </span>
-                      <span className="text-[10px] font-mono text-gray-400">
-                        {tpl.nodes.length} nodes · {tpl.edges.length} edges
-                      </span>
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredTemplates.map(tpl => (
+                  <div
+                    key={tpl.id}
+                    onClick={() => onOpenWorkflow({
+                      id: undefined,
+                      title: tpl.title,
+                      nodes: tpl.nodes,
+                      edges: tpl.edges,
+                    })}
+                    className="group bg-[#131313] hover:bg-[#171717] border border-white/[0.08] hover:border-white/20 rounded-xl p-4 transition-all duration-150 cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2 py-0.5 text-[11px] font-medium rounded-md bg-white/5 text-neutral-300">
+                          {tpl.category}
+                        </span>
+                        <span className="text-xs text-neutral-500 font-mono">
+                          {tpl.nodes.length} nodes
+                        </span>
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-medium text-neutral-100 group-hover:text-copper-400 transition-colors">
+                          {tpl.title}
+                        </h3>
+                        <p className="text-xs text-neutral-400 mt-1 line-clamp-2 leading-relaxed">
+                          {tpl.description}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* Title & Desc */}
-                    <div>
-                      <h3 className="text-sm font-semibold font-display text-white group-hover:text-copper-400 transition-colors">
-                        {tpl.title}
-                      </h3>
-                      <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">
+                    <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-xs text-neutral-400 group-hover:text-white transition-colors">
+                      <span className="text-neutral-500">{tpl.complexity}</span>
+                      <span className="flex items-center gap-1 font-medium">
+                        Use template <ChevronRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden bg-[#131313]">
+                {filteredTemplates.map(tpl => (
+                  <div
+                    key={tpl.id}
+                    onClick={() => onOpenWorkflow({
+                      id: undefined,
+                      title: tpl.title,
+                      nodes: tpl.nodes,
+                      edges: tpl.edges,
+                    })}
+                    className="px-4 py-3 hover:bg-white/[0.04] cursor-pointer flex items-center justify-between gap-4 transition-colors group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-white group-hover:text-copper-400 transition-colors truncate">
+                          {tpl.title}
+                        </span>
+                        <span className="px-1.5 py-0.5 text-[10px] rounded bg-white/5 text-neutral-400">
+                          {tpl.category}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-neutral-400 truncate mt-0.5">
                         {tpl.description}
                       </p>
                     </div>
 
-                    {/* Architecture Pipeline Pills */}
-                    <div className="pt-2 border-t border-white/5">
-                      <div className="text-[9px] font-mono text-gray-400 uppercase tracking-wider mb-1.5">
-                        Architecture Flow:
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1">
-                        {tpl.archetypes.map((type, idx) => {
-                          const cfg = (NODE_CONFIG as any)[type];
-                          if (!cfg) return null;
-                          return (
-                            <div key={idx} className="flex items-center gap-1">
-                              <span
-                                className={cn(
-                                  "px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded border uppercase",
-                                  cfg.bg, cfg.color, cfg.border
-                                )}
-                              >
-                                {cfg.tag}
-                              </span>
-                              {idx < tpl.archetypes.length - 1 && (
-                                <span className="text-[10px] text-gray-600 font-mono">→</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Footer */}
-                  <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-gray-400">
-                      Category: <span className="text-gray-300">{tpl.category}</span>
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenWorkflow({
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-[11px] text-neutral-500 font-mono hidden sm:inline">
+                        {tpl.nodes.length} nodes
+                      </span>
+                      <button
+                        onClick={() => onOpenWorkflow({
                           id: undefined,
                           title: tpl.title,
                           nodes: tpl.nodes,
                           edges: tpl.edges,
-                        });
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-white/5 group-hover:bg-copper-500 text-gray-300 group-hover:text-black font-semibold text-xs font-mono transition-all flex items-center gap-1 shadow-sm active:scale-[0.97]"
-                    >
-                      <span>Load Template</span>
-                      <ChevronRight className="w-3 h-3" />
-                    </button>
+                        })}
+                        className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-medium flex items-center gap-1 transition-colors"
+                      >
+                        <span>Use</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
