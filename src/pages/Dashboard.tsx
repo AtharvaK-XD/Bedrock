@@ -151,8 +151,7 @@ export default function Dashboard() {
               </div>
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">99.96%</span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.9)]" />
+                <span className="inline-flex items-center text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
                   Nominal
                 </span>
               </div>
@@ -268,9 +267,8 @@ export default function Dashboard() {
           <div className="flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
               <div>
-                <h2 className="text-sm font-display font-semibold text-white tracking-wide flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-copper-400 shadow-[0_0_8px_rgba(200,168,107,0.7)]" />
-                  <span>Execution Trace Log</span>
+                <h2 className="text-sm font-display font-semibold text-white tracking-wide">
+                  Execution Trace Log
                 </h2>
                 <p className="text-xs text-white/40 mt-0.5">Live streaming event telemetry from active LLM inference clusters</p>
               </div>
@@ -369,13 +367,11 @@ export default function Dashboard() {
                           </td>
                           <td className="p-3.5 text-right pr-6">
                             {exec.status === 'OK' ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 shadow-sm backdrop-blur-sm">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 shadow-sm backdrop-blur-sm">
                                 200 OK
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium bg-rose-500/10 text-rose-400 border border-rose-500/25 shadow-sm backdrop-blur-sm">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse shadow-[0_0_6px_rgba(244,63,94,0.8)]"></span>
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-mono font-medium bg-rose-500/10 text-rose-400 border border-rose-500/25 shadow-sm backdrop-blur-sm">
                                 TIMEOUT
                               </span>
                             )}
@@ -405,7 +401,6 @@ export default function Dashboard() {
         {/* Floating Toast Notification */}
         {toastMessage && (
           <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl glass-card text-white text-xs shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-3 duration-200 border border-white/15 font-mono">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
             <span>{toastMessage}</span>
           </div>
         )}

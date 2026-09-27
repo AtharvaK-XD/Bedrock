@@ -135,8 +135,7 @@ export function PromptActivityHeatmap() {
         </div>
 
         {/* Clean Streak Badge */}
-        <div className="inline-flex items-center gap-2 self-start sm:self-auto px-3 py-1 rounded-full text-xs font-mono text-neutral-300 bg-white/5 border border-white/10">
-          <span className="w-1.5 h-1.5 rounded-full bg-copper-400" />
+        <div className="inline-flex items-center self-start sm:self-auto px-3 py-1 rounded-full text-xs font-mono text-neutral-300 bg-white/5 border border-white/10">
           <span>{activeStreak}-day streak</span>
         </div>
       </div>

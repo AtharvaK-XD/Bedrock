@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { Check } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { useUserProfile } from '../lib/useUserProfile';
@@ -312,7 +313,7 @@ export default function Profile() {
                           <span className={cn("w-2 h-2 rounded-full", theme.dotBg)} />
                           <span>{theme.name}</span>
                         </div>
-                        {bannerTheme === theme.id && <span className="w-1.5 h-1.5 rounded-full bg-copper-400" />}
+                        {bannerTheme === theme.id && <Check className="w-3.5 h-3.5 text-copper-400" />}
                       </button>
                     ))}
                   </div>
@@ -321,11 +322,10 @@ export default function Profile() {
 
               {/* Verified Member Badge */}
               <span className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-semibold bg-black/60 backdrop-blur-md shadow-sm border transition-all uppercase tracking-wider",
+                "inline-flex items-center px-3 py-1.5 rounded-full text-xs font-mono font-semibold bg-black/60 backdrop-blur-md shadow-sm border transition-all uppercase tracking-wider",
                 activeTheme.accentColor,
                 activeTheme.badgeBorder
               )}>
-                <span className={cn("w-2 h-2 rounded-full animate-pulse", activeTheme.dotBg)} />
                 Bedrock Architect
               </span>
             </div>
@@ -370,13 +370,6 @@ export default function Profile() {
                           {isUploadingPhoto ? 'Uploading...' : 'Change'}
                         </span>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Presence Status Dot */}
-                  <div className="absolute -bottom-1 -right-1 flex items-center justify-center z-20">
-                    <div className="w-5 h-5 rounded-full bg-[#121417] p-0.5 shadow-md flex items-center justify-center">
-                      <div className="w-3 h-3 rounded-full bg-emerald-500" />
                     </div>
                   </div>
 

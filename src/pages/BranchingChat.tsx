@@ -601,13 +601,6 @@ ${upstreamText || data.description}`;
         data.nodeType === 'evaluation' && "rounded-t-xl bg-indigo-500/15 border-indigo-500/25"
       )}>
         <div className="flex items-center gap-2">
-          {data.nodeType === 'output' && (
-            <div className="flex items-center gap-1 mr-1">
-              <span className="w-2 h-2 rounded-full bg-red-400/80 inline-block" />
-              <span className="w-2 h-2 rounded-full bg-yellow-400/80 inline-block" />
-              <span className="w-2 h-2 rounded-full bg-emerald-400/80 inline-block" />
-            </div>
-          )}
           <span className={cn("font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/50 border border-white/10 flex items-center gap-1", config.color)}>
             <IconComponent className="w-3 h-3" />
             {config.tag}
@@ -806,10 +799,13 @@ ${upstreamText || data.description}`;
       )}>
         <div className="flex items-center gap-2">
           {data.status === 'running' && <div className="w-2 h-2 border-2 border-copper-500/30 border-t-copper-500 rounded-full animate-spin" />}
-          {data.status === 'success' && <div className="w-2 h-2 rounded-full bg-emerald-400" />}
-          {data.status === 'error' && <div className="w-2 h-2 rounded-full bg-rose-400" />}
-          {data.status === 'idle' && <div className="w-2 h-2 rounded-full bg-white/20" />}
-          <span className="text-[10px] font-mono text-gray-500 uppercase">{data.status}</span>
+          <span className={cn(
+            "text-[10px] font-mono uppercase tracking-wider",
+            data.status === 'success' && "text-emerald-400 font-semibold",
+            data.status === 'error' && "text-rose-400 font-semibold",
+            data.status === 'running' && "text-copper-400 font-semibold",
+            data.status === 'idle' && "text-gray-500"
+          )}>{data.status}</span>
         </div>
         
         <button 
@@ -1960,13 +1956,13 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                       />
                     </div>
 
-                    <div className="text-[10px] font-mono text-gray-400 bg-black/40 p-2 rounded border border-white/5 space-y-1">
+                    <div className="text-[10px] font-mono text-gray-400 bg-black/40 p-2.5 rounded-lg border border-white/5 space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span className="font-bold text-emerald-400">[TRUE]</span>
                         <span>Upper Right Handle connects to TRUE branch</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                        <span className="font-bold text-rose-400">[FALSE]</span>
                         <span>Lower Right Handle connects to FALSE branch</span>
                       </div>
                     </div>

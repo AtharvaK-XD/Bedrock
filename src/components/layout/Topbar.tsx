@@ -106,14 +106,13 @@ export function Topbar() {
             <Link 
               to="/app/settings" 
               className={cn(
-                "flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-xl transition-all border shadow-sm",
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all border shadow-sm",
                 location.pathname === '/app/settings'
                   ? "bg-white/10 text-white border-white/20"
                   : "bg-white/[0.03] text-gray-300 hover:text-white hover:bg-white/8 border-white/10"
               )}
               title={hasKeys ? "API Keys Connected" : "No API Keys Connected"}
             >
-              <span className={`w-2 h-2 rounded-full ${hasKeys ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.8)]'}`} />
               <span className="font-mono text-[11px]">{hasKeys ? 'Keys Active' : 'Configure Keys'}</span>
             </Link>
           )}
@@ -142,8 +141,7 @@ export function Topbar() {
           >
             <div className="text-right hidden sm:block">
               <p className="text-xs font-semibold text-white leading-none group-hover:text-copper-300 transition-colors">{profile.name}</p>
-              <p className="text-[10px] font-mono text-gray-400 mt-0.5 flex items-center justify-end gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <p className="text-[10px] font-mono text-gray-400 mt-0.5">
                 {isDesktop ? 'Local Session' : profile.plan}
               </p>
             </div>

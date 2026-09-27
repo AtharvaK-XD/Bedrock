@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { Check } from 'lucide-react';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { cn } from '../lib/utils';
 import { testPrompt } from '../lib/api';
@@ -173,7 +174,7 @@ export default function PromptTester() {
                     <AgentIcon agent={currentAgent} model={m.id} className="w-3 h-3" badgeClassName="w-4 h-4" />
                     <span className="truncate">{m.name}</span>
                   </div>
-                  {currentModel.id === m.id && <span className="w-1.5 h-1.5 rounded-full bg-copper-400 shrink-0" />}
+                  {currentModel.id === m.id && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
                 </button>
               ))}
             </div>

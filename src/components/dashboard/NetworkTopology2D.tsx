@@ -229,17 +229,10 @@ export function NetworkTopology2D() {
         {/* Left: Monitor Status */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/10 shadow-sm backdrop-blur-md">
-            <span className="relative flex h-2 w-2">
-              {!isPaused && (
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              )}
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isPaused ? 'bg-amber-400' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.9)]'}`}></span>
-            </span>
             <span className="text-[11px] font-semibold tracking-wider text-white font-display uppercase">2D Topology Flow</span>
           </div>
           <span className="hidden sm:inline-block text-white/20">|</span>
           <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-white/60">
-            <span className={`w-1.5 h-1.5 rounded-full ${isPaused ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
             {isPaused ? 'Paused' : 'Realtime Routing'}
           </span>
           <span className="hidden md:inline-flex items-center text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/25 shadow-sm backdrop-blur-sm">
@@ -291,7 +284,6 @@ export function NetworkTopology2D() {
             title={isPaused ? 'Resume live simulation' : 'Pause simulation'}
             className="text-xs border border-white/10 bg-white/[0.04] hover:bg-white/[0.1] px-2.5 py-1.5 rounded-xl text-white/80 hover:text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95 backdrop-blur-md"
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${isPaused ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
             <span className="text-[11px] font-medium">{isPaused ? 'Resume' : 'Pause'}</span>
           </button>
 
@@ -703,13 +695,11 @@ export function NetworkTopology2D() {
             <div className="flex items-center gap-1.5 ml-auto">
               <span className="text-white/40">Error Rate:</span>
               <span className="text-white/90 font-mono">{activeNode.details.errorRate}</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-1 inline-block shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
             </div>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-white/50 w-full text-xs">
             <div className="flex items-center gap-2 text-white/80">
-              <span className="w-2 h-2 rounded-full bg-copper-400 inline-block shadow-[0_0_8px_rgba(200,168,107,0.7)]" />
               <span>Status: <span className="text-emerald-400 font-medium">All Systems Optimal</span></span>
             </div>
             <div className="flex items-center gap-1.5">
