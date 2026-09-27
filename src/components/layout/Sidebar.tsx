@@ -99,13 +99,9 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
                     <Icon className={cn("w-4 h-4 transition-colors", isActive ? "text-copper-400" : "text-gray-400 group-hover:text-white")} />
                     <span>{item.label}</span>
                   </div>
-                  {isActive ? (
-                    <span className="w-1.5 h-1.5 rounded-full bg-copper-400 shadow-[0_0_6px_rgba(200,168,107,0.9)]" />
-                  ) : (
-                    <span className="text-[10px] font-mono text-gray-600 group-hover:text-gray-400 transition-colors">
-                      {item.shortcut}
-                    </span>
-                  )}
+                  <span className="text-[10px] font-mono text-gray-600 group-hover:text-gray-400 transition-colors">
+                    {item.shortcut}
+                  </span>
                 </Link>
               );
             })}
@@ -137,12 +133,9 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
                 <KeyRound className="w-4 h-4" />
                 <span>API Keys</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className={cn("w-2 h-2 rounded-full", hasKeys ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.8)]")} />
-                <span className="text-[10px] font-mono">
-                  {hasKeys ? 'Connected' : 'Setup'}
-                </span>
-              </div>
+              <span className="text-[10px] font-mono text-gray-400">
+                {hasKeys ? 'Connected' : 'Setup'}
+              </span>
             </button>
 
             <Link
@@ -187,9 +180,8 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
             <p className="text-xs font-semibold text-white truncate leading-tight group-hover:text-copper-300 transition-colors">
               {profile.name}
             </p>
-            <p className="text-[10px] font-mono text-gray-400 flex items-center gap-1 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Local Session</span>
+            <p className="text-[10px] font-mono text-gray-400 mt-0.5">
+              Local Session
             </p>
           </div>
         </Link>

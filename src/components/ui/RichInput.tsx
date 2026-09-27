@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Mic } from 'lucide-react';
+import { Plus, Mic, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { IdeaPayload } from '../../lib/mockApi';
 import { usePromptQuota } from '../../lib/usePromptQuota';
@@ -454,7 +454,7 @@ export function RichInput({
                         <AgentIcon agent={selectedAgent} model={model.id} className="w-3 h-3" badgeClassName="w-4 h-4" />
                         <span className="truncate">{model.name}</span>
                       </div>
-                      {selectedModelId === model.id && <span className="w-1.5 h-1.5 rounded-full bg-copper-400 shrink-0" />}
+                      {selectedModelId === model.id && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
                     </button>
                   ))}
                 </div>

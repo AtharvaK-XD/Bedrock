@@ -78,9 +78,8 @@ export function ExpandableChatbox({ onSubmit, className }: ExpandableChatboxProp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="flex items-center h-full px-5 gap-3 cursor-text text-gray-400 w-full"
+            className="flex items-center h-full px-5 cursor-text text-gray-400 w-full"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-copper-400" />
             <span className="text-sm font-medium">Ask a question or add a node...</span>
           </motion.div>
         ) : (

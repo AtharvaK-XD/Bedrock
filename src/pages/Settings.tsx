@@ -237,9 +237,6 @@ export default function Settings() {
                       <Icon className={cn("w-4 h-4", isActive ? "text-copper-400" : "text-gray-500")} />
                       <span>{tab.label}</span>
                     </div>
-                    {isActive && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-copper-400 shadow-[0_0_8px_rgba(200,168,107,0.8)]" />
-                    )}
                   </button>
                 );
               })}
@@ -918,7 +915,6 @@ export default function Settings() {
             {/* Dedicated Docked Footer Bar (In-Flow, Never Overlapping Content) */}
             <div className="border-t border-white/10 bg-[#0d0f13]/95 backdrop-blur-xl px-6 py-4 md:px-10 flex items-center justify-between shrink-0 z-20 rounded-b-3xl">
               <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
                 <span className="hidden sm:inline">Preferences persisted locally to your machine</span>
                 <span className="sm:hidden">Local storage</span>
               </div>

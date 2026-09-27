@@ -82,7 +82,6 @@ export default function Result() {
       {/* Header */}
       <div className="flex-none p-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-          <span className="w-1.5 h-1.5 rounded-full bg-copper-400"></span>
           <span>Interactive prompt refinement</span>
         </div>
         <div className="flex gap-2">
@@ -116,8 +115,7 @@ export default function Result() {
             {msg.role === 'ai' && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start">
                 <div className="flex flex-col gap-4 max-w-[95%]">
-                  <div className="flex items-center gap-2 text-xs font-mono text-copper-400 font-semibold uppercase tracking-wider">
-                    <span className="w-1 h-1 rounded-full bg-copper-400" />
+                  <div className="text-xs font-mono text-copper-400 font-semibold uppercase tracking-wider">
                     {idx === 1 ? 'Prompt Synthesized' : 'Prompt Refined'}
                   </div>
                   <div className="text-[15.5px] leading-relaxed text-gray-300">
@@ -133,8 +131,7 @@ export default function Result() {
         {isRefining && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start">
             <div className="flex flex-col gap-4 max-w-[95%]">
-              <div className="flex items-center gap-2 text-xs font-mono text-copper-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-copper-400 animate-pulse" />
+              <div className="text-xs font-mono text-copper-400 font-medium">
                 Thinking...
               </div>
               <div className="text-[15.5px] leading-relaxed text-gray-300 flex items-center gap-1.5 h-6">
