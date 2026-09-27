@@ -223,7 +223,10 @@ export default function Wizard() {
           <button
             type="button"
             onClick={toggleSidebar}
-            className="fixed top-22 left-4 z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d10]/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200"
+            className={cn(
+              "fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d10]/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200",
+              isDesktop ? "top-4 left-68" : "top-22 left-4"
+            )}
             title="Show previous prompts"
           >
             <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />

@@ -48,13 +48,13 @@ function AnimatedRoutes() {
       <Routes location={location} key={location.pathname}>
         {/* Root Route:
             - Website (browser/Vercel): STRICTLY the original Landing page
-            - Desktop app: Login required on first launch, then goes to generator
+            - Desktop app: Login required on first launch, then goes to app
         */}
         <Route 
           path="/" 
           element={
             isDesktop ? (
-              isLoggedIn ? <Navigate to="/app/generator" replace /> : <Navigate to="/login" replace />
+              isLoggedIn ? <Navigate to="/app" replace /> : <Navigate to="/login" replace />
             ) : (
               <Landing />
             )
@@ -65,25 +65,25 @@ function AnimatedRoutes() {
         <Route 
           path="/login" 
           element={
-            isDesktop && isLoggedIn ? <Navigate to="/app/generator" replace /> : <AuthPage defaultMode="login" />
+            isDesktop && isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="login" />
           } 
         />
         <Route 
           path="/signin" 
           element={
-            isDesktop && isLoggedIn ? <Navigate to="/app/generator" replace /> : <AuthPage defaultMode="login" />
+            isDesktop && isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="login" />
           } 
         />
         <Route 
           path="/signup" 
           element={
-            isDesktop && isLoggedIn ? <Navigate to="/app/generator" replace /> : <AuthPage defaultMode="register" />
+            isDesktop && isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="register" />
           } 
         />
         <Route 
           path="/register" 
           element={
-            isDesktop && isLoggedIn ? <Navigate to="/app/generator" replace /> : <AuthPage defaultMode="register" />
+            isDesktop && isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="register" />
           } 
         />
         <Route path="/join" element={<AuthPage defaultMode="register" />} />
@@ -95,11 +95,12 @@ function AnimatedRoutes() {
           path="/app/*" 
           element={
             isDesktop ? (
-              // Desktop App: Enforces login guard, directs to generator, omits web SaaS pages
+              // Desktop App: Enforces login guard, renders all workspace pages with desktop sidebar
               isLoggedIn ? (
                 <AppLayout>
                   <Routes>
-                    <Route path="/" element={<Navigate to="/app/generator" replace />} />
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/generator" element={<Wizard />} />
                     <Route path="/branching" element={<BranchingChat />} />
                     <Route path="/tester" element={<PromptTester />} />
@@ -107,9 +108,9 @@ function AnimatedRoutes() {
                     <Route path="/result" element={<Result />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/profile" element={<Profile />} />
-                    <Route path="/pricing" element={<Navigate to="/app/generator" replace />} />
-                    <Route path="/billing" element={<Navigate to="/app/generator" replace />} />
-                    <Route path="*" element={<Navigate to="/app/generator" replace />} />
+                    <Route path="/pricing" element={<Navigate to="/app" replace />} />
+                    <Route path="/billing" element={<Navigate to="/app" replace />} />
+                    <Route path="*" element={<Navigate to="/app" replace />} />
                   </Routes>
                 </AppLayout>
               ) : (
@@ -140,7 +141,7 @@ function AnimatedRoutes() {
           path="*" 
           element={
             isDesktop ? (
-              <Navigate to={isLoggedIn ? "/app/generator" : "/login"} replace />
+              <Navigate to={isLoggedIn ? "/app" : "/login"} replace />
             ) : (
               <Navigate to="/" replace />
             )
