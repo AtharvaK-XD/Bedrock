@@ -83,13 +83,15 @@ export function useUserProfile() {
     };
 
     try {
-      const res = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-      if (!res.ok) {
-        console.warn('API update failed, saving locally as fallback');
+      if (typeof window !== 'undefined' && window.location.protocol.startsWith('http')) {
+        const res = await fetch('/api/user/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates)
+        });
+        if (!res.ok) {
+          console.warn('API update failed, saving locally as fallback');
+        }
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } catch (e) {

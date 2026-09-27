@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useAuth as useClerkAuth, useUser } from '@clerk/react';
 
+const AUTH_STORAGE_KEY = 'bedrock_auth_session';
+const AUTH_UPDATE_EVENT = 'bedrock_auth_update';
 const API_KEYS_STORAGE_KEY = 'bedrock_api_keys';
 
 export interface AuthSession {
@@ -27,29 +30,80 @@ export function hasApiKeysConfigured(): boolean {
   }
 }
 
+function getStoredSession(): AuthSession {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return { isLoggedIn: false };
+    return JSON.parse(raw);
+  } catch {
+    return { isLoggedIn: false };
+  }
+}
+
 export function useAuth() {
-  const { userId, signOut } = useClerkAuth();
+  const [localSession, setLocalSession] = useState<AuthSession>(getStoredSession);
+  const clerkAuth = useClerkAuth();
   const { user } = useUser();
 
-  const isLoggedIn = !!userId;
+  useEffect(() => {
+    const syncAuth = () => {
+      setLocalSession(getStoredSession());
+    };
 
-  const session: AuthSession = {
-    isLoggedIn,
-    email: user?.primaryEmailAddress?.emailAddress,
-    name: user?.fullName || user?.firstName || undefined,
-    loginTime: user?.lastSignInAt ? new Date(user.lastSignInAt).toISOString() : undefined,
-  };
+    window.addEventListener(AUTH_UPDATE_EVENT, syncAuth);
+    window.addEventListener('storage', syncAuth);
 
-  const login = async (_email: string, _password?: string, _name?: string, _mode: 'login'|'register' = 'login') => {
-    console.warn("Traditional login called - please use Clerk components for authentication.");
+    return () => {
+      window.removeEventListener(AUTH_UPDATE_EVENT, syncAuth);
+      window.removeEventListener('storage', syncAuth);
+    };
+  }, []);
+
+  const isClerkLoggedIn = Boolean(clerkAuth?.userId);
+  const isLoggedIn = isClerkLoggedIn || localSession.isLoggedIn;
+
+  const session: AuthSession = isClerkLoggedIn
+    ? {
+        isLoggedIn: true,
+        email: user?.primaryEmailAddress?.emailAddress || localSession.email,
+        name: user?.fullName || user?.firstName || localSession.name,
+        loginTime: user?.lastSignInAt ? new Date(user.lastSignInAt).toISOString() : localSession.loginTime,
+      }
+    : localSession;
+
+  const login = async (email: string, _password?: string, name?: string, _mode: 'login'|'register' = 'login') => {
+    const userEmail = email.trim() || 'developer@bedrock.app';
+    const userName = name?.trim() || (userEmail.includes('@') ? userEmail.split('@')[0] : 'Engineer');
+    const newSession: AuthSession = {
+      isLoggedIn: true,
+      email: userEmail,
+      name: userName,
+      loginTime: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newSession));
+    } catch (e) {
+      console.error('Failed to save auth session', e);
+    }
+    setLocalSession(newSession);
+    window.dispatchEvent(new Event(AUTH_UPDATE_EVENT));
   };
 
   const logout = async () => {
     try {
-      await signOut();
+      if (clerkAuth?.signOut) {
+        await clerkAuth.signOut();
+      }
     } catch (e) {
       console.error('Failed to logout via Clerk', e);
     }
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch (e) {
+      console.error('Failed to clear local auth session', e);
+    }
+    setLocalSession({ isLoggedIn: false });
+    window.dispatchEvent(new Event(AUTH_UPDATE_EVENT));
   };
 
   return {

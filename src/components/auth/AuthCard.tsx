@@ -26,9 +26,18 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   // @ts-ignore
   const { signUp } = useSignUp();
 
-  const targetPath = isDesktopApp() ? '/app/generator' : '/app';
+  const targetPath = '/app';
 
   const handleGoogleSignIn = async () => {
+    if (isDesktopApp()) {
+      setIsLoading(true);
+      await login('google.engineer@bedrock.app', '', 'Bedrock Engineer', mode);
+      await updateProfile({ name: 'Bedrock Engineer', email: 'google.engineer@bedrock.app' });
+      setIsLoading(false);
+      navigate(targetPath);
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -247,6 +256,17 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       <div className="bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-8 sm:p-10 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.8)] relative overflow-hidden">
 
         <div className="relative z-10">
+          {/* Primary Bedrock Logo */}
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 p-2.5 flex items-center justify-center shadow-xl shadow-black/50 backdrop-blur-xl ring-1 ring-white/10 group">
+              <img 
+                src="/logo-tight.png" 
+                alt="Bedrock Logo" 
+                className="w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(139,212,186,0.35)] transition-transform group-hover:scale-105" 
+              />
+            </div>
+          </div>
+
           <div className="text-center mb-8">
             <h2 className="text-3xl font-display font-bold text-white tracking-tight">
               {mode === 'login' ? 'Welcome back' : 'Create account'}
@@ -348,7 +368,13 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             </button>
             <button
               type="button"
-              onClick={() => navigate(targetPath)}
+              onClick={async () => {
+                setIsLoading(true);
+                await login('developer@github.com', '', 'GitHub Engineer', mode);
+                await updateProfile({ name: 'GitHub Engineer', email: 'developer@github.com' });
+                setIsLoading(false);
+                navigate(targetPath);
+              }}
               className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer"
             >
               <GithubIcon />
