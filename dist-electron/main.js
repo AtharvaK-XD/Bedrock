@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { BrowserWindow, app, shell, session } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import fs from "node:fs";
 
 createRequire(import.meta.url);
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -26,7 +27,9 @@ function createWindow() {
 		height: 800,
 		minWidth: 900,
 		minHeight: 600,
-		icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
+		icon: fs.existsSync(path.join(process.env.VITE_PUBLIC, "logo.png"))
+			? path.join(process.env.VITE_PUBLIC, "logo.png")
+			: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
 		webPreferences: {
 			preload: path.join(__dirname, "preload.js"),
 			webSecurity: true, // Maximum security: strictly enforce Same-Origin Policy
