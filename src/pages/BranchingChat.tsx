@@ -2331,7 +2331,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
         {/* Controls Toolbar: Search, Filters, View Mode */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               ref={searchInputRef}
@@ -2356,7 +2356,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
           </div>
 
           {/* Filter Tabs & Layout Toggle */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="flex items-center bg-white/[0.03] border border-white/10 rounded-lg p-0.5 text-xs">
               <button
                 onClick={() => setActiveTab('all')}
