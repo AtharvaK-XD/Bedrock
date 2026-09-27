@@ -276,10 +276,14 @@ export default function Landing() {
               </p>
             </div>
             <div className="w-full lg:w-1/2">
-              <div className="w-full rounded-2xl bg-[#0d0d0d] border border-white/10 shadow-2xl overflow-hidden font-mono text-sm leading-relaxed" data-cursor="hover">
-                <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/10">
-                  <div className="text-xs text-gray-400 font-mono">app.py</div>
-                  <span className="text-[10px] font-mono text-gray-500 uppercase">Python</span>
+              <div className="w-full rounded-2xl bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden font-mono text-sm leading-relaxed" data-cursor="hover">
+                <div className="flex items-center gap-2.5 px-4 py-3 bg-white/[0.03] border-b border-white/10">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
+                  </div>
+                  <span className="text-xs text-gray-400 font-mono ml-1">app.py</span>
                 </div>
                 <div className="p-6 text-gray-300">
                   <div className="code-line"><span className="text-pink-400">import</span> groq</div>
