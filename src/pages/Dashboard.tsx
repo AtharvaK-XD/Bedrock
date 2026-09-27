@@ -105,7 +105,7 @@ export default function Dashboard() {
           {/* EXECUTIVE TELEMETRY KPI GLASS CARDS (Reference Image 1 & 2 inspired) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {/* Card 1: Inferences */}
-            <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden group hover:translate-y-[-2px] transition-all duration-300 shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
+            <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
               <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Total Inferences</span>
@@ -123,7 +123,7 @@ export default function Dashboard() {
             </div>
 
             {/* Card 2: Latency */}
-            <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden group hover:translate-y-[-2px] transition-all duration-300 shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
+            <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
               <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Cluster P99 Latency</span>
@@ -141,7 +141,7 @@ export default function Dashboard() {
             </div>
 
             {/* Card 3: Success Rate */}
-            <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden group hover:translate-y-[-2px] transition-all duration-300 shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
+            <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
               <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">System Reliability</span>
@@ -159,7 +159,7 @@ export default function Dashboard() {
             </div>
 
             {/* Card 4: Model Pool */}
-            <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden group hover:translate-y-[-2px] transition-all duration-300 shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
+            <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
               <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Active Model Pool</span>
