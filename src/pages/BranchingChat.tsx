@@ -2296,9 +2296,10 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
   const hasAnyMatches = filteredSaved.length > 0 || filteredTemplates.length > 0;
 
   return (
-    <div className="w-full h-full flex flex-col min-h-0 bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+    <div className="relative w-full h-full flex flex-col min-h-0 bg-black/60 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.9)]">
+      <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none z-20" />
       {/* Top Header Bar */}
-      <div className="px-6 py-4 border-b border-white/10 bg-[#111111]/80 backdrop-blur-xl flex flex-wrap items-center justify-between gap-4 shrink-0">
+      <div className="px-6 py-4 border-b border-white/10 bg-black/40 backdrop-blur-xl flex flex-wrap items-center justify-between gap-4 shrink-0 relative z-10">
         <div>
           <h1 className="text-base font-semibold text-white tracking-tight">
             Workflows
@@ -2312,7 +2313,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
           <button
             onClick={fetchWorkflows}
             title="Refresh workflows"
-            className="p-2 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors"
+            className="p-2 rounded-lg border border-white/10 bg-black/40 hover:bg-black/70 backdrop-blur-md text-neutral-400 hover:text-white transition-colors"
           >
             <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin text-copper-400")} />
           </button>
@@ -2339,7 +2340,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search workflows and templates..."
-              className="w-full pl-9 pr-8 py-1.5 text-xs bg-white/[0.03] border border-white/10 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-white/25 focus:bg-white/[0.05] transition-colors"
+              className="w-full pl-9 pr-8 py-1.5 text-xs bg-black/50 backdrop-blur-md border border-white/10 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-white/25 focus:bg-black/80 transition-all shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)]"
             />
             {searchQuery ? (
               <button 
@@ -2357,7 +2358,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
 
           {/* Filter Tabs & Layout Toggle */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center bg-white/[0.03] border border-white/10 rounded-lg p-0.5 text-xs">
+            <div className="flex items-center bg-black/40 backdrop-blur-md border border-white/10 rounded-lg p-0.5 text-xs">
               <button
                 onClick={() => setActiveTab('all')}
                 className={cn(
@@ -2390,7 +2391,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
               </button>
             </div>
 
-            <div className="flex items-center bg-white/[0.03] border border-white/10 rounded-lg p-0.5">
+            <div className="flex items-center bg-black/40 backdrop-blur-md border border-white/10 rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode('grid')}
                 className={cn(
@@ -2417,7 +2418,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
 
         {/* Global Empty State if Search yields 0 */}
         {!hasAnyMatches && searchQuery.trim() && (
-          <div className="border border-white/10 rounded-xl p-10 text-center flex flex-col items-center justify-center bg-white/[0.02]">
+          <div className="border border-white/10 rounded-xl p-10 text-center flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
             <Search className="w-6 h-6 text-neutral-500 mb-2" />
             <div className="text-sm font-medium text-white">No matching workflows</div>
             <div className="text-xs text-neutral-400 mt-1 max-w-sm">
@@ -2454,7 +2455,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
                         <div
                           key={wf.id}
                           onClick={() => onOpenWorkflow(wf)}
-                          className="group bg-[#131313] hover:bg-[#171717] border border-white/[0.08] hover:border-white/20 rounded-xl p-4 transition-all duration-150 cursor-pointer flex flex-col justify-between"
+                          className="group relative bg-black/40 hover:bg-black/60 backdrop-blur-xl border border-white/[0.08] hover:border-white/20 rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-[0_8px_24px_rgba(0,0,0,0.5)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.7)]"
                         >
                           <div className="space-y-2.5">
                             <div className="flex items-start justify-between gap-2">
@@ -2533,7 +2534,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
                     })}
                   </div>
                 ) : (
-                  <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden bg-[#131313]">
+                  <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden bg-black/40 backdrop-blur-xl shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
                     {filteredSaved.map(wf => {
                       const nodeCount = getNodeCount(wf.nodes);
                       const isConfirming = deleteConfirmId === wf.id;
@@ -2646,7 +2647,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
                       nodes: tpl.nodes,
                       edges: tpl.edges,
                     })}
-                    className="group bg-[#131313] hover:bg-[#171717] border border-white/[0.08] hover:border-white/20 rounded-xl p-4 transition-all duration-150 cursor-pointer flex flex-col justify-between"
+                    className="group relative bg-black/40 hover:bg-black/60 backdrop-blur-xl border border-white/[0.08] hover:border-white/20 rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-[0_8px_24px_rgba(0,0,0,0.5)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.7)]"
                   >
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
@@ -2678,7 +2679,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
                 ))}
               </div>
             ) : (
-              <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden bg-[#131313]">
+              <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden bg-black/40 backdrop-blur-xl shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
                 {filteredTemplates.map(tpl => (
                   <div
                     key={tpl.id}
