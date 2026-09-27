@@ -90,6 +90,14 @@ export const RefineSchema = z.object({
     .min(1, 'Follow-up instruction is required')
     .max(5000, 'Follow-up cannot exceed 5,000 characters')
     .trim(),
+  conversationHistory: z
+    .array(
+      z.object({
+        role: z.string(),
+        content: z.string(),
+      })
+    )
+    .optional(),
 });
 
 export const TestPromptSchema = z.object({
