@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -120,6 +120,19 @@ export default function Profile() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoMessage, setPhotoMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const themePickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (themePickerRef.current && !themePickerRef.current.contains(e.target as Node)) {
+        setShowThemePicker(false);
+      }
+    }
+    if (showThemePicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showThemePicker]);
 
   const [formData, setFormData] = useState({
     name: profile.name,
@@ -256,16 +269,19 @@ export default function Profile() {
         {/* HERO PROFILE CARD */}
         <div className="relative rounded-3xl border border-white/10 bg-[#121417]/85 backdrop-blur-2xl overflow-hidden shadow-2xl mb-8 group/card transition-all duration-300">
           {/* Ambient Banner Backdrop */}
-          <div className={cn(
-            "relative h-44 sm:h-52 w-full overflow-hidden bg-gradient-to-r transition-all duration-700",
-            activeTheme.gradient
-          )}>
-            <div className={cn("absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] pointer-events-none transition-all duration-500", activeTheme.radial1)} />
-            <div className={cn("absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_var(--tw-gradient-stops))] pointer-events-none transition-all duration-500", activeTheme.radial2)} />
+          <div className="relative h-44 sm:h-52 w-full z-20">
+            {/* Background layers clipped to banner top rounded corners */}
+            <div className={cn(
+              "absolute inset-0 overflow-hidden rounded-t-3xl bg-gradient-to-r transition-all duration-700 pointer-events-none",
+              activeTheme.gradient
+            )}>
+              <div className={cn("absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] transition-all duration-500", activeTheme.radial1)} />
+              <div className={cn("absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_var(--tw-gradient-stops))] transition-all duration-500", activeTheme.radial2)} />
+            </div>
             
-            {/* Top-Right Theme & Status Controls */}
-            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2.5 z-20">
-              <div className="relative">
+            {/* Top-Right Theme & Status Controls (Unclipped & elevated above profile card body) */}
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2.5 z-40">
+              <div className="relative" ref={themePickerRef}>
                 <button
                   type="button"
                   onClick={() => setShowThemePicker(!showThemePicker)}
@@ -275,7 +291,7 @@ export default function Profile() {
                 </button>
 
                 {showThemePicker && (
-                  <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-[#15181b]/95 backdrop-blur-2xl border border-white/15 p-2 shadow-2xl z-30 space-y-1 font-mono">
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-[#15181b]/98 backdrop-blur-2xl border border-white/20 p-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 space-y-1 font-mono">
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 px-2.5 py-1">Banner Theme</p>
                     {BANNER_THEMES.map((theme) => (
                       <button
