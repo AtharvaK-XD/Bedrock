@@ -61,7 +61,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             setManuallyOpened(true);
             setShowKeyGateway(true);
           }} />
-          <main className="flex-1 relative h-full overflow-y-auto min-w-0 bg-[#07090e]/40">
+          <main className="flex-1 relative h-full overflow-y-auto min-w-0 bg-black">
             {children}
           </main>
         </div>
