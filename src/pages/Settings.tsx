@@ -227,16 +227,14 @@ export default function Settings() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-left cursor-pointer",
+                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-left cursor-pointer",
                       isActive
                         ? "bg-white/10 text-white shadow-sm font-semibold border border-white/10"
                         : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
                     )}
                   >
-                    <div className="flex items-center gap-3">
-                      <Icon className={cn("w-4 h-4", isActive ? "text-copper-400" : "text-gray-500")} />
-                      <span>{tab.label}</span>
-                    </div>
+                    <Icon className={cn("w-4 h-4", isActive ? "text-copper-400" : "text-gray-500")} />
+                    <span>{tab.label}</span>
                   </button>
                 );
               })}
