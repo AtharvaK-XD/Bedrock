@@ -12,8 +12,10 @@ import { cn } from '../lib/utils';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { PageTransition } from '../components/layout/PageTransition';
-import { KeyRound } from 'lucide-react';
+import { KeyRound, PanelLeftOpen } from 'lucide-react';
 import { isDesktopApp } from '../lib/platform';
+import { GeneratorHistorySidebar } from '../components/generator/GeneratorHistorySidebar';
+import { addPromptToHistory, type HistoryPromptItem } from '../lib/generatorHistory';
 
 export default function Wizard() {
   const navigate = useNavigate();
@@ -26,6 +28,45 @@ export default function Wizard() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+
+  // Previous Prompts Sidebar State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('bedrock_generator_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [activePromptId, setActivePromptId] = useState<string | null>('pin-1');
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('bedrock_generator_sidebar_collapsed', String(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectPrompt = (prompt: HistoryPromptItem) => {
+    setActivePromptId(prompt.id);
+    setIdea(prompt.ideaText || prompt.title);
+    if (prompt.targetType) {
+      setTargetType(prompt.targetType as IdeaPayload['targetType']);
+    }
+  };
+
+  const handleNewPrompt = () => {
+    setActivePromptId(null);
+    setIdea('');
+    setQuestions([]);
+    setAnswers({});
+    setStep(1);
+    setErrorBanner(null);
+  };
 
   const [errorBanner, setErrorBanner] = useState<{
     type: 'api_key' | 'general';
@@ -60,6 +101,12 @@ export default function Wizard() {
 
     setIsGenerating(true);
     try {
+      addPromptToHistory({
+        title: idea.length > 36 ? idea.slice(0, 36) + '...' : idea,
+        ideaText: idea,
+        targetType,
+        isPinned: false,
+      });
       const q = await generateQuestions({ ideaText: idea, targetType });
       setQuestions(q);
       setStep(2);
@@ -111,6 +158,13 @@ export default function Wizard() {
     }));
     try {
       const promptText = await synthesizePrompt({ ideaText: idea, targetType }, answersArray, questions);
+      addPromptToHistory({
+        title: idea.length > 36 ? idea.slice(0, 36) + '...' : idea,
+        ideaText: idea,
+        targetType,
+        promptText,
+        isPinned: false,
+      });
       navigate('/app/result', { state: { promptText, idea } });
     } catch (err: any) {
       console.error('Prompt synthesis failed:', err);
@@ -143,11 +197,47 @@ export default function Wizard() {
 
   return (
     <PageTransition>
-      <div className={cn("w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)]", isDesktop ? "flex flex-col" : "")}>
-      <div className={cn(
-        "w-full flex flex-col gap-12 transition-all duration-500",
-        isDesktop && questions.length === 0 ? "flex-1 justify-center" : ""
-      )}>
+      <div className="relative min-h-[calc(100vh-80px)] w-full">
+        {/* Previous Prompts Sidebar */}
+        <GeneratorHistorySidebar
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={toggleSidebar}
+          activeId={activePromptId}
+          onSelectPrompt={handleSelectPrompt}
+          onNewPrompt={handleNewPrompt}
+        />
+
+        {/* Mobile backdrop overlay */}
+        {!isSidebarCollapsed && (
+          <div
+            onClick={toggleSidebar}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
+          />
+        )}
+
+        {/* Floating Expand Trigger when minimized */}
+        {isSidebarCollapsed && (
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="fixed top-22 left-4 z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d10]/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200"
+            title="Show previous prompts"
+          >
+            <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-mono">History</span>
+          </button>
+        )}
+
+        {/* Main Generator Workspace */}
+        <div className={cn(
+          "w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)] transition-all duration-300",
+          !isSidebarCollapsed ? "md:pl-72 lg:pl-76" : "md:pl-8",
+          isDesktop ? "flex flex-col" : ""
+        )}>
+        <div className={cn(
+          "w-full flex flex-col gap-12 transition-all duration-500",
+          isDesktop && questions.length === 0 ? "flex-1 justify-center" : ""
+        )}>
         
         {/* Top Section (Input) */}
         <div className="w-full relative z-20 transition-all duration-500">
@@ -364,6 +454,7 @@ export default function Wizard() {
               )}
           </AnimatePresence>
         </div>
+      </div>
       </div>
       </div>
 
