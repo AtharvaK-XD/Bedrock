@@ -416,34 +416,81 @@ function getFallbackQuestions(targetType: IdeaPayload['targetType']): Question[]
     ];
   }
 
+  if (targetType === 'no_code') {
+    return [
+      {
+        id: 'nocode_platform',
+        questionText: 'What is your primary visual builder platform?',
+        questionType: 'single_select',
+        options: [
+          'Bubble.io (Fullstack Web App)',
+          'FlutterFlow (Native iOS & Android)',
+          'Webflow + Wized / Xano',
+          'Airtable + Softr / Glide',
+          'Retool / Appsmith (Internal Tool)',
+        ],
+      },
+      {
+        id: 'nocode_database',
+        questionText: 'How will user data, collections, and records be stored and queried?',
+        questionType: 'single_select',
+        options: [
+          'Platform Native DB (Bubble / FlutterFlow Firebase)',
+          'Airtable Collections & Linked Records',
+          'Supabase / PostgreSQL with RLS',
+          'Xano Scalable No-Code Backend',
+        ],
+      },
+      {
+        id: 'nocode_automations',
+        questionText: 'What automated workflows or webhook pipelines are required?',
+        questionType: 'multi_select',
+        options: [
+          'Make.com (Integromat) Multi-step Scenarios',
+          'Zapier Instant Webhook Triggers',
+          'Payment Webhooks (Stripe / LemonSqueezy)',
+          'Automated Email & SMS (SendGrid / Twilio / Resend)',
+          'AI / OpenAI API Visual Action Nodes',
+        ],
+      },
+    ];
+  }
+
+  // coding_agent (default)
   return [
     {
       id: 'tech_stack',
-      questionText: 'What is the primary target tech stack or ecosystem for this project?',
+      questionText: 'What exact runtime & framework constraints must the coding agent follow?',
       questionType: 'single_select',
       options: [
-        'React / TypeScript / Vite',
-        'Next.js Fullstack (App Router)',
-        'Node.js / Express backend',
-        'Python / FastAPI / AI Agents',
-        'Mobile (React Native / Flutter)',
+        'React / TypeScript / Vite (Strict Mode)',
+        'Next.js 15 App Router + Server Actions',
+        'Node.js / Express / TypeScript backend',
+        'Python / FastAPI / Pydantic AI Agents',
+        'Mobile (React Native Expo + TypeScript)',
       ],
     },
     {
-      id: 'key_features',
-      questionText: 'What core feature must be prioritized in the initial release (MVP)?',
-      questionType: 'free_text',
+      id: 'schema_contracts',
+      questionText: 'What database, ORM, or API validation schema should the agent implement?',
+      questionType: 'single_select',
+      options: [
+        'Prisma ORM + PostgreSQL + Zod',
+        'Drizzle ORM + SQLite/Turso + Zod',
+        'Supabase JS Client + Database Types',
+        'REST API with JSON Schema validation',
+      ],
     },
     {
-      id: 'integrations',
-      questionText: 'Which external integrations or third-party services are required?',
+      id: 'negative_rules',
+      questionText: 'What strict negative constraints must the AI agent NEVER break?',
       questionType: 'multi_select',
       options: [
-        'AI / LLM APIs (Gemini, Groq, OpenAI)',
-        'Database & ORM (PostgreSQL / SQLite / Prisma)',
-        'User Authentication (OAuth / JWT / Clerk)',
-        'Payments & Billing (Stripe / Razorpay)',
-        'Real-time WebSocket / Events',
+        'NEVER use "any" types or loose assertions',
+        'NEVER leave "// TODO" placeholder comments',
+        'NEVER swallow errors without structured logging',
+        'NEVER install unverified third-party libraries',
+        'NEVER mutate state or props directly',
       ],
     },
   ];
@@ -465,10 +512,44 @@ Each object in the array must strictly have:
 - "questionType": "single_select" | "multi_select" | "free_text"
 - "options": string[] (required for "single_select" and "multi_select", omit for "free_text")`;
 
-    const userPrompt = `Project Target Audience/Output Type: ${payload.targetType}
-Idea: ${payload.ideaText}
+    const targetGuidanceMap: Record<string, string> = {
+      coding_agent: `TARGET FORMAT: CODING AGENT (DEV)
+PURPOSE: The user is creating an AI coding prompt for autonomous agents (Cursor, Windsurf, Claude Code, GitHub Copilot).
+YOUR QUESTIONS MUST FOCUS ON:
+1. Exact runtime and framework constraints (e.g. Next.js 15 App Router vs Vite SPA, strict TypeScript mode).
+2. Database, ORM & API contract layer (e.g. Prisma / Drizzle, PostgreSQL, tRPC or REST).
+3. Testing harness (Vitest, Playwright) and strict agent negative constraints (what the AI agent must NEVER do, e.g. no 'any', no placeholder comments).`,
 
-Generate 3 to 4 essential clarifying questions as a JSON array.`;
+      freelancer_brief: `TARGET FORMAT: FREELANCER (BRIEF)
+PURPOSE: The user is preparing a professional client Scope of Work (SOW), Upwork proposal, or agency deliverable.
+YOUR QUESTIONS MUST FOCUS ON:
+1. Primary client deliverables and project milestones (e.g. fullstack production app vs MVP vs Figma implementation).
+2. Milestone schedule, delivery phases, and payment release triggers.
+3. Design system requirements (Figma tokens, responsive breakpoints) and client handoff/hosting expectations.`,
+
+      hackathon_pitch: `TARGET FORMAT: HACKATHON (PITCH)
+PURPOSE: The user is preparing for a 24-48 hour hackathon, demo day, or investor pitch competition.
+YOUR QUESTIONS MUST FOCUS ON:
+1. Target prize category, judging track, or sponsor API bounty.
+2. The 2-minute live demo "wow factor" moment that will make judges lean in and give high scores.
+3. High-velocity rapid prototyping shortcuts and P0 must-have core flow vs P1 cut-list features.`,
+
+      no_code: `TARGET FORMAT: NO-CODE (NOCODE)
+PURPOSE: The user is building a visual application using visual app builders and automation pipelines (Bubble, FlutterFlow, Webflow, Make, Airtable).
+YOUR QUESTIONS MUST FOCUS ON:
+1. Primary visual builder platform (Bubble.io, FlutterFlow, Webflow + Wized, Softr, Glide, Retool).
+2. Database structure and data persistence (Bubble DB, Airtable linked records, Supabase with RLS, Xano).
+3. Automated workflows and webhook pipelines (Make.com multi-step scenarios, Zapier instant triggers, Stripe billing).`,
+    };
+
+    const targetGuidance = targetGuidanceMap[payload.targetType] || targetGuidanceMap.coding_agent;
+
+    const userPrompt = `${targetGuidance}
+
+Initial User Project Idea:
+${payload.ideaText}
+
+Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored specifically to this mode's purpose.`;
 
     try {
       const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.5 });
@@ -599,13 +680,61 @@ CRITICAL ARCHITECTURAL & FORMATTING DIRECTIVES:
 4. ACTIONABILITY:
    - The document must be immediately actionable by an autonomous AI coding agent or senior engineer to build the full system without ambiguities.`;
 
-  const userPrompt = `Target Audience / Platform Output: ${idea.targetType}
+  const targetLabelMap: Record<string, string> = {
+    coding_agent: 'Coding Agent (DEV)',
+    freelancer_brief: 'Freelancer (BRIEF)',
+    hackathon_pitch: 'Hackathon (PITCH)',
+    no_code: 'No-Code (NOCODE)',
+  };
+
+  const targetDirectiveMap: Record<string, string> = {
+    coding_agent: `MANDATORY BLUEPRINT FORMAT: ELITE CODING AGENT RULEBOOK (.cursorrules / AGENT.md)
+The user explicitly selected "Coding Agent (DEV)". You MUST structure the entire document as a production-grade Agent Rulebook:
+1. Role Definition & Architectural Philosophy (concise principal engineer persona).
+2. Master System Prompt Block: Enclosed in a copy-pasteable markdown code block with strict XML directives (<directives>, <constraints>, <workflow>, <rules>, <verification_protocol>).
+3. File Tree Topology & Module Architecture: Detailed file/directory map with exact file paths and specific responsibilities.
+4. Strict Negative Constraints: "NEVER use any", "NEVER use placeholder comments like // TODO", "NEVER swallow errors", "NEVER mutate state directly".
+5. Concrete Schema Contracts: Syntactically valid TypeScript interfaces, Zod schemas, and Prisma/Drizzle models.
+6. Phased Implementation Sequence with Verification Checklist: Step-by-step order of operations with automated terminal verification commands (e.g. npm test, vitest, tsc --noEmit).`,
+
+    freelancer_brief: `MANDATORY BLUEPRINT FORMAT: EXECUTIVE SCOPE OF WORK (SOW) & CLIENT PROJECT CHARTER
+The user explicitly selected "Freelancer (BRIEF)". You MUST structure the entire document as a professional Scope of Work and client deliverables contract:
+1. Executive Project Charter & Business Value Proposition (clear statement of what is being built and why).
+2. Phased Milestone Deliverables Matrix (Markdown table: Milestone # | Deliverable | Est. Timeline | Acceptance Criteria | Payment Trigger).
+3. UI/UX Design System Specification: Color palette hex tokens, font pairings, component state matrix, Figma asset mapping, and responsive breakpoints.
+4. Client Handoff, Deployment & Staging Playbook: Production hosting setup (Vercel/AWS), credential management, domain DNS configuration, and client training walkthrough.
+5. Scope Boundary Guardrails: Explicit "Out-of-Scope" protection clauses, revision limits, and formal change order terms to prevent client scope creep.`,
+
+    hackathon_pitch: `MANDATORY BLUEPRINT FORMAT: LEAN HACKATHON MVP & PITCH BATTLE PLAN
+The user explicitly selected "Hackathon (PITCH)". You MUST structure the entire document for winning a 24-48 hour hackathon, demo day, or pitch competition:
+1. The 10x Pitch Hook & Problem-Solution Narrative (gripping 30-second opening statement, emotional pain point, and market timing: "why now?").
+2. The 2-Minute Live Demo Flow Script (second-by-second click path with exact speaker talking points engineered to hit every judging criterion).
+3. Lean 24-Hour Sprint Plan: P0 Core Flow (Hours 0-12: the critical happy path), Integration & UI Polish (Hours 12-18), Buffer & Demo Rehearsal (Hours 18-24).
+4. Rapid Prototype Architecture & Shortcuts: Pre-built UI component libraries, managed auth (Clerk/Supabase), and pre-seeded mock APIs to eliminate boilerplate.
+5. Hackathon Judging Rubric Optimization Checklist: Specific tactical strategies to score 10/10 on Innovation, Technical Depth, UI Polish, and Practical Impact.`,
+
+    no_code: `MANDATORY BLUEPRINT FORMAT: VISUAL APPLICATION ARCHITECTURE & NO-CODE BLUEPRINT
+The user explicitly selected "No-Code (NOCODE)". You MUST structure the entire document for building visual applications and automated workflows using platforms like Bubble, FlutterFlow, Webflow, Make, and Airtable:
+1. Visual App Architecture & No-Code Platform Stack Selection (e.g. Webflow frontend + Supabase backend + Make.com automation pipeline).
+2. Entity Relationship Diagram & Data Collections Table (Markdown table: Collection / Table | Field Name | Data Type | Relationships & Linked Records | Privacy Rules).
+3. Visual Page & Component Topology: Page hierarchy, container layouts (Flexbox/Grid), repeating groups, custom states, and dynamic visibility conditionals.
+4. Step-by-Step Automation & Webhook Recipes: Detailed visual workflow logic (Trigger Event -> Filter Condition -> Data Transformation -> Webhook POST -> Notification for Make/Zapier).
+5. No-Code Limits, Workarounds & Security Guardrails: Securing sensitive API keys through backend proxies, pagination workarounds, webhook error retry handlers, and client data protection.`,
+  };
+
+  const selectedFormatName = targetLabelMap[idea.targetType] || idea.targetType;
+  const selectedFormatDirective = targetDirectiveMap[idea.targetType] || targetDirectiveMap.coding_agent;
+
+  const userPrompt = `Selected Target Format: ${selectedFormatName}
 Initial Project Concept: ${idea.ideaText}
 
 Clarifying Questions and Answers from User:
 ${answersText}
 
-Produce the bespoke, domain-tailored Project Blueprint & Master System Prompt.`;
+SPECIFIC FORMAT INSTRUCTION:
+${selectedFormatDirective}
+
+Produce the bespoke, publication-grade prompt document adhering strictly to this target purpose.`;
 
   if (hasClientKey) {
     return await callClientAi(userPrompt, systemPrompt, { temperature: 0.7 });
