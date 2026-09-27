@@ -302,13 +302,12 @@ export function RichInput({
     <div
       ref={containerRef}
       className={cn(
-        "glass-card relative rounded-3xl transition-all duration-300 border border-white/[0.09] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 flex flex-col group shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)]",
+        "relative rounded-3xl transition-all duration-300 border border-white/[0.10] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 flex flex-col group bg-black/85 backdrop-blur-2xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.98)] overflow-hidden",
         activeDropdown ? "z-50" : "z-0"
       )}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent z-20 rounded-t-3xl" />
-      <div className="pointer-events-none absolute inset-0 glass-noise opacity-25 rounded-3xl z-0" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.035] via-transparent to-black/20 rounded-3xl z-0" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none z-20 rounded-t-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-black/80 to-black/95 rounded-3xl z-0" />
 
       <div className="relative z-10 flex flex-col h-full">
         {/* Top Toolbar */}
@@ -318,7 +317,7 @@ export function RichInput({
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'target' ? null : 'target')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-200"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-black/60 hover:bg-black/90 border border-white/[0.08] hover:border-white/[0.16] shadow-sm transition-all duration-200 backdrop-blur-md"
             >
               <span className="font-mono text-[10px] text-zinc-400 font-semibold">{selectedTarget.tag}</span>
               <span>{selectedTarget.label}</span>
@@ -327,7 +326,7 @@ export function RichInput({
             
             {activeDropdown === 'target' && (
               <div 
-                className="absolute top-full left-0 mt-2 w-52 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-1.5 backdrop-blur-2xl"
+                className="absolute top-full left-0 mt-2 w-52 bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-1.5 backdrop-blur-2xl"
                 data-lenis-prevent="true"
               >
                 <div 
@@ -364,7 +363,7 @@ export function RichInput({
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'agent' ? null : 'agent')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-200"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-black/60 hover:bg-black/90 border border-white/[0.08] hover:border-white/[0.16] shadow-sm transition-all duration-200 backdrop-blur-md"
             >
               <AgentIcon agent={selectedAgent} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
               <span className="text-zinc-500 text-xs">Provider:</span>
@@ -374,7 +373,7 @@ export function RichInput({
             
             {activeDropdown === 'agent' && (
               <div 
-                className="absolute top-full left-0 mt-2 w-80 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-2 backdrop-blur-2xl"
+                className="absolute top-full left-0 mt-2 w-80 bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl"
                 data-lenis-prevent="true"
               >
                 <div 
@@ -415,7 +414,7 @@ export function RichInput({
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'model' ? null : 'model')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-200"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-black/60 hover:bg-black/90 border border-white/[0.08] hover:border-white/[0.16] shadow-sm transition-all duration-200 backdrop-blur-md"
             >
               <AgentIcon agent={selectedAgent} model={selectedModel.id} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
               <span className="text-zinc-500 text-xs">Model:</span>
@@ -425,7 +424,7 @@ export function RichInput({
 
             {activeDropdown === 'model' && (
               <div 
-                className="absolute top-full left-0 mt-2 w-72 glass-subcard border border-white/10 rounded-2xl shadow-2xl z-[100] p-2 backdrop-blur-2xl"
+                className="absolute top-full left-0 mt-2 w-72 bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl"
                 data-lenis-prevent="true"
               >
                 <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1 flex items-center gap-1.5">
@@ -544,7 +543,7 @@ export function RichInput({
             <span className="whitespace-nowrap">
               Session: {sessionPercent}% {isFreeTier && `(${sessionPrompts}/${sessionLimit})`}
             </span>
-            <div className="h-1.5 flex-1 bg-white/[0.05] rounded-full overflow-hidden border border-white/[0.05]">
+            <div className="h-1.5 flex-1 bg-black/70 rounded-full overflow-hidden border border-white/[0.08]">
               <div 
                 className={cn(
                   "h-full rounded-full transition-all duration-500",
@@ -559,7 +558,7 @@ export function RichInput({
             onClick={() => isLimitReached && setShowQuotaModal(true)}
             title={`Weekly: ${weeklyPrompts}/${weeklyLimit} prompts used. Resets weekly (in ${timeUntilWeekly}).`}
           >
-            <div className="h-1.5 flex-1 bg-white/[0.05] rounded-full overflow-hidden border border-white/[0.05]">
+            <div className="h-1.5 flex-1 bg-black/70 rounded-full overflow-hidden border border-white/[0.08]">
               <div 
                 className={cn(
                   "h-full rounded-full transition-all duration-500",
