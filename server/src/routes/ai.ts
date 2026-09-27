@@ -120,7 +120,11 @@ router.post('/refine', refineLimiter, requireAuth, async (req: AuthRequest, res,
     if (!(await enforcePromptQuota(req, res))) return;
 
     const validated = RefineSchema.parse(req.body);
-    const result = await AiService.refinePrompt(validated.currentPrompt, validated.followUp);
+    const result = await AiService.refinePrompt(
+      validated.currentPrompt,
+      validated.followUp,
+      validated.conversationHistory
+    );
 
     if (req.user?.id) {
       await prisma.trace.create({

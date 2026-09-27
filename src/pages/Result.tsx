@@ -42,8 +42,8 @@ export default function Result() {
   const [promptText, setPromptText] = useState<string>(location.state?.promptText || '');
   const idea = location.state?.idea as string | undefined;
 
-  const [chatHistory, setChatHistory] = useState([
-    { role: 'user', content: idea },
+  const [chatHistory, setChatHistory] = useState<Array<{ role: string; content: string }>>([
+    { role: 'user', content: idea || 'Initial Project Request' },
     { role: 'ai', content: "Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist." }
   ]);
   const [isRefining, setIsRefining] = useState(false);
@@ -151,10 +151,11 @@ export default function Result() {
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent">
         <RefinementInput 
           onSubmit={async (text) => {
-            setChatHistory(prev => [...prev, { role: 'user', content: text }]);
+            const nextHistory = [...chatHistory, { role: 'user', content: text }];
+            setChatHistory(nextHistory);
             setIsRefining(true);
             try {
-              const { updatedMarkdown, summary } = await refinePrompt(promptText, text);
+              const { updatedMarkdown, summary } = await refinePrompt(promptText, text, nextHistory);
               setPromptText(updatedMarkdown);
               setChatHistory(prev => [...prev, { role: 'ai', content: summary }]);
             } catch (err: any) {
