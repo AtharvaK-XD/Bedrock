@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Bedrock Security Inquiries
+    url: mailto:bedrockofficialpage@gmail.com
+    about: Privately report sensitive security issues or credential disclosures.
+  - name: 🌐 Bedrock Live Web App
+    url: https://bedrock-steel.vercel.app
+    about: Access the live cloud deployment of Bedrock.

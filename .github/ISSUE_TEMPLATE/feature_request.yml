@@ -1,0 +1,46 @@
+name: 💡 Feature Request
+description: Propose a new feature, model integration, or UI improvement for Bedrock
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping make Bedrock better! Please describe the feature you would like to see.
+
+  - type: input
+    id: title
+    attributes:
+      label: Feature Title
+      description: A short title for your proposed feature
+      placeholder: "e.g. Add support for Anthropic Claude 3.7 Sonnet thinking tokens"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem or limitation?
+      placeholder: "I am always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you envision this feature working in Bedrock.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or workarounds you have considered?
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context, mockup images, or references here.
