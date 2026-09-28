@@ -63,6 +63,11 @@ export const config = {
     sentryDsn: (process.env.SENTRY_DSN || '').trim(),
   },
 
+  redis: {
+    url: (process.env.UPSTASH_REDIS_REST_URL || '').trim(),
+    token: (process.env.UPSTASH_REDIS_REST_TOKEN || '').trim(),
+  },
+
   rateLimit: {
     windowMs: 15 * 60 * 1000,
     maxGeneral: 300,
