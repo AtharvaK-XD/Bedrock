@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
+import { PostHogProvider } from '@posthog/react'
 import './index.css'
 import App from './App.tsx'
 
@@ -25,8 +26,19 @@ Sentry.init({
   replaysOnErrorSampleRate: 1.0,
 })
 
+const posthogOptions = {
+  api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
+  defaults: '2026-05-30',
+} as const
+
+const posthogApiKey =
+  import.meta.env.VITE_POSTHOG_PROJECT_TOKEN ||
+  'phc_uL4jhA9XRcgtFUzhifkjZuGHjmYcQ3BGev3bWNvrj4BD'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <PostHogProvider apiKey={posthogApiKey} options={posthogOptions}>
+      <App />
+    </PostHogProvider>
   </StrictMode>,
 )
