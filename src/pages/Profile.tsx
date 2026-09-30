@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
-import { useUserProfile } from '../lib/useUserProfile';
+import { useUserProfile, resolveCleanName, resolveInitials } from '../lib/useUserProfile';
+import { useUser } from '@clerk/react';
 import { PromptActivityHeatmap } from '../components/profile/PromptActivityHeatmap';
 import { processAvatarImage } from '../lib/imageUtils';
 import { AgentIcon } from '../components/ui/ModelLogos';
@@ -112,6 +113,14 @@ const RECENT_ACTIVITY = [
 
 export default function Profile() {
   const { profile, updateProfile, resetProfile } = useUserProfile();
+  const { user: clerkUser } = useUser();
+  const effectiveName = 
+    clerkUser?.fullName || 
+    clerkUser?.firstName || 
+    resolveCleanName(profile.name, clerkUser?.primaryEmailAddress?.emailAddress || profile.email);
+  const effectiveAvatar = clerkUser?.imageUrl || profile.avatarUrl;
+  const effectiveInitials = resolveInitials(effectiveName);
+
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [bannerTheme, setBannerTheme] = useState('copper');
   const [showThemePicker, setShowThemePicker] = useState(false);
@@ -270,7 +279,7 @@ export default function Profile() {
         {/* HERO PROFILE CARD */}
         <div className="relative rounded-3xl border border-white/10 bg-[#121417]/85 backdrop-blur-2xl overflow-hidden shadow-2xl mb-8 group/card transition-all duration-300">
           {/* Ambient Banner Backdrop */}
-          <div className="relative h-44 sm:h-52 w-full z-20">
+          <div className="relative h-44 sm:h-52 w-full z-10 pointer-events-none">
             {/* Background layers clipped to banner top rounded corners */}
             <div className={cn(
               "absolute inset-0 overflow-hidden rounded-t-3xl bg-gradient-to-r transition-all duration-700 pointer-events-none",
@@ -281,7 +290,7 @@ export default function Profile() {
             </div>
             
             {/* Top-Right Theme & Status Controls (Unclipped & elevated above profile card body) */}
-            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2.5 z-40">
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2.5 z-20 pointer-events-auto">
               <div className="relative" ref={themePickerRef}>
                 <button
                   type="button"
@@ -331,8 +340,8 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Profile Header Content */}
-          <div className="px-6 sm:px-10 pb-7 pt-0 relative">
+          {/* Profile Header Content (Elevated above banner at z-30 to prevent clipping) */}
+          <div className="px-6 sm:px-10 pb-7 pt-0 relative z-30">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 -mt-16 sm:-mt-20 mb-6">
               
               {/* Avatar & Main Info */}
@@ -340,7 +349,7 @@ export default function Profile() {
                 
                 {/* Avatar with Status Dot */}
                 <div 
-                  className="relative group cursor-pointer shrink-0" 
+                  className="relative group cursor-pointer shrink-0 z-30" 
                   onClick={handleAvatarClick}
                   title="Click to select or change profile photo"
                 >
@@ -354,14 +363,14 @@ export default function Profile() {
                   />
                   <div className="relative p-1 rounded-3xl bg-gradient-to-tr from-copper-400 via-copper-500 to-emerald-400 shadow-2xl ring-4 ring-[#121417]">
                     <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-[22px] bg-gradient-to-tr from-basalt-900 via-[#162724] to-basalt-800 text-white flex flex-col items-center justify-center font-display font-bold text-3xl sm:text-4xl relative overflow-hidden border border-white/10 group-hover:border-copper-400/60 transition-all">
-                      {profile.avatarUrl ? (
+                      {effectiveAvatar ? (
                         <img 
-                          src={profile.avatarUrl} 
-                          alt={profile.name} 
+                          src={effectiveAvatar} 
+                          alt={effectiveName} 
                           className="w-full h-full object-cover relative z-0" 
                         />
                       ) : (
-                        <span>{profile.avatarInitials}</span>
+                        <span>{effectiveInitials}</span>
                       )}
                       
                       {/* Hover edit badge overlay */}
@@ -386,10 +395,10 @@ export default function Profile() {
                 </div>
 
                 {/* Identity & Metadata Details */}
-                <div className="space-y-1.5 flex-1 min-w-0">
+                <div className="space-y-1.5 flex-1 min-w-0 z-30">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h1 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight">
-                      {profile.name}
+                      {effectiveName}
                     </h1>
 
                     {/* Interactive Handle Copy */}
@@ -398,13 +407,13 @@ export default function Profile() {
                       className="group/handle inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all cursor-pointer"
                       title="Click to copy handle"
                     >
-                      <span>@{profile.username}</span>
+                      <span>@{profile.username || 'atharvak'}</span>
                       {copiedHandle && <span className="text-copper-400 font-bold">(copied)</span>}
                     </button>
 
                     {/* Plan Badge */}
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono font-semibold bg-copper-500/15 text-copper-300 border border-copper-500/30">
-                      {profile.plan}
+                      {profile.plan || 'Free Plan'}
                     </span>
 
                     {photoMessage && (
@@ -421,23 +430,31 @@ export default function Profile() {
 
                   {/* Role & Company */}
                   <p className="text-sm sm:text-base text-gray-300 font-medium flex flex-wrap items-center gap-2">
-                    <span className="text-white font-semibold">{profile.role}</span>
-                    <span className="text-gray-500">at</span>
-                    <span className="text-gray-300 font-mono text-sm">{profile.organization}</span>
+                    <span className="text-white font-semibold">{profile.role || 'Lead Prompt Architect'}</span>
+                    {profile.organization && profile.organization.trim().length > 0 && (
+                      <>
+                        <span className="text-gray-500">at</span>
+                        <span className="text-gray-300 font-mono text-sm">{profile.organization}</span>
+                      </>
+                    )}
                   </p>
 
                   {/* Metadata Row: Location, Joined, Email */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-mono text-gray-400 pt-1">
-                    <span className="text-gray-300">{profile.location}</span>
-                    <span>•</span>
-                    <span>Joined {profile.joinedDate}</span>
+                    {profile.location && profile.location.trim().length > 0 && (
+                      <>
+                        <span className="text-gray-300">{profile.location}</span>
+                        <span>•</span>
+                      </>
+                    )}
+                    <span>Joined {profile.joinedDate || 'September 2026'}</span>
                     <span>•</span>
                     <button 
                       onClick={handleCopyEmail}
                       className="text-gray-400 hover:text-white transition-colors cursor-pointer"
                       title="Click to copy email"
                     >
-                      {profile.email} {copiedEmail && <span className="text-copper-400 font-bold">(copied)</span>}
+                      {clerkUser?.primaryEmailAddress?.emailAddress || profile.email} {copiedEmail && <span className="text-copper-400 font-bold">(copied)</span>}
                     </button>
                     {profile.github && (
                       <>
