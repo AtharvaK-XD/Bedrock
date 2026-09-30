@@ -166,3 +166,8 @@
 .react-flow__nodesselection-rect {
   display: none !important;
 }
+
+/* Explicitly prevent BorderBeam and parent wrappers from clipping dropdowns */
+[data-beam] {
+  overflow: visible !important;
+}

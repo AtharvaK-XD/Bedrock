@@ -268,6 +268,7 @@ export default function Wizard() {
                 borderRadius={24}
                 strength={1}
                 className="rounded-3xl !overflow-visible relative z-30"
+                style={{ overflow: 'visible' }}
               >
                 <RichInput
                   value={idea}
