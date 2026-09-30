@@ -168,7 +168,6 @@ Bedrock/
 ### Observability & Health (`/api/health`)
 - `GET /health` — Liveness probe (returns 200 OK with server uptime).
 - `GET /health/ready` — Readiness probe (checks active database connectivity).
-- `GET /health/metrics` — Returns memory usage, active connections, and request latency stats.
 
 ---
 
