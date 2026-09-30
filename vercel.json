@@ -17,7 +17,7 @@
       "destination": "https://api-inference.huggingface.co/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
