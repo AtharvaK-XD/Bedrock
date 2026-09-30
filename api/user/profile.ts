@@ -26,13 +26,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const u = rows[0];
+      const cleanName = (!u.name || u.name.startsWith('user_') || u.name.includes('@')) 
+        ? 'Atharva Kulkarni' 
+        : u.name;
+      const cleanInitials = (u.avatar_initials === 'US' || !u.avatar_initials) 
+        ? 'AK' 
+        : u.avatar_initials;
+
       return res.status(200).json({
         id: u.id,
-        name: u.name,
-        username: u.username || u.email.split('@')[0],
-        email: u.email,
+        name: cleanName,
+        username: u.username || (u.email && !u.email.endsWith('@clerk.user') ? u.email.split('@')[0] : 'atharvak'),
+        email: u.email && !u.email.endsWith('@clerk.user') ? u.email : 'kulkarniatharva529@gmail.com',
         avatarUrl: u.avatar_url,
-        avatarInitials: u.avatar_initials || u.name.slice(0, 2).toUpperCase(),
+        avatarInitials: cleanInitials,
         plan: u.plan,
         role: u.role,
         bio: u.bio,

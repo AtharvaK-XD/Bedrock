@@ -50,7 +50,10 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
     if (claims && claims.sub) {
       const userId = claims.sub;
       const email = claims.email || claims.primary_email || `${userId}@clerk.user`;
-      const name = claims.name || claims.first_name || (email.includes('@') ? email.split('@')[0] : 'Bedrock Engineer');
+      let name = claims.name || claims.first_name || (req.headers['x-user-name'] as string) || '';
+      if (!name || name.startsWith('user_') || name.includes('@')) {
+        name = 'Atharva Kulkarni';
+      }
 
       try {
         const sql = getDb();
@@ -61,10 +64,13 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
 
         if (existing.length > 0 && existing[0]) {
           const user = existing[0];
+          const cleanName = (!user.name || user.name.startsWith('user_') || user.name.includes('@'))
+            ? 'Atharva Kulkarni'
+            : user.name;
           return {
             id: user.id,
             email: user.email,
-            name: user.name,
+            name: cleanName,
             role: user.role || 'Lead Prompt Architect',
             subscriptionTier: user.subscription_tier || 'free',
             plan: user.plan || 'Free Plan',
