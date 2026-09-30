@@ -15,9 +15,64 @@ import {
   Sparkles,
   Cpu,
   ExternalLink,
-  Check
+  Check,
+  ChevronDown
 } from 'lucide-react';
 import { AgentIcon } from '../components/ui/ModelLogos';
+
+export interface ModelOption {
+  id: string;
+  name: string;
+  tag?: string;
+  tagColor?: string;
+}
+
+export interface ModelGroup {
+  group: string;
+  models: ModelOption[];
+}
+
+export const MODEL_GROUPS: ModelGroup[] = [
+  {
+    group: 'Google DeepMind (Recommended)',
+    models: [
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', tag: 'Ultra Fast', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'gemini-flash-latest', name: 'Gemini Flash Latest', tag: 'Fast', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', tag: 'Balanced', tagColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', tag: 'Standard', tagColor: 'text-gray-300 bg-white/5 border-white/10' },
+    ],
+  },
+  {
+    group: 'Groq (Lightning Fast Open Source)',
+    models: [
+      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Groq)', tag: '120B High IQ', tagColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+      { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B (Groq)', tag: '20B Fast', tagColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+      { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (Groq)', tag: '27B Reasoning', tagColor: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
+      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', tag: 'Versatile', tagColor: 'text-copper-400 bg-copper-500/10 border-copper-500/20' },
+      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', tag: 'Instant', tagColor: 'text-gray-300 bg-white/5 border-white/10' },
+    ],
+  },
+  {
+    group: 'Anthropic',
+    models: [
+      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', tag: 'Pro Coding', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+      { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', tag: 'Fast', tagColor: 'text-orange-300 bg-orange-500/10 border-orange-500/20' },
+    ],
+  },
+  {
+    group: 'OpenRouter & Hugging Face',
+    models: [
+      { id: 'openrouter/auto', name: 'OpenRouter Auto', tag: 'Free Tier', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+      { id: 'hf/Qwen/Qwen2.5-72B-Instruct', name: 'Qwen 2.5 72B (HuggingFace)', tag: '72B Weights', tagColor: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
+    ],
+  },
+  {
+    group: 'Local / Offline',
+    models: [
+      { id: 'ollama-local', name: 'Ollama Local (localhost:11434)', tag: 'Private', tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+    ],
+  },
+];
 
 type Tab = 'account' | 'api-keys' | 'notifications' | 'privacy';
 
@@ -122,6 +177,20 @@ export default function Settings() {
   // API Keys state
   const [apiKeys, setApiKeys] = useState<ApiKeysState>(getStoredApiKeys);
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
+        setModelDropdownOpen(false);
+      }
+    }
+    if (modelDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [modelDropdownOpen]);
 
   // Notifications state
   const [notifications, setNotifications] = useState<NotificationSettings>(getStoredNotifications);
@@ -429,45 +498,113 @@ export default function Settings() {
 
                       <div className="space-y-6">
                         {/* Default Model Selection */}
-                        <div className="p-4 rounded-2xl bg-[#0a0b0e] border border-white/10 space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider flex items-center gap-2">
-                              <AgentIcon model={apiKeys.defaultModel} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
-                              <span>Default Workspace Model</span>
-                            </label>
-                            <span className="text-[11px] font-mono text-gray-400">Primary model for generation</span>
-                          </div>
-                          <select
-                            value={apiKeys.defaultModel}
-                            onChange={(e) => setApiKeys((prev) => ({ ...prev, defaultModel: e.target.value }))}
-                            className="w-full px-4 py-3 bg-[#13151b] border border-white/10 text-white rounded-xl text-sm focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono cursor-pointer"
-                          >
-                            <optgroup label="Google DeepMind (Recommended)">
-                              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Ultra Fast)</option>
-                              <option value="gemini-flash-latest">Gemini Flash Latest</option>
-                              <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
-                              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                            </optgroup>
-                            <optgroup label="Groq (Lightning Fast Open Source)">
-                              <option value="openai/gpt-oss-120b">GPT-OSS 120B (Groq)</option>
-                              <option value="openai/gpt-oss-20b">GPT-OSS 20B (Groq)</option>
-                              <option value="qwen/qwen3.8-27b">Qwen 3.8 27B (Groq)</option>
-                              <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
-                              <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
-                            </optgroup>
-                            <optgroup label="Anthropic">
-                              <option value="claude-3-5-sonnet">Anthropic Claude 3.5 Sonnet</option>
-                              <option value="claude-3-5-haiku">Anthropic Claude 3.5 Haiku</option>
-                            </optgroup>
-                            <optgroup label="OpenRouter & Hugging Face">
-                              <option value="openrouter/auto">OpenRouter Auto (Free Tier)</option>
-                              <option value="hf/Qwen/Qwen2.5-72B-Instruct">Qwen 2.5 72B (via Hugging Face)</option>
-                            </optgroup>
-                            <optgroup label="Local / Offline">
-                              <option value="ollama-local">Ollama Local (http://localhost:11434)</option>
-                            </optgroup>
-                          </select>
-                        </div>
+                        {(() => {
+                          const allModels = MODEL_GROUPS.flatMap((g) => g.models);
+                          const currentModel = allModels.find((m) => m.id === apiKeys.defaultModel) || {
+                            id: apiKeys.defaultModel,
+                            name: apiKeys.defaultModel,
+                            tag: 'Active',
+                            tagColor: 'text-copper-400 bg-copper-500/10 border-copper-500/20',
+                          };
+
+                          return (
+                            <div className="p-4 rounded-2xl bg-[#0a0b0e] border border-white/10 space-y-2.5 relative" ref={modelDropdownRef}>
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider flex items-center gap-2">
+                                  <Sparkles className="w-3.5 h-3.5 text-copper-400" />
+                                  <span>Default Workspace Model</span>
+                                </label>
+                                <span className="text-[11px] font-mono text-gray-400">Primary model for generation</span>
+                              </div>
+
+                              {/* Custom Dropdown Trigger */}
+                              <button
+                                type="button"
+                                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                                className={cn(
+                                  "w-full flex items-center justify-between px-4 py-3 bg-[#13151b] hover:bg-[#181b22] border text-white rounded-xl text-sm transition-all font-mono cursor-pointer shadow-lg group",
+                                  modelDropdownOpen
+                                    ? "border-copper-500/60 ring-2 ring-copper-500/20 shadow-copper-500/10"
+                                    : "border-white/10 hover:border-white/20"
+                                )}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <AgentIcon model={currentModel.id} className="w-4 h-4 shrink-0" badgeClassName="w-6 h-6 bg-white/5 border border-white/10" />
+                                  <span className="font-semibold text-white truncate text-sm">
+                                    {currentModel.name}
+                                  </span>
+                                  {currentModel.tag && (
+                                    <span className={cn("text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0", currentModel.tagColor)}>
+                                      {currentModel.tag}
+                                    </span>
+                                  )}
+                                </div>
+                                <ChevronDown className={cn(
+                                  "w-4 h-4 text-gray-400 group-hover:text-white transition-transform duration-200 shrink-0",
+                                  modelDropdownOpen && "rotate-180 text-copper-400"
+                                )} />
+                              </button>
+
+                              {/* Custom Dropdown Menu Popover */}
+                              <AnimatePresence>
+                                {modelDropdownOpen && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                                    className="absolute left-0 right-0 top-full mt-2 z-50 bg-[#0e1015]/98 backdrop-blur-2xl border border-white/15 rounded-2xl p-2.5 shadow-[0_24px_60px_rgba(0,0,0,0.9)] max-h-80 overflow-y-auto custom-scrollbar space-y-3"
+                                  >
+                                    {MODEL_GROUPS.map((group) => (
+                                      <div key={group.group} className="space-y-1">
+                                        <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-gray-400 flex items-center gap-1.5 font-bold">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-copper-400" />
+                                          <span>{group.group}</span>
+                                        </div>
+                                        <div className="space-y-0.5">
+                                          {group.models.map((model) => {
+                                            const isSelected = apiKeys.defaultModel === model.id;
+                                            return (
+                                              <button
+                                                key={model.id}
+                                                type="button"
+                                                onClick={() => {
+                                                  setApiKeys((prev) => ({ ...prev, defaultModel: model.id }));
+                                                  setModelDropdownOpen(false);
+                                                }}
+                                                className={cn(
+                                                  "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono text-left transition-all cursor-pointer group/item",
+                                                  isSelected
+                                                    ? "bg-copper-500/15 border border-copper-500/40 text-white shadow-sm"
+                                                    : "text-gray-300 hover:text-white hover:bg-white/[0.06] border border-transparent"
+                                                )}
+                                              >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                  <AgentIcon model={model.id} className="w-3.5 h-3.5 shrink-0" badgeClassName="w-5 h-5 bg-white/5 border border-white/10" />
+                                                  <span className={cn("truncate font-medium", isSelected && "font-bold text-copper-300")}>
+                                                    {model.name}
+                                                  </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                  {model.tag && (
+                                                    <span className={cn("text-[9px] font-mono px-2 py-0.5 rounded-full border", model.tagColor)}>
+                                                      {model.tag}
+                                                    </span>
+                                                  )}
+                                                  {isSelected && <Check className="w-3.5 h-3.5 text-copper-400" />}
+                                                </div>
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        })()}
 
                         <div className="h-px bg-white/10 my-4"></div>
 
