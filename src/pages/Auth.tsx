@@ -22,7 +22,7 @@ export default function AuthPage({ defaultMode = 'register' }: AuthPageProps) {
           <div className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center p-1 shadow-sm group-hover:border-emerald-500/30 transition-all">
             <img src="/logo-tight.png" alt="Bedrock" className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(139,212,186,0.3)] group-hover:scale-105 transition-transform" />
           </div>
-          <span className="font-display font-bold text-lg tracking-wider uppercase">Bedrock</span>
+          <span className="font-display font-bold text-lg tracking-tight">Bedrock</span>
         </Link>
       </header>
 

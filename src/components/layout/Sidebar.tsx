@@ -70,7 +70,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
             <img src="/logo-tight.png" alt="Bedrock" className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(139,212,186,0.3)] group-hover:scale-105 transition-transform" />
           </div>
           <div className="flex flex-col">
-            <span className="font-display font-bold text-base tracking-wider uppercase text-white leading-tight">Bedrock</span>
+            <span className="font-display font-bold text-base tracking-tight text-white leading-tight">Bedrock</span>
             <span className="text-[10px] font-mono text-gray-500 tracking-wider uppercase">Workstation</span>
           </div>
         </Link>
