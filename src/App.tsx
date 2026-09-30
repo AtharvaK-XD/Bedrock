@@ -16,6 +16,8 @@ import Pricing from './pages/Pricing';
 import Billing from './pages/Billing';
 import SettingsPage from './pages/Settings';
 import Profile from './pages/Profile';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 import AuthPage from './pages/Auth';
 import { AppLayout } from './components/layout/AppLayout';
 import SSOCallback from './pages/SSOCallback';
@@ -93,6 +95,8 @@ function AnimatedRoutes() {
           } 
         />
         <Route path="/sso-callback" element={<SSOCallback />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
         
         {/* App Routes (Strictly protected by authentication) */}
