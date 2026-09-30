@@ -1,19 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, Zap, ShieldCheck, Cpu } from 'lucide-react';
+import { Activity, Zap, ShieldCheck, Cpu, ArrowUpRight, Sparkles } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { NetworkTopology2D } from '../components/dashboard/NetworkTopology2D';
 import { AgentIcon } from '../components/ui/ModelLogos';
-
-// --- MOCK DATA ---
-const INITIAL_EXECUTIONS = [
-  { id: 'TRC-8F72K9', time: '14:22:01.042', node: 'SYSTEM_PROMPT_01', model: 'gemini-2.5-pro', tokens: 4021, latency: 843, status: 'OK' },
-  { id: 'TRC-2M9X1B', time: '14:22:00.891', node: 'DATA_EXTRACT_A', model: 'gemini-2.5', tokens: 12402, latency: 1204, status: 'OK' },
-  { id: 'TRC-9P4V0C', time: '14:21:58.112', node: 'ROUTER_NODE', model: 'llama-3.1-8b', tokens: 342, latency: 120, status: 'OK' },
-  { id: 'TRC-5K1B2F', time: '14:21:55.663', node: 'CREATIVE_AGENT', model: 'llama-3-70b', tokens: 2890, latency: 1420, status: 'OK' },
-  { id: 'TRC-3X8M9Z', time: '14:21:50.001', node: 'CODE_REVIEW', model: 'mistral-large', tokens: 8102, latency: 3411, status: 'ERR_TIMEOUT' },
-  { id: 'TRC-1A2B3C', time: '14:21:48.552', node: 'SYSTEM_PROMPT_01', model: 'qwen-2.5-72b', tokens: 412, latency: 198, status: 'OK' },
-];
+import { getUserTelemetry, clearUserTraces, TELEMETRY_UPDATE_EVENT, type UserTelemetrySummary } from '../lib/telemetry';
 
 const QUICK_ACTIONS = [
   { 
@@ -51,7 +42,16 @@ const QUICK_ACTIONS = [
 ];
 
 export default function Dashboard() {
-  const [executions, setExecutions] = useState(INITIAL_EXECUTIONS);
+  const [telemetry, setTelemetry] = useState<UserTelemetrySummary>({
+    totalInferences: 0,
+    totalTokens: 0,
+    avgLatency: 0,
+    p99Latency: 0,
+    reliability: 100,
+    activeModelsCount: 0,
+    activeModels: [],
+    traces: [],
+  });
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'OK' | 'ERR'>('ALL');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -60,9 +60,30 @@ export default function Dashboard() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  useEffect(() => {
+    let mounted = true;
+    const fetchTelemetry = async () => {
+      const data = await getUserTelemetry();
+      if (mounted) {
+        setTelemetry(data);
+      }
+    };
+
+    fetchTelemetry();
+    window.addEventListener(TELEMETRY_UPDATE_EVENT, fetchTelemetry);
+    return () => {
+      mounted = false;
+      window.removeEventListener(TELEMETRY_UPDATE_EVENT, fetchTelemetry);
+    };
+  }, []);
+
   const handleExportCSV = () => {
+    if (telemetry.traces.length === 0) {
+      showNotification('No traces available to export');
+      return;
+    }
     const headers = 'TRACE_ID,TIMESTAMP,NODE_ORIGIN,MODEL_TARGET,TOKENS,LATENCY_MS,STATUS\n';
-    const rows = executions.map(e => `${e.id},${e.time},${e.node},${e.model},${e.tokens},${e.latency},${e.status}`).join('\n');
+    const rows = telemetry.traces.map(e => `${e.id},${e.time},${e.node},${e.model},${e.tokens},${e.latency},${e.status}`).join('\n');
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -73,21 +94,26 @@ export default function Dashboard() {
     showNotification('Trace log exported to CSV');
   };
 
-  const handleClearOrReset = () => {
-    if (executions.length === 0) {
-      setExecutions(INITIAL_EXECUTIONS);
-      showNotification('Trace logs restored to defaults');
-    } else {
-      setExecutions([]);
-      showNotification('Trace logs cleared');
-    }
+  const handleClearTraces = async () => {
+    await clearUserTraces();
+    setTelemetry(prev => ({
+      ...prev,
+      totalInferences: 0,
+      totalTokens: 0,
+      avgLatency: 0,
+      p99Latency: 0,
+      traces: [],
+    }));
+    showNotification('Telemetry trace log cleared');
   };
 
-  const filteredExecutions = executions.filter(item => {
+  const filteredExecutions = telemetry.traces.filter(item => {
     if (statusFilter === 'OK') return item.status === 'OK';
     if (statusFilter === 'ERR') return item.status !== 'OK';
     return true;
   });
+
+  const hasRuns = telemetry.totalInferences > 0;
 
   return (
     <PageTransition>
@@ -98,11 +124,10 @@ export default function Dashboard() {
           <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:28px_28px] opacity-20 pointer-events-none" />
         </div>
 
-
         {/* MAIN DASHBOARD CONTENT */}
         <div className="relative z-10 w-full px-4 sm:px-8 pt-6 flex flex-col gap-8">
           
-          {/* EXECUTIVE TELEMETRY KPI GLASS CARDS (Reference Image 1 & 2 inspired) */}
+          {/* EXECUTIVE TELEMETRY KPI GLASS CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {/* Card 1: Inferences */}
             <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
@@ -114,12 +139,16 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">1,482,920</span>
+                <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">
+                  {telemetry.totalInferences.toLocaleString()}
+                </span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                  +12.4%
+                  {hasRuns ? `${telemetry.totalTokens.toLocaleString()} tok` : 'Active'}
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 mt-1.5 font-mono">Past 24 hours · 99.98% valid</p>
+              <p className="text-[11px] text-white/40 mt-1.5 font-mono">
+                {hasRuns ? 'Persisted in Neon DB' : 'Ready to generate prompts'}
+              </p>
             </div>
 
             {/* Card 2: Latency */}
@@ -132,12 +161,16 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">242ms</span>
+                <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">
+                  {telemetry.p99Latency > 0 ? `${telemetry.p99Latency}ms` : '—'}
+                </span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                  -18ms
+                  {telemetry.avgLatency > 0 ? `Avg ${telemetry.avgLatency}ms` : 'Standby'}
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 mt-1.5 font-mono">Dynamic route optimization</p>
+              <p className="text-[11px] text-white/40 mt-1.5 font-mono">
+                {hasRuns ? 'Real-time cluster telemetry' : 'Awaiting prompt executions'}
+              </p>
             </div>
 
             {/* Card 3: Success Rate */}
@@ -150,12 +183,16 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">99.96%</span>
+                <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">
+                  {hasRuns ? `${telemetry.reliability}%` : '100%'}
+                </span>
                 <span className="inline-flex items-center text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
                   Nominal
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 mt-1.5 font-mono">Zero SLA breaches recorded</p>
+              <p className="text-[11px] text-white/40 mt-1.5 font-mono">
+                {hasRuns ? `${telemetry.totalInferences} logged inference cycles` : 'Zero SLA breaches recorded'}
+              </p>
             </div>
 
             {/* Card 4: Model Pool */}
@@ -168,12 +205,18 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">4 Models</span>
+                <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">
+                  {telemetry.activeModelsCount > 0 ? `${telemetry.activeModelsCount} Models` : 'Ready'}
+                </span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full">
-                  Balanced
+                  Multi-LLM
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 mt-1.5 font-mono">Gemini 2.5, LLaMA 3.1, Mistral, Qwen</p>
+              <p className="text-[11px] text-white/40 mt-1.5 font-mono truncate">
+                {telemetry.activeModels.length > 0 
+                  ? telemetry.activeModels.join(', ') 
+                  : 'Gemini, Groq, OpenRouter & OSS'}
+              </p>
             </div>
           </div>
           
@@ -198,62 +241,52 @@ export default function Dashboard() {
                 <span className="text-[11px] font-mono text-white/40 uppercase">Workflows</span>
               </div>
               
-              <div className="relative flex-1 rounded-3xl glass-panel-luxury p-5 sm:p-6 flex flex-col justify-between overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.85)] group">
-                <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
-
-                {/* Executables Links */}
-                <div className="flex flex-col gap-2.5">
-                  {QUICK_ACTIONS.map((action) => (
-                    <Link 
-                      key={action.title} 
-                      to={action.path}
-                      className={`group relative flex items-center justify-between p-3.5 rounded-2xl glass-subcard-interactive shadow-sm ${action.borderHover}`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="font-mono text-[10px] font-bold px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-white/70 group-hover:text-white group-hover:border-white/20 transition-colors shadow-sm">
-                          {action.tag}
-                        </span>
-                        <div className="min-w-0">
-                          <span className="text-xs font-semibold text-white tracking-tight group-hover:text-white transition-colors truncate block">
-                            {action.title}
-                          </span>
-                          <p className="text-[10px] text-white/45 truncate leading-tight mt-0.5">
-                            {action.subtitle}
-                          </p>
-                        </div>
-                      </div>
-
-                      <span className="font-mono text-[10px] text-white/40 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-md group-hover:text-white/80 group-hover:border-white/20 transition-colors shrink-0 ml-2 shadow-sm">
+              <div className="flex flex-col gap-3 h-full">
+                {QUICK_ACTIONS.map((action) => (
+                  <Link
+                    key={action.path}
+                    to={action.path}
+                    className={`group relative rounded-2xl glass-card p-4 transition-all duration-300 hover:scale-[1.01] hover:bg-white/[0.04] border border-white/10 ${action.borderHover} flex flex-col justify-between`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60 group-hover:text-white">
+                        {action.tag}
+                      </span>
+                      <span className="text-[11px] font-mono text-white/30 group-hover:text-white/70 transition-colors flex items-center gap-1">
                         {action.shortcut}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-                
-                {/* System Environment Footer Widget */}
-                <div className="mt-5 pt-4 border-t border-white/10">
-                  <div className="rounded-2xl glass-subcard p-4 backdrop-blur-xl flex flex-col gap-2.5 border border-white/10 shadow-inner">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/70 font-medium">System Runtime</span>
-                      <span className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shadow-sm">
-                        v1.0.4-rc2
+                        <ArrowUpRight className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                       </span>
                     </div>
 
-                    <div className="space-y-1.5 text-[11px]">
-                      <div className="flex justify-between text-white/45">
-                        <span>Region</span>
-                        <span className="font-mono text-white/75">us-east-1</span>
-                      </div>
-                      <div className="flex justify-between text-white/45">
-                        <span>Cluster Load</span>
-                        <span className="font-mono text-emerald-400 font-medium">24% Normal</span>
-                      </div>
+                    <div className="mt-3">
+                      <h3 className="text-sm font-display font-semibold text-white group-hover:text-copper-400 transition-colors">
+                        {action.title}
+                      </h3>
+                      <p className="text-xs text-white/50 mt-1 line-clamp-1">
+                        {action.subtitle}
+                      </p>
                     </div>
+                  </Link>
+                ))}
 
-                    {/* Progress Bar */}
-                    <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden border border-white/5">
-                      <div className="bg-gradient-to-r from-emerald-500 via-cyan-400 to-copper-400 h-full w-[24%] rounded-full shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
+                {/* Status card */}
+                <div className="rounded-2xl glass-card p-4 border border-white/10 bg-white/[0.015] mt-auto">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-mono text-white/60">Cluster Health</span>
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Nominal
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex justify-between text-white/45">
+                      <span>Database Engine</span>
+                      <span className="font-mono text-white/75">Neon Postgres</span>
+                    </div>
+                    <div className="flex justify-between text-white/45">
+                      <span>Gateway Mode</span>
+                      <span className="font-mono text-emerald-400 font-medium">Production Live</span>
                     </div>
                   </div>
                 </div>
@@ -293,20 +326,24 @@ export default function Dashboard() {
                 </div>
 
                 {/* Export CSV Button */}
-                <button 
-                  onClick={handleExportCSV}
-                  className="text-xs font-mono border border-white/10 glass-pill-button px-3 py-1.5 rounded-xl text-white/80 hover:text-white transition-all shadow-sm active:scale-95"
-                >
-                  Export CSV
-                </button>
+                {telemetry.traces.length > 0 && (
+                  <button 
+                    onClick={handleExportCSV}
+                    className="text-xs font-mono border border-white/10 glass-pill-button px-3 py-1.5 rounded-xl text-white/80 hover:text-white transition-all shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    Export CSV
+                  </button>
+                )}
 
-                {/* Clear or Reset Button */}
-                <button 
-                  onClick={handleClearOrReset}
-                  className="text-xs font-mono border border-white/10 glass-pill-button px-3 py-1.5 rounded-xl text-white/80 hover:text-white transition-all shadow-sm active:scale-95"
-                >
-                  {executions.length === 0 ? 'Restore' : 'Clear'}
-                </button>
+                {/* Clear Traces Button */}
+                {telemetry.traces.length > 0 && (
+                  <button 
+                    onClick={handleClearTraces}
+                    className="text-xs font-mono border border-white/10 glass-pill-button px-3 py-1.5 rounded-xl text-white/80 hover:text-red-400 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </div>
             
@@ -382,15 +419,21 @@ export default function Dashboard() {
                   </table>
                 </div>
               ) : (
-                <div className="py-12 px-4 flex flex-col items-center justify-center text-center">
-                  <p className="text-sm font-medium text-white/70">No trace records found</p>
-                  <p className="text-xs text-white/40 mt-1 font-mono">Adjust filters or restore mock trace records</p>
-                  <button 
-                    onClick={handleClearOrReset}
-                    className="mt-4 text-xs font-semibold px-4 py-2 glass-pill-button text-white rounded-xl transition-all font-mono shadow-sm"
+                <div className="py-16 px-4 flex flex-col items-center justify-center text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-copper-400 mb-4 shadow-sm">
+                    <Sparkles className="w-6 h-6 text-copper-400/80" />
+                  </div>
+                  <p className="text-base font-display font-semibold text-white tracking-tight">No execution traces yet</p>
+                  <p className="text-xs text-white/45 mt-1.5 max-w-md font-mono leading-relaxed">
+                    Generate or test your first prompt in Bedrock. Real-time telemetry, token usage, and latency will stream directly into this dashboard and persist to your account.
+                  </p>
+                  <Link 
+                    to="/app/generator"
+                    className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-copper-500 to-copper-600 hover:from-copper-400 hover:to-copper-500 text-white rounded-xl text-xs font-semibold uppercase tracking-wider shadow-lg shadow-copper-500/20 transition-all active:scale-95"
                   >
-                    Restore Traces
-                  </button>
+                    Open Prompt Generator
+                    <ArrowUpRight className="w-4 h-4" />
+                  </Link>
                 </div>
               )}
             </div>

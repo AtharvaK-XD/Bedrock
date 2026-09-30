@@ -5,6 +5,7 @@ interface DayActivity {
   dayOfWeek: number;
   date: string;
   fullDate: string;
+  isoDate: string;
   runs: number;
   level: 0 | 1 | 2 | 3 | 4;
 }
@@ -12,182 +13,198 @@ interface DayActivity {
 const WEEKS_COUNT = 16;
 const DAYS_PER_WEEK = 7;
 
-function generateActivityCalendar(): { weeks: DayActivity[][]; months: { name: string; colIndex: number }[] } {
-  const weeks: DayActivity[][] = [];
-  const months: { name: string; colIndex: number }[] = [];
-  
-  const baseDate = new Date(2026, 1, 20);
-  const totalDays = WEEKS_COUNT * DAYS_PER_WEEK;
-  
-  const startDate = new Date(baseDate);
-  startDate.setDate(baseDate.getDate() - totalDays + 1);
-
-  let lastMonth = -1;
-
-  for (let w = 0; w < WEEKS_COUNT; w++) {
-    const week: DayActivity[] = [];
-    
-    for (let d = 0; d < DAYS_PER_WEEK; d++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(startDate.getDate() + (w * 7 + d));
-      
-      const monthIndex = currentDate.getMonth();
-      if (d === 0 && monthIndex !== lastMonth) {
-        months.push({
-          name: currentDate.toLocaleString('default', { month: 'short' }),
-          colIndex: w
-        });
-        lastMonth = monthIndex;
-      }
-
-      const isWeekend = d === 0 || d === 6;
-      const recencyBoost = (w / WEEKS_COUNT) * 0.4;
-      const inCurrentStreak = w >= 13 || (w >= 10 && d >= 1 && d <= 5);
-      
-      let level: 0 | 1 | 2 | 3 | 4 = 0;
-      let runs = 0;
-
-      const seed = Math.sin(w * 13 + d * 37) * 10000;
-      const pseudoRand = seed - Math.floor(seed);
-
-      if (inCurrentStreak) {
-        if (pseudoRand > 0.82) level = 4;
-        else if (pseudoRand > 0.45) level = 3;
-        else if (pseudoRand > 0.15) level = 2;
-        else level = 1;
-      } else {
-        const threshold = isWeekend ? 0.75 : 0.45 - recencyBoost;
-        if (pseudoRand > threshold) {
-          if (pseudoRand > 0.94) level = 4;
-          else if (pseudoRand > 0.82) level = 3;
-          else if (pseudoRand > 0.60) level = 2;
-          else level = 1;
-        }
-      }
-
-      switch (level) {
-        case 1:
-          runs = Math.floor(pseudoRand * 3) + 1;
-          break;
-        case 2:
-          runs = Math.floor(pseudoRand * 4) + 4;
-          break;
-        case 3:
-          runs = Math.floor(pseudoRand * 6) + 8;
-          break;
-        case 4:
-          runs = Math.floor(pseudoRand * 8) + 14;
-          break;
-        default:
-          runs = 0;
-      }
-
-      const formattedMonth = currentDate.toLocaleString('default', { month: 'short' });
-      const dayNum = currentDate.getDate();
-      const year = currentDate.getFullYear();
-      const weekdayName = currentDate.toLocaleString('default', { weekday: 'long' });
-
-      week.push({
-        dayOfWeek: d,
-        date: `${formattedMonth} ${dayNum}`,
-        fullDate: `${weekdayName}, ${formattedMonth} ${dayNum}, ${year}`,
-        runs,
-        level,
-      });
-    }
-    weeks.push(week);
-  }
-
-  return { weeks, months };
+interface PromptActivityHeatmapProps {
+  activityTimestamps?: (number | string)[];
 }
 
-const STATIC_CALENDAR = generateActivityCalendar();
-
-const LEVEL_CLASSES: Record<number, string> = {
-  0: 'bg-white/[0.04] border border-white/[0.04]',
-  1: 'bg-emerald-950/80 border border-emerald-900/50 hover:border-emerald-600',
-  2: 'bg-emerald-800/80 border border-emerald-700/60 hover:border-emerald-500',
-  3: 'bg-emerald-600/90 border border-emerald-500/70 hover:border-emerald-400',
-  4: 'bg-emerald-400 border border-emerald-300 hover:border-white',
-};
-
-export function PromptActivityHeatmap() {
+export function PromptActivityHeatmap({ activityTimestamps = [] }: PromptActivityHeatmapProps) {
   const [hoveredCell, setHoveredCell] = useState<DayActivity | null>(null);
 
-  const { totalRuns, activeStreak } = useMemo(() => {
+  // Group real timestamps by YYYY-MM-DD
+  const activityMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const ts of activityTimestamps) {
+      try {
+        const d = new Date(ts);
+        if (!isNaN(d.getTime())) {
+          const key = d.toISOString().slice(0, 10);
+          map.set(key, (map.get(key) || 0) + 1);
+        }
+      } catch {
+        // ignore invalid dates
+      }
+    }
+    return map;
+  }, [activityTimestamps]);
+
+  const { weeks, months, totalRuns, activeStreak } = useMemo(() => {
+    const weeksList: DayActivity[][] = [];
+    const monthsList: { name: string; colIndex: number }[] = [];
+    
+    const today = new Date();
+    // Align so the last day shown is today
+    const totalDays = WEEKS_COUNT * DAYS_PER_WEEK;
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - totalDays + 1);
+
+    let lastMonth = -1;
+    let total = 0;
+
+    for (let w = 0; w < WEEKS_COUNT; w++) {
+      const week: DayActivity[] = [];
+      
+      for (let d = 0; d < DAYS_PER_WEEK; d++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + (w * 7 + d));
+        
+        const monthIndex = currentDate.getMonth();
+        if (d === 0 && monthIndex !== lastMonth) {
+          monthsList.push({
+            name: currentDate.toLocaleString('default', { month: 'short' }),
+            colIndex: w
+          });
+          lastMonth = monthIndex;
+        }
+
+        const isoKey = currentDate.toISOString().slice(0, 10);
+        const runs = activityMap.get(isoKey) || 0;
+        total += runs;
+
+        let level: 0 | 1 | 2 | 3 | 4 = 0;
+        if (runs >= 8) level = 4;
+        else if (runs >= 4) level = 3;
+        else if (runs >= 2) level = 2;
+        else if (runs >= 1) level = 1;
+
+        const formattedMonth = currentDate.toLocaleString('default', { month: 'short' });
+        const dayNum = currentDate.getDate();
+        const year = currentDate.getFullYear();
+        const weekdayName = currentDate.toLocaleString('default', { weekday: 'long' });
+
+        week.push({
+          dayOfWeek: d,
+          date: `${formattedMonth} ${dayNum}`,
+          fullDate: `${weekdayName}, ${formattedMonth} ${dayNum}, ${year}`,
+          isoDate: isoKey,
+          runs,
+          level,
+        });
+      }
+      weeksList.push(week);
+    }
+
+    // Compute active streak working backwards from today
+    let streak = 0;
+    let checkDate = new Date(today);
+    while (true) {
+      const k = checkDate.toISOString().slice(0, 10);
+      const count = activityMap.get(k) || 0;
+      if (count > 0) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        // Allow today to still be 0 if yesterday had runs
+        if (streak === 0 && checkDate.toDateString() === today.toDateString()) {
+          checkDate.setDate(checkDate.getDate() - 1);
+          const yestCount = activityMap.get(checkDate.toISOString().slice(0, 10)) || 0;
+          if (yestCount > 0) {
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+            continue;
+          }
+        }
+        break;
+      }
+    }
+
     return {
-      totalRuns: '1,894',
-      activeStreak: 19,
+      weeks: weeksList,
+      months: monthsList,
+      totalRuns: total.toLocaleString(),
+      activeStreak: streak,
     };
-  }, []);
+  }, [activityMap]);
+
+  const LEVEL_CLASSES: Record<number, string> = {
+    0: 'bg-white/[0.04] border border-white/[0.04]',
+    1: 'bg-emerald-950/80 border border-emerald-900/50 hover:border-emerald-600',
+    2: 'bg-emerald-800/80 border border-emerald-700/60 hover:border-emerald-500',
+    3: 'bg-emerald-600/90 border border-emerald-500/70 hover:border-emerald-400',
+    4: 'bg-emerald-400 border border-emerald-300 hover:border-white',
+  };
 
   return (
-    <div className="relative rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl p-6 sm:p-7 shadow-sm">
-      {/* Clean Minimal Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+    <div className="rounded-3xl glass-panel-luxury p-5 sm:p-6 border border-white/10 shadow-2xl relative overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-base font-bold text-white tracking-tight">
-            Prompt Activity
-          </h2>
-          <p className="text-xs text-neutral-400 mt-1 font-mono">
-            {totalRuns} executions across the last 16 weeks
+          <h3 className="text-sm font-display font-semibold text-white tracking-wide flex items-center gap-2">
+            <span>Prompt Activity Heatmap</span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-emerald-400">
+              Live Tracker
+            </span>
+          </h3>
+          <p className="text-xs text-white/40 mt-0.5 font-mono">
+            {activityTimestamps.length > 0
+              ? 'Real-time telemetry of prompt generations and LLM evaluations'
+              : 'Start synthesizing prompts in Bedrock to build your contribution activity'}
           </p>
         </div>
 
-        {/* Clean Streak Badge */}
-        <div className="inline-flex items-center self-start sm:self-auto px-3 py-1 rounded-full text-xs font-mono text-neutral-300 bg-white/5 border border-white/10">
-          <span>{activeStreak}-day streak</span>
+        <div className="flex items-center gap-4 text-xs font-mono">
+          <div className="flex items-center gap-1.5">
+            <span className="text-white/40 text-[11px] uppercase">Streak:</span>
+            <span className="text-emerald-400 font-bold">{activeStreak} {activeStreak === 1 ? 'day' : 'days'}</span>
+          </div>
+          <div className="w-px h-3.5 bg-white/10" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-white/40 text-[11px] uppercase">Runs:</span>
+            <span className="text-white font-bold">{totalRuns}</span>
+          </div>
         </div>
       </div>
 
-      {/* Heatmap Area */}
-      <div className="overflow-x-auto pb-2 custom-scrollbar">
-        <div className="min-w-[560px]">
-          {/* Months Row */}
-          <div className="flex text-[11px] font-mono text-neutral-500 mb-2 pl-7">
-            {STATIC_CALENDAR.weeks.map((_, colIdx) => {
-              const monthInfo = STATIC_CALENDAR.months.find(m => m.colIndex === colIdx);
-              return (
-                <div key={colIdx} className="flex-1 text-left">
-                  {monthInfo ? (
-                    <span className="text-neutral-400 font-medium">{monthInfo.name}</span>
-                  ) : null}
-                </div>
-              );
-            })}
+      {/* Heatmap Grid */}
+      <div className="overflow-x-auto custom-scrollbar pb-2">
+        <div className="min-w-[620px]">
+          {/* Months header */}
+          <div className="flex text-[10px] font-mono text-white/35 mb-2 ml-7">
+            {months.map((m, idx) => (
+              <span 
+                key={idx} 
+                style={{ width: `${(100 / WEEKS_COUNT) * 2.5}%` }} 
+                className="inline-block truncate"
+              >
+                {m.name}
+              </span>
+            ))}
           </div>
 
-          {/* Grid with Day Labels on Left */}
-          <div className="flex gap-2">
-            <div className="flex flex-col justify-between py-0.5 text-[10px] font-mono text-neutral-500 w-5 select-none">
-              <span className="h-3.5 leading-none opacity-0">Sun</span>
-              <span className="h-3.5 leading-none">Mon</span>
-              <span className="h-3.5 leading-none opacity-0">Tue</span>
-              <span className="h-3.5 leading-none">Wed</span>
-              <span className="h-3.5 leading-none opacity-0">Thu</span>
-              <span className="h-3.5 leading-none">Fri</span>
-              <span className="h-3.5 leading-none opacity-0">Sat</span>
+          <div className="flex gap-1.5">
+            {/* Days of week labels */}
+            <div className="flex flex-col justify-between text-[9px] font-mono text-white/30 h-[106px] pr-2 select-none">
+              <span>Mon</span>
+              <span>Wed</span>
+              <span>Fri</span>
             </div>
 
             {/* Weeks columns */}
-            <div className="flex gap-1.5 flex-1">
-              {STATIC_CALENDAR.weeks.map((week, wIndex) => (
-                <div key={wIndex} className="flex flex-col gap-1.5 flex-1">
-                  {week.map((item, dIndex) => {
-                    const isHovered = hoveredCell?.fullDate === item.fullDate;
-                    return (
-                      <div
-                        key={dIndex}
-                        onMouseEnter={() => setHoveredCell(item)}
-                        onMouseLeave={() => setHoveredCell(null)}
-                        className={cn(
-                          "h-3 sm:h-3.5 rounded-[3px] cursor-pointer transition-all duration-150",
-                          LEVEL_CLASSES[item.level] || LEVEL_CLASSES[0],
-                          isHovered && "scale-125 z-10 ring-1 ring-white"
-                        )}
-                      />
-                    );
-                  })}
+            <div className="flex flex-1 gap-1.5">
+              {weeks.map((week, wIdx) => (
+                <div key={wIdx} className="flex flex-col gap-1.5 flex-1">
+                  {week.map((day, dIdx) => (
+                    <div
+                      key={dIdx}
+                      onMouseEnter={() => setHoveredCell(day)}
+                      onMouseLeave={() => setHoveredCell(null)}
+                      className={cn(
+                        "w-full h-3 rounded-[3.5px] transition-all duration-150 cursor-pointer",
+                        LEVEL_CLASSES[day.level]
+                      )}
+                    />
+                  ))}
                 </div>
               ))}
             </div>
@@ -195,33 +212,26 @@ export function PromptActivityHeatmap() {
         </div>
       </div>
 
-      {/* Footer / Hover Inspection Bar & Legend */}
-      <div className="mt-4 pt-3 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-        {/* Hover details */}
-        <div className="font-mono text-xs min-h-[20px] flex items-center">
+      {/* Tooltip & Legend Footer */}
+      <div className="mt-4 pt-3.5 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
+        <div className="min-h-[20px] text-white/70 text-[11px]">
           {hoveredCell ? (
-            <div className="flex items-center gap-1.5 text-neutral-300">
-              <span className="font-semibold text-white">
-                {hoveredCell.runs === 0 ? 'No activity' : `${hoveredCell.runs} prompts`}
-              </span>
-              <span className="text-neutral-500">on</span>
-              <span className="text-neutral-200">{hoveredCell.fullDate}</span>
-            </div>
+            <span>
+              <strong className="text-white">{hoveredCell.runs} runs</strong> on {hoveredCell.fullDate}
+            </span>
           ) : (
-            <span className="text-neutral-500">Hover over any day to view details</span>
+            <span className="text-white/35">Hover over any tile to view daily execution telemetry</span>
           )}
         </div>
 
-        {/* Minimal Legend */}
-        <div className="flex items-center gap-2 text-[11px] font-mono text-neutral-500">
+        {/* Legend */}
+        <div className="flex items-center gap-1.5 text-[10px] text-white/40">
           <span>Less</span>
-          <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-[2px] bg-white/[0.04] border border-white/[0.04]" />
-            <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-950/80 border border-emerald-900/50" />
-            <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-800/80 border border-emerald-700/60" />
-            <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-600/90 border border-emerald-500/70" />
-            <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-400 border border-emerald-300" />
-          </div>
+          <span className="w-2.5 h-2.5 rounded-[2.5px] bg-white/[0.04] border border-white/[0.04]" />
+          <span className="w-2.5 h-2.5 rounded-[2.5px] bg-emerald-950/80 border border-emerald-900/50" />
+          <span className="w-2.5 h-2.5 rounded-[2.5px] bg-emerald-800/80 border border-emerald-700/60" />
+          <span className="w-2.5 h-2.5 rounded-[2.5px] bg-emerald-600/90 border border-emerald-500/70" />
+          <span className="w-2.5 h-2.5 rounded-[2.5px] bg-emerald-400 border border-emerald-300" />
           <span>More</span>
         </div>
       </div>

@@ -26,30 +26,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const u = rows[0];
-      const cleanName = (!u.name || u.name.startsWith('user_') || u.name.includes('@')) 
-        ? 'Atharva Kulkarni' 
-        : u.name;
-      const cleanInitials = (u.avatar_initials === 'US' || !u.avatar_initials) 
-        ? 'AK' 
-        : u.avatar_initials;
+      const cleanName = u.name && !u.name.startsWith('user_') && !u.name.includes('@')
+        ? u.name
+        : user.name;
+      const cleanInitials = u.avatar_initials || (cleanName ? cleanName.slice(0, 2).toUpperCase() : 'PA');
+      const cleanEmail = u.email && !u.email.endsWith('@clerk.user') ? u.email : user.email;
+      const cleanUsername = u.username || (cleanEmail && !cleanEmail.endsWith('@clerk.user') ? cleanEmail.split('@')[0] : 'architect');
+      const joinedDate = u.joined_date || (u.created_at ? new Date(u.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently');
 
       return res.status(200).json({
         id: u.id,
         name: cleanName,
-        username: u.username || (u.email && !u.email.endsWith('@clerk.user') ? u.email.split('@')[0] : 'atharvak'),
-        email: u.email && !u.email.endsWith('@clerk.user') ? u.email : 'kulkarniatharva529@gmail.com',
-        avatarUrl: u.avatar_url,
+        username: cleanUsername,
+        email: cleanEmail,
+        avatarUrl: u.avatar_url || '',
         avatarInitials: cleanInitials,
-        plan: u.plan,
-        role: u.role,
-        bio: u.bio,
-        location: u.location,
-        organization: u.organization,
-        github: u.github,
-        huggingface: u.huggingface,
-        website: u.website,
-        joinedDate: u.joined_date || 'September 2026',
-        subscriptionTier: u.subscription_tier,
+        plan: u.plan || 'Free Plan',
+        role: u.role || 'Lead Prompt Architect',
+        bio: u.bio || '',
+        location: u.location || '',
+        organization: u.organization || '',
+        github: u.github || '',
+        huggingface: u.huggingface || '',
+        website: u.website || '',
+        joinedDate,
+        subscriptionTier: u.subscription_tier || 'free',
       });
     } catch (err: any) {
       console.error('[Profile] GET error:', err);

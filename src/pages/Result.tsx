@@ -11,6 +11,7 @@ import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
 import { addPromptToHistory } from '../lib/generatorHistory';
+import { recordExecutionTrace } from '../lib/telemetry';
 
 const TypewriterText = ({ text }: { text: string }) => {
   const words = text.split(' ');
@@ -169,6 +170,13 @@ export default function Result() {
                   isPinned: false,
                 });
               }
+              recordExecutionTrace({
+                node: 'PROMPT_REFINE',
+                model: 'gemini-2.5-flash',
+                tokens: Math.round((updatedMarkdown.length / 4) + (text.length / 4)),
+                latency: 480,
+                status: 'OK',
+              });
             } catch (err: any) {
               console.error('Refinement failed:', err);
               const isKeyError = Boolean(

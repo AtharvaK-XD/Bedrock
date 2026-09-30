@@ -25,6 +25,7 @@ import {
   HISTORY_UPDATE_EVENT 
 } from '../../lib/generatorHistory';
 import { useUserProfile } from '../../lib/useUserProfile';
+import { useUser } from '@clerk/react';
 import { isDesktopApp } from '../../lib/platform';
 
 interface GeneratorHistorySidebarProps {
@@ -130,10 +131,14 @@ export function GeneratorHistorySidebar({
   const pinnedItems = useMemo(() => filteredItems.filter(i => i.isPinned), [filteredItems]);
   const chatItems = useMemo(() => filteredItems.filter(i => !i.isPinned), [filteredItems]);
 
-  // Fallback user display
-  const displayName = profile?.name ? profile.name.split(' ')[0] : 'Atharva';
+  const { user: clerkUser } = useUser();
+  // Dynamic user display
+  const displayName = 
+    clerkUser?.firstName || 
+    clerkUser?.fullName?.split(' ')[0] || 
+    (profile?.name && profile.name !== 'Prompt Architect' ? profile.name.split(' ')[0] : 'Architect');
   const displayPlan = profile?.plan?.toLowerCase().includes('pro') ? 'Pro' : 'Free';
-  const displayInitial = profile?.avatarInitials ? profile.avatarInitials[0] : (displayName[0] || 'A');
+  const displayInitial = profile?.avatarInitials ? profile.avatarInitials[0] : (displayName[0] || 'B');
   const isDesktop = isDesktopApp();
 
   return (
