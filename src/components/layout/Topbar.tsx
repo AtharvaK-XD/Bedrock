@@ -70,12 +70,19 @@ export function Topbar() {
     <header className="fixed top-0 left-0 right-0 z-40 h-20 bg-transparent pointer-events-none">
       <div className="relative w-full px-4 sm:px-8 h-full flex items-center justify-between">
         
-        {/* Brand - Floating Air Island */}
+        {/* Brand */}
         <Link 
           to={brandLink} 
-          className="pointer-events-auto flex items-center px-4 py-2 rounded-2xl bg-black/45 border border-white/10 shadow-lg shadow-black/30 backdrop-blur-xl hover:bg-black/60 hover:border-white/20 hover:scale-[1.02] transition-all text-white group"
+          className="pointer-events-auto flex items-center gap-2.5 py-1 text-white group hover:opacity-90 transition-all select-none active:scale-[0.98]"
         >
-          <span className="font-display font-bold text-base tracking-wider uppercase text-white group-hover:text-copper-400 transition-colors">Bedrock</span>
+          <img 
+            src="/logo-tight.png" 
+            alt="Bedrock Logo" 
+            className="w-7 h-7 object-contain filter drop-shadow-[0_0_10px_rgba(139,212,186,0.35)] group-hover:scale-105 transition-transform" 
+          />
+          <span className="font-display font-bold text-lg tracking-tight text-white group-hover:text-copper-400 transition-colors">
+            Bedrock
+          </span>
         </Link>
 
         {/* Center Nav - Floating Air Island (Centered at true 50% horizontal axis) */}
