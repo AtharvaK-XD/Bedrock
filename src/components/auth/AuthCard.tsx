@@ -18,7 +18,8 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [authError, setAuthError] = useState<string | null>(null);
+  const { isLoggedIn, login } = useAuth();
   const { updateProfile } = useUserProfile();
   const navigate = useNavigate();
   const clerk = useClerk();
@@ -28,6 +29,14 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   const targetPath = '/app';
 
   const performOAuth = async (strategy: 'oauth_github' | 'oauth_google') => {
+    setAuthError(null);
+
+    // If user already has an active session, send directly to /app
+    if (isLoggedIn || (clerk as any)?.session || (clerk as any)?.user) {
+      navigate(targetPath);
+      return;
+    }
+
     if (isDesktopApp()) {
       setIsLoading(true);
       const isGh = strategy === 'oauth_github';
@@ -55,8 +64,17 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         });
       }
 
-      // 2. Select appropriate client resource (signUp for register, signIn for login)
-      const client = (clerk as any).client || (window as any).Clerk?.client;
+      // 2. Safely obtain client without uncaught getter errors
+      let client: any = null;
+      try {
+        client = (clerk as any).client;
+      } catch {
+        // Getter throws if clerk internal state is still initializing
+      }
+      if (!client && typeof window !== 'undefined') {
+        client = (window as any).Clerk?.client;
+      }
+
       const targetSignIn = signIn || client?.signIn;
       const targetSignUp = signUp || client?.signUp;
       const authResource = mode === 'register' 
@@ -80,8 +98,20 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         });
         return;
       }
+
+      throw new Error('Authentication service is still initializing. Please try again.');
     } catch (err: any) {
       console.error(`Failed to initiate ${strategy} OAuth:`, err);
+      // If error indicates already signed in, simply proceed to app
+      if (
+        err?.errors?.some((e: any) => e.code === 'session_exists') ||
+        err?.message?.toLowerCase().includes('already signed in') ||
+        err?.message?.toLowerCase().includes('session_exists')
+      ) {
+        navigate(targetPath);
+        return;
+      }
+      setAuthError(err?.message || 'Authentication failed. If using an ad blocker, please temporarily disable it.');
     } finally {
       setIsLoading(false);
     }
@@ -246,6 +276,12 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
               {mode === 'login' ? 'Sign in with GitHub' : 'Sign up with GitHub'}
             </button>
           </div>
+
+          {authError && (
+            <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed">
+              {authError}
+            </div>
+          )}
 
           <div className="mt-8 text-center text-sm text-gray-400">
             {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
