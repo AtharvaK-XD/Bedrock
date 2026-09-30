@@ -236,9 +236,18 @@ export function RichInput({
         setActiveDropdown(null);
       }
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setActiveDropdown(null);
+      }
+    }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [value]);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   const defaultPlaceholders = [
     "Describe the prompt, agent persona, or pipeline you want to construct...",
@@ -302,7 +311,7 @@ export function RichInput({
     <div
       ref={containerRef}
       className={cn(
-        "relative rounded-3xl transition-all duration-300 border border-white/[0.10] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 flex flex-col group bg-black/85 backdrop-blur-2xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.98)] overflow-hidden",
+        "relative rounded-3xl transition-all duration-300 border border-white/[0.10] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 flex flex-col group bg-black/85 backdrop-blur-2xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.98)] overflow-visible",
         activeDropdown ? "z-50" : "z-0"
       )}
     >
@@ -313,7 +322,7 @@ export function RichInput({
         {/* Top Toolbar */}
         <div className="flex flex-wrap items-center gap-2 p-3.5 sm:p-4 bg-transparent rounded-t-3xl">
           {/* Target Dropdown */}
-          <div className="relative">
+          <div className={cn("relative", activeDropdown === 'target' ? "z-30" : "z-10")}>
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'target' ? null : 'target')}
@@ -326,11 +335,11 @@ export function RichInput({
             
             {activeDropdown === 'target' && (
               <div 
-                className="absolute top-full left-0 mt-2 w-52 bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-1.5 backdrop-blur-2xl"
+                className="absolute top-full left-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-1.5 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
                 data-lenis-prevent="true"
               >
                 <div 
-                  className="max-h-[260px] overflow-y-auto custom-scrollbar overscroll-contain flex flex-col gap-0.5 p-0.5"
+                  className="max-h-[280px] overflow-y-auto custom-scrollbar overscroll-contain flex flex-col gap-0.5 p-0.5"
                   data-lenis-prevent="true"
                   onWheel={(e) => e.stopPropagation()}
                 >
@@ -359,7 +368,7 @@ export function RichInput({
           <div className="w-px h-4 bg-white/10"></div>
           
           {/* Agent Selection Dropdown */}
-          <div className="relative">
+          <div className={cn("relative", activeDropdown === 'agent' ? "z-30" : "z-10")}>
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'agent' ? null : 'agent')}
@@ -373,11 +382,11 @@ export function RichInput({
             
             {activeDropdown === 'agent' && (
               <div 
-                className="absolute top-full left-0 mt-2 w-80 bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl"
+                className="absolute top-full left-0 mt-2 w-84 max-w-[calc(100vw-2rem)] bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
                 data-lenis-prevent="true"
               >
                 <div 
-                  className="max-h-[min(340px,45vh)] overflow-y-auto custom-scrollbar overscroll-contain flex flex-col gap-1 p-1" 
+                  className="max-h-[min(380px,50vh)] overflow-y-auto custom-scrollbar overscroll-contain flex flex-col gap-1 p-1" 
                   data-lenis-prevent="true"
                   onWheel={(e) => e.stopPropagation()}
                 >
@@ -410,7 +419,7 @@ export function RichInput({
           <div className="w-px h-4 bg-white/10"></div>
           
           {/* Model Selection Dropdown */}
-          <div className="relative">
+          <div className={cn("relative", activeDropdown === 'model' ? "z-30" : "z-10")}>
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'model' ? null : 'model')}
@@ -424,7 +433,7 @@ export function RichInput({
 
             {activeDropdown === 'model' && (
               <div 
-                className="absolute top-full left-0 mt-2 w-72 bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl"
+                className="absolute top-full left-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
                 data-lenis-prevent="true"
               >
                 <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1 flex items-center gap-1.5">
@@ -432,7 +441,7 @@ export function RichInput({
                   <span>{selectedAgent.name} Models</span>
                 </div>
                 <div 
-                  className="max-h-[min(300px,40vh)] overflow-y-auto px-1 custom-scrollbar overscroll-contain flex flex-col gap-0.5" 
+                  className="max-h-[min(340px,45vh)] overflow-y-auto px-1 custom-scrollbar overscroll-contain flex flex-col gap-0.5" 
                   data-lenis-prevent="true"
                   onWheel={(e) => e.stopPropagation()}
                 >
