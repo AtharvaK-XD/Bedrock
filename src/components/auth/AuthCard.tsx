@@ -110,27 +110,85 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     }
 
     let authDone = false;
+    let cleanup = () => {};
+
+    const handleSuccess = () => {
+      if (authDone) return;
+      authDone = true;
+      cleanup();
+      setIsLoading(false);
+      navigate(targetPath);
+    };
+
     const handleAuthMessage = (event: MessageEvent) => {
       if (event.data === 'clerk-auth-complete') {
-        authDone = true;
-        window.removeEventListener('message', handleAuthMessage);
-        setIsLoading(false);
-        navigate(targetPath);
+        handleSuccess();
       }
     };
     window.addEventListener('message', handleAuthMessage);
 
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'bedrock_auth_event') {
+        handleSuccess();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    let unsubscribeClerk: (() => void) | null = null;
+    if (typeof (clerk as any)?.addListener === 'function') {
+      unsubscribeClerk = (clerk as any).addListener((emission: any) => {
+        if (emission?.session || emission?.user) {
+          handleSuccess();
+        }
+      });
+    }
+
     const popupCheckTimer = setInterval(() => {
+      // 1. If session is already active, navigate
+      const hasActiveSession = Boolean(
+        (clerk as any)?.session ||
+        (clerk as any)?.user ||
+        (window as any).Clerk?.session ||
+        (window as any).Clerk?.user
+      );
+      if (hasActiveSession) {
+        handleSuccess();
+        return;
+      }
+
+      // 2. If popup was closed by user without authorizing
       if (popup && popup.closed) {
         clearInterval(popupCheckTimer);
-        window.removeEventListener('message', handleAuthMessage);
         setTimeout(() => {
-          if (!authDone) {
+          const finalSessionCheck = Boolean(
+            (clerk as any)?.session ||
+            (clerk as any)?.user ||
+            (window as any).Clerk?.session ||
+            (window as any).Clerk?.user
+          );
+          if (finalSessionCheck) {
+            handleSuccess();
+          } else {
+            // Popup closed without authorization: Stay on landing page!
+            cleanup();
             setIsLoading(false);
           }
         }, 500);
       }
     }, 400);
+
+    cleanup = () => {
+      window.removeEventListener('message', handleAuthMessage);
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(popupCheckTimer);
+      if (unsubscribeClerk) {
+        try {
+          unsubscribeClerk();
+        } catch {
+          // ignore
+        }
+      }
+    };
 
     try {
       // 2. Wait until Clerk is loaded if not already
@@ -169,11 +227,10 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             redirectUrl: callbackUrl,
             redirectUrlComplete: targetUrl,
           });
-          authDone = true;
-          clearInterval(popupCheckTimer);
-          window.removeEventListener('message', handleAuthMessage);
-          setIsLoading(false);
-          navigate(targetPath);
+          // CRITICAL: Do NOT navigate here!
+          // authenticateWithPopup resolves as soon as the popup is redirected to GitHub.
+          // The user has NOT authorized yet!
+          // We MUST stay on the landing page until handleSuccess is triggered by actual authorization.
           return;
         } catch (popupErr: any) {
           console.warn('authenticateWithPopup error, trying fallback:', popupErr);
@@ -211,8 +268,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       if (popup && !popup.closed) {
         popup.close();
       }
-      clearInterval(popupCheckTimer);
-      window.removeEventListener('message', handleAuthMessage);
+      cleanup();
       setAuthError(err?.message || 'Authentication failed. Please try again.');
       setIsLoading(false);
     }
@@ -363,7 +419,8 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             <button
               type="button"
               onClick={handleGoogleSignIn}
-              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <GoogleIcon />
               {mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}
@@ -371,7 +428,8 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             <button
               type="button"
               onClick={handleGithubSignIn}
-              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <GithubIcon />
               {mode === 'login' ? 'Sign in with GitHub' : 'Sign up with GitHub'}

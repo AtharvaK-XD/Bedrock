@@ -61,6 +61,7 @@ export function useAuth() {
 
   const isClerkLoggedIn = Boolean(clerkAuth?.userId);
   const isLoggedIn = isClerkLoggedIn || localSession.isLoggedIn;
+  const isLoaded = clerkAuth ? clerkAuth.isLoaded : true;
 
   const session: AuthSession = isClerkLoggedIn
     ? {
@@ -108,6 +109,7 @@ export function useAuth() {
 
   return {
     isLoggedIn,
+    isLoaded,
     session,
     login,
     logout,

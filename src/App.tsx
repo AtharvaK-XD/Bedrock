@@ -35,7 +35,7 @@ const queryClient = new QueryClient();
 
 function AnimatedRoutes() {
   const location = useLocation();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isLoaded } = useAuth();
   const isDesktop = isDesktopApp();
   
   useEffect(() => {
@@ -65,71 +65,61 @@ function AnimatedRoutes() {
         <Route 
           path="/login" 
           element={
-            isDesktop && isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="login" />
+            isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="login" />
           } 
         />
         <Route 
           path="/signin" 
           element={
-            isDesktop && isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="login" />
+            isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="login" />
           } 
         />
         <Route 
           path="/signup" 
           element={
-            isDesktop && isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="register" />
+            isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="register" />
           } 
         />
         <Route 
           path="/register" 
           element={
-            isDesktop && isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="register" />
+            isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="register" />
           } 
         />
-        <Route path="/join" element={<AuthPage defaultMode="register" />} />
+        <Route 
+          path="/join" 
+          element={
+            isLoggedIn ? <Navigate to="/app" replace /> : <AuthPage defaultMode="register" />
+          } 
+        />
         <Route path="/sso-callback" element={<SSOCallback />} />
         <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
         
-        {/* App Routes (Wrapped in AppLayout) */}
+        {/* App Routes (Strictly protected by authentication) */}
         <Route 
           path="/app/*" 
           element={
-            isDesktop ? (
-              // Desktop App: Enforces login guard, renders all workspace pages with desktop sidebar
-              isLoggedIn ? (
-                <AppLayout>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/generator" element={<Wizard />} />
-                    <Route path="/branching" element={<BranchingChat />} />
-                    <Route path="/tester" element={<PromptTester />} />
-                    <Route path="/library" element={<Library />} />
-                    <Route path="/result" element={<Result />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/pricing" element={<Navigate to="/app" replace />} />
-                    <Route path="/billing" element={<Navigate to="/app" replace />} />
-                    <Route path="*" element={<Navigate to="/app" replace />} />
-                  </Routes>
-                </AppLayout>
-              ) : (
-                <Navigate to="/login" replace />
-              )
+            !isLoaded ? (
+              <div className="flex items-center justify-center min-h-screen bg-[#050505]">
+                <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
+              </div>
+            ) : !isLoggedIn ? (
+              <Navigate to={isDesktop ? "/login" : "/"} replace />
             ) : (
-              // Website: Full original web application strictly as it was
               <AppLayout>
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/generator" element={<Wizard />} />
                   <Route path="/branching" element={<BranchingChat />} />
                   <Route path="/tester" element={<PromptTester />} />
                   <Route path="/library" element={<Library />} />
                   <Route path="/result" element={<Result />} />
-                  <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/billing" element={<Billing />} />
+                  <Route path="/pricing" element={isDesktop ? <Navigate to="/app" replace /> : <Pricing />} />
+                  <Route path="/billing" element={isDesktop ? <Navigate to="/app" replace /> : <Billing />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="*" element={<Navigate to="/app" replace />} />
                 </Routes>
               </AppLayout>
             )
