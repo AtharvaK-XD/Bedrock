@@ -242,7 +242,13 @@ export default function Result() {
       <PanelGroup orientation="horizontal" className="w-full h-full">
         
         {/* LEFT PANE */}
-        <Panel id="left-panel" defaultSize={45} minSize={25} className="relative overflow-hidden bg-[#0a0a0a]">
+        <Panel 
+          id="left-panel" 
+          defaultSize="45%" 
+          minSize="30%" 
+          maxSize="70%" 
+          className="relative overflow-hidden bg-[#0a0a0a]"
+        >
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.div
               key={isSwapped ? "doc" : "chat"}
@@ -263,7 +269,13 @@ export default function Result() {
         </PanelResizeHandle>
 
         {/* RIGHT PANE */}
-        <Panel id="right-panel" defaultSize={55} minSize={30} className="relative overflow-hidden bg-[#161616]">
+        <Panel 
+          id="right-panel" 
+          defaultSize="55%" 
+          minSize="30%" 
+          maxSize="70%" 
+          className="relative overflow-hidden bg-[#161616]"
+        >
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.div
               key={isSwapped ? "chat" : "doc"}
