@@ -58,6 +58,30 @@ export function useUserProfile() {
     window.addEventListener(PROFILE_EVENT, handleUpdate);
     window.addEventListener('storage', handleUpdate);
 
+    const fetchRemoteProfile = async () => {
+      try {
+        const clerk = (window as any).Clerk;
+        if (clerk?.session) {
+          const token = await clerk.session.getToken();
+          if (token) {
+            const res = await fetch('/api/user/profile', {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const merged = { ...getStoredProfile(), ...data };
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+              setProfileState(merged);
+            }
+          }
+        }
+      } catch {
+        // fallback to local profile
+      }
+    };
+
+    fetchRemoteProfile();
+
     return () => {
       window.removeEventListener(PROFILE_EVENT, handleUpdate);
       window.removeEventListener('storage', handleUpdate);
@@ -84,9 +108,20 @@ export function useUserProfile() {
 
     try {
       if (typeof window !== 'undefined' && window.location.protocol.startsWith('http')) {
+        let authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+        try {
+          const clerk = (window as any).Clerk;
+          if (clerk?.session) {
+            const token = await clerk.session.getToken();
+            if (token) authHeaders['Authorization'] = `Bearer ${token}`;
+          }
+        } catch {
+          // ignore
+        }
+
         const res = await fetch('/api/user/profile', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders,
           body: JSON.stringify(updates)
         });
         if (!res.ok) {

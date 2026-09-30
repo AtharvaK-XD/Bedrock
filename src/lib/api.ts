@@ -496,7 +496,41 @@ function getFallbackQuestions(targetType: IdeaPayload['targetType']): Question[]
   ];
 }
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const clerk = (window as any).Clerk;
+    if (clerk?.session) {
+      const token = await clerk.session.getToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+  } catch {
+    // ignore
+  }
+  return headers;
+}
+
 export const generateQuestions = async (payload: IdeaPayload): Promise<Question[]> => {
+  // 1. Try secure server-side generation first
+  try {
+    const authHeaders = await getAuthHeaders();
+    const response = await fetch('/api/ai/generate-questions', {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ ideaText: payload.ideaText, targetType: payload.targetType }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return data as Question[];
+      }
+    }
+  } catch (backendErr) {
+    console.warn('[Bedrock] Server generation not available, falling back:', backendErr);
+  }
+
+  // 2. Client fallback if client keys configured
   const keys = getActiveApiKeys();
   const hasClientKey = Boolean(
     keys.geminiKey || keys.groqKey || keys.openAiKey || keys.openRouterKey || keys.huggingFaceKey
@@ -736,28 +770,46 @@ ${selectedFormatDirective}
 
 Produce the bespoke, publication-grade prompt document adhering strictly to this target purpose.`;
 
-  if (hasClientKey) {
-    return await callClientAi(userPrompt, systemPrompt, { temperature: 0.7 });
-  }
-
-  // Fallback to backend if available
+  // 1. Try secure backend synthesis first
   try {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch('/api/ai/synthesize', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({ idea, answers, questions }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      return data.content || '';
+      const text = data.promptText || data.content || '';
+      if (text) return text;
     }
-  } catch (err) {
-    console.warn('[Bedrock] Backend synthesis not available:', err);
+
+    if (response.status === 429) {
+      const errData = await response.json().catch(() => ({}));
+      const quotaErr = new ApiError(
+        errData.message || 'Free tier accounts can generate up to 10 prompts per 5-hour session. Please upgrade to Pro for unlimited prompts.',
+        false,
+        'Bedrock Vault',
+        429
+      );
+      (quotaErr as any).code = 'FREE_TIER_QUOTA_EXCEEDED';
+      throw quotaErr;
+    }
+  } catch (err: any) {
+    if (err?.code === 'FREE_TIER_QUOTA_EXCEEDED' || err?.statusCode === 429) {
+      throw err;
+    }
+    console.warn('[Bedrock] Server synthesis not available, falling back:', err);
+  }
+
+  // 2. Client fallback if client keys configured
+  if (hasClientKey) {
+    return await callClientAi(userPrompt, systemPrompt, { temperature: 0.7 });
   }
 
   throw new ApiError(
-    'No API key configured. Please set your Google Gemini or Groq key to synthesize prompt.',
+    'No API key configured. Please set your Google Gemini or Groq key in Settings or connect to Bedrock Cloud.',
     true,
     'Bedrock Workspace',
     401
@@ -852,19 +904,26 @@ REFINEMENT & IMPROVISATION DIRECTIVES:
     }
   }
 
-  // Fallback to backend
+  // 1. Try secure backend refine first
   try {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch('/api/ai/refine', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPrompt, followUp, conversationHistory }),
+      headers: authHeaders,
+      body: JSON.stringify({ currentPrompt, instruction: followUp, conversationHistory }),
     });
 
     if (response.ok) {
-      return (await response.json()) as { updatedMarkdown: string; summary: string };
+      const data = await response.json();
+      if (data.updatedMarkdown) {
+        return {
+          updatedMarkdown: data.updatedMarkdown,
+          summary: data.summary || `Updated prompt incorporating user feedback.`,
+        };
+      }
     }
   } catch (err) {
-    console.warn('[Bedrock] Backend refine not available:', err);
+    console.warn('[Bedrock] Server refine not available, falling back:', err);
   }
 
   throw new ApiError(
@@ -954,15 +1013,16 @@ export const testPrompt = async (
 
   // 7. Backend proxy fallback
   try {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch('/api/ai/test', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modelId, systemPrompt, userPrompt }),
+      headers: authHeaders,
+      body: JSON.stringify({ targetModel: modelId, systemPrompt, prompt: userPrompt }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      return data.content || '';
+      return data.text || data.content || '';
     }
   } catch (err) {
     console.warn('[Bedrock] Backend test not available:', err);
@@ -981,7 +1041,8 @@ const WORKFLOWS_STORAGE_KEY = 'bedrock_saved_workflows';
 
 export const loadWorkflows = async () => {
   try {
-    const response = await fetch('/api/workflows');
+    const authHeaders = await getAuthHeaders();
+    const response = await fetch('/api/workflows', { headers: authHeaders });
     if (response.ok) {
       return await response.json();
     }
@@ -999,9 +1060,10 @@ export const loadWorkflows = async () => {
 
 export const saveWorkflow = async (workflow: { id?: string; title: string; nodes: any[]; edges: any[] }) => {
   try {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch('/api/workflows', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify(workflow),
     });
     if (response.ok) {
@@ -1026,7 +1088,11 @@ export const saveWorkflow = async (workflow: { id?: string; title: string; nodes
 
 export const deleteWorkflow = async (id: string) => {
   try {
-    const response = await fetch(`/api/workflows/${id}`, { method: 'DELETE' });
+    const authHeaders = await getAuthHeaders();
+    const response = await fetch(`/api/workflows?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: authHeaders,
+    });
     if (response.ok) {
       return await response.json();
     }
