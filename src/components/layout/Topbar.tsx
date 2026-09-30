@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { cn } from '../../lib/utils';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useUserProfile } from '../../lib/useUserProfile';
+import { useUserProfile, resolveCleanName, resolveInitials } from '../../lib/useUserProfile';
 import { useAuth } from '../../lib/useAuth';
+import { useUser } from '@clerk/react';
 import { isDesktopApp } from '../../lib/platform';
 import { LogOut } from 'lucide-react';
 
@@ -26,7 +27,15 @@ export function Topbar() {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
   const { logout } = useAuth();
+  const { user: clerkUser } = useUser();
   const isDesktop = isDesktopApp();
+
+  const displayName = 
+    clerkUser?.fullName || 
+    clerkUser?.firstName || 
+    resolveCleanName(profile.name, clerkUser?.primaryEmailAddress?.emailAddress || profile.email);
+  const displayAvatar = clerkUser?.imageUrl || profile.avatarUrl;
+  const displayInitials = resolveInitials(displayName);
 
   const [hasKeys, setHasKeys] = useState(false);
 
@@ -140,16 +149,16 @@ export function Topbar() {
             title="View Profile"
           >
             <div className="text-right hidden sm:block">
-              <p className="text-xs font-semibold text-white leading-none group-hover:text-copper-300 transition-colors">{profile.name}</p>
+              <p className="text-xs font-semibold text-white leading-none group-hover:text-copper-300 transition-colors">{displayName}</p>
               <p className="text-[10px] font-mono text-gray-400 mt-0.5">
                 {isDesktop ? 'Local Session' : profile.plan}
               </p>
             </div>
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center text-xs font-bold shadow-md ring-2 ring-transparent group-hover:ring-copper-400/50 transition-all overflow-hidden">
-              {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+              {displayAvatar ? (
+                <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
               ) : (
-                profile.avatarInitials
+                displayInitials
               )}
             </div>
           </Link>
