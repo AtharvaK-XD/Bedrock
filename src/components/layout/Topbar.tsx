@@ -154,19 +154,17 @@ export function Topbar() {
             </div>
           </Link>
 
-          {/* Desktop only: Quick Logout button */}
-          {isDesktop && (
-            <button
-              onClick={() => {
-                logout();
-                navigate('/login');
-              }}
-              title="Log Out of Desktop Workstation"
-              className="p-1.5 rounded-xl text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer border border-transparent hover:border-rose-500/20"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          )}
+          {/* Quick Logout button */}
+          <button
+            onClick={() => {
+              logout();
+              navigate(isDesktop ? '/login' : '/');
+            }}
+            title="Log Out"
+            className="p-1.5 rounded-xl text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer border border-transparent hover:border-rose-500/20"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>

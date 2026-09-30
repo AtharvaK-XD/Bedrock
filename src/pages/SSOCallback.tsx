@@ -6,8 +6,14 @@ export default function SSOCallback() {
   const { isSignedIn } = useAuth();
 
   useEffect(() => {
-    if (window.opener) {
-      const notifyAndClose = () => {
+    const notifyAndClose = () => {
+      try {
+        localStorage.setItem('bedrock_auth_event', Date.now().toString());
+      } catch {
+        // ignore
+      }
+
+      if (window.opener) {
         try {
           window.opener.postMessage('clerk-auth-complete', '*');
         } catch {
@@ -20,26 +26,26 @@ export default function SSOCallback() {
             // ignore
           }
         }, 150);
-      };
+      }
+    };
 
-      if (isSignedIn) {
+    if (isSignedIn) {
+      notifyAndClose();
+    }
+
+    // In case session becomes active before hook triggers
+    const interval = setInterval(() => {
+      const hasSession = Boolean(
+        (window as any).Clerk?.session || 
+        (window as any).Clerk?.user
+      );
+      if (hasSession) {
+        clearInterval(interval);
         notifyAndClose();
       }
+    }, 200);
 
-      // In case session becomes active before hook triggers
-      const interval = setInterval(() => {
-        const hasSession = Boolean(
-          (window as any).Clerk?.session || 
-          (window as any).Clerk?.user
-        );
-        if (hasSession) {
-          clearInterval(interval);
-          notifyAndClose();
-        }
-      }, 200);
-
-      return () => clearInterval(interval);
-    }
+    return () => clearInterval(interval);
   }, [isSignedIn]);
 
   return (
