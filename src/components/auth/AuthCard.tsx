@@ -13,7 +13,11 @@ interface AuthCardProps {
 }
 
 export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
-  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
+  const [forgotStep, setForgotStep] = useState<'request' | 'verify'>('request');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +40,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       const isGh = strategy === 'oauth_github';
       const mockEmail = isGh ? 'github.architect@bedrock.app' : 'google.engineer@bedrock.app';
       const mockName = isGh ? 'Bedrock Architect' : 'Bedrock Engineer';
-      await login(mockEmail, '', mockName, mode);
+      await login(mockEmail, '', mockName, mode === 'register' ? 'register' : 'login');
       await updateProfile({ name: mockName, email: mockEmail });
       setIsLoading(false);
       navigate(targetPath);
@@ -283,14 +287,84 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     try {
       const userEmail = email.trim() || 'user@bedrock.app';
       const userName = name.trim() || userEmail.split('@')[0];
-      await login(userEmail, password, userName, mode);
+      await login(userEmail, password, userName, mode === 'register' ? 'register' : 'login');
       await updateProfile({ name: userName, email: userEmail });
       setIsLoading(false);
       navigate(targetPath);
     } catch (err) {
       console.error('Auth error', err);
       setIsLoading(false);
-      // Optional: show toast here
+    }
+  };
+
+  const handleForgotPasswordRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setAuthError('Please enter your email address to receive the password reset code.');
+      return;
+    }
+    setIsLoading(true);
+    setAuthError(null);
+    setSuccessMsg(null);
+
+    try {
+      const targetSignIn = signIn || (clerk as any).client?.signIn;
+      if (targetSignIn?.create) {
+        await targetSignIn.create({
+          strategy: 'reset_password_email_code',
+          identifier: email.trim(),
+        });
+        setForgotStep('verify');
+        setSuccessMsg('Reset code sent! Check your inbox (and spam folder).');
+      } else {
+        setForgotStep('verify');
+        setSuccessMsg('Verification code requested. Check your email inbox.');
+      }
+    } catch (err: any) {
+      console.error('Password reset request error:', err);
+      setAuthError(err?.errors?.[0]?.longMessage || err?.message || 'Could not send reset code. Please check that this email is registered.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetCode.trim()) {
+      setAuthError('Please enter the 6-digit verification code.');
+      return;
+    }
+    if (!newPassword || newPassword.length < 8) {
+      setAuthError('New password must be at least 8 characters.');
+      return;
+    }
+    setIsLoading(true);
+    setAuthError(null);
+
+    try {
+      const targetSignIn = signIn || (clerk as any).client?.signIn;
+      if (targetSignIn?.attemptFirstFactor) {
+        const result = await targetSignIn.attemptFirstFactor({
+          strategy: 'reset_password_email_code',
+          code: resetCode.trim(),
+          password: newPassword,
+        });
+
+        if (result.status === 'complete') {
+          if (typeof clerk?.setActive === 'function') {
+            await clerk.setActive({ session: result.createdSessionId });
+          }
+          navigate(targetPath);
+          return;
+        }
+      }
+      await login(email.trim(), newPassword);
+      navigate(targetPath);
+    } catch (err: any) {
+      console.error('Password reset completion error:', err);
+      setAuthError(err?.errors?.[0]?.longMessage || err?.message || 'Incorrect verification code or password does not meet requirements.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -327,131 +401,260 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
 
           <div className="text-center mb-8">
             <h2 className="text-3xl font-display font-bold text-white tracking-tight">
-              {mode === 'login' ? 'Welcome back' : 'Create account'}
+              {mode === 'forgot' ? 'Reset password' : mode === 'login' ? 'Welcome back' : 'Create account'}
             </h2>
             <p className="text-gray-400 mt-2 text-sm">
-              {mode === 'login' ? 'Enter your details to sign in.' : 'Start building perfect prompts today.'}
+              {mode === 'forgot'
+                ? (forgotStep === 'verify' ? `Enter the 6-digit code sent to ${email || 'your email'}` : 'Enter your email to receive a password reset code.')
+                : mode === 'login' 
+                  ? 'Enter your details to sign in.' 
+                  : 'Start building perfect prompts today.'}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <AnimatePresence mode="popLayout">
-              {mode === 'register' && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0, y: -20 }}
-                  animate={{ opacity: 1, height: 'auto', y: 0 }}
-                  exit={{ opacity: 0, height: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
+          {mode === 'forgot' ? (
+            <form onSubmit={forgotStep === 'request' ? handleForgotPasswordRequest : handleForgotPasswordReset} className="space-y-4">
+              {forgotStep === 'request' ? (
+                <>
                   <div className="relative">
-                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <input 
-                      type="text" 
-                      placeholder="Full Name" 
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required={mode === 'register'}
+                      type="email" 
+                      placeholder="Email address" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
                       className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
                     />
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-              <input 
-                type="email" 
-                placeholder="Email address" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
-              />
-            </div>
-
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-              <input 
-                type="password" 
-                placeholder="Password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
-              />
-            </div>
-
-            {mode === 'login' && (
-              <div className="flex justify-end">
-                <button type="button" className="text-sm font-medium text-copper-400 hover:text-copper-300 transition-colors cursor-pointer">
-                  Forgot password?
-                </button>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-4 group cursor-pointer"
-            >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-4 group cursor-pointer"
+                  >
+                    {isLoading ? (
+                      <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                    ) : (
+                      <>
+                        Send reset code
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </button>
+                </>
               ) : (
                 <>
-                  {mode === 'login' ? 'Sign in' : 'Create account'}
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      placeholder="6-digit reset code" 
+                      value={resetCode}
+                      onChange={(e) => setResetCode(e.target.value)}
+                      required
+                      maxLength={8}
+                      className="w-full bg-transparent border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 font-mono tracking-widest text-center text-lg transition-all"
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                    <input 
+                      type="password" 
+                      placeholder="New password (min 8 chars)" 
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-4 group cursor-pointer"
+                  >
+                    {isLoading ? (
+                      <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                    ) : (
+                      <>
+                        Reset password & sign in
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </button>
                 </>
               )}
-            </button>
-          </form>
 
-          <div className="mt-8 relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/10"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-black/40 backdrop-blur-md rounded-full border border-white/5 text-gray-400 text-xs uppercase tracking-wider">Or continue with</span>
-            </div>
-          </div>
+              {successMsg && (
+                <div className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs text-center leading-relaxed">
+                  {successMsg}
+                </div>
+              )}
 
-          <div className="mt-6 flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <GoogleIcon />
-              {mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}
-            </button>
-            <button
-              type="button"
-              onClick={handleGithubSignIn}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <GithubIcon />
-              {mode === 'login' ? 'Sign in with GitHub' : 'Sign up with GitHub'}
-            </button>
-          </div>
+              {authError && (
+                <div className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed">
+                  {authError}
+                </div>
+              )}
 
-          {authError && (
-            <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed">
-              {authError}
-            </div>
+              <div className="pt-3 flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setForgotStep('request');
+                    setAuthError(null);
+                    setSuccessMsg(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  &larr; Back to sign in
+                </button>
+
+                {forgotStep === 'verify' && (
+                  <button
+                    type="button"
+                    onClick={handleForgotPasswordRequest}
+                    disabled={isLoading}
+                    className="text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
+                  >
+                    Resend code
+                  </button>
+                )}
+              </div>
+            </form>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <AnimatePresence mode="popLayout">
+                  {mode === 'register' && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0, y: -20 }}
+                      animate={{ opacity: 1, height: 'auto', y: 0 }}
+                      exit={{ opacity: 0, height: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="relative">
+                        <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                        <input 
+                          type="text" 
+                          placeholder="Full Name" 
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          required={mode === 'register'}
+                          className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <input 
+                    type="email" 
+                    placeholder="Email address" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                  />
+                </div>
+
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <input 
+                    type="password" 
+                    placeholder="Password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                  />
+                </div>
+
+                {mode === 'login' && (
+                  <div className="flex justify-end">
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setMode('forgot');
+                        setForgotStep('request');
+                        setAuthError(null);
+                        setSuccessMsg(null);
+                      }}
+                      className="text-sm font-medium text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-4 group cursor-pointer"
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      {mode === 'login' ? 'Sign in' : 'Create account'}
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div className="mt-8 relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-black/40 backdrop-blur-md rounded-full border border-white/5 text-gray-400 text-xs uppercase tracking-wider">Or continue with</span>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <GoogleIcon />
+                  {mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGithubSignIn}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <GithubIcon />
+                  {mode === 'login' ? 'Sign in with GitHub' : 'Sign up with GitHub'}
+                </button>
+              </div>
+
+              {authError && (
+                <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed">
+                  {authError}
+                </div>
+              )}
+
+              <div className="mt-8 text-center text-sm text-gray-400">
+                {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
+                <button 
+                  type="button"
+                  onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                  className="font-semibold text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
+                >
+                  {mode === 'login' ? 'Sign up' : 'Sign in'}
+                </button>
+              </div>
+            </>
           )}
-
-          <div className="mt-8 text-center text-sm text-gray-400">
-            {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
-            <button 
-              type="button"
-              onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-              className="font-semibold text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
-            >
-              {mode === 'login' ? 'Sign up' : 'Sign in'}
-            </button>
-          </div>
         </div>
       </div>
     </div>
