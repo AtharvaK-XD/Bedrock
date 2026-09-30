@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { AuthCard } from '../components/auth/AuthCard';
 import { Shield, Sparkles, Layout, Layers, Database, Globe } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -355,9 +356,21 @@ export default function Landing() {
         <footer className="relative z-10 w-full py-12 px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-500 font-light">
           <p>© 2026 Bedrock. All rights reserved.</p>
           <div className="flex gap-6 mt-4 sm:mt-0">
-            <a href="#" data-cursor="hover" className="hover:text-white transition-colors">Twitter</a>
-            <a href="#" data-cursor="hover" className="hover:text-white transition-colors">GitHub</a>
-            <a href="#" data-cursor="hover" className="hover:text-white transition-colors">Privacy</a>
+            <a 
+              href="https://github.com/AtharvaK-XD/Bedrock" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              data-cursor="hover" 
+              className="hover:text-white transition-colors"
+            >
+              GitHub
+            </a>
+            <Link to="/privacy" data-cursor="hover" className="hover:text-white transition-colors">
+              Privacy
+            </Link>
+            <Link to="/terms" data-cursor="hover" className="hover:text-white transition-colors">
+              Terms
+            </Link>
           </div>
         </footer>
 
