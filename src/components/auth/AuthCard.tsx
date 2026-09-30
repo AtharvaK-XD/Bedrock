@@ -38,183 +38,46 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       return;
     }
 
+    setIsLoading(true);
+    const callbackUrl = `${window.location.origin}/sso-callback`;
+    const targetUrl = targetPath;
+
     try {
-      setIsLoading(true);
-
-      const targetUrl = targetPath;
-      const callbackUrl = `${window.location.origin}/sso-callback`;
-
-      // Dimensions & centering for the Google accounts popup window
-      const width = 500;
-      const height = 650;
-      const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
-      const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
-
-      // Open a popup window SYNCHRONOUSLY in user gesture call stack to prevent browser popup blockers
-      const popup = window.open(
-        '',
-        'google_oauth_popup',
-        `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=yes,resizable=yes`
-      );
-
-      // Render dark Bedrock loading screen in the popup while Google loads so it's never blank
-      if (popup) {
-        try {
-          popup.document.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>Bedrock — Sign in with Google</title>
-                <style>
-                  body {
-                    margin: 0;
-                    background: #050505;
-                    color: #ffffff;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    height: 100vh;
-                  }
-                  .spinner {
-                    width: 36px;
-                    height: 36px;
-                    border: 3px solid rgba(255, 255, 255, 0.1);
-                    border-top-color: #d97706;
-                    border-radius: 50%;
-                    animation: spin 0.8s linear infinite;
-                  }
-                  @keyframes spin { to { transform: rotate(360deg); } }
-                  p { margin-top: 16px; font-size: 14px; color: #a1a1aa; font-weight: 500; }
-                </style>
-              </head>
-              <body>
-                <div class="spinner"></div>
-                <p>Connecting to Google...</p>
-              </body>
-            </html>
-          `);
-        } catch {
-          // ignore if document write fails
-        }
-      }
-
-      // Wait if Clerk is still initializing
-      if (!clerk.loaded) {
-        let attempts = 0;
-        while (!clerk.loaded && attempts < 20) {
-          await new Promise((r) => setTimeout(r, 100));
-          attempts++;
-        }
-      }
-
       const client = (clerk as any)?.client || (typeof window !== 'undefined' ? (window as any).Clerk?.client : null);
-      const clientSignIn = client?.signIn;
-      const clientSignUp = client?.signUp;
+      const clientSignIn = (signIn as any) || client?.signIn;
+      const clientSignUp = (signUp as any) || client?.signUp;
 
-      const primaryClient = mode === 'register' ? clientSignUp : clientSignIn;
-      const fallbackClient = mode === 'register' ? clientSignIn : clientSignUp;
+      const primary = mode === 'register' ? clientSignUp : clientSignIn;
+      const fallback = mode === 'register' ? clientSignIn : clientSignUp;
 
-      let authUrl: string | null = null;
-
-      try {
-        const res = await primaryClient?.create({
-          strategy: 'oauth_google',
-          redirectUrl: callbackUrl,
-          oidcPrompt: 'consent select_account',
-        });
-        authUrl = res?.firstFactorVerification?.externalVerificationRedirectURL || res?.verifications?.externalAccount?.externalVerificationRedirectURL || null;
-      } catch (e: any) {
-        if (e?.errors?.[0]?.code === 'session_exists') {
-          if (popup && !popup.closed) popup.close();
-          navigate(targetUrl);
-          return;
-        }
-        try {
-          const res = await fallbackClient?.create({
-            strategy: 'oauth_google',
-            redirectUrl: callbackUrl,
-            oidcPrompt: 'consent select_account',
-          });
-          authUrl = res?.firstFactorVerification?.externalVerificationRedirectURL || res?.verifications?.externalAccount?.externalVerificationRedirectURL || null;
-        } catch (e2: any) {
-          if (e2?.errors?.[0]?.code === 'session_exists') {
-            if (popup && !popup.closed) popup.close();
-            navigate(targetUrl);
-            return;
-          }
-        }
-      }
-
-      if (authUrl) {
-        const urlStr = authUrl.toString();
-        if (popup) {
-          popup.location.href = urlStr;
-
-          const pollTimer = setInterval(() => {
-            try {
-              if (popup.closed) {
-                clearInterval(pollTimer);
-                setIsLoading(false);
-                if (clerk.session || clerk.user) {
-                  navigate(targetUrl);
-                }
-              }
-            } catch {
-              // COOP policy protects cross-origin properties; messageHandler will catch completion
-            }
-          }, 500);
-
-          const messageHandler = (event: MessageEvent) => {
-            if (event.data === 'clerk-auth-complete') {
-              clearInterval(pollTimer);
-              window.removeEventListener('message', messageHandler);
-              try {
-                if (!popup.closed) popup.close();
-              } catch {
-                // ignore
-              }
-              setIsLoading(false);
-              navigate(targetUrl);
-            }
-          };
-          window.addEventListener('message', messageHandler);
-          return;
-        } else {
-          // Popup was blocked by browser, redirect full page directly to Google OAuth:
-          window.location.href = urlStr;
-          return;
-        }
-      }
-
-      // Fallback if authUrl couldn't be created: standard redirect
-      if (popup && !popup.closed) {
-        popup.close();
-      }
-
-      if (typeof primaryClient?.authenticateWithRedirect === 'function') {
-        await primaryClient.authenticateWithRedirect({
+      if (typeof primary?.authenticateWithRedirect === 'function') {
+        await primary.authenticateWithRedirect({
           strategy: 'oauth_google',
           redirectUrl: callbackUrl,
           redirectUrlComplete: targetUrl,
-          oidcPrompt: 'consent select_account',
         });
         return;
       }
 
-      if (typeof fallbackClient?.authenticateWithRedirect === 'function') {
-        await fallbackClient.authenticateWithRedirect({
+      if (typeof fallback?.authenticateWithRedirect === 'function') {
+        await fallback.authenticateWithRedirect({
           strategy: 'oauth_google',
           redirectUrl: callbackUrl,
           redirectUrlComplete: targetUrl,
-          oidcPrompt: 'consent select_account',
         });
         return;
       }
-    } catch (err) {
-      console.error('Failed to initiate Google OAuth:', err);
-    } finally {
+
+      if (typeof (clerk as any)?.authenticateWithRedirect === 'function') {
+        await (clerk as any).authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl: callbackUrl,
+          redirectUrlComplete: targetUrl,
+        });
+        return;
+      }
+    } catch (err: any) {
+      console.error('Failed to redirect to Google:', err);
       setIsLoading(false);
     }
   };
@@ -229,155 +92,20 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       return;
     }
 
+    setIsLoading(true);
+    const callbackUrl = `${window.location.origin}/sso-callback`;
+    const targetUrl = targetPath;
+
     try {
-      setIsLoading(true);
-
-      const targetUrl = targetPath;
-      const callbackUrl = `${window.location.origin}/sso-callback`;
-
-      const width = 500;
-      const height = 650;
-      const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
-      const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
-
-      const popup = window.open(
-        '',
-        'github_oauth_popup',
-        `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=yes,resizable=yes`
-      );
-
-      if (popup) {
-        try {
-          popup.document.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>Bedrock — Sign in with GitHub</title>
-                <style>
-                  body {
-                    margin: 0;
-                    background: #050505;
-                    color: #ffffff;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    height: 100vh;
-                  }
-                  .spinner {
-                    width: 36px;
-                    height: 36px;
-                    border: 3px solid rgba(255, 255, 255, 0.1);
-                    border-top-color: #ffffff;
-                    border-radius: 50%;
-                    animation: spin 0.8s linear infinite;
-                  }
-                  @keyframes spin { to { transform: rotate(360deg); } }
-                  p { margin-top: 16px; font-size: 14px; color: #a1a1aa; font-weight: 500; }
-                </style>
-              </head>
-              <body>
-                <div class="spinner"></div>
-                <p>Connecting to GitHub (@Bedrockxai)...</p>
-              </body>
-            </html>
-          `);
-        } catch {
-          // ignore if document write fails
-        }
-      }
-
-      if (!clerk.loaded) {
-        let attempts = 0;
-        while (!clerk.loaded && attempts < 20) {
-          await new Promise((r) => setTimeout(r, 100));
-          attempts++;
-        }
-      }
-
       const client = (clerk as any)?.client || (typeof window !== 'undefined' ? (window as any).Clerk?.client : null);
-      const clientSignIn = client?.signIn;
-      const clientSignUp = client?.signUp;
+      const clientSignIn = (signIn as any) || client?.signIn;
+      const clientSignUp = (signUp as any) || client?.signUp;
 
-      const primaryClient = mode === 'register' ? clientSignUp : clientSignIn;
-      const fallbackClient = mode === 'register' ? clientSignIn : clientSignUp;
+      const primary = mode === 'register' ? clientSignUp : clientSignIn;
+      const fallback = mode === 'register' ? clientSignIn : clientSignUp;
 
-      let authUrl: string | null = null;
-
-      try {
-        const res = await primaryClient?.create({
-          strategy: 'oauth_github',
-          redirectUrl: callbackUrl,
-        });
-        authUrl = res?.firstFactorVerification?.externalVerificationRedirectURL || res?.verifications?.externalAccount?.externalVerificationRedirectURL || null;
-      } catch (e: any) {
-        if (e?.errors?.[0]?.code === 'session_exists') {
-          if (popup && !popup.closed) popup.close();
-          navigate(targetUrl);
-          return;
-        }
-        try {
-          const res = await fallbackClient?.create({
-            strategy: 'oauth_github',
-            redirectUrl: callbackUrl,
-          });
-          authUrl = res?.firstFactorVerification?.externalVerificationRedirectURL || res?.verifications?.externalAccount?.externalVerificationRedirectURL || null;
-        } catch (e2: any) {
-          if (e2?.errors?.[0]?.code === 'session_exists') {
-            if (popup && !popup.closed) popup.close();
-            navigate(targetUrl);
-            return;
-          }
-        }
-      }
-
-      if (authUrl) {
-        const urlStr = authUrl.toString();
-        if (popup) {
-          popup.location.href = urlStr;
-
-          const pollTimer = setInterval(() => {
-            try {
-              if (popup.closed) {
-                clearInterval(pollTimer);
-                setIsLoading(false);
-                if (clerk.session || clerk.user) {
-                  navigate(targetUrl);
-                }
-              }
-            } catch {
-              // COOP policy protects cross-origin properties
-            }
-          }, 500);
-
-          const messageHandler = (event: MessageEvent) => {
-            if (event.data === 'clerk-auth-complete') {
-              clearInterval(pollTimer);
-              window.removeEventListener('message', messageHandler);
-              try {
-                if (!popup.closed) popup.close();
-              } catch {
-                // ignore
-              }
-              setIsLoading(false);
-              navigate(targetUrl);
-            }
-          };
-          window.addEventListener('message', messageHandler);
-          return;
-        } else {
-          window.location.href = urlStr;
-          return;
-        }
-      }
-
-      if (popup && !popup.closed) {
-        popup.close();
-      }
-
-      if (typeof primaryClient?.authenticateWithRedirect === 'function') {
-        await primaryClient.authenticateWithRedirect({
+      if (typeof primary?.authenticateWithRedirect === 'function') {
+        await primary.authenticateWithRedirect({
           strategy: 'oauth_github',
           redirectUrl: callbackUrl,
           redirectUrlComplete: targetUrl,
@@ -385,17 +113,25 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         return;
       }
 
-      if (typeof fallbackClient?.authenticateWithRedirect === 'function') {
-        await fallbackClient.authenticateWithRedirect({
+      if (typeof fallback?.authenticateWithRedirect === 'function') {
+        await fallback.authenticateWithRedirect({
           strategy: 'oauth_github',
           redirectUrl: callbackUrl,
           redirectUrlComplete: targetUrl,
         });
         return;
       }
-    } catch (err) {
-      console.error('Failed to initiate GitHub OAuth:', err);
-    } finally {
+
+      if (typeof (clerk as any)?.authenticateWithRedirect === 'function') {
+        await (clerk as any).authenticateWithRedirect({
+          strategy: 'oauth_github',
+          redirectUrl: callbackUrl,
+          redirectUrlComplete: targetUrl,
+        });
+        return;
+      }
+    } catch (err: any) {
+      console.error('Failed to redirect to GitHub:', err);
       setIsLoading(false);
     }
   };
