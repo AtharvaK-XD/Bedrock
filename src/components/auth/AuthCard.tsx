@@ -19,7 +19,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const { isLoggedIn, login } = useAuth();
+  const { login } = useAuth();
   const { updateProfile } = useUserProfile();
   const navigate = useNavigate();
   const clerk = useClerk();
@@ -30,12 +30,6 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
 
   const performOAuth = async (strategy: 'oauth_github' | 'oauth_google') => {
     setAuthError(null);
-
-    // If user already has an active session, send directly to /app
-    if (isLoggedIn || (clerk as any)?.session || (clerk as any)?.user) {
-      navigate(targetPath);
-      return;
-    }
 
     if (isDesktopApp()) {
       setIsLoading(true);
@@ -53,8 +47,93 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     const callbackUrl = `${window.location.origin}/sso-callback`;
     const targetUrl = targetPath;
 
+    // 1. Open popup immediately in synchronous user-action context
+    const width = 600;
+    const height = 750;
+    const left = window.screenX + Math.max(0, (window.outerWidth - width) / 2);
+    const top = window.screenY + Math.max(0, (window.outerHeight - height) / 2);
+
+    let popup: Window | null = null;
     try {
-      // 1. Wait until Clerk is loaded if not already
+      popup = window.open(
+        'about:blank',
+        'BedrockOAuthPopup',
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+      );
+      if (popup) {
+        popup.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Connecting to ${strategy === 'oauth_github' ? 'GitHub' : 'Google'}...</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body {
+                  margin: 0;
+                  background-color: #050505;
+                  color: #e4e4e7;
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  height: 100vh;
+                }
+                .loader {
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  gap: 16px;
+                }
+                .spinner {
+                  width: 32px;
+                  height: 32px;
+                  border: 3px solid rgba(255,255,255,0.1);
+                  border-top-color: #10b981;
+                  border-radius: 50%;
+                  animation: spin 0.8s linear infinite;
+                }
+                @keyframes spin { to { transform: rotate(360deg); } }
+                p { font-size: 14px; color: #a1a1aa; margin: 0; }
+              </style>
+            </head>
+            <body>
+              <div class="loader">
+                <div class="spinner"></div>
+                <p>Opening ${strategy === 'oauth_github' ? 'GitHub' : 'Google'} Authorization...</p>
+              </div>
+            </body>
+          </html>
+        `);
+      }
+    } catch {
+      popup = null;
+    }
+
+    let authDone = false;
+    const handleAuthMessage = (event: MessageEvent) => {
+      if (event.data === 'clerk-auth-complete') {
+        authDone = true;
+        window.removeEventListener('message', handleAuthMessage);
+        setIsLoading(false);
+        navigate(targetPath);
+      }
+    };
+    window.addEventListener('message', handleAuthMessage);
+
+    const popupCheckTimer = setInterval(() => {
+      if (popup && popup.closed) {
+        clearInterval(popupCheckTimer);
+        window.removeEventListener('message', handleAuthMessage);
+        setTimeout(() => {
+          if (!authDone) {
+            setIsLoading(false);
+          }
+        }, 500);
+      }
+    }, 400);
+
+    try {
+      // 2. Wait until Clerk is loaded if not already
       if (!clerk.loaded) {
         await new Promise<void>((resolve) => {
           if (typeof (clerk as any).addOnLoaded === 'function') {
@@ -64,7 +143,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         });
       }
 
-      // 2. Safely obtain client without uncaught getter errors
+      // 3. Safely obtain client without uncaught getter errors
       let client: any = null;
       try {
         client = (clerk as any).client;
@@ -81,7 +160,31 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         ? (targetSignUp || targetSignIn) 
         : (targetSignIn || targetSignUp);
 
+      // 4. Authenticate with popup window
+      if (typeof authResource?.authenticateWithPopup === 'function' && popup && !popup.closed) {
+        try {
+          await authResource.authenticateWithPopup({
+            strategy,
+            popup,
+            redirectUrl: callbackUrl,
+            redirectUrlComplete: targetUrl,
+          });
+          authDone = true;
+          clearInterval(popupCheckTimer);
+          window.removeEventListener('message', handleAuthMessage);
+          setIsLoading(false);
+          navigate(targetPath);
+          return;
+        } catch (popupErr: any) {
+          console.warn('authenticateWithPopup error, trying fallback:', popupErr);
+        }
+      }
+
+      // 5. Fallback: authenticateWithRedirect if popup is blocked or unsupported
       if (typeof authResource?.authenticateWithRedirect === 'function') {
+        if (popup && !popup.closed) {
+          popup.close();
+        }
         await authResource.authenticateWithRedirect({
           strategy,
           redirectUrl: callbackUrl,
@@ -90,8 +193,11 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         return;
       }
 
-      // 3. Fallback: redirectToSignIn
+      // 6. Fallback: redirectToSignIn
       if (typeof clerk.redirectToSignIn === 'function') {
+        if (popup && !popup.closed) {
+          popup.close();
+        }
         await clerk.redirectToSignIn({
           signInFallbackRedirectUrl: targetUrl,
           signInForceRedirectUrl: targetUrl,
@@ -102,17 +208,12 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       throw new Error('Authentication service is still initializing. Please try again.');
     } catch (err: any) {
       console.error(`Failed to initiate ${strategy} OAuth:`, err);
-      // If error indicates already signed in, simply proceed to app
-      if (
-        err?.errors?.some((e: any) => e.code === 'session_exists') ||
-        err?.message?.toLowerCase().includes('already signed in') ||
-        err?.message?.toLowerCase().includes('session_exists')
-      ) {
-        navigate(targetPath);
-        return;
+      if (popup && !popup.closed) {
+        popup.close();
       }
-      setAuthError(err?.message || 'Authentication failed. If using an ad blocker, please temporarily disable it.');
-    } finally {
+      clearInterval(popupCheckTimer);
+      window.removeEventListener('message', handleAuthMessage);
+      setAuthError(err?.message || 'Authentication failed. Please try again.');
       setIsLoading(false);
     }
   };

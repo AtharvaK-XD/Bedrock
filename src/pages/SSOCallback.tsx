@@ -6,15 +6,39 @@ export default function SSOCallback() {
   const { isSignedIn } = useAuth();
 
   useEffect(() => {
-    if (isSignedIn && window.opener) {
-      try {
-        window.opener.postMessage('clerk-auth-complete', '*');
-      } catch {
-        // ignore cross-origin if any
+    if (window.opener) {
+      const notifyAndClose = () => {
+        try {
+          window.opener.postMessage('clerk-auth-complete', '*');
+        } catch {
+          // ignore cross-origin if any
+        }
+        setTimeout(() => {
+          try {
+            window.close();
+          } catch {
+            // ignore
+          }
+        }, 150);
+      };
+
+      if (isSignedIn) {
+        notifyAndClose();
       }
-      setTimeout(() => {
-        window.close();
+
+      // In case session becomes active before hook triggers
+      const interval = setInterval(() => {
+        const hasSession = Boolean(
+          (window as any).Clerk?.session || 
+          (window as any).Clerk?.user
+        );
+        if (hasSession) {
+          clearInterval(interval);
+          notifyAndClose();
+        }
       }, 200);
+
+      return () => clearInterval(interval);
     }
   }, [isSignedIn]);
 
