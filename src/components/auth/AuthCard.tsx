@@ -219,6 +219,187 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     }
   };
 
+  const handleGithubSignIn = async () => {
+    if (isDesktopApp()) {
+      setIsLoading(true);
+      await login('github.architect@bedrock.app', '', 'Bedrock Architect', mode);
+      await updateProfile({ name: 'Bedrock Architect', email: 'github.architect@bedrock.app' });
+      setIsLoading(false);
+      navigate(targetPath);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const targetUrl = targetPath;
+      const callbackUrl = `${window.location.origin}/sso-callback`;
+
+      const width = 500;
+      const height = 650;
+      const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
+      const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
+
+      const popup = window.open(
+        '',
+        'github_oauth_popup',
+        `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=yes,resizable=yes`
+      );
+
+      if (popup) {
+        try {
+          popup.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Bedrock — Sign in with GitHub</title>
+                <style>
+                  body {
+                    margin: 0;
+                    background: #050505;
+                    color: #ffffff;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                  }
+                  .spinner {
+                    width: 36px;
+                    height: 36px;
+                    border: 3px solid rgba(255, 255, 255, 0.1);
+                    border-top-color: #ffffff;
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                  }
+                  @keyframes spin { to { transform: rotate(360deg); } }
+                  p { margin-top: 16px; font-size: 14px; color: #a1a1aa; font-weight: 500; }
+                </style>
+              </head>
+              <body>
+                <div class="spinner"></div>
+                <p>Connecting to GitHub (@Bedrockxai)...</p>
+              </body>
+            </html>
+          `);
+        } catch {
+          // ignore if document write fails
+        }
+      }
+
+      if (!clerk.loaded) {
+        let attempts = 0;
+        while (!clerk.loaded && attempts < 20) {
+          await new Promise((r) => setTimeout(r, 100));
+          attempts++;
+        }
+      }
+
+      const client = (clerk as any)?.client || (typeof window !== 'undefined' ? (window as any).Clerk?.client : null);
+      const clientSignIn = client?.signIn;
+      const clientSignUp = client?.signUp;
+
+      const primaryClient = mode === 'register' ? clientSignUp : clientSignIn;
+      const fallbackClient = mode === 'register' ? clientSignIn : clientSignUp;
+
+      let authUrl: string | null = null;
+
+      try {
+        const res = await primaryClient?.create({
+          strategy: 'oauth_github',
+          redirectUrl: callbackUrl,
+        });
+        authUrl = res?.firstFactorVerification?.externalVerificationRedirectURL || res?.verifications?.externalAccount?.externalVerificationRedirectURL || null;
+      } catch (e: any) {
+        if (e?.errors?.[0]?.code === 'session_exists') {
+          if (popup && !popup.closed) popup.close();
+          navigate(targetUrl);
+          return;
+        }
+        try {
+          const res = await fallbackClient?.create({
+            strategy: 'oauth_github',
+            redirectUrl: callbackUrl,
+          });
+          authUrl = res?.firstFactorVerification?.externalVerificationRedirectURL || res?.verifications?.externalAccount?.externalVerificationRedirectURL || null;
+        } catch (e2: any) {
+          if (e2?.errors?.[0]?.code === 'session_exists') {
+            if (popup && !popup.closed) popup.close();
+            navigate(targetUrl);
+            return;
+          }
+        }
+      }
+
+      if (authUrl) {
+        const urlStr = authUrl.toString();
+        if (popup) {
+          popup.location.href = urlStr;
+
+          const pollTimer = setInterval(() => {
+            try {
+              if (popup.closed) {
+                clearInterval(pollTimer);
+                setIsLoading(false);
+                if (clerk.session || clerk.user) {
+                  navigate(targetUrl);
+                }
+              }
+            } catch {
+              // COOP policy protects cross-origin properties
+            }
+          }, 500);
+
+          const messageHandler = (event: MessageEvent) => {
+            if (event.data === 'clerk-auth-complete') {
+              clearInterval(pollTimer);
+              window.removeEventListener('message', messageHandler);
+              try {
+                if (!popup.closed) popup.close();
+              } catch {
+                // ignore
+              }
+              setIsLoading(false);
+              navigate(targetUrl);
+            }
+          };
+          window.addEventListener('message', messageHandler);
+          return;
+        } else {
+          window.location.href = urlStr;
+          return;
+        }
+      }
+
+      if (popup && !popup.closed) {
+        popup.close();
+      }
+
+      if (typeof primaryClient?.authenticateWithRedirect === 'function') {
+        await primaryClient.authenticateWithRedirect({
+          strategy: 'oauth_github',
+          redirectUrl: callbackUrl,
+          redirectUrlComplete: targetUrl,
+        });
+        return;
+      }
+
+      if (typeof fallbackClient?.authenticateWithRedirect === 'function') {
+        await fallbackClient.authenticateWithRedirect({
+          strategy: 'oauth_github',
+          redirectUrl: callbackUrl,
+          redirectUrlComplete: targetUrl,
+        });
+        return;
+      }
+    } catch (err) {
+      console.error('Failed to initiate GitHub OAuth:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -368,13 +549,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             </button>
             <button
               type="button"
-              onClick={async () => {
-                setIsLoading(true);
-                await login('developer@github.com', '', 'GitHub Engineer', mode);
-                await updateProfile({ name: 'GitHub Engineer', email: 'developer@github.com' });
-                setIsLoading(false);
-                navigate(targetPath);
-              }}
+              onClick={handleGithubSignIn}
               className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer"
             >
               <GithubIcon />
