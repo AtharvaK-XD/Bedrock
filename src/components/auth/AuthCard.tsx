@@ -28,11 +28,14 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
 
   const targetPath = '/app';
 
-  const handleGoogleSignIn = async () => {
+  const performOAuth = async (strategy: 'oauth_github' | 'oauth_google') => {
     if (isDesktopApp()) {
       setIsLoading(true);
-      await login('google.engineer@bedrock.app', '', 'Bedrock Engineer', mode);
-      await updateProfile({ name: 'Bedrock Engineer', email: 'google.engineer@bedrock.app' });
+      const isGh = strategy === 'oauth_github';
+      const mockEmail = isGh ? 'github.architect@bedrock.app' : 'google.engineer@bedrock.app';
+      const mockName = isGh ? 'Bedrock Architect' : 'Bedrock Engineer';
+      await login(mockEmail, '', mockName, mode);
+      await updateProfile({ name: mockName, email: mockEmail });
       setIsLoading(false);
       navigate(targetPath);
       return;
@@ -43,98 +46,70 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     const targetUrl = targetPath;
 
     try {
-      const client = (clerk as any)?.client || (typeof window !== 'undefined' ? (window as any).Clerk?.client : null);
-      const clientSignIn = (signIn as any) || client?.signIn;
-      const clientSignUp = (signUp as any) || client?.signUp;
+      // 1. Wait for Clerk to finish loading if not yet ready
+      let activeClerk = (window as any).Clerk || clerk;
+      let attempts = 0;
+      while ((!activeClerk?.loaded || !activeClerk?.client) && attempts < 30) {
+        await new Promise((r) => setTimeout(r, 100));
+        activeClerk = (window as any).Clerk || clerk;
+        attempts++;
+      }
 
-      const primary = mode === 'register' ? clientSignUp : clientSignIn;
-      const fallback = mode === 'register' ? clientSignIn : clientSignUp;
+      const client = activeClerk?.client;
+      if (!client) {
+        console.error('Clerk client failed to load in time.');
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Select appropriate client resource (signUp for register, signIn for login)
+      const primary = mode === 'register' ? client.signUp : client.signIn;
+      const fallback = mode === 'register' ? client.signIn : client.signUp;
 
       if (typeof primary?.authenticateWithRedirect === 'function') {
-        await primary.authenticateWithRedirect({
-          strategy: 'oauth_google',
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: targetUrl,
-        });
-        return;
+        try {
+          await primary.authenticateWithRedirect({
+            strategy,
+            redirectUrl: callbackUrl,
+            redirectUrlComplete: targetUrl,
+          });
+          return;
+        } catch (primaryErr: any) {
+          console.warn('Primary OAuth redirect attempt failed, trying fallback:', primaryErr);
+        }
       }
 
       if (typeof fallback?.authenticateWithRedirect === 'function') {
-        await fallback.authenticateWithRedirect({
-          strategy: 'oauth_google',
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: targetUrl,
-        });
-        return;
+        try {
+          await fallback.authenticateWithRedirect({
+            strategy,
+            redirectUrl: callbackUrl,
+            redirectUrlComplete: targetUrl,
+          });
+          return;
+        } catch (fallbackErr: any) {
+          console.warn('Fallback OAuth redirect failed:', fallbackErr);
+        }
       }
 
-      if (typeof (clerk as any)?.authenticateWithRedirect === 'function') {
-        await (clerk as any).authenticateWithRedirect({
-          strategy: 'oauth_google',
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: targetUrl,
+      // 3. Fallback to global redirectToSignIn if available
+      if (typeof activeClerk?.redirectToSignIn === 'function') {
+        await activeClerk.redirectToSignIn({
+          signInFallbackRedirectUrl: targetUrl,
+          signInForceRedirectUrl: targetUrl,
         });
         return;
       }
     } catch (err: any) {
-      console.error('Failed to redirect to Google:', err);
-      setIsLoading(false);
+      console.error(`Failed to initiate ${strategy} OAuth:`, err);
+    } finally {
+      // Ensure spinner never gets stuck
+      setTimeout(() => setIsLoading(false), 2000);
     }
   };
 
-  const handleGithubSignIn = async () => {
-    if (isDesktopApp()) {
-      setIsLoading(true);
-      await login('github.architect@bedrock.app', '', 'Bedrock Architect', mode);
-      await updateProfile({ name: 'Bedrock Architect', email: 'github.architect@bedrock.app' });
-      setIsLoading(false);
-      navigate(targetPath);
-      return;
-    }
-
-    setIsLoading(true);
-    const callbackUrl = `${window.location.origin}/sso-callback`;
-    const targetUrl = targetPath;
-
-    try {
-      const client = (clerk as any)?.client || (typeof window !== 'undefined' ? (window as any).Clerk?.client : null);
-      const clientSignIn = (signIn as any) || client?.signIn;
-      const clientSignUp = (signUp as any) || client?.signUp;
-
-      const primary = mode === 'register' ? clientSignUp : clientSignIn;
-      const fallback = mode === 'register' ? clientSignIn : clientSignUp;
-
-      if (typeof primary?.authenticateWithRedirect === 'function') {
-        await primary.authenticateWithRedirect({
-          strategy: 'oauth_github',
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: targetUrl,
-        });
-        return;
-      }
-
-      if (typeof fallback?.authenticateWithRedirect === 'function') {
-        await fallback.authenticateWithRedirect({
-          strategy: 'oauth_github',
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: targetUrl,
-        });
-        return;
-      }
-
-      if (typeof (clerk as any)?.authenticateWithRedirect === 'function') {
-        await (clerk as any).authenticateWithRedirect({
-          strategy: 'oauth_github',
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: targetUrl,
-        });
-        return;
-      }
-    } catch (err: any) {
-      console.error('Failed to redirect to GitHub:', err);
-      setIsLoading(false);
-    }
-  };
+  const handleGoogleSignIn = () => performOAuth('oauth_google');
+  const handleGithubSignIn = () => performOAuth('oauth_github');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
