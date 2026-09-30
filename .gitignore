@@ -35,3 +35,4 @@ release
 public/*.zip
 public/*.exe
 scratch/
+.neon
