@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/useAuth';
 import { useUserProfile } from '../../lib/useUserProfile';
 import { isDesktopApp } from '../../lib/platform';
-import { useSignIn, useSignUp, useClerk } from '@clerk/react';
+import { useSignIn, useSignUp } from '@clerk/react/legacy';
+import { useClerk } from '@clerk/react';
 
 interface AuthCardProps {
   initialMode?: 'login' | 'register';
@@ -21,9 +22,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   const { updateProfile } = useUserProfile();
   const navigate = useNavigate();
   const clerk = useClerk();
-  // @ts-ignore
   const { signIn } = useSignIn();
-  // @ts-ignore
   const { signUp } = useSignUp();
 
   const targetPath = '/app';
@@ -46,55 +45,36 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     const targetUrl = targetPath;
 
     try {
-      // 1. Wait for Clerk to finish loading if not yet ready
-      let activeClerk = (window as any).Clerk || clerk;
-      let attempts = 0;
-      while ((!activeClerk?.loaded || !activeClerk?.client) && attempts < 30) {
-        await new Promise((r) => setTimeout(r, 100));
-        activeClerk = (window as any).Clerk || clerk;
-        attempts++;
-      }
-
-      const client = activeClerk?.client;
-      if (!client) {
-        console.error('Clerk client failed to load in time.');
-        setIsLoading(false);
-        return;
+      // 1. Wait until Clerk is loaded if not already
+      if (!clerk.loaded) {
+        await new Promise<void>((resolve) => {
+          if (typeof (clerk as any).addOnLoaded === 'function') {
+            (clerk as any).addOnLoaded(() => resolve());
+          }
+          setTimeout(resolve, 2000);
+        });
       }
 
       // 2. Select appropriate client resource (signUp for register, signIn for login)
-      const primary = mode === 'register' ? client.signUp : client.signIn;
-      const fallback = mode === 'register' ? client.signIn : client.signUp;
+      const client = (clerk as any).client || (window as any).Clerk?.client;
+      const targetSignIn = signIn || client?.signIn;
+      const targetSignUp = signUp || client?.signUp;
+      const authResource = mode === 'register' 
+        ? (targetSignUp || targetSignIn) 
+        : (targetSignIn || targetSignUp);
 
-      if (typeof primary?.authenticateWithRedirect === 'function') {
-        try {
-          await primary.authenticateWithRedirect({
-            strategy,
-            redirectUrl: callbackUrl,
-            redirectUrlComplete: targetUrl,
-          });
-          return;
-        } catch (primaryErr: any) {
-          console.warn('Primary OAuth redirect attempt failed, trying fallback:', primaryErr);
-        }
+      if (typeof authResource?.authenticateWithRedirect === 'function') {
+        await authResource.authenticateWithRedirect({
+          strategy,
+          redirectUrl: callbackUrl,
+          redirectUrlComplete: targetUrl,
+        });
+        return;
       }
 
-      if (typeof fallback?.authenticateWithRedirect === 'function') {
-        try {
-          await fallback.authenticateWithRedirect({
-            strategy,
-            redirectUrl: callbackUrl,
-            redirectUrlComplete: targetUrl,
-          });
-          return;
-        } catch (fallbackErr: any) {
-          console.warn('Fallback OAuth redirect failed:', fallbackErr);
-        }
-      }
-
-      // 3. Fallback to global redirectToSignIn if available
-      if (typeof activeClerk?.redirectToSignIn === 'function') {
-        await activeClerk.redirectToSignIn({
+      // 3. Fallback: redirectToSignIn
+      if (typeof clerk.redirectToSignIn === 'function') {
+        await clerk.redirectToSignIn({
           signInFallbackRedirectUrl: targetUrl,
           signInForceRedirectUrl: targetUrl,
         });
@@ -103,8 +83,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     } catch (err: any) {
       console.error(`Failed to initiate ${strategy} OAuth:`, err);
     } finally {
-      // Ensure spinner never gets stuck
-      setTimeout(() => setIsLoading(false), 2000);
+      setIsLoading(false);
     }
   };
 
