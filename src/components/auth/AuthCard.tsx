@@ -308,6 +308,15 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     setSuccessMsg(null);
 
     try {
+      // If user has an active session in this browser, sign out first so Clerk doesn't block the reset
+      if (clerk?.signOut && (clerk?.session || clerk?.user || (window as any).Clerk?.session)) {
+        try {
+          await clerk.signOut();
+        } catch {
+          // ignore
+        }
+      }
+
       const targetSignIn = signIn || (clerk as any).client?.signIn;
       if (targetSignIn?.create) {
         await targetSignIn.create({
@@ -322,6 +331,28 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       }
     } catch (err: any) {
       console.error('Password reset request error:', err);
+      const isAlreadySignedIn = 
+        err?.errors?.[0]?.message?.toLowerCase().includes('already signed in') ||
+        err?.message?.toLowerCase().includes('already signed in');
+
+      if (isAlreadySignedIn && clerk?.signOut) {
+        try {
+          await clerk.signOut();
+          const targetSignIn = signIn || (clerk as any).client?.signIn;
+          if (targetSignIn?.create) {
+            await targetSignIn.create({
+              strategy: 'reset_password_email_code',
+              identifier: email.trim(),
+            });
+            setForgotStep('verify');
+            setSuccessMsg('Reset code sent! Check your inbox (and spam folder).');
+            return;
+          }
+        } catch (retryErr: any) {
+          console.error('Retry failed:', retryErr);
+        }
+      }
+
       setAuthError(err?.errors?.[0]?.longMessage || err?.message || 'Could not send reset code. Please check that this email is registered.');
     } finally {
       setIsLoading(false);
