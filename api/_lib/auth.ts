@@ -52,7 +52,17 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
       const email = claims.email || claims.primary_email || `${userId}@clerk.user`;
       let name = claims.name || claims.first_name || (req.headers['x-user-name'] as string) || '';
       if (!name || name.startsWith('user_') || name.includes('@')) {
-        name = 'Atharva Kulkarni';
+        if (/kulkarni.*atharva|atharva.*kulkarni/i.test(email)) {
+          name = 'Atharva Kulkarni';
+        } else if (email && email.includes('@') && !email.endsWith('@clerk.user')) {
+          const handle = email.split('@')[0];
+          const cleanWords = handle.replace(/[0-9._-]+/g, ' ').trim().split(' ').filter(Boolean);
+          name = cleanWords.length > 0 
+            ? cleanWords.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') 
+            : 'Prompt Architect';
+        } else {
+          name = 'Prompt Architect';
+        }
       }
 
       try {
@@ -64,9 +74,10 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
 
         if (existing.length > 0 && existing[0]) {
           const user = existing[0];
-          const cleanName = (!user.name || user.name.startsWith('user_') || user.name.includes('@'))
-            ? 'Atharva Kulkarni'
-            : user.name;
+          let cleanName = user.name;
+          if (!cleanName || cleanName.startsWith('user_') || cleanName.includes('@')) {
+            cleanName = name;
+          }
           return {
             id: user.id,
             email: user.email,

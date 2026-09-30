@@ -1,3 +1,5 @@
+import { savePromptToDb, fetchUserPromptsFromDb, deletePromptFromDb } from './telemetry';
+
 export interface HistoryPromptItem {
   id: string;
   title: string;
@@ -83,7 +85,42 @@ export function addPromptToHistory(
   }
 
   saveGeneratorHistory(updated);
+  
+  // Persist prompt to Neon DB in background
+  try {
+    savePromptToDb({
+      id: newItem.id,
+      title: newItem.title,
+      ideaText: newItem.ideaText,
+      promptText: newItem.promptText,
+      targetType: newItem.targetType,
+    });
+  } catch (err) {
+    console.warn('Background DB prompt sync failed:', err);
+  }
+
   return newItem;
+}
+
+export async function syncHistoryFromDb(): Promise<HistoryPromptItem[]> {
+  try {
+    const dbPrompts = await fetchUserPromptsFromDb();
+    if (dbPrompts && dbPrompts.length > 0) {
+      const local = getStoredGeneratorHistory();
+      const localMap = new Map(local.map(i => [i.id, i]));
+      for (const p of dbPrompts) {
+        if (!localMap.has(p.id)) {
+          localMap.set(p.id, p);
+        }
+      }
+      const merged = Array.from(localMap.values()).sort((a, b) => b.createdAt - a.createdAt);
+      saveGeneratorHistory(merged);
+      return merged;
+    }
+  } catch (err) {
+    console.warn('Failed to sync history from DB:', err);
+  }
+  return getStoredGeneratorHistory();
 }
 
 export function togglePinPrompt(id: string): HistoryPromptItem[] {
@@ -102,5 +139,10 @@ export function deletePromptFromHistory(id: string): HistoryPromptItem[] {
   const current = getStoredGeneratorHistory();
   const updated = current.filter(item => item.id !== id);
   saveGeneratorHistory(updated);
+  try {
+    deletePromptFromDb(id);
+  } catch (err) {
+    console.warn('Failed to delete prompt from DB:', err);
+  }
   return updated;
 }

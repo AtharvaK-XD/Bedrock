@@ -47,51 +47,68 @@ export function resolveCleanName(rawName?: string | null, rawEmail?: string | nu
     if (/kulkarni.*atharva|atharva.*kulkarni/i.test(handle)) {
       return 'Atharva Kulkarni';
     }
-    if (/atharva/i.test(handle)) {
-      return 'Atharva';
-    }
     const cleanWords = handle.replace(/[0-9._-]+/g, ' ').trim().split(' ').filter(Boolean);
     if (cleanWords.length > 0) {
       return cleanWords.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     }
   }
 
-  return 'Atharva Kulkarni';
+  return 'Prompt Architect';
 }
 
 /**
  * Computes 2-letter uppercase avatar initials, avoiding 'US' from 'user_...'
  */
 export function resolveInitials(name?: string | null): string {
-  if (!name || name.startsWith('user_')) return 'AK';
+  if (!name || name.startsWith('user_')) return 'PA';
   const parts = name.trim().split(' ').filter(Boolean);
   if (parts.length >= 2) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
-  return name.slice(0, 2).toUpperCase();
+  return name.slice(0, 2).toUpperCase() || 'PA';
 }
 
-const DEFAULT_PROFILE: UserProfile = {
-  name: 'Atharva Kulkarni',
-  email: 'kulkarniatharva529@gmail.com',
-  username: 'atharvak',
-  role: 'Lead Prompt Architect',
-  bio: 'Architecting multi-model agentic pipelines and system prompt evaluation trees on Bedrock.',
-  plan: 'Free Plan',
-  location: 'San Francisco, CA (UTC-7)',
-  organization: 'Bedrock Labs',
-  avatarInitials: 'AK',
-  avatarUrl: '',
-  github: 'AtharvaK-XD',
-  huggingface: 'atharvak',
-  website: 'https://bedrock.ai',
-  joinedDate: 'January 2025',
-};
+/**
+ * Returns a clean, blank profile for a user starting on Bedrock
+ */
+export function getBlankProfile(userOrName?: any, email = '', joinedDate = ''): UserProfile {
+  let nameStr = '';
+  let emailStr = email || '';
+  if (userOrName && typeof userOrName === 'object') {
+    nameStr = userOrName.fullName || userOrName.firstName || '';
+    emailStr = userOrName.primaryEmailAddress?.emailAddress || email || '';
+  } else if (typeof userOrName === 'string') {
+    nameStr = userOrName;
+  }
+
+  const cleanName = resolveCleanName(nameStr, emailStr);
+  const cleanEmail = emailStr || '';
+  const username = cleanEmail && !cleanEmail.endsWith('@clerk.user') 
+    ? cleanEmail.split('@')[0] 
+    : (cleanName !== 'Prompt Architect' ? cleanName.toLowerCase().replace(/\s+/g, '') : 'architect');
+
+  return {
+    name: cleanName,
+    email: cleanEmail,
+    username,
+    role: 'Lead Prompt Architect',
+    bio: '',
+    plan: 'Free Plan',
+    location: '',
+    organization: '',
+    avatarInitials: resolveInitials(cleanName),
+    avatarUrl: '',
+    github: '',
+    huggingface: '',
+    website: '',
+    joinedDate: joinedDate || new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+  };
+}
 
 function getStoredProfile(): UserProfile {
   try {
     const item = localStorage.getItem(STORAGE_KEY);
-    if (!item) return DEFAULT_PROFILE;
+    if (!item) return getBlankProfile();
     const parsed = JSON.parse(item);
     
     // Auto-sanitize if previously cached as a Clerk user_ ID or email
@@ -99,13 +116,13 @@ function getStoredProfile(): UserProfile {
     const cleanInitials = resolveInitials(cleanName);
     
     return {
-      ...DEFAULT_PROFILE,
+      ...getBlankProfile(),
       ...parsed,
       name: cleanName,
       avatarInitials: (parsed.avatarInitials === 'US' || !parsed.avatarInitials) ? cleanInitials : parsed.avatarInitials,
     };
   } catch {
-    return DEFAULT_PROFILE;
+    return getBlankProfile();
   }
 }
 
@@ -128,6 +145,22 @@ export function useUserProfile() {
           const clerkName = clerkUser.fullName || clerkUser.firstName || resolveCleanName(clerkUser.username, clerkUser.primaryEmailAddress?.emailAddress);
           const clerkEmail = clerkUser.primaryEmailAddress?.emailAddress;
           const clerkAvatar = clerkUser.imageUrl;
+
+          // Check if this is a brand new user signup or user switch
+          const activeUserId = localStorage.getItem('bedrock_active_user_id');
+          const isUserSwitch = activeUserId && activeUserId !== clerkUser.id;
+          const isNewSignup = !localStorage.getItem(`bedrock_user_init_${clerkUser.id}`);
+
+          if (isUserSwitch || isNewSignup) {
+            localStorage.setItem('bedrock_active_user_id', clerkUser.id);
+            localStorage.setItem(`bedrock_user_init_${clerkUser.id}`, 'true');
+
+            if (isNewSignup) {
+              // RESET ALL DEMO/PREVIOUS DATA FOR BRAND NEW SIGNUP
+              localStorage.removeItem(STORAGE_KEY);
+              localStorage.removeItem('bedrock_generator_history');
+            }
+          }
           
           if (clerkName && (profile.name.startsWith('user_') || profile.name !== clerkName || clerkAvatar)) {
             const current = getStoredProfile();
@@ -159,7 +192,7 @@ export function useUserProfile() {
             const res = await fetch('/api/user/profile', {
               headers: { 
                 Authorization: `Bearer ${token}`,
-                'x-user-name': clerkUser?.fullName || clerkUser?.firstName || 'Atharva Kulkarni',
+                'x-user-name': clerkUser?.fullName || clerkUser?.firstName || '',
               },
             });
             if (res.ok) {
@@ -167,17 +200,17 @@ export function useUserProfile() {
               const cleanName = resolveCleanName(data.name, data.email || clerkUser?.primaryEmailAddress?.emailAddress);
               const cleanInitials = resolveInitials(cleanName);
               const merged: UserProfile = { 
-                ...getStoredProfile(), 
+                ...getBlankProfile(cleanName, data.email || clerkUser?.primaryEmailAddress?.emailAddress, data.joinedDate), 
                 ...data,
                 name: cleanName,
                 avatarInitials: cleanInitials,
-                avatarUrl: data.avatarUrl || clerkUser?.imageUrl || getStoredProfile().avatarUrl,
+                avatarUrl: data.avatarUrl || clerkUser?.imageUrl || '',
               };
               localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
               setProfileState(merged);
 
-              // If backend had returned a user_ ID, sync back the clean human name
-              if (data.name && data.name.startsWith('user_')) {
+              // If backend had returned a raw user_ ID, sync back the clean human name to Neon DB
+              if (data.name && data.name.startsWith('user_') && cleanName && !cleanName.startsWith('user_')) {
                 fetch('/api/user/profile', {
                   method: 'PUT',
                   headers: { 
@@ -248,12 +281,13 @@ export function useUserProfile() {
   };
 
   const resetProfile = () => {
+    const blank = getBlankProfile();
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PROFILE));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(blank));
     } catch (e) {
       console.error('Failed to reset user profile', e);
     }
-    setProfileState(DEFAULT_PROFILE);
+    setProfileState(blank);
     window.dispatchEvent(new Event(PROFILE_EVENT));
   };
 

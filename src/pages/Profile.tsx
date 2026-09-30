@@ -4,11 +4,13 @@ import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
-import { useUserProfile, resolveCleanName, resolveInitials } from '../lib/useUserProfile';
+import { useUserProfile, resolveCleanName, resolveInitials, getBlankProfile } from '../lib/useUserProfile';
 import { useUser } from '@clerk/react';
 import { PromptActivityHeatmap } from '../components/profile/PromptActivityHeatmap';
 import { processAvatarImage } from '../lib/imageUtils';
 import { AgentIcon } from '../components/ui/ModelLogos';
+import { getUserTelemetry, TELEMETRY_UPDATE_EVENT, type UserTelemetrySummary } from '../lib/telemetry';
+import { syncHistoryFromDb, HISTORY_UPDATE_EVENT, type HistoryPromptItem } from '../lib/generatorHistory';
 
 const BANNER_THEMES = [
   {
@@ -72,45 +74,6 @@ const SPECIALIZATION_TAGS = [
 
 type Tab = 'overview' | 'edit' | 'usage' | 'preferences';
 
-const RECENT_ACTIVITY = [
-  {
-    id: 'ACT-01',
-    title: 'Customer Support Triaging Prompt',
-    type: 'Wizard Pipeline',
-    model: 'gemini-2.5-flash',
-    date: '12 minutes ago',
-    status: 'Optimized (98%)',
-    path: '/app/generator',
-  },
-  {
-    id: 'ACT-02',
-    title: 'SQL Code Synthesis & Fallback Branch',
-    type: 'Branching Tree',
-    model: 'llama-3.1-70b',
-    date: '2 hours ago',
-    status: '3 Active Nodes',
-    path: '/app/branching',
-  },
-  {
-    id: 'ACT-03',
-    title: 'Financial Document Extractor Benchmark',
-    type: 'Prompt Tester',
-    model: 'llama-3.1 vs gemini-2.5',
-    date: 'Yesterday',
-    status: '50 Runs Evaluated',
-    path: '/app/tester',
-  },
-  {
-    id: 'ACT-04',
-    title: 'Multi-turn Technical Explainer',
-    type: 'Library Template',
-    model: 'llama-3-70b',
-    date: '3 days ago',
-    status: 'Saved to Library',
-    path: '/app/library',
-  },
-];
-
 export default function Profile() {
   const { profile, updateProfile, resetProfile } = useUserProfile();
   const { user: clerkUser } = useUser();
@@ -131,6 +94,49 @@ export default function Profile() {
   const [photoMessage, setPhotoMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const themePickerRef = useRef<HTMLDivElement>(null);
+
+  const [telemetry, setTelemetry] = useState<UserTelemetrySummary>({
+    totalInferences: 0,
+    totalTokens: 0,
+    avgLatency: 0,
+    p99Latency: 0,
+    reliability: 100,
+    activeModelsCount: 0,
+    activeModels: [],
+    traces: [],
+  });
+  const [prompts, setPrompts] = useState<HistoryPromptItem[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadUserData = async () => {
+      const [syncedPrompts, userTelem] = await Promise.all([
+        syncHistoryFromDb(),
+        getUserTelemetry(),
+      ]);
+      if (isMounted) {
+        setPrompts(syncedPrompts);
+        setTelemetry(userTelem);
+      }
+    };
+    loadUserData();
+
+    const handleTelemUpdate = (e: any) => {
+      if (e.detail) setTelemetry(e.detail);
+    };
+    const handleHistUpdate = (e: any) => {
+      if (e.detail) setPrompts(e.detail);
+    };
+
+    window.addEventListener(TELEMETRY_UPDATE_EVENT, handleTelemUpdate);
+    window.addEventListener(HISTORY_UPDATE_EVENT, handleHistUpdate);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(TELEMETRY_UPDATE_EVENT, handleTelemUpdate);
+      window.removeEventListener(HISTORY_UPDATE_EVENT, handleHistUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -155,6 +161,20 @@ export default function Profile() {
     github: profile.github,
     huggingface: profile.huggingface,
   });
+
+  useEffect(() => {
+    setFormData({
+      name: profile.name,
+      username: profile.username,
+      role: profile.role,
+      organization: profile.organization,
+      bio: profile.bio,
+      location: profile.location,
+      email: profile.email,
+      github: profile.github,
+      huggingface: profile.huggingface,
+    });
+  }, [profile]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -227,18 +247,19 @@ export default function Profile() {
   };
 
   const handleReset = () => {
-    if (confirm('Reset profile to original factory defaults?')) {
+    if (confirm('Reset profile to factory defaults?')) {
+      const blank = getBlankProfile(clerkUser);
       resetProfile();
       setFormData({
-        name: 'Atharva K.',
-        username: 'atharva_ai',
-        role: 'Senior Prompt Architect',
-        organization: 'Independent Lab',
-        bio: 'Designing high-precision multi-turn cognitive prompts and structured reasoning chains for LLMs.',
-        location: 'Bengaluru, India',
-        email: 'atharva@bedrock.dev',
-        github: 'atharva-ai',
-        huggingface: 'atharva',
+        name: blank.name,
+        username: blank.username,
+        role: blank.role,
+        organization: blank.organization,
+        bio: blank.bio,
+        location: blank.location,
+        email: blank.email,
+        github: blank.github,
+        huggingface: blank.huggingface,
       });
     }
   };
@@ -407,7 +428,7 @@ export default function Profile() {
                       className="group/handle inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all cursor-pointer"
                       title="Click to copy handle"
                     >
-                      <span>@{profile.username || 'atharvak'}</span>
+                      <span>@{profile.username || clerkUser?.username || clerkUser?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'architect'}</span>
                       {copiedHandle && <span className="text-copper-400 font-bold">(copied)</span>}
                     </button>
 
@@ -500,7 +521,9 @@ export default function Profile() {
             <div className="mt-5 pt-4 border-t border-white/5 space-y-3">
               <div className="pl-3.5 border-l-2 border-copper-400/80 py-0.5">
                 <p className="text-sm text-gray-300 leading-relaxed italic">
-                  "{profile.bio}"
+                  {profile.bio && profile.bio.trim().length > 0
+                    ? `"${profile.bio}"`
+                    : "No bio added yet. Click 'Edit Profile' to customize your bio, specialization, and handle."}
                 </p>
               </div>
 
@@ -524,32 +547,50 @@ export default function Profile() {
           <div className="grid grid-cols-2 sm:grid-cols-5 border-t border-white/10 bg-black/40 backdrop-blur-md divide-y sm:divide-y-0 sm:divide-x divide-white/5 font-mono">
             <div className="p-4 sm:p-5 hover:bg-white/[0.03] transition-all">
               <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Prompts Built</div>
-              <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">142</p>
-              <p className="text-[10px] text-gray-500 mt-1">42 active in prod</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{prompts.length}</p>
+              <p className="text-[10px] text-gray-500 mt-1">{prompts.length > 0 ? `${prompts.length} in library` : '0 in library'}</p>
             </div>
 
             <div className="p-4 sm:p-5 hover:bg-white/[0.03] transition-all">
-              <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Branch Runs</div>
-              <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">1,894</p>
-              <p className="text-[10px] text-gray-500 mt-1">3.2 avg tree depth</p>
+              <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Inferences</div>
+              <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{telemetry.totalInferences.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-500 mt-1">{telemetry.totalInferences > 0 ? 'Telemetry active' : 'No runs yet'}</p>
             </div>
 
             <div className="p-4 sm:p-5 hover:bg-white/[0.03] transition-all">
               <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Tokens Used</div>
-              <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">4.2M</p>
-              <p className="text-[10px] text-gray-500 mt-1">84% quota</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                {telemetry.totalTokens >= 1000000 
+                  ? `${(telemetry.totalTokens / 1000000).toFixed(1)}M` 
+                  : telemetry.totalTokens >= 1000 
+                    ? `${(telemetry.totalTokens / 1000).toFixed(1)}k` 
+                    : telemetry.totalTokens.toString()}
+              </p>
+              <p className="text-[10px] text-gray-500 mt-1">
+                {telemetry.totalTokens > 0 
+                  ? `${Math.min(100, Math.round((telemetry.totalTokens / 10000) * 100))}% free tier` 
+                  : '0% free tier'}
+              </p>
             </div>
 
             <div className="p-4 sm:p-5 hover:bg-white/[0.03] transition-all">
               <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Reliability</div>
-              <p className="text-2xl sm:text-3xl font-bold text-emerald-400 tracking-tight">99.4%</p>
-              <p className="text-[10px] text-emerald-500 mt-1">Optimal SLA</p>
+              <p className="text-2xl sm:text-3xl font-bold text-emerald-400 tracking-tight">
+                {telemetry.totalInferences > 0 ? `${telemetry.reliability}%` : '100%'}
+              </p>
+              <p className="text-[10px] text-emerald-500 mt-1">
+                {telemetry.totalInferences > 0 ? 'Verified SLA' : 'Nominal standby'}
+              </p>
             </div>
 
             <div className="p-4 sm:p-5 col-span-2 sm:col-span-1 hover:bg-white/[0.03] transition-all">
               <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Avg Latency</div>
-              <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">412ms</p>
-              <p className="text-[10px] text-gray-500 mt-1">p95: 580ms</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                {telemetry.avgLatency > 0 ? `${telemetry.avgLatency}ms` : '—'}
+              </p>
+              <p className="text-[10px] text-gray-500 mt-1">
+                {telemetry.p99Latency > 0 ? `p99: ${telemetry.p99Latency}ms` : 'Awaiting runs'}
+              </p>
             </div>
           </div>
         </div>
@@ -590,7 +631,7 @@ export default function Profile() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left 2 Cols */}
                 <div className="lg:col-span-2 space-y-8">
-                  <PromptActivityHeatmap />
+                  <PromptActivityHeatmap activityTimestamps={prompts.map(p => p.createdAt)} />
 
                   {/* Recent Pipeline & Prompt Runs */}
                   <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl shadow-sm">
@@ -603,40 +644,55 @@ export default function Profile() {
                       </Link>
                     </div>
 
-                    <div className="space-y-3">
-                      {RECENT_ACTIVITY.map((act) => (
-                        <Link
-                          key={act.id}
-                          to={act.path}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-white/15 transition-all group"
-                        >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-white group-hover:text-copper-300 transition-colors text-sm">
-                                {act.title}
-                              </span>
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-gray-400">
-                                {act.type}
-                              </span>
+                    {prompts.length > 0 ? (
+                      <div className="space-y-3">
+                        {prompts.slice(0, 5).map((prompt) => (
+                          <Link
+                            key={prompt.id}
+                            to="/app/generator"
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-white/15 transition-all group"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-white group-hover:text-copper-300 transition-colors text-sm">
+                                  {prompt.title}
+                                </span>
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-gray-400">
+                                  Prompt Synthesis
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-gray-500 font-mono">
+                                <span className="flex items-center gap-1.5 text-gray-400">
+                                  <AgentIcon model="gemini-2.5-flash" className="w-3 h-3" badgeClassName="w-4 h-4 bg-white/5 border-white/10" />
+                                  <span>Bedrock Engine</span>
+                                </span>
+                                <span>•</span>
+                                <span>{new Date(prompt.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-gray-500 font-mono">
-                              <span className="flex items-center gap-1.5 text-gray-400">
-                                <AgentIcon model={act.model} className="w-3 h-3" badgeClassName="w-4 h-4 bg-white/5 border-white/10" />
-                                <span>{act.model}</span>
-                              </span>
-                              <span>•</span>
-                              <span>{act.date}</span>
-                            </div>
-                          </div>
 
-                          <div className="flex items-center gap-3 shrink-0">
-                            <span className="text-xs font-mono text-emerald-400 bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-800/40">
-                              {act.status}
-                            </span>
-                          </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="text-xs font-mono text-emerald-400 bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-800/40">
+                                Saved in DB
+                              </span>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 px-4 rounded-2xl border border-dashed border-white/10 bg-white/[0.01]">
+                        <p className="text-sm font-semibold text-white mb-1">No prompt activity yet</p>
+                        <p className="text-xs font-mono text-gray-400 max-w-sm mx-auto mb-4">
+                          Synthesize or test your first prompt to start building your personal telemetry and history.
+                        </p>
+                        <Link
+                          to="/app/generator"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-copper-500 hover:bg-copper-600 text-white transition-all shadow-md shadow-copper-500/20 uppercase tracking-wider"
+                        >
+                          Open Prompt Generator &rarr;
                         </Link>
-                      ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -649,37 +705,31 @@ export default function Profile() {
                     </h2>
                     <p className="text-xs text-gray-400 mb-6 font-mono">Execution share across integrated models</p>
 
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-xs font-mono mb-1.5">
-                          <span className="text-white font-medium">Llama 3.1 70B (Groq)</span>
-                          <span className="text-copper-400 font-bold">52%</span>
-                        </div>
-                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-copper-400 rounded-full" style={{ width: '52%' }} />
-                        </div>
+                    {telemetry.activeModels && telemetry.activeModels.length > 0 ? (
+                      <div className="space-y-4">
+                        {telemetry.activeModels.map((model, idx) => {
+                          const pct = Math.round(100 / telemetry.activeModels.length);
+                          const colors = ['bg-copper-400 text-copper-400', 'bg-cyan-400 text-cyan-400', 'bg-sky-400 text-sky-400'];
+                          const [barBg, textCol] = colors[idx % colors.length].split(' ');
+                          return (
+                            <div key={model}>
+                              <div className="flex justify-between text-xs font-mono mb-1.5">
+                                <span className="text-white font-medium">{model}</span>
+                                <span className={cn("font-bold", textCol)}>{pct}%</span>
+                              </div>
+                              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div className={cn("h-full rounded-full", barBg)} style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs font-mono mb-1.5">
-                          <span className="text-white font-medium">Gemini 2.5 Flash</span>
-                          <span className="text-cyan-400 font-bold">34%</span>
-                        </div>
-                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-cyan-400 rounded-full" style={{ width: '34%' }} />
-                        </div>
+                    ) : (
+                      <div className="py-6 text-center border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">
+                        <p className="text-xs font-mono text-gray-400">No model runs recorded yet</p>
+                        <p className="text-[10px] text-gray-500 mt-1 font-mono">Run inferences to populate real metrics</p>
                       </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs font-mono mb-1.5">
-                          <span className="text-white font-medium">Llama 3 70B (Groq)</span>
-                          <span className="text-sky-400 font-bold">14%</span>
-                        </div>
-                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-sky-400 rounded-full" style={{ width: '14%' }} />
-                        </div>
-                      </div>
-                    </div>
+                    )}
 
                     <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-between text-xs font-mono">
                       <span className="text-gray-400">Routing Mode:</span>
@@ -694,7 +744,7 @@ export default function Profile() {
                         Plan Resource Usage
                       </h2>
                       <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md bg-white/10 text-gray-300">
-                        {profile.plan}
+                        {profile.plan || 'Free Plan'}
                       </span>
                     </div>
 
@@ -702,20 +752,28 @@ export default function Profile() {
                       <div>
                         <div className="flex justify-between text-xs font-mono mb-1.5">
                           <span className="text-gray-400">Monthly Tokens</span>
-                          <span className="text-white font-semibold">8,420 / 10,000 (84%)</span>
+                          <span className="text-white font-semibold">
+                            {telemetry.totalTokens.toLocaleString()} / 10,000 ({Math.min(100, Math.round((telemetry.totalTokens / 10000) * 100))}%)
+                          </span>
                         </div>
                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-amber-500 rounded-full" style={{ width: '84%' }} />
+                          <div 
+                            className="h-full bg-amber-500 rounded-full transition-all duration-500" 
+                            style={{ width: `${Math.min(100, Math.round((telemetry.totalTokens / 10000) * 100))}%` }} 
+                          />
                         </div>
                       </div>
 
                       <div>
                         <div className="flex justify-between text-xs font-mono mb-1.5">
                           <span className="text-gray-400">Daily Runs Quota</span>
-                          <span className="text-white font-semibold">14 / 20 used</span>
+                          <span className="text-white font-semibold">{telemetry.totalInferences} / 20 used</span>
                         </div>
                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-copper-500 rounded-full" style={{ width: '70%' }} />
+                          <div 
+                            className="h-full bg-copper-500 rounded-full transition-all duration-500" 
+                            style={{ width: `${Math.min(100, Math.round((telemetry.totalInferences / 20) * 100))}%` }} 
+                          />
                         </div>
                       </div>
 
@@ -756,21 +814,43 @@ export default function Profile() {
                       <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
                         <div>
                           <p className="font-semibold text-white">GitHub</p>
-                          <p className="text-[10px] text-gray-400">@{profile.github}</p>
+                          <p className="text-[10px] text-gray-400">
+                            {profile.github ? `@${profile.github}` : 'Not linked'}
+                          </p>
                         </div>
-                        <span className="text-[10px] text-emerald-400 font-semibold px-2 py-0.5 bg-emerald-950/40 rounded border border-emerald-800/40">
-                          Connected
-                        </span>
+                        {profile.github ? (
+                          <span className="text-[10px] text-emerald-400 font-semibold px-2 py-0.5 bg-emerald-950/40 rounded border border-emerald-800/40">
+                            Connected
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setActiveTab('edit')}
+                            className="text-[10px] text-gray-400 hover:text-white px-2 py-0.5 bg-white/5 rounded border border-white/10 hover:border-white/20 transition-colors"
+                          >
+                            Link Account
+                          </button>
+                        )}
                       </div>
 
                       <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
                         <div>
                           <p className="font-semibold text-white">HuggingFace</p>
-                          <p className="text-[10px] text-gray-400">@{profile.huggingface}</p>
+                          <p className="text-[10px] text-gray-400">
+                            {profile.huggingface ? `@${profile.huggingface}` : 'Not linked'}
+                          </p>
                         </div>
-                        <span className="text-[10px] text-emerald-400 font-semibold px-2 py-0.5 bg-emerald-950/40 rounded border border-emerald-800/40">
-                          Connected
-                        </span>
+                        {profile.huggingface ? (
+                          <span className="text-[10px] text-emerald-400 font-semibold px-2 py-0.5 bg-emerald-950/40 rounded border border-emerald-800/40">
+                            Connected
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setActiveTab('edit')}
+                            className="text-[10px] text-gray-400 hover:text-white px-2 py-0.5 bg-white/5 rounded border border-white/10 hover:border-white/20 transition-colors"
+                          >
+                            Link Account
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -965,18 +1045,30 @@ export default function Profile() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 font-mono">
                     <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
                       <span className="text-xs text-gray-400 uppercase tracking-wider">Monthly Free Tokens</span>
-                      <p className="text-xl font-bold text-white">1,580 <span className="text-xs font-normal text-gray-500">/ 10,000</span></p>
+                      <p className="text-xl font-bold text-white">
+                        {telemetry.totalTokens.toLocaleString()}{' '}
+                        <span className="text-xs font-normal text-gray-500">/ 10,000</span>
+                      </p>
                       <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                        <div className="h-full bg-amber-400 rounded-full" style={{ width: '84%' }} />
+                        <div 
+                          className="h-full bg-amber-400 rounded-full transition-all duration-500" 
+                          style={{ width: `${Math.min(100, Math.round((telemetry.totalTokens / 10000) * 100))}%` }} 
+                        />
                       </div>
                       <p className="text-[10px] text-gray-500">Resets on the 1st of each month.</p>
                     </div>
 
                     <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-                      <span className="text-xs text-gray-400 uppercase tracking-wider">Concurrent Pipelines</span>
-                      <p className="text-xl font-bold text-white">1 Active <span className="text-xs font-normal text-gray-500">/ 2 Max</span></p>
+                      <span className="text-xs text-gray-400 uppercase tracking-wider">Daily Pipelines Run</span>
+                      <p className="text-xl font-bold text-white">
+                        {telemetry.totalInferences}{' '}
+                        <span className="text-xs font-normal text-gray-500">/ 20 Max</span>
+                      </p>
                       <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                        <div className="h-full bg-copper-400 rounded-full" style={{ width: '50%' }} />
+                        <div 
+                          className="h-full bg-copper-400 rounded-full transition-all duration-500" 
+                          style={{ width: `${Math.min(100, Math.round((telemetry.totalInferences / 20) * 100))}%` }} 
+                        />
                       </div>
                       <p className="text-[10px] text-gray-500">Pro plan supports 20 threads.</p>
                     </div>
