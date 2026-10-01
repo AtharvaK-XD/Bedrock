@@ -1,4 +1,4 @@
-const { contextBridge, webFrame } = require("electron");
+const { contextBridge, webFrame, ipcRenderer } = require("electron");
 
 try {
   webFrame.setZoomFactor(0.92);
@@ -10,15 +10,31 @@ try {
 contextBridge.exposeInMainWorld("isDesktopApp", true);
 contextBridge.exposeInMainWorld("IS_ELECTRON", true);
 
-// Expose safe, tamper-proof IPC interface without raw internal reflection
+// Expose safe, tamper-proof IPC interface for auto-updater
+contextBridge.exposeInMainWorld(
+  "electronUpdater",
+  Object.freeze({
+    isAvailable: true,
+    checkForUpdates: () => ipcRenderer.invoke("updater:check"),
+    installUpdate: () => ipcRenderer.invoke("updater:install"),
+    getVersion: () => ipcRenderer.invoke("updater:get-version"),
+    onStatusChange: (callback) => {
+      const listener = (_event, data) => callback(data);
+      ipcRenderer.on("updater:status", listener);
+      return () => ipcRenderer.removeListener("updater:status", listener);
+    },
+  })
+);
+
+// Expose secure IPC interface
 contextBridge.exposeInMainWorld(
   "ipcRenderer",
   Object.freeze({
     isAvailable: true,
-    version: "1.0.0",
-    on: () => {},
-    off: () => {},
-    send: () => {},
-    invoke: async () => null,
+    version: "1.2.0",
+    on: (channel, listener) => ipcRenderer.on(channel, listener),
+    off: (channel, listener) => ipcRenderer.removeListener(channel, listener),
+    send: (channel, ...args) => ipcRenderer.send(channel, ...args),
+    invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
   })
 );
