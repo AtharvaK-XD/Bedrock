@@ -1,13 +1,21 @@
 import { createRequire } from "node:module";
-import { BrowserWindow, app, shell, session } from "electron";
+import { BrowserWindow, app, shell, session, dialog, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
 import http from "node:http";
 
-createRequire(import.meta.url);
+const require = createRequire(import.meta.url);
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname, "..");
+
+let autoUpdater = null;
+try {
+	const updaterModule = require("electron-updater");
+	autoUpdater = updaterModule.autoUpdater;
+} catch (e) {
+	console.warn("[AutoUpdater] Module load error:", e?.message);
+}
 var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 var MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 var RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
@@ -206,6 +214,8 @@ function createWindow() {
 	// Securely inject desktop identity flags
 	win.webContents.executeJavaScript("window.IS_ELECTRON = true; window.isDesktopApp = true;");
 
+	setupAutoUpdater(win);
+
 	if (VITE_DEV_SERVER_URL) {
 		win.loadURL(VITE_DEV_SERVER_URL);
 	} else {
@@ -216,6 +226,125 @@ function createWindow() {
 		});
 	}
 }
+
+function setupAutoUpdater(mainWindow) {
+	if (!autoUpdater) return;
+
+	try {
+		autoUpdater.autoDownload = true;
+		autoUpdater.autoInstallOnAppQuit = true;
+		autoUpdater.logger = console;
+
+		autoUpdater.setFeedURL({
+			provider: "github",
+			owner: "Bedrockxai",
+			repo: "Bedrock",
+			releaseType: "release"
+		});
+
+		autoUpdater.on("checking-for-update", () => {
+			console.log("[AutoUpdater] Checking for updates...");
+			mainWindow?.webContents.send("updater:status", { status: "checking" });
+		});
+
+		autoUpdater.on("update-available", (info) => {
+			console.log(`[AutoUpdater] Update available: v${info.version}`);
+			mainWindow?.webContents.send("updater:status", {
+				status: "available",
+				version: info.version,
+				releaseNotes: info.releaseNotes,
+			});
+		});
+
+		autoUpdater.on("update-not-available", (info) => {
+			console.log("[AutoUpdater] App is up to date.");
+			mainWindow?.webContents.send("updater:status", {
+				status: "up-to-date",
+				currentVersion: app.getVersion(),
+			});
+		});
+
+		autoUpdater.on("download-progress", (progressObj) => {
+			mainWindow?.webContents.send("updater:status", {
+				status: "downloading",
+				percent: Math.round(progressObj.percent),
+				bytesPerSecond: progressObj.bytesPerSecond,
+				transferred: progressObj.transferred,
+				total: progressObj.total,
+			});
+		});
+
+		autoUpdater.on("update-downloaded", (info) => {
+			console.log(`[AutoUpdater] Update downloaded: v${info.version}`);
+			mainWindow?.webContents.send("updater:status", {
+				status: "downloaded",
+				version: info.version,
+			});
+
+			dialog.showMessageBox(mainWindow, {
+				type: "info",
+				buttons: ["Restart Now", "Later"],
+				defaultId: 0,
+				cancelId: 1,
+				title: "Update Ready - Bedrock",
+				message: `Bedrock v${info.version} is available!`,
+				detail: "A new version has been downloaded. Restart to apply update now.",
+				noLink: true,
+			}).then(({ response }) => {
+				if (response === 0) {
+					autoUpdater.quitAndInstall();
+				}
+			});
+		});
+
+		autoUpdater.on("error", (err) => {
+			console.warn("[AutoUpdater] Error during check:", err?.message || err);
+			mainWindow?.webContents.send("updater:status", {
+				status: "error",
+				error: err?.message || "Update check failed",
+			});
+		});
+
+		// Check automatically 8 seconds after window launch in packaged build
+		setTimeout(() => {
+			if (app.isPackaged) {
+				autoUpdater.checkForUpdates().catch((err) => {
+					console.warn("[AutoUpdater] Initial check error:", err?.message);
+				});
+			}
+		}, 8000);
+	} catch (err) {
+		console.warn("[AutoUpdater] Setup error:", err);
+	}
+}
+
+// IPC Handlers for manual checks from settings / banner
+ipcMain.handle("updater:check", async () => {
+	if (autoUpdater && app.isPackaged) {
+		try {
+			const res = await autoUpdater.checkForUpdates();
+			return { success: true, updateInfo: res?.updateInfo };
+		} catch (err) {
+			return { success: false, error: err.message };
+		}
+	}
+	return {
+		success: true,
+		status: "dev-mode",
+		message: "Auto-updater checks are active in packaged desktop build.",
+		currentVersion: app.getVersion(),
+	};
+});
+
+ipcMain.handle("updater:install", () => {
+	if (autoUpdater) {
+		autoUpdater.quitAndInstall();
+	}
+});
+
+ipcMain.handle("updater:get-version", () => {
+	return app.getVersion();
+});
 
 // Enforce single instance lock (prevents duplicate malicious sidecar injection)
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
