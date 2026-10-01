@@ -28,7 +28,10 @@
     "preview": "vite preview",
     "scan:secrets": "node scripts/scan-secrets.js",
     "test:injection": "cd server && npx tsx tests/prompt-injection-runner.ts",
-    "test:attacks": "cd server && npx tsx tests/security-attack-suite.ts"
+    "test:attacks": "cd server && npx tsx tests/security-attack-suite.ts",
+    "test:k6:ratelimit": "node scripts/run-k6.js run tests/k6-rate-limit-test.js",
+    "test:k6:load": "node scripts/run-k6.js run tests/k6-load-balancing-test.js",
+    "test:k6:wizard": "node scripts/run-k6.js run tests/k6-wizard-load-test.js"
   },
   "dependencies": {
     "@clerk/react": "^6.17.0",
@@ -44,6 +47,8 @@
     "@tanstack/react-query": "^5.101.4",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@types/three": "^0.185.4",
+    "@upstash/ratelimit": "^2.2.0",
+    "@upstash/redis": "^1.39.0",
     "@vercel/node": "^16.0.2",
     "@xyflow/react": "^12.11.3",
     "border-beam": "^1.3.0",

@@ -2,11 +2,16 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { checkPromptInjection, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion } from '../_lib/ai.js';
+import { enforceRateLimit } from '../_lib/rateLimiter.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Enforce distributed Upstash Redis rate limiting
+  const allowed = await enforceRateLimit(req, res, 'test');
+  if (!allowed) return;
 
   const startTime = Date.now();
   const user = await authenticateRequest(req);

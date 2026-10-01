@@ -1,8 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb } from '../_lib/db.js';
+import { enforceRateLimit } from '../_lib/rateLimiter.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Enforce distributed Upstash Redis rate limiting
+  const allowed = await enforceRateLimit(req, res, 'prompts');
+  if (!allowed) return;
+
   const user = await authenticateRequest(req);
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized' });
