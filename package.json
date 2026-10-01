@@ -16,6 +16,14 @@
       "dist/**/*",
       "dist-electron/**/*"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Bedrockxai",
+        "repo": "Bedrock",
+        "releaseType": "release"
+      }
+    ],
     "win": {
       "target": "nsis"
     }
@@ -23,6 +31,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "electron:build": "npm run build && electron-builder --win",
+    "electron:pack": "npm run build && electron-builder --dir",
     "tauri": "tauri",
     "lint": "oxlint",
     "preview": "vite preview",
@@ -53,6 +63,7 @@
     "@xyflow/react": "^12.11.3",
     "border-beam": "^1.3.0",
     "clsx": "^2.1.1",
+    "electron-updater": "^6.8.9",
     "framer-motion": "^12.43.0",
     "gsap": "^3.15.0",
     "lenis": "^1.3.25",
