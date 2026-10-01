@@ -41,6 +41,12 @@ function AnimatedRoutes() {
   const isDesktop = isDesktopApp();
   
   useEffect(() => {
+    // If desktop receives OAuth callback path without hash, redirect to hash router path
+    if (typeof window !== 'undefined' && window.location.pathname.includes('sso-callback') && !window.location.hash.includes('sso-callback')) {
+      window.location.replace(`${window.location.origin}/#/sso-callback${window.location.search}`);
+      return;
+    }
+
     window.scrollTo(0, 0);
     ScrollTrigger.refresh();
   }, [location.pathname]);
