@@ -178,43 +178,43 @@ export default function Landing() {
         </div>
 
         {/* Hero Section */}
-        <section className="hero-section relative z-10 w-full min-h-screen flex items-center justify-center pt-32 pb-20 px-8 lg:px-24">
-          <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-8">
-            <div className="w-full lg:w-[50%] flex flex-col justify-center max-w-2xl lg:pr-10 z-10 mix-blend-difference">
-              <h1 className="hero-title-parallax font-display font-medium text-[clamp(4.5rem,9vw,9rem)] leading-[0.85] tracking-tight mb-8 text-white -ml-1">
+        <section className="hero-section relative z-10 w-full min-h-screen lg:h-screen lg:min-h-[580px] flex items-center justify-center px-6 sm:px-10 lg:px-16 xl:px-24 py-12 lg:py-0">
+          <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-8 max-w-7xl mx-auto">
+            <div className="w-full lg:w-[52%] flex flex-col justify-center max-w-2xl lg:pr-6 z-10 mix-blend-difference">
+              <h1 className="hero-title-parallax font-display font-medium text-[clamp(3.2rem,6vw,6.5rem)] leading-[0.88] tracking-tight mb-5 lg:mb-6 text-white -ml-1">
                 Intelligence, <br />
                 <span className="text-gray-400">shaped by you.</span>
               </h1>
               
-              <p className="hero-fade-up text-lg md:text-xl text-gray-400 leading-relaxed max-w-xl font-light mb-12">
+              <p className="hero-fade-up text-base md:text-lg text-gray-400 leading-relaxed max-w-xl font-light mb-6 lg:mb-8">
                 The most advanced environment for prompt engineering. Refine your thoughts into precise instructions with unparalleled clarity.
               </p>
 
-              <div className="hero-fade-up flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              <div className="hero-fade-up flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-6">
                 <a 
                   href="https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/Bedrock-Setup.exe" 
                   download
-                  className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-black rounded-full font-semibold text-lg hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                  className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-full font-semibold text-base sm:text-lg hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
                 >
                   Download for Windows
                 </a>
-                <div className="flex flex-col text-sm text-gray-500 font-medium">
+                <div className="flex flex-col text-xs sm:text-sm text-gray-500 font-medium">
                   <span>Version 2.0.1</span>
                   <span>Native Desktop Experience</span>
                 </div>
               </div>
             </div>
 
-            <div className="hero-fade-up w-full lg:w-[40%] max-w-[440px] flex justify-center lg:justify-end z-20">
+            <div className="hero-fade-up w-full lg:w-[42%] max-w-[420px] flex justify-center lg:justify-end z-20">
               <div data-cursor="hover" className="w-full rounded-[2rem] p-1 bg-gradient-to-b from-white/10 to-transparent shadow-2xl backdrop-blur-xl">
                 <AuthCard />
               </div>
             </div>
           </div>
 
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 opacity-50 z-20 hero-fade-up animate-bounce">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-white font-medium">Scroll</div>
-            <div className="w-[1px] h-12 bg-gradient-to-b from-white/50 to-transparent"></div>
+          <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 hidden md:flex flex-col items-center gap-1.5 opacity-40 z-20 hero-fade-up animate-bounce pointer-events-none">
+            <div className="text-[9px] uppercase tracking-[0.2em] text-white font-medium">Scroll</div>
+            <div className="w-[1px] h-8 bg-gradient-to-b from-white/50 to-transparent"></div>
           </div>
         </section>
 
