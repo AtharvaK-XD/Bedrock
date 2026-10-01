@@ -1,3 +1,10 @@
+import {
+  BEDROCK_CORE_GUARDRAILS,
+  buildRefineSystemPrompt,
+  extractRefineResult,
+  sanitizeRenderedPrompt,
+} from './aiPrompts';
+
 export interface IdeaPayload {
   ideaText: string;
   targetType: 'coding_agent' | 'freelancer_brief' | 'hackathon_pitch' | 'no_code';
@@ -539,6 +546,9 @@ export const generateQuestions = async (payload: IdeaPayload): Promise<Question[
   if (hasClientKey) {
     const systemPrompt = `You are an elite product manager and technical architect.
 Your task is to analyze the user's idea and generate exactly 3 to 4 clarifying questions to scope the project.
+
+${BEDROCK_CORE_GUARDRAILS}
+
 Output MUST be strictly valid JSON array of objects without markdown fences, comments, or backticks.
 Each object in the array must strictly have:
 - "id": string (e.g. "q1", "q2", "q3")
@@ -663,6 +673,8 @@ export const synthesizePrompt = async (
 
   const systemPrompt = `You are an elite principal software architect and prompt engineering director.
 Your mission is to generate a world-class, bespoke engineering specification and operational prompt tailored precisely to the user's project idea, target platform, and domain.
+
+${BEDROCK_CORE_GUARDRAILS}
 
 CRITICAL ARCHITECTURAL & FORMATTING DIRECTIVES:
 1. BAN ON COOKIE-CUTTER REPETITION:
@@ -827,31 +839,7 @@ export const refinePrompt = async (
   );
 
   if (hasClientKey) {
-    const systemPrompt = `You are an elite principal prompt architect and software design partner.
-The user is actively refining and iterating on their project prompt document through a collaborative conversation.
-Your goal is not merely to perform mechanical text replacements, but to INTELLIGENTLY IMPROVISE, EVOLVE, AND DEEPEN the document with every follow-up.
-
-REFINEMENT & IMPROVISATION DIRECTIVES:
-1. INTELLIGENT ARCHITECTURAL IMPROVISATION:
-   - When the user asks for a feature, stack adjustment, or constraint, proactively deduce and inject the downstream architectural consequences.
-   - Example: If the user says "add Stripe payments", don't just add a bullet point. Improvise the database schema (customer table, subscription IDs, webhook event logs), add the webhook signature verification flow, inject negative security constraints (prevent replay attacks, idempotent handling), and update the master prompt directives.
-   - Example: If the user says "make it faster / more minimal", restructure the document into a dense, high-signal prompt format, prune unnecessary verbose text, and elevate the core code contracts.
-   - Example: If the user asks a question or explores options (e.g. "should I use Supabase or Neon?"), explain the trade-offs concisely in the summary, select the best fit, and seamlessly integrate the concrete implementation details into the document.
-
-2. DYNAMIC RE-STRUCTURING:
-   - Feel empowered to introduce new sections where valuable (e.g., adding an Architecture Decision Record (ADR), a dedicated Testing & Verification Playbook, a State Machine diagram, or an Environment Variables matrix).
-   - If the user requests a specific format (e.g., "give me a .cursorrules format" or "write a freelancer SOW"), dynamically pivot the formatting of the document to match.
-   - Maintain rich markdown aesthetics: code blocks with concrete schemas/types, Markdown tables, and Mermaid flow diagrams when relevant.
-
-3. CONVERSATION CONTEXT AWARENESS:
-   - Build cumulatively upon the previous conversation turns and refinements. Do not lose previously agreed-upon architectural decisions unless the user explicitly requested replacing them.
-
-4. RESPONSE FORMAT:
-   Respond ONLY with a valid JSON object matching this schema:
-   {
-     "updatedMarkdown": "the complete, revised, publication-grade prompt document in GitHub-flavored Markdown",
-     "summary": "a sharp 2-3 sentence explanation of the architectural changes and improvisations introduced"
-   }`;
+    const systemPrompt = buildRefineSystemPrompt();
 
     const recentHistoryText = conversationHistory && conversationHistory.length > 0
       ? `\n\nRecent Refinement History:\n` +
@@ -861,45 +849,30 @@ REFINEMENT & IMPROVISATION DIRECTIVES:
           .join('\n')
       : '';
 
-    const userPrompt = `Current Prompt Document:\n${currentPrompt}${recentHistoryText}\n\nLatest User Request / Follow-up:\n${followUp}`;
+    const userPrompt = `Current Prompt Document:\n${currentPrompt}${recentHistoryText}\n\nLatest User Feedback / Refinement Request:\n${followUp}`;
 
     try {
-      const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.6 });
-      const cleaned = raw
-        .replace(/^```json\s*/i, '')
-        .replace(/^```\s*/i, '')
-        .replace(/\s*```$/i, '')
-        .trim();
-
-      const parsed = JSON.parse(cleaned);
-      if (parsed && typeof parsed.updatedMarkdown === 'string') {
+      const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.4 });
+      const extracted = extractRefineResult(raw, currentPrompt, followUp);
+      if (extracted.updatedMarkdown) {
         return {
-          updatedMarkdown: parsed.updatedMarkdown,
-          summary: parsed.summary || `Updated and deepened prompt architecture for: "${followUp.slice(0, 100)}"`,
+          updatedMarkdown: sanitizeRenderedPrompt(extracted.updatedMarkdown),
+          summary: extracted.summary,
         };
       }
-    } catch {
-      // Fallback: direct retry if JSON parsing failed
+    } catch (err: any) {
+      if (err.isApiKeyError) throw err;
+      console.warn('[Bedrock] Direct refinement error, attempting retry...', err);
       try {
-        const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.5 });
-        const cleaned = raw
-          .replace(/^```json\s*/i, '')
-          .replace(/^```\s*/i, '')
-          .replace(/\s*```$/i, '')
-          .trim();
-        const parsed = JSON.parse(cleaned);
-        if (parsed && typeof parsed.updatedMarkdown === 'string') {
-          return {
-            updatedMarkdown: parsed.updatedMarkdown,
-            summary: parsed.summary || `Updated prompt incorporating: "${followUp.slice(0, 100)}"`,
-          };
-        }
-      } catch {
-        const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.5 });
+        const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.3 });
+        const extracted = extractRefineResult(raw, currentPrompt, followUp);
         return {
-          updatedMarkdown: raw.startsWith('{') ? currentPrompt : raw,
-          summary: `Updated prompt incorporating user feedback: "${followUp.slice(0, 100)}"`,
+          updatedMarkdown: sanitizeRenderedPrompt(extracted.updatedMarkdown),
+          summary: extracted.summary,
         };
+      } catch (retryErr: any) {
+        if (retryErr.isApiKeyError) throw retryErr;
+        console.warn('[Bedrock] Client AI refinement failed:', retryErr);
       }
     }
   }
@@ -916,9 +889,10 @@ REFINEMENT & IMPROVISATION DIRECTIVES:
     if (response.ok) {
       const data = await response.json();
       if (data.updatedMarkdown) {
+        const extracted = extractRefineResult(data.updatedMarkdown, currentPrompt, followUp);
         return {
-          updatedMarkdown: data.updatedMarkdown,
-          summary: data.summary || `Updated prompt incorporating user feedback.`,
+          updatedMarkdown: sanitizeRenderedPrompt(extracted.updatedMarkdown),
+          summary: data.summary || extracted.summary,
         };
       }
     }
@@ -942,13 +916,17 @@ export const testPrompt = async (
   const keys = getActiveApiKeys();
   const lowerModel = modelId.toLowerCase();
 
+  const effectiveSystemPrompt = systemPrompt
+    ? `${systemPrompt}\n\n${BEDROCK_CORE_GUARDRAILS}`
+    : BEDROCK_CORE_GUARDRAILS;
+
   // 1. Gemini
   if (lowerModel.includes('gemini') && keys.geminiKey) {
     const targetModel =
       modelId === 'gemini-2.5-flash' || modelId === 'gemini'
         ? 'gemini-3.5-flash-lite'
         : modelId;
-    return await callGemini(userPrompt, systemPrompt, keys.geminiKey, targetModel);
+    return await callGemini(userPrompt, effectiveSystemPrompt, keys.geminiKey, targetModel);
   }
 
   // 2. Groq
@@ -963,12 +941,12 @@ export const testPrompt = async (
       modelId === 'llama-3.3-70b-versatile' || modelId === 'llama' || modelId === 'groq'
         ? 'openai/gpt-oss-120b'
         : modelId;
-    return await callGroq(userPrompt, systemPrompt, keys.groqKey, targetModel);
+    return await callGroq(userPrompt, effectiveSystemPrompt, keys.groqKey, targetModel);
   }
 
   // 3. OpenAI
   if ((lowerModel.includes('gpt') || lowerModel.includes('openai')) && keys.openAiKey) {
-    return await callOpenAi(userPrompt, systemPrompt, keys.openAiKey, modelId);
+    return await callOpenAi(userPrompt, effectiveSystemPrompt, keys.openAiKey, modelId);
   }
 
   // 4. Hugging Face
@@ -985,7 +963,7 @@ export const testPrompt = async (
         body: JSON.stringify({
           model: realModel,
           messages: [
-            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+            ...(effectiveSystemPrompt ? [{ role: 'system', content: effectiveSystemPrompt }] : []),
             { role: 'user', content: userPrompt },
           ],
           max_tokens: 1024,
@@ -1000,7 +978,7 @@ export const testPrompt = async (
 
   // 5. OpenRouter
   if (modelId.includes('/') && keys.openRouterKey) {
-    return await callOpenRouter(userPrompt, systemPrompt, keys.openRouterKey, modelId);
+    return await callOpenRouter(userPrompt, effectiveSystemPrompt, keys.openRouterKey, modelId);
   }
 
   // 6. Generic client AI fallback using whichever key IS configured
@@ -1008,7 +986,7 @@ export const testPrompt = async (
     keys.geminiKey || keys.groqKey || keys.openAiKey || keys.openRouterKey || keys.huggingFaceKey
   );
   if (hasAnyKey) {
-    return await callClientAi(userPrompt, systemPrompt);
+    return await callClientAi(userPrompt, effectiveSystemPrompt);
   }
 
   // 7. Backend proxy fallback
@@ -1017,7 +995,7 @@ export const testPrompt = async (
     const response = await fetch('/api/ai/test', {
       method: 'POST',
       headers: authHeaders,
-      body: JSON.stringify({ targetModel: modelId, systemPrompt, prompt: userPrompt }),
+      body: JSON.stringify({ targetModel: modelId, systemPrompt: effectiveSystemPrompt, prompt: userPrompt }),
     });
 
     if (response.ok) {

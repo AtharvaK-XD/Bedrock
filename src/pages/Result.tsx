@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import { useState } from 'react';
 import PixelCard from '../components/ui/PixelCard';
 import { refinePrompt } from '../lib/api';
+import { sanitizeRenderedPrompt } from '../lib/aiPrompts';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
@@ -41,7 +42,7 @@ const TypewriterText = ({ text }: { text: string }) => {
 export default function Result() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [promptText, setPromptText] = useState<string>(location.state?.promptText || '');
+  const [promptText, setPromptText] = useState<string>(() => sanitizeRenderedPrompt(location.state?.promptText || ''));
   const idea = location.state?.idea as string | undefined;
   const historyId = location.state?.historyId as string | undefined;
 
@@ -63,13 +64,14 @@ export default function Result() {
   }
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(promptText);
+    navigator.clipboard.writeText(sanitizeRenderedPrompt(promptText));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownload = () => {
-    const blob = new Blob([promptText], { type: 'text/markdown' });
+    const cleanContent = sanitizeRenderedPrompt(promptText);
+    const blob = new Blob([cleanContent], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -159,14 +161,15 @@ export default function Result() {
             setIsRefining(true);
             try {
               const { updatedMarkdown, summary } = await refinePrompt(promptText, text, nextHistory);
-              setPromptText(updatedMarkdown);
+              const cleanMarkdown = sanitizeRenderedPrompt(updatedMarkdown);
+              setPromptText(cleanMarkdown);
               setChatHistory(prev => [...prev, { role: 'ai', content: summary }]);
               if (idea || historyId) {
                 addPromptToHistory({
                   id: historyId,
                   title: (idea && idea.length > 36 ? idea.slice(0, 36) + '...' : idea) || 'Refined Prompt',
                   ideaText: idea || 'Refined Prompt',
-                  promptText: updatedMarkdown,
+                  promptText: cleanMarkdown,
                   isPinned: false,
                 });
               }
@@ -236,7 +239,7 @@ export default function Result() {
       {/* Document Content */}
       <div className="flex-1 overflow-y-auto p-8 custom-scrollbar relative" data-lenis-prevent="true">
         <div className={`max-w-4xl mx-auto prose prose-invert prose-copper prose-p:leading-relaxed prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-white/10 prose-headings:font-display transition-opacity duration-300 ${isRefining ? 'opacity-30' : 'opacity-100'}`}>
-          <ReactMarkdown>{promptText}</ReactMarkdown>
+          <ReactMarkdown>{sanitizeRenderedPrompt(promptText)}</ReactMarkdown>
         </div>
       </div>
 

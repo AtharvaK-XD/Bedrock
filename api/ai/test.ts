@@ -3,6 +3,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { checkPromptInjection, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion } from '../_lib/ai.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
+import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -19,7 +20,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const body = req.body || {};
   const prompt = (body.prompt || body.promptText || '').trim();
-  const systemPrompt = (body.systemPrompt || '').trim() || undefined;
+  const rawSystemPrompt = (body.systemPrompt || '').trim();
+  const systemPrompt = rawSystemPrompt
+    ? `${rawSystemPrompt}\n\n${BEDROCK_CORE_GUARDRAILS}`
+    : BEDROCK_CORE_GUARDRAILS;
 
   if (!prompt) {
     return res.status(400).json({ error: 'prompt is required' });

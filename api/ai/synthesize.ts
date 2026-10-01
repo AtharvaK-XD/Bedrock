@@ -3,6 +3,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, enforceServerQuota, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion } from '../_lib/ai.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
+import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -58,6 +59,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const systemPrompt = `You are Bedrock, the premier AI Prompt Architect for frontier intelligence.
 Your task is to synthesize the user's concept into an extraordinary, production-grade, highly structured prompt.
+
+${BEDROCK_CORE_GUARDRAILS}
+
 Structure the prompt with the following clear markdown sections:
 # [Prompt Title]
 
