@@ -16,9 +16,14 @@ import {
   Cpu,
   ExternalLink,
   Check,
-  ChevronDown
+  ChevronDown,
+  ArrowUpCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { AgentIcon } from '../components/ui/ModelLogos';
+import { subscribeToUpdates, checkForUpdates, applyUpdate } from '../lib/updater';
+import type { UpdateStatus } from '../lib/updater';
+import { isDesktopApp } from '../lib/platform';
 
 export interface ModelOption {
   id: string;
@@ -74,7 +79,7 @@ export const MODEL_GROUPS: ModelGroup[] = [
   },
 ];
 
-type Tab = 'account' | 'api-keys' | 'notifications' | 'privacy';
+type Tab = 'account' | 'api-keys' | 'notifications' | 'privacy' | 'updates';
 
 interface ApiKeysState {
   defaultModel: string;
@@ -260,11 +265,32 @@ export default function Settings() {
     }
   };
 
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const isDesktop = isDesktopApp();
+
+  useEffect(() => {
+    const unsub = subscribeToUpdates((status) => {
+      setUpdateStatus(status);
+      if (status.status !== 'checking') {
+        setIsCheckingUpdate(false);
+      }
+    });
+    return unsub;
+  }, []);
+
+  const handleManualUpdateCheck = async () => {
+    setIsCheckingUpdate(true);
+    await checkForUpdates();
+    setTimeout(() => setIsCheckingUpdate(false), 2000);
+  };
+
   const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'account', label: 'Account Profile', icon: User },
     { id: 'api-keys', label: 'Models & API Keys', icon: Key },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'privacy', label: 'Privacy & Data', icon: Shield },
+    ...(isDesktop ? [{ id: 'updates' as Tab, label: 'App Updates', icon: ArrowUpCircle }] : []),
   ];
 
   return (
@@ -1040,6 +1066,117 @@ export default function Settings() {
                             </button>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === 'updates' && (
+                  <motion.div
+                    key="updates"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6"
+                  >
+                    <div>
+                      <h2 className="text-xl font-editorial font-bold text-white">Desktop Application Updates</h2>
+                      <p className="text-sm text-gray-400 mt-1 font-sans">
+                        Check for new versions, releases, and seamless background updates.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* App Version Card */}
+                      <div className="p-6 rounded-2xl bg-[#14171d]/60 border border-white/5 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-bold text-white">Bedrock Desktop</span>
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-copper-500/10 text-copper-400 border border-copper-500/20">
+                                v1.2.0
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                Release
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400 font-mono mt-1">
+                              Channel: GitHub Releases (Bedrockxai/Bedrock)
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleManualUpdateCheck}
+                            disabled={isCheckingUpdate || updateStatus.status === 'downloading'}
+                            className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl border border-white/15 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                          >
+                            <RefreshCw className={cn("w-3.5 h-3.5", (isCheckingUpdate || updateStatus.status === 'checking') && "animate-spin text-copper-400")} />
+                            <span>
+                              {isCheckingUpdate || updateStatus.status === 'checking'
+                                ? 'Checking...'
+                                : 'Check for Updates'}
+                            </span>
+                          </button>
+                        </div>
+
+                        {/* Status Alert */}
+                        {updateStatus.status === 'downloaded' && (
+                          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-4">
+                            <div>
+                              <p className="text-xs font-semibold text-emerald-300">
+                                Bedrock v{updateStatus.version || '1.3.0'} is available! Restart to apply update.
+                              </p>
+                              <p className="text-[11px] text-gray-400 mt-0.5 font-mono">
+                                The new release has been downloaded and verified.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => applyUpdate()}
+                              className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold shadow-md transition-all cursor-pointer whitespace-nowrap"
+                            >
+                              Restart & Update
+                            </button>
+                          </div>
+                        )}
+
+                        {updateStatus.status === 'downloading' && (
+                          <div className="p-4 rounded-xl bg-copper-500/10 border border-copper-500/30 space-y-2">
+                            <div className="flex items-center justify-between text-xs text-copper-300 font-medium">
+                              <span>Downloading Bedrock v{updateStatus.version || ''}...</span>
+                              <span className="font-mono">{updateStatus.percent || 0}%</span>
+                            </div>
+                            <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="bg-gradient-to-r from-copper-500 to-amber-400 h-1.5 rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, Math.max(0, updateStatus.percent || 0))}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {updateStatus.status === 'up-to-date' && (
+                          <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center gap-2.5 text-xs text-gray-300">
+                            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span>You are on the latest version of Bedrock. No updates available.</span>
+                          </div>
+                        )}
+
+                        {updateStatus.status === 'error' && (
+                          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                            Update check: {updateStatus.error || 'Could not connect to GitHub releases.'}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Release Details */}
+                      <div className="p-5 rounded-2xl bg-[#14171d]/60 border border-white/5 space-y-3">
+                        <h3 className="text-sm font-semibold text-white">Automatic Updates</h3>
+                        <p className="text-xs text-gray-400 leading-relaxed font-sans">
+                          Bedrock automatically checks for official releases on the <code className="text-copper-400 font-mono">Bedrockxai/Bedrock</code> repository. When a new version is published, it downloads in the background and prompts you with a 1-click restart to install.
+                        </p>
                       </div>
                     </div>
                   </motion.div>

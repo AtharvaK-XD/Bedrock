@@ -25,6 +25,7 @@ import { ClerkProvider } from '@clerk/react';
 import { checkForUpdates } from './lib/updater';
 import { useAuth } from './lib/useAuth';
 import { isDesktopApp } from './lib/platform';
+import { UpdateBanner } from './components/layout/UpdateBanner';
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!PUBLISHABLE_KEY) {
@@ -195,6 +196,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <RouterComponent>
           <AnimatedRoutes />
+          <UpdateBanner />
         </RouterComponent>
       </QueryClientProvider>
     </ClerkProvider>
