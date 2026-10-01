@@ -3,6 +3,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion } from '../_lib/ai.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
+import { buildRefineSystemPrompt, extractRefineResult } from '../_lib/aiPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -27,32 +28,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   checkPromptInjection(instruction, user?.id, ip);
 
-  const systemPrompt = `You are Bedrock's Prompt Refinement Engine.
-Your task is to take the existing prompt and apply the user's specific refinement instruction with surgical precision.
-Preserve all formatting and existing sections unless instructed to alter them.
-Enhance clarity, remove ambiguities, and incorporate new guardrails.
-Output the updated prompt directly in full markdown. Do not include introductory conversational text.`;
-
+  const systemPrompt = buildRefineSystemPrompt();
   const payload = `EXISTING PROMPT:\n${currentPrompt}\n\nREFINEMENT INSTRUCTION:\n${instruction}`;
   const safeContent = sanitizeAndDelimitPrompt(payload);
 
   try {
     const { text, model } = await executeAiCompletion(safeContent, systemPrompt);
+    const extracted = extractRefineResult(text, currentPrompt, instruction);
 
     if (user?.id) {
       await recordExecutionTrace({
         userId: user.id,
         nodeOrigin: 'RefineModal.refine',
         modelTarget: model,
-        tokensUsed: Math.max(400, Math.round(text.length / 3.5)),
+        tokensUsed: Math.max(400, Math.round(extracted.updatedMarkdown.length / 3.5)),
         latencyMs: Date.now() - startTime,
         status: 'success',
       });
     }
 
     return res.status(200).json({
-      updatedMarkdown: text.trim(),
-      summary: `Applied refinement: "${instruction.slice(0, 80)}"`,
+      updatedMarkdown: extracted.updatedMarkdown,
+      summary: extracted.summary,
       modelTarget: model,
     });
   } catch (err: any) {

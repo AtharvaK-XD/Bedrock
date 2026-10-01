@@ -3,6 +3,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion, QuestionOutput } from '../_lib/ai.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
+import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -31,6 +32,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const systemPrompt = `You are Bedrock's Senior Prompt Architect.
 Analyze the user's raw prompt concept for target type "${targetType}".
 Identify missing variables, constraints, target audience, format requirements, and edge cases.
+
+${BEDROCK_CORE_GUARDRAILS}
+
 Output exactly 3 to 4 high-value clarifying questions in JSON format.
 The JSON must be an array of objects matching:
 [

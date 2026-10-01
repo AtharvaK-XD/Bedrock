@@ -3,6 +3,11 @@ import { QueueService } from './queueService.js';
 import { z } from 'zod';
 import { CircuitBreaker } from './circuitBreaker.js';
 import { CacheService } from './cacheService.js';
+import {
+  BEDROCK_CORE_GUARDRAILS,
+  buildRefineSystemPrompt,
+  extractRefineResult,
+} from './aiPrompts.js';
 
 export interface Question {
   id: string;
@@ -308,6 +313,9 @@ YOUR QUESTIONS MUST FOCUS ON:
 
       const systemPrompt = `You are an elite product manager and technical architect.
 Your task is to analyze the user's idea and generate exactly 3 to 4 clarifying questions to scope the project.
+
+${BEDROCK_CORE_GUARDRAILS}
+
 Output MUST be strictly valid JSON without code fences or backticks.
 Each object in the array must contain:
 - "id": string (e.g. "q1")
@@ -441,6 +449,8 @@ Each object in the array must contain:
       const systemPrompt = `You are an elite principal software architect and prompt engineering director.
 Your mission is to generate a world-class, bespoke engineering specification and operational prompt tailored precisely to the user's project idea, target platform, and domain.
 
+${BEDROCK_CORE_GUARDRAILS}
+
 CRITICAL ARCHITECTURAL & FORMATTING DIRECTIVES:
 1. BAN ON COOKIE-CUTTER REPETITION:
    - DO NOT use generic, robotic templates (e.g. NEVER default to the rigid "1. Executive Summary & Core Objective" 5-section boilerplate).
@@ -563,31 +573,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
     return QueueService.enqueue(`refine-${Date.now()}`, async () => {
       const delimitedFollowUp = this.sanitizeAndDelimitUserInput(followUp, 'refinement-feedback');
 
-      const systemPrompt = `You are an elite principal prompt architect and software design partner.
-The user is actively refining and iterating on their project prompt document through a collaborative conversation.
-Your goal is not merely to perform mechanical text replacements, but to INTELLIGENTLY IMPROVISE, EVOLVE, AND DEEPEN the document with every follow-up.
-
-REFINEMENT & IMPROVISATION DIRECTIVES:
-1. INTELLIGENT ARCHITECTURAL IMPROVISATION:
-   - When the user asks for a feature, stack adjustment, or constraint, proactively deduce and inject the downstream architectural consequences.
-   - Example: If the user says "add Stripe payments", don't just add a bullet point. Improvise the database schema (customer table, subscription IDs, webhook event logs), add the webhook signature verification flow, inject negative security constraints (prevent replay attacks, idempotent handling), and update the master prompt directives.
-   - Example: If the user says "make it faster / more minimal", restructure the document into a dense, high-signal prompt format, prune unnecessary verbose text, and elevate the core code contracts.
-   - Example: If the user asks a question or explores options (e.g. "should I use Supabase or Neon?"), explain the trade-offs concisely in the summary, select the best fit, and seamlessly integrate the concrete implementation details into the document.
-
-2. DYNAMIC RE-STRUCTURING:
-   - Feel empowered to introduce new sections where valuable (e.g., adding an Architecture Decision Record (ADR), a dedicated Testing & Verification Playbook, a State Machine diagram, or an Environment Variables matrix).
-   - If the user requests a specific format (e.g., "give me a .cursorrules format" or "write a freelancer SOW"), dynamically pivot the formatting of the document to match.
-   - Maintain rich markdown aesthetics: code blocks with concrete schemas/types, Markdown tables, and Mermaid flow diagrams when relevant.
-
-3. CONVERSATION CONTEXT AWARENESS:
-   - Build cumulatively upon the previous conversation turns and refinements. Do not lose previously agreed-upon architectural decisions unless the user explicitly requested replacing them.
-
-4. RESPONSE FORMAT:
-   Respond ONLY with a valid JSON object matching this schema:
-   {
-     "updatedMarkdown": "the complete, revised, publication-grade prompt document in GitHub-flavored Markdown",
-     "summary": "a sharp 2-3 sentence explanation of the architectural changes and improvisations introduced"
-   }`;
+      const systemPrompt = buildRefineSystemPrompt();
 
       const recentHistoryText = conversationHistory && conversationHistory.length > 0
         ? `\n\nRecent Refinement History:\n` +
@@ -601,16 +587,14 @@ REFINEMENT & IMPROVISATION DIRECTIVES:
 
       try {
         const raw = await this.complete(prompt, systemPrompt);
-        const cleaned = this.cleanJsonString(raw);
-        const parsed = JSON.parse(cleaned);
-
-        // Section 3: Validate LLM output with Zod
-        const validated = LLMRefineSchema.parse(parsed);
-        return validated as RefineResult;
-      } catch {
-        const raw = await this.complete(prompt, systemPrompt);
+        const extracted = extractRefineResult(raw, currentPrompt, followUp);
         return {
-          updatedMarkdown: raw.startsWith('{') ? currentPrompt : raw,
+          updatedMarkdown: extracted.updatedMarkdown,
+          summary: extracted.summary,
+        };
+      } catch {
+        return {
+          updatedMarkdown: currentPrompt,
           summary: `Updated prompt incorporating user feedback: "${followUp.slice(0, 100)}"`,
         };
       }
@@ -627,6 +611,9 @@ REFINEMENT & IMPROVISATION DIRECTIVES:
   ): Promise<string> {
     return QueueService.enqueue(`test-${Date.now()}`, async () => {
       const delimitedUser = this.sanitizeAndDelimitUserInput(userPrompt, 'test-prompt-input');
+      const effectiveSystemPrompt = systemPrompt
+        ? `${systemPrompt}\n\n${BEDROCK_CORE_GUARDRAILS}`
+        : BEDROCK_CORE_GUARDRAILS;
 
       // 1. HuggingFace models
       if (modelId.startsWith('hf/')) {
@@ -646,7 +633,7 @@ REFINEMENT & IMPROVISATION DIRECTIVES:
             body: JSON.stringify({
               model: realModel,
               messages: [
-                ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                ...(effectiveSystemPrompt ? [{ role: 'system', content: effectiveSystemPrompt }] : []),
                 { role: 'user', content: delimitedUser },
               ],
               max_tokens: 1024,
@@ -673,7 +660,7 @@ REFINEMENT & IMPROVISATION DIRECTIVES:
           body: JSON.stringify({
             model: modelId,
             messages: [
-              ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+              ...(effectiveSystemPrompt ? [{ role: 'system', content: effectiveSystemPrompt }] : []),
               { role: 'user', content: delimitedUser },
             ],
           }),
@@ -696,7 +683,7 @@ REFINEMENT & IMPROVISATION DIRECTIVES:
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: delimitedUser }] }],
-              ...(systemPrompt ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
+              ...(effectiveSystemPrompt ? { systemInstruction: { parts: [{ text: effectiveSystemPrompt }] } } : {}),
             }),
           }
         );
@@ -706,7 +693,7 @@ REFINEMENT & IMPROVISATION DIRECTIVES:
       }
 
       // Default completion
-      return await this.complete(delimitedUser, systemPrompt);
+      return await this.complete(delimitedUser, effectiveSystemPrompt);
     });
   }
 }
