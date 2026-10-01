@@ -77,6 +77,9 @@ function createLimiter(
         res.setHeader('X-RateLimit-Reset', reset.toString());
 
         if (!success) {
+          const retryAfterSeconds = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
+          res.setHeader('Retry-After', retryAfterSeconds.toString());
+
           logSecurityEvent({
             eventType: `${endpointName.toUpperCase().replace(/\s+/g, '_')}_RATE_LIMIT_EXCEEDED`,
             severity,
@@ -86,8 +89,9 @@ function createLimiter(
           });
           return res.status(429).json({
             error: 'Rate Limit Exceeded',
+            code: 'RATE_LIMIT_EXCEEDED',
             message: `Too many requests to ${endpointName}. Limit: ${maxRequests} requests per ${Math.round(windowMs / 60000)} minutes. Please wait before retrying.`,
-            retryAfterSeconds: Math.max(1, Math.ceil((reset - Date.now()) / 1000)),
+            retryAfterSeconds,
           });
         }
         return next();

@@ -27,6 +27,7 @@ router.get('/health', async (req, res) => {
     timestamp: new Date().toISOString(),
     services: {
       database: dbHealthy ? 'connected' : 'disconnected',
+      redis: Boolean(config.redis.url && config.redis.token) ? 'upstash_configured' : 'in_memory_fallback',
       groqKeysConfigured: config.ai.groqKeys.length,
       openRouterKeysConfigured: config.ai.openRouterKeys.length,
       geminiKeysConfigured: config.ai.geminiKeys.length,

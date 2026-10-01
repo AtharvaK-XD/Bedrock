@@ -103,35 +103,80 @@ async function callGemini(prompt: string, systemPrompt?: string): Promise<string
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
+import {
+  AI_PROVIDERS,
+  ProviderTarget,
+  selectOptimalProvider,
+  recordProviderSuccess,
+  recordProviderFailure,
+} from './loadBalancer.js';
+
 /**
- * Multi-provider execution with automatic fallback
+ * Multi-provider execution with Upstash Redis distributed load balancing, circuit breaking, and automatic fallback
  */
-export async function executeAiCompletion(prompt: string, systemPrompt?: string): Promise<{ text: string; model: string }> {
-  // 1. Try primary: Groq llama-3.3-70b
-  if (getApiKey('groq')) {
+export async function executeAiCompletion(
+  prompt: string,
+  systemPrompt?: string
+): Promise<{ text: string; model: string }> {
+  // 1. Gather all candidates that have valid API keys
+  const groqAvailable = Boolean(getApiKey('groq'));
+  const geminiAvailable = Boolean(getApiKey('gemini'));
+
+  const candidates: ProviderTarget[] = AI_PROVIDERS.filter((p) => {
+    if (p.id.startsWith('groq') && !groqAvailable) return false;
+    if (p.id.startsWith('gemini') && !geminiAvailable) return false;
+    return true;
+  });
+
+  if (candidates.length === 0) {
+    throw new Error(
+      'No AI providers configured on the server. Please ensure GROQ_API_KEY or GEMINI_API_KEY is configured in Vercel environment variables.'
+    );
+  }
+
+  // Helper to execute a single provider
+  const dispatchToProvider = async (target: ProviderTarget): Promise<string> => {
+    if (target.id === 'groq-70b') {
+      return await callGroq(prompt, systemPrompt, 'llama-3.3-70b-versatile');
+    }
+    if (target.id === 'groq-8b') {
+      return await callGroq(prompt, systemPrompt, 'llama-3.1-8b-instant');
+    }
+    if (target.id === 'gemini-flash') {
+      return await callGemini(prompt, systemPrompt);
+    }
+    throw new Error(`Unsupported provider: ${target.id}`);
+  };
+
+  // 2. Select optimal provider via distributed round-robin / circuit health
+  const primaryChoice = (await selectOptimalProvider(candidates)) || candidates[0];
+
+  // Order providers starting with the primary choice, followed by healthy alternates
+  const executionOrder = [
+    primaryChoice,
+    ...candidates.filter((c) => c.id !== primaryChoice.id),
+  ];
+
+  let lastError: Error | null = null;
+
+  for (const provider of executionOrder) {
     try {
-      const text = await callGroq(prompt, systemPrompt, 'llama-3.3-70b-versatile');
-      if (text.trim()) return { text, model: 'Groq/llama-3.3-70b' };
-    } catch (err: any) {
-      console.warn('[AI] Groq 70b failed, trying Groq 8b fallback:', err.message);
-      try {
-        const text = await callGroq(prompt, systemPrompt, 'llama-3.1-8b-instant');
-        if (text.trim()) return { text, model: 'Groq/llama-3.1-8b' };
-      } catch (err8b: any) {
-        console.warn('[AI] Groq 8b fallback failed:', err8b.message);
+      const text = await dispatchToProvider(provider);
+      if (text && text.trim().length > 0) {
+        await recordProviderSuccess(provider.id);
+        return {
+          text,
+          model: `${provider.name} (${provider.model})`,
+        };
       }
-    }
-  }
-
-  // 2. Try secondary: Gemini 2.5 Flash
-  if (getApiKey('gemini')) {
-    try {
-      const text = await callGemini(prompt, systemPrompt);
-      if (text.trim()) return { text, model: 'Google/Gemini-2.5-Flash' };
     } catch (err: any) {
-      console.warn('[AI] Gemini failed:', err.message);
+      console.warn(`[LoadBalancer] Provider ${provider.name} failed:`, err?.message || err);
+      await recordProviderFailure(provider.id, err?.message || String(err));
+      lastError = err;
     }
   }
 
-  throw new Error('All server AI providers failed or are unconfigured. Please ensure GROQ_API_KEY or GEMINI_API_KEY is configured in Vercel environment variables.');
+  throw new Error(
+    `All AI providers failed under load. Last error: ${lastError?.message || 'Unknown provider error'}`
+  );
 }
