@@ -416,12 +416,12 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
 
   return (
     <div className="w-full max-w-xl mx-auto">
-      <div className="bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[1.75rem] p-5 sm:p-7 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.8)] relative overflow-hidden">
+      <div className="bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-8 sm:p-10 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.8)] relative overflow-hidden">
 
         <div className="relative z-10">
           {/* Primary Bedrock Logo */}
-          <div className="flex justify-center mb-3 sm:mb-4">
-            <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/10 p-2 flex items-center justify-center shadow-xl shadow-black/50 backdrop-blur-xl ring-1 ring-white/10 group">
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 p-2.5 flex items-center justify-center shadow-xl shadow-black/50 backdrop-blur-xl ring-1 ring-white/10 group">
               <img 
                 src="/logo-tight.png" 
                 alt="Bedrock Logo" 
@@ -430,11 +430,11 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             </div>
           </div>
 
-          <div className="text-center mb-4 sm:mb-5">
-            <h2 className="text-2xl sm:text-[26px] font-display font-bold text-white tracking-tight">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-display font-bold text-white tracking-tight">
               {mode === 'forgot' ? 'Reset password' : mode === 'login' ? 'Welcome back' : 'Create account'}
             </h2>
-            <p className="text-gray-400 mt-1 text-xs sm:text-sm">
+            <p className="text-gray-400 mt-2 text-sm">
               {mode === 'forgot'
                 ? (forgotStep === 'verify' ? `Enter the 6-digit code sent to ${email || 'your email'}` : 'Enter your email to receive a password reset code.')
                 : mode === 'login' 
@@ -444,25 +444,25 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
           </div>
 
           {mode === 'forgot' ? (
-            <form onSubmit={forgotStep === 'request' ? handleForgotPasswordRequest : handleForgotPasswordReset} className="space-y-3">
+            <form onSubmit={forgotStep === 'request' ? handleForgotPasswordRequest : handleForgotPasswordReset} className="space-y-4">
               {forgotStep === 'request' ? (
                 <>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <input 
                       type="email" 
                       placeholder="Email address" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full bg-transparent border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                      className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-2.5 sm:py-3 font-semibold text-sm sm:text-base hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-3 group cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-4 group cursor-pointer"
                   >
                     {isLoading ? (
                       <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
@@ -484,26 +484,26 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
                       onChange={(e) => setResetCode(e.target.value)}
                       required
                       maxLength={8}
-                      className="w-full bg-transparent border border-white/10 rounded-xl py-2.5 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 font-mono tracking-widest text-center text-base sm:text-lg transition-all"
+                      className="w-full bg-transparent border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 font-mono tracking-widest text-center text-lg transition-all"
                     />
                   </div>
 
                   <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <input 
                       type="password" 
                       placeholder="New password (min 8 chars)" 
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
-                      className="w-full bg-transparent border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                      className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-2.5 sm:py-3 font-semibold text-sm sm:text-base hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-3 group cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-4 group cursor-pointer"
                   >
                     {isLoading ? (
                       <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
@@ -518,18 +518,18 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
               )}
 
               {successMsg && (
-                <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs text-center leading-relaxed">
+                <div className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs text-center leading-relaxed">
                   {successMsg}
                 </div>
               )}
 
               {authError && (
-                <div className="mt-2.5 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed">
+                <div className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed">
                   {authError}
                 </div>
               )}
 
-              <div className="pt-2 sm:pt-2.5 flex items-center justify-between text-xs">
+              <div className="pt-3 flex items-center justify-between text-xs">
                 <button
                   type="button"
                   onClick={() => {
@@ -557,7 +557,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             </form>
           ) : (
             <>
-              <form onSubmit={handleSubmit} className="space-y-3">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <AnimatePresence mode="popLayout">
                   {mode === 'register' && (
                     <motion.div
@@ -567,14 +567,14 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
                       transition={{ duration: 0.3 }}
                     >
                       <div className="relative">
-                        <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                        <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                         <input 
                           type="text" 
                           placeholder="Full Name" 
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           required={mode === 'register'}
-                          className="w-full bg-transparent border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                          className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
                         />
                       </div>
                     </motion.div>
@@ -582,31 +582,31 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
                 </AnimatePresence>
 
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                   <input 
                     type="email" 
                     placeholder="Email address" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full bg-transparent border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                    className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
                   />
                 </div>
 
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                   <input 
                     type="password" 
                     placeholder="Password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full bg-transparent border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
+                    className="w-full bg-transparent border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-copper-500/50 transition-all"
                   />
                 </div>
 
                 {mode === 'login' && (
-                  <div className="flex justify-end pt-0.5">
+                  <div className="flex justify-end">
                     <button 
                       type="button" 
                       onClick={() => {
@@ -615,7 +615,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
                         setAuthError(null);
                         setSuccessMsg(null);
                       }}
-                      className="text-xs sm:text-sm font-medium text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
+                      className="text-sm font-medium text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
                     >
                       Forgot password?
                     </button>
@@ -625,7 +625,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-2.5 sm:py-3 font-semibold text-sm sm:text-base hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-2 sm:mt-2.5 group cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-70 mt-4 group cursor-pointer"
                 >
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
@@ -638,21 +638,21 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
                 </button>
               </form>
 
-              <div className="mt-4 sm:mt-5 relative">
+              <div className="mt-8 relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-white/10"></div>
                 </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="px-3 bg-black/40 backdrop-blur-md rounded-full border border-white/5 text-gray-400 uppercase tracking-wider text-[11px]">Or continue with</span>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-black/40 backdrop-blur-md rounded-full border border-white/5 text-gray-400 text-xs uppercase tracking-wider">Or continue with</span>
                 </div>
               </div>
 
-              <div className="mt-3 sm:mt-4 flex flex-col gap-2 sm:gap-2.5">
+              <div className="mt-6 flex flex-col gap-3">
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2.5 bg-transparent border border-white/10 rounded-xl py-2.5 sm:py-3 font-medium text-sm text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <GoogleIcon />
                   {mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}
@@ -661,7 +661,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
                   type="button"
                   onClick={handleGithubSignIn}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2.5 bg-transparent border border-white/10 rounded-xl py-2.5 sm:py-3 font-medium text-sm text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-3 bg-transparent border border-white/10 rounded-xl py-3.5 font-medium text-white hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <GithubIcon />
                   {mode === 'login' ? 'Sign in with GitHub' : 'Sign up with GitHub'}
@@ -669,15 +669,15 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
               </div>
 
               {authError && (
-                <div className="mt-3 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed">
+                <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed">
                   {authError}
                 </div>
               )}
 
-              <div className="mt-4 sm:mt-5 text-center text-xs sm:text-sm text-gray-400">
+              <div className="mt-8 text-center text-sm text-gray-400">
                 {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
                 <button 
-                  type="button" 
+                  type="button"
                   onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
                   className="font-semibold text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
                 >
