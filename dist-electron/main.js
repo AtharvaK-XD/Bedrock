@@ -3,6 +3,7 @@ import { BrowserWindow, app, shell, session } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
+import http from "node:http";
 
 createRequire(import.meta.url);
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -11,6 +12,62 @@ var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 var MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 var RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+
+// Use standard Chrome browser user agent so Google and GitHub OAuth never trigger 403 disallowed_useragent
+app.userAgentFallback = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+
+const MIME_TYPES = {
+	".html": "text/html",
+	".js": "text/javascript",
+	".css": "text/css",
+	".json": "application/json",
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".svg": "image/svg+xml",
+	".ico": "image/x-icon",
+	".woff": "font/woff",
+	".woff2": "font/woff2",
+	".ttf": "font/ttf",
+	".wasm": "application/wasm"
+};
+
+function startLocalServer() {
+	return new Promise((resolve, reject) => {
+		const server = http.createServer((req, res) => {
+			try {
+				const parsedUrl = new URL(req.url, "http://127.0.0.1");
+				let filePath = path.join(RENDERER_DIST, decodeURIComponent(parsedUrl.pathname));
+
+				if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+					filePath = path.join(filePath, "index.html");
+				}
+
+				if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+					filePath = path.join(RENDERER_DIST, "index.html");
+				}
+
+				const ext = path.extname(filePath).toLowerCase();
+				const contentType = MIME_TYPES[ext] || "application/octet-stream";
+
+				const content = fs.readFileSync(filePath);
+				res.writeHead(200, {
+					"Content-Type": contentType,
+					"Access-Control-Allow-Origin": "*"
+				});
+				res.end(content);
+			} catch {
+				res.writeHead(500);
+				res.end("Internal Server Error");
+			}
+		});
+
+		server.listen(0, "127.0.0.1", () => {
+			const port = server.address().port;
+			resolve(`http://localhost:${port}`);
+		});
+		server.on("error", reject);
+	});
+}
 
 // =================== Anti-Hacking & Anti-Debugging Flags ===================
 // Strip any command line switches that attackers use to inject debuggers
@@ -89,19 +146,40 @@ function createWindow() {
 		}
 	});
 
-	// Restrict window.open / popups: Open verified external URLs safely in system browser
+	// Restrict window.open / popups: Open verified authentication popups safely, and open external links in system browser
 	win.webContents.setWindowOpenHandler(({ url }) => {
 		try {
+			// Allow blank popup creation for in-flight OAuth redirects
+			if (url === "about:blank" || url.startsWith("about:")) {
+				return {
+					action: "allow",
+					overrideBrowserWindowOptions: {
+						width: 600,
+						height: 750,
+						autoHideMenuBar: true,
+						webPreferences: {
+							webSecurity: true,
+							devTools: false
+						}
+					}
+				};
+			}
+
 			const parsed = new URL(url);
-			// Allow Google OAuth / Clerk popup authentication
+			// Allow Google OAuth, GitHub OAuth, and Clerk authentication popups
 			if (
 				parsed.hostname.includes("clerk") ||
 				parsed.hostname.includes("accounts.google.com") ||
-				parsed.hostname.includes("google.com")
+				parsed.hostname.includes("google.com") ||
+				parsed.hostname.includes("github.com") ||
+				parsed.hostname === "localhost" ||
+				parsed.hostname === "127.0.0.1"
 			) {
 				return {
 					action: "allow",
 					overrideBrowserWindowOptions: {
+						width: 600,
+						height: 750,
 						autoHideMenuBar: true,
 						webPreferences: {
 							webSecurity: true,
@@ -131,7 +209,11 @@ function createWindow() {
 	if (VITE_DEV_SERVER_URL) {
 		win.loadURL(VITE_DEV_SERVER_URL);
 	} else {
-		win.loadFile(path.join(RENDERER_DIST, "index.html"));
+		startLocalServer().then((url) => {
+			win.loadURL(url);
+		}).catch(() => {
+			win.loadFile(path.join(RENDERER_DIST, "index.html"));
+		});
 	}
 }
 
@@ -165,7 +247,7 @@ if (!hasSingleInstanceLock) {
 				responseHeaders: {
 					...details.responseHeaders,
 					"Content-Security-Policy": [
-						"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http://localhost:* http://127.0.0.1:* https://*.clerk.accounts.dev https://accounts.google.com https://fonts.googleapis.com https://fonts.gstatic.com;"
+						"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http://localhost:* http://127.0.0.1:* https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://accounts.google.com https://*.google.com https://*.googleapis.com https://github.com https://*.github.com https://fonts.googleapis.com https://fonts.gstatic.com https://bedrock-steel.vercel.app;"
 					]
 				}
 			});

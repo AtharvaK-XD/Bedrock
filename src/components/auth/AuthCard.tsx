@@ -4,7 +4,6 @@ import { ArrowRight, Mail, Lock, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/useAuth';
 import { useUserProfile } from '../../lib/useUserProfile';
-import { isDesktopApp } from '../../lib/platform';
 import { useSignIn, useSignUp } from '@clerk/react/legacy';
 import { useClerk } from '@clerk/react';
 
@@ -34,21 +33,12 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
 
   const performOAuth = async (strategy: 'oauth_github' | 'oauth_google') => {
     setAuthError(null);
-
-    if (isDesktopApp()) {
-      setIsLoading(true);
-      const isGh = strategy === 'oauth_github';
-      const mockEmail = isGh ? 'github.architect@bedrock.app' : 'google.engineer@bedrock.app';
-      const mockName = isGh ? 'Bedrock Architect' : 'Bedrock Engineer';
-      await login(mockEmail, '', mockName, mode === 'register' ? 'register' : 'login');
-      await updateProfile({ name: mockName, email: mockEmail });
-      setIsLoading(false);
-      navigate(targetPath);
-      return;
-    }
-
     setIsLoading(true);
-    const callbackUrl = `${window.location.origin}/sso-callback`;
+
+    const origin = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file'))
+      ? window.location.origin
+      : 'https://bedrock-steel.vercel.app';
+    const callbackUrl = `${origin}/sso-callback`;
     const targetUrl = targetPath;
 
     // 1. Open popup immediately in synchronous user-action context
