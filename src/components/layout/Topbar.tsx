@@ -172,8 +172,8 @@ export function Topbar() {
 
           {/* Quick Logout button */}
           <button
-            onClick={() => {
-              logout();
+            onClick={async () => {
+              await logout();
               navigate(isDesktop ? '/login' : '/');
             }}
             title="Log Out"

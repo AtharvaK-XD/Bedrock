@@ -94,12 +94,15 @@ export function useAuth() {
     try {
       if (clerkAuth?.signOut) {
         await clerkAuth.signOut();
+      } else if (typeof (window as any).Clerk?.signOut === 'function') {
+        await (window as any).Clerk.signOut();
       }
     } catch (e) {
       console.error('Failed to logout via Clerk', e);
     }
     try {
       localStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem('bedrock_auth_event');
     } catch (e) {
       console.error('Failed to clear local auth session', e);
     }

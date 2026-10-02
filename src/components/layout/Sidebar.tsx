@@ -194,8 +194,8 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
         </Link>
 
         <button
-          onClick={() => {
-            logout();
+          onClick={async () => {
+            await logout();
             navigate('/login');
           }}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer"
