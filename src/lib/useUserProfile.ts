@@ -162,13 +162,13 @@ export function useUserProfile() {
             }
           }
           
-          if (clerkName && (profile.name.startsWith('user_') || profile.name !== clerkName || clerkAvatar)) {
+          if (clerkName && (profile.name.startsWith('user_') || profile.name !== clerkName || (!profile.avatarUrl && clerkAvatar))) {
             const current = getStoredProfile();
             const updated: UserProfile = {
               ...current,
               name: clerkName,
               email: clerkEmail || current.email,
-              avatarUrl: clerkAvatar || current.avatarUrl,
+              avatarUrl: current.avatarUrl || clerkAvatar || '',
               avatarInitials: resolveInitials(clerkName),
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -197,6 +197,7 @@ export function useUserProfile() {
             });
             if (res.ok) {
               const data = await res.json();
+              const current = getStoredProfile();
               const cleanName = resolveCleanName(data.name, data.email || clerkUser?.primaryEmailAddress?.emailAddress);
               const cleanInitials = resolveInitials(cleanName);
               const merged: UserProfile = { 
@@ -204,7 +205,7 @@ export function useUserProfile() {
                 ...data,
                 name: cleanName,
                 avatarInitials: cleanInitials,
-                avatarUrl: data.avatarUrl || clerkUser?.imageUrl || '',
+                avatarUrl: current.avatarUrl || data.avatarUrl || clerkUser?.imageUrl || '',
               };
               localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
               setProfileState(merged);

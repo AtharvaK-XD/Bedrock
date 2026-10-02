@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import { Check, Camera, UploadCloud, Trash2 } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { useUserProfile, resolveCleanName, resolveInitials, getBlankProfile } from '../lib/useUserProfile';
@@ -81,7 +81,7 @@ export default function Profile() {
     clerkUser?.fullName || 
     clerkUser?.firstName || 
     resolveCleanName(profile.name, clerkUser?.primaryEmailAddress?.emailAddress || profile.email);
-  const effectiveAvatar = clerkUser?.imageUrl || profile.avatarUrl;
+  const effectiveAvatar = profile.avatarUrl || clerkUser?.imageUrl;
   const effectiveInitials = resolveInitials(effectiveName);
 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -91,6 +91,7 @@ export default function Profile() {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [photoMessage, setPhotoMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const themePickerRef = useRef<HTMLDivElement>(null);
@@ -202,34 +203,81 @@ export default function Profile() {
     fileInputRef.current?.click();
   };
 
-  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processAndSetPhoto = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setPhotoMessage({
+        type: 'error',
+        text: 'Please select a valid image file (PNG, JPG, WEBP, or GIF).'
+      });
+      setTimeout(() => setPhotoMessage(null), 4000);
+      return;
+    }
 
     try {
       setIsUploadingPhoto(true);
       setPhotoMessage(null);
       const dataUrl = await processAvatarImage(file);
-      updateProfile({ avatarUrl: dataUrl });
-      setPhotoMessage({ type: 'success', text: 'Photo updated' });
+      await updateProfile({ avatarUrl: dataUrl });
+
+      // If user is authenticated via Clerk, also attempt cloud profile sync in background
+      if (clerkUser && typeof (clerkUser as any).setProfileImage === 'function') {
+        (clerkUser as any).setProfileImage({ file }).catch((err: any) => {
+          console.warn('Clerk background avatar sync optional fallback:', err);
+        });
+      }
+
+      setPhotoMessage({ type: 'success', text: 'Profile photo updated successfully!' });
       setTimeout(() => setPhotoMessage(null), 3000);
     } catch (err: any) {
       setPhotoMessage({
         type: 'error',
-        text: err?.message || 'Failed to process image'
+        text: err?.message || 'Failed to process image from your computer.'
       });
       setTimeout(() => setPhotoMessage(null), 4000);
     } finally {
       setIsUploadingPhoto(false);
-      if (e.target) e.target.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleRemovePhoto = (e: React.MouseEvent) => {
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processAndSetPhoto(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
     e.stopPropagation();
-    updateProfile({ avatarUrl: '' });
-    setPhotoMessage({ type: 'success', text: 'Photo removed' });
-    setTimeout(() => setPhotoMessage(null), 2500);
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processAndSetPhoto(file);
+    }
+  };
+
+  const handleRemovePhoto = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await updateProfile({ avatarUrl: '' });
+      setPhotoMessage({ type: 'success', text: 'Custom photo removed (reverted to default)' });
+      setTimeout(() => setPhotoMessage(null), 2500);
+    } catch (err: any) {
+      console.error('Failed to remove photo', err);
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -368,11 +416,17 @@ export default function Profile() {
               {/* Avatar & Main Info */}
               <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5 sm:gap-6 flex-1 min-w-0">
                 
-                {/* Avatar with Status Dot */}
+                {/* Avatar with Status Dot and PC Upload Trigger */}
                 <div 
-                  className="relative group cursor-pointer shrink-0 z-30" 
+                  className={cn(
+                    "relative group cursor-pointer shrink-0 z-30 transition-transform",
+                    isDragging && "scale-105"
+                  )}
                   onClick={handleAvatarClick}
-                  title="Click to select or change profile photo"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  title="Click or drag an image here to change profile photo from PC"
                 >
                   <input 
                     type="file" 
@@ -382,7 +436,12 @@ export default function Profile() {
                     className="hidden" 
                     id="profile-avatar-upload"
                   />
-                  <div className="relative p-1 rounded-3xl bg-gradient-to-tr from-copper-400 via-copper-500 to-emerald-400 shadow-2xl ring-4 ring-[#121417]">
+                  <div className={cn(
+                    "relative p-1 rounded-3xl bg-gradient-to-tr shadow-2xl ring-4 ring-[#121417] transition-all",
+                    isDragging 
+                      ? "from-emerald-400 via-copper-400 to-copper-500 ring-emerald-500/50" 
+                      : "from-copper-400 via-copper-500 to-emerald-400"
+                  )}>
                     <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-[22px] bg-gradient-to-tr from-basalt-900 via-[#162724] to-basalt-800 text-white flex flex-col items-center justify-center font-display font-bold text-3xl sm:text-4xl relative overflow-hidden border border-white/10 group-hover:border-copper-400/60 transition-all">
                       {effectiveAvatar ? (
                         <img 
@@ -394,11 +453,28 @@ export default function Profile() {
                         <span>{effectiveInitials}</span>
                       )}
                       
-                      {/* Hover edit badge overlay */}
-                      <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-white">
-                          {isUploadingPhoto ? 'Uploading...' : 'Change'}
-                        </span>
+                      {/* Hover / Drag edit badge overlay */}
+                      <div className={cn(
+                        "absolute inset-0 bg-black/75 flex flex-col items-center justify-center gap-1.5 transition-opacity duration-200 z-20 backdrop-blur-[2px]",
+                        isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      )}>
+                        {isUploadingPhoto ? (
+                          <div className="w-6 h-6 border-2 border-white/20 border-t-copper-400 rounded-full animate-spin" />
+                        ) : isDragging ? (
+                          <>
+                            <UploadCloud className="w-6 h-6 text-emerald-400 animate-bounce" />
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 font-bold">
+                              Drop image
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="w-6 h-6 text-copper-300" />
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-white font-medium">
+                              Upload from PC
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -408,9 +484,9 @@ export default function Profile() {
                       type="button"
                       onClick={handleRemovePhoto}
                       title="Remove custom photo"
-                      className="absolute -top-1.5 -right-1.5 z-30 px-1.5 py-0.5 rounded-full bg-[#121417] text-gray-400 hover:text-red-400 border border-white/20 shadow-lg text-xs font-mono leading-none opacity-0 group-hover:opacity-100 transition-all"
+                      className="absolute -top-1.5 -right-1.5 z-30 p-1.5 rounded-full bg-[#121417] text-gray-400 hover:text-rose-400 border border-white/20 hover:border-rose-500/40 shadow-lg text-xs font-mono leading-none opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                     >
-                      ×
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
@@ -883,6 +959,106 @@ export default function Profile() {
                 </div>
 
                 <form onSubmit={handleSave} className="space-y-6 font-mono text-xs">
+                  {/* Profile Photo Upload Section from PC */}
+                  <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                      <div className="flex items-center gap-4">
+                        <div 
+                          className="relative group cursor-pointer shrink-0"
+                          onClick={handleAvatarClick}
+                          title="Click to select photo from your PC"
+                        >
+                          <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-basalt-900 via-[#162724] to-basalt-800 text-white flex items-center justify-center font-display font-bold text-2xl relative overflow-hidden border border-white/15 group-hover:border-copper-400/80 shadow-lg transition-all">
+                            {effectiveAvatar ? (
+                              <img 
+                                src={effectiveAvatar} 
+                                alt={effectiveName} 
+                                className="w-full h-full object-cover" 
+                              />
+                            ) : (
+                              <span>{effectiveInitials}</span>
+                            )}
+                            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Camera className="w-5 h-5 text-copper-300" />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-white font-sans">Profile Photo</span>
+                            {profile.avatarUrl ? (
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-copper-500/20 text-copper-300 border border-copper-500/30">
+                                Custom Photo Active
+                              </span>
+                            ) : clerkUser?.imageUrl ? (
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-gray-400 border border-white/10">
+                                OAuth Default
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="text-xs text-gray-400 font-mono">
+                            Select and upload an image from your PC folder.
+                          </p>
+                          <p className="text-[10px] text-gray-500 font-mono">
+                            Supports PNG, JPG, WEBP, or GIF (auto center-cropped to 400×400).
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 w-full sm:w-auto font-mono text-xs">
+                        <button
+                          type="button"
+                          onClick={handleAvatarClick}
+                          disabled={isUploadingPhoto}
+                          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-semibold transition-all shadow-md shadow-copper-500/20 cursor-pointer disabled:opacity-50"
+                        >
+                          {isUploadingPhoto ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                              <span>Processing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <UploadCloud className="w-4 h-4" />
+                              <span>Choose from PC</span>
+                            </>
+                          )}
+                        </button>
+
+                        {profile.avatarUrl && (
+                          <button
+                            type="button"
+                            onClick={handleRemovePhoto}
+                            className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-rose-500/10 text-gray-400 hover:text-rose-400 border border-white/10 hover:border-rose-500/30 transition-all cursor-pointer flex items-center gap-1.5"
+                            title="Revert to default photo"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span className="hidden sm:inline">Remove</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Drag and Drop Zone */}
+                    <div
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={handleAvatarClick}
+                      className={cn(
+                        "p-4 rounded-xl border border-dashed transition-all cursor-pointer flex items-center justify-center gap-3 text-center",
+                        isDragging
+                          ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-300"
+                          : "bg-black/30 border-white/10 hover:border-white/20 text-gray-400 hover:text-gray-300"
+                      )}
+                    >
+                      <UploadCloud className={cn("w-5 h-5 shrink-0", isDragging ? "text-emerald-400 animate-bounce" : "text-gray-500")} />
+                      <span className="text-xs font-mono">
+                        {isDragging ? "Drop your photo file here to upload" : "Or drag and drop an image file here from your computer"}
+                      </span>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-xs uppercase tracking-wider text-gray-300">Full Name</label>
