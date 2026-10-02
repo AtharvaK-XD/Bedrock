@@ -128,29 +128,8 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     };
     window.addEventListener('storage', handleStorage);
 
-    let unsubscribeClerk: (() => void) | null = null;
-    if (typeof (clerk as any)?.addListener === 'function') {
-      unsubscribeClerk = (clerk as any).addListener((emission: any) => {
-        if (emission?.session || emission?.user) {
-          handleSuccess();
-        }
-      });
-    }
-
     const popupCheckTimer = setInterval(() => {
-      // 1. If session is already active, navigate
-      const hasActiveSession = Boolean(
-        (clerk as any)?.session ||
-        (clerk as any)?.user ||
-        (window as any).Clerk?.session ||
-        (window as any).Clerk?.user
-      );
-      if (hasActiveSession) {
-        handleSuccess();
-        return;
-      }
-
-      // 2. If popup was closed by user without authorizing
+      // Check if popup was closed by user without authorizing or completed
       if (popup && popup.closed) {
         clearInterval(popupCheckTimer);
         setTimeout(() => {
@@ -175,13 +154,6 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       window.removeEventListener('message', handleAuthMessage);
       window.removeEventListener('storage', handleStorage);
       clearInterval(popupCheckTimer);
-      if (unsubscribeClerk) {
-        try {
-          unsubscribeClerk();
-        } catch {
-          // ignore
-        }
-      }
     };
 
     try {
@@ -195,6 +167,19 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         });
       }
 
+      // Purge any lingering or cached Clerk session so that the user is forced to authenticate fresh
+      if (clerk && ((clerk as any).session || (clerk as any).user || (window as any).Clerk?.session)) {
+        try {
+          if (typeof clerk.signOut === 'function') {
+            await clerk.signOut();
+          } else if (typeof (window as any).Clerk?.signOut === 'function') {
+            await (window as any).Clerk.signOut();
+          }
+        } catch (signOutErr) {
+          console.warn('Pre-OAuth signOut warning:', signOutErr);
+        }
+      }
+
       // 3. Safely obtain client without uncaught getter errors
       let client: any = null;
       try {
@@ -206,11 +191,16 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         client = (window as any).Clerk?.client;
       }
 
-      const targetSignIn = signIn || client?.signIn;
-      const targetSignUp = signUp || client?.signUp;
+      const targetSignIn = signIn || client?.signIn || (clerk as any).client?.signIn;
+      const targetSignUp = signUp || client?.signUp || (clerk as any).client?.signUp;
       const authResource = mode === 'register' 
         ? (targetSignUp || targetSignIn) 
         : (targetSignIn || targetSignUp);
+
+      // Force prompt on both Google and GitHub OAuth:
+      // Google: 'select_account consent' forces Google account chooser + consent confirmation screen every time
+      // GitHub / others: 'select_account consent' passes prompt parameters so authorization screen is shown
+      const oidcPrompt = 'select_account consent';
 
       // 4. Authenticate with popup window
       if (typeof authResource?.authenticateWithPopup === 'function' && popup && !popup.closed) {
@@ -220,6 +210,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             popup,
             redirectUrl: callbackUrl,
             redirectUrlComplete: targetUrl,
+            oidcPrompt,
           });
           // CRITICAL: Do NOT navigate here!
           // authenticateWithPopup resolves as soon as the popup is redirected to GitHub.
@@ -240,6 +231,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
           strategy,
           redirectUrl: callbackUrl,
           redirectUrlComplete: targetUrl,
+          oidcPrompt,
         });
         return;
       }
@@ -656,6 +648,12 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
                   <GithubIcon />
                   {mode === 'login' ? 'Sign in with GitHub' : 'Sign up with GitHub'}
                 </button>
+              </div>
+
+              <div className="mt-2.5 text-center">
+                <span className="text-[11px] text-zinc-500 font-mono tracking-tight">
+                  Always prompts account selection & consent verification
+                </span>
               </div>
 
               {authError && (
