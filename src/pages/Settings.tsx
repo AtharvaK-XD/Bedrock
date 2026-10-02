@@ -71,12 +71,6 @@ export const MODEL_GROUPS: ModelGroup[] = [
       { id: 'hf/Qwen/Qwen2.5-72B-Instruct', name: 'Qwen 2.5 72B (HuggingFace)', tag: '72B Weights', tagColor: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
     ],
   },
-  {
-    group: 'Local / Offline',
-    models: [
-      { id: 'ollama-local', name: 'Ollama Local (localhost:11434)', tag: 'Private', tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
-    ],
-  },
 ];
 
 type Tab = 'account' | 'api-keys' | 'notifications' | 'privacy' | 'updates';
@@ -89,7 +83,6 @@ interface ApiKeysState {
   anthropicKey: string;
   openRouterKey: string;
   huggingFaceKey: string;
-  ollamaEndpoint: string;
 }
 
 const DEFAULT_API_KEYS: ApiKeysState = {
@@ -100,7 +93,6 @@ const DEFAULT_API_KEYS: ApiKeysState = {
   anthropicKey: '',
   openRouterKey: '',
   huggingFaceKey: '',
-  ollamaEndpoint: 'http://localhost:11434',
 };
 
 const STORAGE_KEY_API_KEYS = 'bedrock_api_keys';
@@ -877,31 +869,6 @@ export default function Settings() {
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>
-                        </div>
-
-                        {/* 6. Ollama Local Endpoint */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'ollama' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                Local Ollama Base URL
-                              </label>
-                            </div>
-                            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                              Local Host
-                            </span>
-                          </div>
-                          <input
-                            type="text"
-                            placeholder="http://localhost:11434"
-                            value={apiKeys.ollamaEndpoint}
-                            onChange={(e) => setApiKeys((prev) => ({ ...prev, ollamaEndpoint: e.target.value }))}
-                            className="w-full px-4 py-3 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                          />
-                          <p className="text-xs text-gray-500 font-mono">
-                            Run private LLMs entirely on your GPU without sending data across the internet.
-                          </p>
                         </div>
                       </div>
                     </div>
