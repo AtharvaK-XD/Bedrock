@@ -3,6 +3,7 @@ import { cn } from '../../lib/utils';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useUserProfile } from '../../lib/useUserProfile';
 import { useAuth } from '../../lib/useAuth';
+import { useUser } from '@clerk/react';
 import { 
   LayoutDashboard,
   Wand2, 
@@ -32,6 +33,8 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
   const { logout } = useAuth();
+  const { user: clerkUser } = useUser();
+  const displayAvatar = profile.avatarUrl || clerkUser?.imageUrl;
 
   const [hasKeys, setHasKeys] = useState(false);
 
@@ -177,8 +180,8 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
           title="View Profile"
         >
           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-copper-500 to-copper-300 text-white flex items-center justify-center text-xs font-bold shadow-md ring-2 ring-transparent group-hover:ring-copper-400/50 transition-all overflow-hidden shrink-0">
-            {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+            {displayAvatar ? (
+              <img src={displayAvatar} alt={profile.name} className="w-full h-full object-cover" />
             ) : (
               profile.avatarInitials
             )}

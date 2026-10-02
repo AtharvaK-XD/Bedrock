@@ -34,7 +34,7 @@ export function Topbar() {
     clerkUser?.fullName || 
     clerkUser?.firstName || 
     resolveCleanName(profile.name, clerkUser?.primaryEmailAddress?.emailAddress || profile.email);
-  const displayAvatar = clerkUser?.imageUrl || profile.avatarUrl;
+  const displayAvatar = profile.avatarUrl || clerkUser?.imageUrl;
   const displayInitials = resolveInitials(displayName);
 
   const [hasKeys, setHasKeys] = useState(false);
