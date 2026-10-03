@@ -1,4 +1,4 @@
-# Script to create GitHub release v1.2.0 and upload Windows & Mac installers
+# Script to manage GitHub releases: Windows (v1.2.0) and macOS (v1.2.0-mac)
 $ErrorActionPreference = "Stop"
 
 Write-Host "==> Fetching GitHub credentials..."
@@ -18,15 +18,16 @@ $headers = @{
 
 foreach ($repo in $repos) {
     Write-Host "`n========================================================"
-    Write-Host "==> Processing release for repository: $repo"
+    Write-Host "==> Processing releases for repository: $repo"
     Write-Host "========================================================"
     
-    $release = $null
+    # ---------------- 1. Windows Release (v1.2.0) ----------------
+    $winRelease = $null
     try {
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.0" -Headers $headers -Method Get
-        Write-Host "Release v1.2.0 already exists (ID: $($release.id))."
+        $winRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.0" -Headers $headers -Method Get
+        Write-Host "Windows Release v1.2.0 exists (ID: $($winRelease.id))."
     } catch {
-        Write-Host "Release does not exist yet. Creating release v1.2.0..."
+        Write-Host "Creating Windows release v1.2.0..."
         $body = @{
             tag_name = "v1.2.0"
             target_commitish = "main"
@@ -34,7 +35,7 @@ foreach ($repo in $repos) {
             body = @"
 # Bedrock v1.2.0 Desktop Workstation
 
-This release delivers the dedicated desktop workstation interface with complete sidebar navigation, local BYOK support, and cross-platform desktop installers.
+This release delivers the dedicated desktop workstation interface with complete sidebar navigation and local BYOK support.
 
 ## Highlights
 - **Full Desktop Sidebar Navigation**: Seamless access to Dashboard, Prompt Generator, Branching Pipelines, Prompt Tester, and Library directly from the workstation sidebar.
@@ -46,64 +47,100 @@ This release delivers the dedicated desktop workstation interface with complete 
 
 ### Downloads
 - **Windows Installer**: Download `Bedrock-Setup.exe` below.
-- **macOS Installer**: Download `Bedrock-Mac.dmg` below.
 "@
             draft = $false
             prerelease = $false
             make_latest = "true"
         } | ConvertTo-Json
 
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers -Method Post -Body $body
-        Write-Host "Release created successfully (ID: $($release.id))."
+        $winRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers -Method Post -Body $body
+        Write-Host "Windows release created successfully (ID: $($winRelease.id))."
     }
 
-    $releaseId = $release.id
+    $winPath = "release\installer\Bedrock-Setup.exe"
+    if (Test-Path $winPath) {
+        $winId = $winRelease.id
+        if ($winRelease.assets) {
+            foreach ($a in $winRelease.assets) {
+                if ($a.name -eq "Bedrock-Setup.exe") {
+                    Write-Host "Deleting old Bedrock-Setup.exe asset ($($a.id))..."
+                    Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/assets/$($a.id)" -Headers $headers -Method Delete
+                    Start-Sleep -Seconds 1
+                }
+            }
+        }
+        $fileItem = Get-Item $winPath
+        Write-Host "==> Uploading Bedrock-Setup.exe ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to v1.2.0..."
+        $uploadUrl = "https://uploads.github.com/repos/$repo/releases/$winId/assets?name=Bedrock-Setup.exe"
+        & curl.exe -X POST -H "Authorization: Bearer $token" -H "Content-Type: application/octet-stream" -H "Accept: application/vnd.github.v3+json" --data-binary "@$winPath" "$uploadUrl"
+    }
 
-    $uploadTargets = @(
-        @{ Name = "Bedrock-Setup.exe"; Path = "release\installer\Bedrock-Setup.exe" },
-        @{ Name = "Bedrock-Mac.dmg"; Path = "release\Bedrock-Mac.dmg" },
-        @{ Name = "Bedrock-Mac.zip"; Path = "release\Bedrock-Mac.zip" }
-    )
+    # ---------------- 2. macOS Dedicated Release (v1.2.0-mac) ----------------
+    $macRelease = $null
+    try {
+        $macRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.0-mac" -Headers $headers -Method Get
+        Write-Host "macOS Release v1.2.0-mac exists (ID: $($macRelease.id))."
+    } catch {
+        Write-Host "Creating dedicated macOS release v1.2.0-mac..."
+        $body = @{
+            tag_name = "v1.2.0-mac"
+            target_commitish = "main"
+            name = "Bedrock v1.2.0 - macOS Desktop Workstation"
+            body = @"
+# Bedrock v1.2.0 - macOS Desktop Workstation
 
-    foreach ($target in $uploadTargets) {
-        $name = $target.Name
-        $path = $target.Path
+Dedicated macOS release for Bedrock Prompt Engineering Workstation.
+Native build supporting both Apple Silicon (M1/M2/M3/M4) and Intel Macs.
 
-        if (Test-Path $path) {
-            # Check if asset already exists in release
-            if ($release.assets) {
-                foreach ($asset in $release.assets) {
-                    if ($asset.name -eq $name) {
-                        Write-Host "Deleting existing $name asset ($($asset.id)) in $repo..."
-                        Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/assets/$($asset.id)" -Headers $headers -Method Delete
-                        Start-Sleep -Seconds 2
+### Downloads
+- **macOS Disk Image (Installer)**: `Bedrock-Mac.dmg`
+- **macOS Application Archive**: `Bedrock-Mac.zip`
+
+---
+
+### First Launch Instructions (Ad-hoc Unsigned Build)
+Because this build is distributed directly without a paid Apple certificate:
+1. Open `Bedrock-Mac.dmg` and drag `Bedrock` to your `/Applications` folder.
+2. **Right-click** (or Control-click) `Bedrock.app` in Applications and click **Open**.
+3. Click **Open** on the confirmation prompt.
+*(Or in Terminal, run: ``xattr -cr /Applications/Bedrock.app``)*
+"@
+            draft = $false
+            prerelease = $false
+            make_latest = "false"
+        } | ConvertTo-Json
+
+        $macRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers -Method Post -Body $body
+        Write-Host "macOS release created successfully (ID: $($macRelease.id))."
+    }
+
+    $macId = $macRelease.id
+    $macTargets = @("Bedrock-Mac.dmg", "Bedrock-Mac.zip")
+    foreach ($mName in $macTargets) {
+        $mPath = "release\$mName"
+        if (Test-Path $mPath) {
+            if ($macRelease.assets) {
+                foreach ($a in $macRelease.assets) {
+                    if ($a.name -eq $mName) {
+                        Write-Host "Deleting existing $mName in v1.2.0-mac..."
+                        Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/assets/$($a.id)" -Headers $headers -Method Delete
+                        Start-Sleep -Seconds 1
                     }
                 }
             }
-
-            $fileItem = Get-Item $path
-            Write-Host "==> Uploading $name ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to $repo..."
-
-            $uploadUrl = "https://uploads.github.com/repos/$repo/releases/$releaseId/assets?name=$name"
-            & curl.exe -X POST `
-                -H "Authorization: Bearer $token" `
-                -H "Content-Type: application/octet-stream" `
-                -H "Accept: application/vnd.github.v3+json" `
-                --data-binary "@$path" `
-                "$uploadUrl"
-        } else {
-            Write-Host "Skipping $name (not present at $path)."
+            $fileItem = Get-Item $mPath
+            Write-Host "==> Uploading $mName ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to v1.2.0-mac..."
+            $uploadUrl = "https://uploads.github.com/repos/$repo/releases/$macId/assets?name=$mName"
+            & curl.exe -X POST -H "Authorization: Bearer $token" -H "Content-Type: application/octet-stream" -H "Accept: application/vnd.github.v3+json" --data-binary "@$mPath" "$uploadUrl"
         }
     }
 
-    Write-Host "`n==> Verifying latest release for $repo..."
+    Write-Host "`n==> Verifying latest Windows release for $repo..."
     $latest = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers $headers -Method Get
-    Write-Host "Latest release tag: $($latest.tag_name)"
-    Write-Host "Latest release name: $($latest.name)"
-    Write-Host "Latest release assets:"
+    Write-Host "Latest release tag (should be v1.2.0): $($latest.tag_name)"
     foreach ($a in $latest.assets) {
-        Write-Host "  - $($a.name): $([math]::Round($a.size / 1MB, 2)) MB | Download: $($a.browser_download_url)"
+        Write-Host "  - Windows Asset: $($a.name) ($([math]::Round($a.size / 1MB, 2)) MB)"
     }
 }
 
-Write-Host "`n==> Finished cross-platform release process for both repositories!"
+Write-Host "`n==> Finished isolated release configuration!"
