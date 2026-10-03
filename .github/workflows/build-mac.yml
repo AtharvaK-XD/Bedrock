@@ -62,11 +62,31 @@ jobs:
           name: bedrock-macos-installer
           path: release-mac-artifacts/*
 
-      - name: Attach macOS Assets to GitHub Release
+      - name: Attach macOS Assets to Dedicated macOS GitHub Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.2.0
+          tag_name: v1.2.0-mac
+          name: "Bedrock v1.2.0 - macOS Desktop Workstation"
+          make_latest: false
+          body: |
+            # Bedrock v1.2.0 - macOS Desktop Workstation
+
+            Dedicated macOS release for Bedrock Prompt Engineering Workstation.
+            Native build supporting both Apple Silicon (M1/M2/M3/M4) and Intel Macs.
+
+            ### Downloads
+            - **macOS Disk Image (Installer)**: `Bedrock-Mac.dmg`
+            - **macOS Application Archive**: `Bedrock-Mac.zip`
+
+            ---
+
+            ### First Launch Instructions (Ad-hoc Unsigned Build)
+            Because this build is distributed directly without a paid Apple certificate:
+            1. Open `Bedrock-Mac.dmg` and drag `Bedrock` to your `/Applications` folder.
+            2. **Right-click** (or Control-click) `Bedrock.app` in Applications and click **Open**.
+            3. Click **Open** on the confirmation prompt.
+            *(Or in Terminal, run: `xattr -cr /Applications/Bedrock.app`)*
           files: |
             release-mac-artifacts/Bedrock-Mac.dmg
             release-mac-artifacts/Bedrock-Mac.zip
