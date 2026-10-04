@@ -21,6 +21,8 @@ import Terms from './pages/Terms';
 import AuthPage from './pages/Auth';
 import { AppLayout } from './components/layout/AppLayout';
 import SSOCallback from './pages/SSOCallback';
+import BrowserAuth from './pages/BrowserAuth';
+import BrowserAuthCallback from './pages/BrowserAuthCallback';
 import { ClerkProvider } from '@clerk/react';
 import { checkForUpdates } from './lib/updater';
 import { useAuth } from './lib/useAuth';
@@ -42,10 +44,15 @@ function AnimatedRoutes() {
   const isDesktop = isDesktopApp();
   
   useEffect(() => {
-    // If desktop receives OAuth callback path without hash, redirect to hash router path
-    if (typeof window !== 'undefined' && window.location.pathname.includes('sso-callback') && !window.location.hash.includes('sso-callback')) {
-      window.location.replace(`${window.location.origin}/#/sso-callback${window.location.search}`);
-      return;
+    // If desktop or browser receives OAuth callback path without hash, redirect to hash router path
+    if (typeof window !== 'undefined' && !window.location.hash) {
+      if (
+        window.location.pathname.includes('browser-auth') ||
+        window.location.pathname.includes('sso-callback')
+      ) {
+        window.location.replace(`${window.location.origin}/#${window.location.pathname}${window.location.search}`);
+        return;
+      }
     }
 
     window.scrollTo(0, 0);
@@ -57,13 +64,13 @@ function AnimatedRoutes() {
       <Routes location={location} key={location.pathname}>
         {/* Root Route:
             - Website (browser/Vercel): STRICTLY the original Landing page
-            - Desktop app: Login required on first launch, then goes to app
+            - Desktop app: Sign up required on first launch, then goes to app
         */}
         <Route 
           path="/" 
           element={
             isDesktop ? (
-              isLoggedIn ? <Navigate to="/app" replace /> : <Navigate to="/login" replace />
+              isLoggedIn ? <Navigate to="/app" replace /> : <Navigate to="/signup" replace />
             ) : (
               <Landing />
             )
@@ -102,6 +109,8 @@ function AnimatedRoutes() {
           } 
         />
         <Route path="/sso-callback" element={<SSOCallback />} />
+        <Route path="/browser-auth" element={<BrowserAuth />} />
+        <Route path="/browser-auth-callback" element={<BrowserAuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
@@ -115,7 +124,7 @@ function AnimatedRoutes() {
                 <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
               </div>
             ) : !isLoggedIn ? (
-              <Navigate to={isDesktop ? "/login" : "/"} replace />
+              <Navigate to={isDesktop ? "/signup" : "/"} replace />
             ) : (
               <AppLayout>
                 <Routes>
@@ -142,7 +151,7 @@ function AnimatedRoutes() {
           path="*" 
           element={
             isDesktop ? (
-              <Navigate to={isLoggedIn ? "/app" : "/login"} replace />
+              <Navigate to={isLoggedIn ? "/app" : "/signup"} replace />
             ) : (
               <Navigate to="/" replace />
             )

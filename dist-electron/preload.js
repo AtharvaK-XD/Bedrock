@@ -38,3 +38,19 @@ contextBridge.exposeInMainWorld(
     invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
   })
 );
+
+// Expose secure external browser authentication interface
+contextBridge.exposeInMainWorld(
+  "electronAuth",
+  Object.freeze({
+    isAvailable: true,
+    startExternalAuth: (options) => ipcRenderer.invoke("auth:start-external", options),
+    getLocalPort: () => ipcRenderer.invoke("auth:get-local-port"),
+    onAuthSuccess: (callback) => {
+      const listener = (_event, data) => callback(data);
+      ipcRenderer.on("auth:external-success", listener);
+      return () => ipcRenderer.removeListener("auth:external-success", listener);
+    },
+  })
+);
+

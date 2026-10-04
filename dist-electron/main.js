@@ -41,11 +41,121 @@ const MIME_TYPES = {
 	".wasm": "application/wasm"
 };
 
+// Register bedrock:// custom protocol for deep-linking
+if (process.defaultApp) {
+	if (process.argv.length >= 2) {
+		app.setAsDefaultProtocolClient("bedrock", process.execPath, [path.resolve(process.argv[1])]);
+	}
+} else {
+	app.setAsDefaultProtocolClient("bedrock");
+}
+
+let localServerPort = 0;
+const pendingAuthSessions = new Map();
+
+function handleProtocolUrl(rawUrl) {
+	if (!rawUrl || typeof rawUrl !== "string") return;
+	try {
+		if (rawUrl.startsWith("bedrock://")) {
+			const parsed = new URL(rawUrl.replace("bedrock://", "http://bedrock/"));
+			const dataParam = parsed.searchParams.get("data");
+			if (dataParam) {
+				const payload = JSON.parse(decodeURIComponent(dataParam));
+				if (payload.nonce) {
+					pendingAuthSessions.set(payload.nonce, payload);
+				}
+				if (win && win.webContents) {
+					win.webContents.send("auth:external-success", payload);
+				}
+				if (win) {
+					if (win.isMinimized()) win.restore();
+					win.show();
+					win.focus();
+				}
+				if (process.platform === "darwin") {
+					app.focus({ steal: true });
+					app.dock?.bounce?.("informational");
+				}
+			}
+		}
+	} catch (e) {
+		console.warn("[Protocol] Error parsing deep link URL:", e);
+	}
+}
+
 function startLocalServer() {
 	return new Promise((resolve, reject) => {
 		const server = http.createServer((req, res) => {
 			try {
 				const parsedUrl = new URL(req.url, "http://127.0.0.1");
+
+				// Handle CORS preflight
+				if (req.method === "OPTIONS") {
+					res.writeHead(204, {
+						"Access-Control-Allow-Origin": "*",
+						"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+						"Access-Control-Allow-Headers": "Content-Type, Authorization"
+					});
+					return res.end();
+				}
+
+				// Handle Desktop Auth Completion Callback from external browser
+				if (req.method === "POST" && parsedUrl.pathname === "/api/desktop-auth-complete") {
+					let body = "";
+					req.on("data", (chunk) => { body += chunk; });
+					req.on("end", () => {
+						try {
+							const payload = JSON.parse(body);
+							if (payload.nonce) {
+								pendingAuthSessions.set(payload.nonce, payload);
+							}
+							if (win && win.webContents) {
+								win.webContents.send("auth:external-success", payload);
+							}
+							if (win) {
+								if (win.isMinimized()) win.restore();
+								win.show();
+								win.focus();
+							}
+							if (process.platform === "darwin") {
+								app.focus({ steal: true });
+								app.dock?.bounce?.("informational");
+							}
+							res.writeHead(200, {
+								"Content-Type": "application/json",
+								"Access-Control-Allow-Origin": "*"
+							});
+							res.end(JSON.stringify({ success: true }));
+						} catch {
+							res.writeHead(400, {
+								"Content-Type": "application/json",
+								"Access-Control-Allow-Origin": "*"
+							});
+							res.end(JSON.stringify({ error: "Invalid JSON" }));
+						}
+					});
+					return;
+				}
+
+				// Handle Auth Status Polling
+				if (req.method === "GET" && parsedUrl.pathname === "/api/desktop-auth-status") {
+					const nonce = parsedUrl.searchParams.get("nonce");
+					if (nonce && pendingAuthSessions.has(nonce)) {
+						const data = pendingAuthSessions.get(nonce);
+						pendingAuthSessions.delete(nonce);
+						res.writeHead(200, {
+							"Content-Type": "application/json",
+							"Access-Control-Allow-Origin": "*"
+						});
+						return res.end(JSON.stringify({ authenticated: true, session: data }));
+					}
+					res.writeHead(200, {
+						"Content-Type": "application/json",
+						"Access-Control-Allow-Origin": "*"
+					});
+					return res.end(JSON.stringify({ authenticated: false }));
+				}
+
 				let filePath = path.join(RENDERER_DIST, decodeURIComponent(parsedUrl.pathname));
 
 				if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
@@ -72,8 +182,8 @@ function startLocalServer() {
 		});
 
 		server.listen(0, "127.0.0.1", () => {
-			const port = server.address().port;
-			resolve(`http://localhost:${port}`);
+			localServerPort = server.address().port;
+			resolve(`http://localhost:${localServerPort}`);
 		});
 		server.on("error", reject);
 	});
@@ -156,50 +266,14 @@ function createWindow() {
 		}
 	});
 
-	// Restrict window.open / popups: Open verified authentication popups safely, and open external links in system browser
+	// Restrict window.open / popups: Always open in external system browser tab
 	win.webContents.setWindowOpenHandler(({ url }) => {
 		try {
-			// Allow blank popup creation for in-flight OAuth redirects
 			if (url === "about:blank" || url.startsWith("about:")) {
-				return {
-					action: "allow",
-					overrideBrowserWindowOptions: {
-						width: 600,
-						height: 750,
-						autoHideMenuBar: true,
-						webPreferences: {
-							webSecurity: true,
-							devTools: false
-						}
-					}
-				};
+				return { action: "deny" };
 			}
-
 			const parsed = new URL(url);
-			// Allow Google OAuth, GitHub OAuth, and Clerk authentication popups
-			if (
-				parsed.hostname.includes("clerk") ||
-				parsed.hostname.includes("accounts.google.com") ||
-				parsed.hostname.includes("google.com") ||
-				parsed.hostname.includes("github.com") ||
-				parsed.hostname === "localhost" ||
-				parsed.hostname === "127.0.0.1"
-			) {
-				return {
-					action: "allow",
-					overrideBrowserWindowOptions: {
-						width: 600,
-						height: 750,
-						autoHideMenuBar: true,
-						webPreferences: {
-							webSecurity: true,
-							devTools: false
-						}
-					}
-				};
-			}
-
-			// Open documentation / external links in external system browser
+			// Open external links and OAuth in external system browser
 			if (parsed.protocol === "https:" || parsed.protocol === "http:") {
 				shell.openExternal(url);
 			}
@@ -258,7 +332,7 @@ function setupAutoUpdater(mainWindow) {
 			});
 		});
 
-		autoUpdater.on("update-not-available", (info) => {
+		autoUpdater.on("update-not-available", (_info) => {
 			console.log("[AutoUpdater] App is up to date.");
 			mainWindow?.webContents.send("updater:status", {
 				status: "up-to-date",
@@ -348,15 +422,39 @@ ipcMain.handle("updater:get-version", () => {
 	return app.getVersion();
 });
 
+// External browser authentication IPC handlers
+ipcMain.handle("auth:get-local-port", () => localServerPort);
+
+ipcMain.handle("auth:start-external", async (_event, { strategy, mode, nonce }) => {
+	const port = localServerPort;
+	const authUrl = `http://localhost:${port}/#/browser-auth?strategy=${encodeURIComponent(strategy || "oauth_google")}&mode=${encodeURIComponent(mode || "register")}&nonce=${encodeURIComponent(nonce || "")}&port=${port}`;
+	shell.openExternal(authUrl);
+	return { success: true, url: authUrl };
+});
+
 // Enforce single instance lock (prevents duplicate malicious sidecar injection)
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) {
 	app.quit();
 } else {
-	app.on("second-instance", () => {
+	// Handle protocol URL on macOS
+	app.on("open-url", (event, url) => {
+		event.preventDefault();
+		handleProtocolUrl(url);
+	});
+
+	// Handle second-instance deep linking on Windows
+	app.on("second-instance", (_event, argv) => {
 		if (win) {
 			if (win.isMinimized()) win.restore();
+			win.show();
 			win.focus();
+		}
+		if (Array.isArray(argv)) {
+			const deepLink = argv.find((arg) => typeof arg === "string" && arg.startsWith("bedrock://"));
+			if (deepLink) {
+				handleProtocolUrl(deepLink);
+			}
 		}
 	});
 
@@ -383,6 +481,14 @@ if (!hasSingleInstanceLock) {
 				}
 			});
 		});
+
+		// Check for protocol launch URL on Windows initial startup
+		if (process.platform === "win32" && Array.isArray(process.argv)) {
+			const initialDeepLink = process.argv.find((arg) => typeof arg === "string" && arg.startsWith("bedrock://"));
+			if (initialDeepLink) {
+				setTimeout(() => handleProtocolUrl(initialDeepLink), 1500);
+			}
+		}
 
 		createWindow();
 	});
