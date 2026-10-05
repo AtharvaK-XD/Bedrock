@@ -118,10 +118,27 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         }, 1000);
 
         // 3. Open in external default browser tab
+        let launched = false;
         if (electronAuth?.startExternalAuth) {
-          await electronAuth.startExternalAuth({ strategy, mode, nonce });
-        } else if (ipcRenderer?.invoke) {
-          await ipcRenderer.invoke('auth:start-external', { strategy, mode, nonce });
+          try {
+            await electronAuth.startExternalAuth({ strategy, mode, nonce });
+            launched = true;
+          } catch (launchErr) {
+            console.warn('electronAuth.startExternalAuth failed, trying fallback:', launchErr);
+          }
+        }
+        if (!launched && ipcRenderer?.invoke) {
+          try {
+            await ipcRenderer.invoke('auth:start-external', { strategy, mode, nonce });
+            launched = true;
+          } catch (ipcErr) {
+            console.warn('ipcRenderer.invoke auth:start-external failed, trying fallback:', ipcErr);
+          }
+        }
+        if (!launched) {
+          // Direct fallback: window.open triggers Electron setWindowOpenHandler -> shell.openExternal
+          const authUrl = `http://127.0.0.1:${port}/#/browser-auth?strategy=${encodeURIComponent(strategy)}&mode=${encodeURIComponent(mode)}&nonce=${encodeURIComponent(nonce)}&port=${port}`;
+          window.open(authUrl);
         }
       } catch (err: any) {
         console.error('Failed to trigger external browser auth:', err);
