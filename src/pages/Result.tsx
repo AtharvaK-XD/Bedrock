@@ -13,6 +13,7 @@ import { cn } from '../lib/utils';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
 import { addPromptToHistory } from '../lib/generatorHistory';
 import { recordExecutionTrace } from '../lib/telemetry';
+import { isDesktopApp } from '../lib/platform';
 
 const TypewriterText = ({ text }: { text: string }) => {
   const words = text.split(' ');
@@ -40,6 +41,7 @@ const TypewriterText = ({ text }: { text: string }) => {
 };
 
 export default function Result() {
+  const isDesktop = isDesktopApp();
   const location = useLocation();
   const navigate = useNavigate();
   const [promptText, setPromptText] = useState<string>(() => sanitizeRenderedPrompt(location.state?.promptText || ''));
@@ -247,7 +249,10 @@ export default function Result() {
   );
 
   return (
-    <PageTransition className="flex flex-col h-[calc(100vh-80px)] text-white font-sans selection:bg-copper-500/30 overflow-hidden">
+    <PageTransition className={cn(
+      "flex flex-col text-white font-sans selection:bg-copper-500/30 overflow-hidden",
+      isDesktop ? "h-full" : "h-[calc(100vh-80px)]"
+    )}>
       
       {/* Split Pane Workspace */}
       <PanelGroup orientation="horizontal" className="w-full h-full">

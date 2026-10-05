@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
+import { isDesktopApp } from '../lib/platform';
 import {
   Search,
   Plus,
@@ -530,9 +531,14 @@ export default function Library() {
     setActiveCategory('All');
   };
 
+  const isDesktop = isDesktopApp();
+
   return (
-    <PageTransition>
-      <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)] bg-black text-white">
+    <PageTransition className={cn(isDesktop ? "h-full" : "")}>
+      <div className={cn(
+        "w-full px-4 sm:px-8 py-6 lg:py-10 bg-black text-white",
+        isDesktop ? "min-h-full" : "min-h-[calc(100vh-80px)]"
+      )}>
         {/* Top Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
           <div>

@@ -26,6 +26,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
+import { isDesktopApp } from '../lib/platform';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { testPrompt, saveWorkflow, loadWorkflows, deleteWorkflow } from '../lib/api';
@@ -2757,9 +2758,14 @@ export default function BranchingChat() {
     setView('editor');
   };
 
+  const isDesktop = isDesktopApp();
+
   return (
-    <PageTransition>
-      <div className="w-full p-4 sm:p-6 flex flex-col h-[calc(100vh-80px)] min-h-0">
+    <PageTransition className={cn(isDesktop ? "h-full" : "")}>
+      <div className={cn(
+        "w-full p-4 sm:p-6 flex flex-col min-h-0",
+        isDesktop ? "h-full" : "h-[calc(100vh-80px)]"
+      )}>
         {view === 'dashboard' ? (
           <WorkflowDashboard
             onOpenWorkflow={handleOpenWorkflow}

@@ -10,6 +10,7 @@ import {
   GitBranch, 
   FlaskConical, 
   Bookmark, 
+  History as HistoryIcon,
   Settings, 
   KeyRound, 
   LogOut, 
@@ -22,6 +23,7 @@ const desktopNavItems = [
   { label: 'Branching', path: '/app/branching', icon: GitBranch, shortcut: '⌘3' },
   { label: 'Prompt Tester', path: '/app/tester', icon: FlaskConical, shortcut: '⌘4' },
   { label: 'Library', path: '/app/library', icon: Bookmark, shortcut: '⌘5' },
+  { label: 'History', path: '/app/history', icon: HistoryIcon, shortcut: '⌘6' },
 ];
 
 interface SidebarProps {
@@ -37,6 +39,39 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
   const displayAvatar = profile.avatarUrl || clerkUser?.imageUrl;
 
   const [hasKeys, setHasKeys] = useState(false);
+
+  // Keyboard navigation shortcuts: ⌘1 to ⌘6
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.metaKey || e.ctrlKey) {
+        const keyMap: Record<string, string> = {
+          '1': '/app',
+          '2': '/app/generator',
+          '3': '/app/branching',
+          '4': '/app/tester',
+          '5': '/app/library',
+          '6': '/app/history',
+        };
+        if (keyMap[e.key]) {
+          e.preventDefault();
+          navigate(keyMap[e.key]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate]);
 
   useEffect(() => {
     const checkKeys = () => {
