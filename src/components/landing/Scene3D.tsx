@@ -1,9 +1,64 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect, Component, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, MeshTransmissionMaterial, Float, ContactShadows } from '@react-three/drei';
 import { EffectComposer, Bloom, Noise, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { BlendFunction } from 'postprocessing';
+
+// Pre-flight check for WebGL/WebGL2 capability on client device
+function isWebGLSupported(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    return Boolean(gl && ((window.WebGLRenderingContext && gl instanceof WebGLRenderingContext) || (window.WebGL2RenderingContext && gl instanceof WebGL2RenderingContext)));
+  } catch {
+    return false;
+  }
+}
+
+// Error Boundary specifically guarding WebGL canvas creation and context loss
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class Scene3DErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any) {
+    console.warn('[Scene3D] WebGL renderer initialization bypassed gracefully:', error?.message || error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+// Visual fallback rendered when WebGL is unsupported, disabled, or context is lost
+const AmbientVisualFallback = () => {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
+      {/* Organic radial ambient light field matching the 3D aesthetic */}
+      <div className="absolute w-[650px] h-[650px] rounded-full bg-gradient-to-tr from-copper-500/15 via-[#2c9a8b]/10 to-transparent blur-[160px] animate-pulse" />
+      <div className="absolute w-[420px] h-[420px] rounded-full border border-white/5 bg-gradient-to-b from-white/[0.04] to-transparent backdrop-blur-3xl shadow-[0_0_100px_rgba(44,154,139,0.12)]" />
+    </div>
+  );
+};
 
 // An organic, liquid-like glass object
 const LiquidGlassCore = () => {
@@ -86,33 +141,51 @@ const ScrollManager = () => {
 };
 
 export const Scene3D = () => {
+  const [canRenderWebGL, setCanRenderWebGL] = useState(false);
+
+  useEffect(() => {
+    setCanRenderWebGL(isWebGLSupported());
+  }, []);
+
+  if (!canRenderWebGL) {
+    return <AmbientVisualFallback />;
+  }
+
   return (
     <div className="absolute inset-0 z-0 pointer-events-none w-full h-full">
-      <Canvas 
-        camera={{ position: [0, 0, 8], fov: 45 }} 
-        gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
-        dpr={[1, 1.5]}
-      >
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 10, 5]} intensity={2} color="#ffffff" />
-        <directionalLight position={[-10, -10, -5]} intensity={1.5} color="#2c9a8b" /> {/* Copper tint */}
-        
-        <LiquidGlassCore />
-        <ScrollManager />
-        
-        {/* Photorealistic Environment */}
-        <Environment preset="city" />
-        
-        {/* Soft grounding shadow */}
-        <ContactShadows position={[0, -3.5, 0]} opacity={0.5} scale={15} blur={2.5} far={4} resolution={256} frames={1} />
-        
-        {/* Cinematic Post-Processing */}
-        <EffectComposer multisampling={0}>
-          <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} height={300} opacity={0.5} />
-          <Noise opacity={0.035} blendFunction={BlendFunction.OVERLAY} />
-          <Vignette eskil={false} offset={0.1} darkness={1.1} />
-        </EffectComposer>
-      </Canvas>
+      <Scene3DErrorBoundary fallback={<AmbientVisualFallback />}>
+        <Canvas 
+          camera={{ position: [0, 0, 8], fov: 45 }} 
+          gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
+          dpr={[1, 1.5]}
+          onCreated={({ gl }) => {
+            gl.domElement.addEventListener('webglcontextlost', (e) => {
+              e.preventDefault();
+              console.warn('[Scene3D] WebGL context lost.');
+            }, false);
+          }}
+        >
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[10, 10, 5]} intensity={2} color="#ffffff" />
+          <directionalLight position={[-10, -10, -5]} intensity={1.5} color="#2c9a8b" /> {/* Copper tint */}
+          
+          <LiquidGlassCore />
+          <ScrollManager />
+          
+          {/* Photorealistic Environment */}
+          <Environment preset="city" />
+          
+          {/* Soft grounding shadow */}
+          <ContactShadows position={[0, -3.5, 0]} opacity={0.5} scale={15} blur={2.5} far={4} resolution={256} frames={1} />
+          
+          {/* Cinematic Post-Processing */}
+          <EffectComposer multisampling={0}>
+            <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} height={300} opacity={0.5} />
+            <Noise opacity={0.035} blendFunction={BlendFunction.OVERLAY} />
+            <Vignette eskil={false} offset={0.1} darkness={1.1} />
+          </EffectComposer>
+        </Canvas>
+      </Scene3DErrorBoundary>
     </div>
   );
 };
