@@ -10,25 +10,39 @@ export interface ProviderTarget {
 
 export const AI_PROVIDERS: ProviderTarget[] = [
   {
-    id: 'groq-70b',
-    name: 'Groq Llama 3.3 70B',
-    model: 'llama-3.3-70b-versatile',
+    id: 'groq-oss-120b',
+    name: 'Groq GPT-OSS 120B',
+    model: 'openai/gpt-oss-120b',
     priority: 1,
     weight: 5,
   },
   {
-    id: 'groq-8b',
-    name: 'Groq Llama 3.1 8B',
-    model: 'llama-3.1-8b-instant',
+    id: 'groq-oss-20b',
+    name: 'Groq GPT-OSS 20B',
+    model: 'openai/gpt-oss-20b',
+    priority: 1,
+    weight: 4,
+  },
+  {
+    id: 'groq-qwen',
+    name: 'Groq Qwen 3.8 27B',
+    model: 'qwen/qwen3.8-27b',
     priority: 2,
     weight: 3,
   },
   {
     id: 'gemini-flash',
-    name: 'Google Gemini 2.5 Flash',
-    model: 'gemini-2.5-flash',
+    name: 'Google Gemini Flash Latest',
+    model: 'gemini-flash-latest',
     priority: 2,
     weight: 4,
+  },
+  {
+    id: 'openrouter-gpt4o',
+    name: 'OpenRouter GPT-4o Mini',
+    model: 'openai/gpt-4o-mini',
+    priority: 3,
+    weight: 3,
   },
 ];
 

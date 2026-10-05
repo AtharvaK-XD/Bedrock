@@ -30,14 +30,12 @@ export const AI_AGENTS = [
   },
   {
     id: 'openrouter',
-    name: 'OpenRouter Free',
-    description: '100% Free Open-Source Models',
+    name: 'OpenRouter',
+    description: 'Frontier and open-source models via OpenRouter',
     models: [
-      { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)' },
-      { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B (Free)' },
-      { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (Free)' },
-      { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini (Free)' },
-      { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Nvidia Nemotron 70B (Free)' }
+      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
+      { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B' },
+      { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1' },
     ]
   },
   {
@@ -65,10 +63,10 @@ export const AI_AGENTS = [
     name: 'Gemini',
     description: 'Multimodal and tight Google integration',
     models: [
-      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite' },
       { id: 'gemini-flash-latest', name: 'Gemini Flash Latest' },
+      { id: 'gemini-flash-lite-latest', name: 'Gemini Flash Lite' },
       { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+      { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash' },
     ]
   },
   {
@@ -79,8 +77,7 @@ export const AI_AGENTS = [
       { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Groq)' },
       { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B (Groq)' },
       { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (Groq)' },
-      { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3.3 70B' },
-      { id: 'llama-3.1-8b-instant', name: 'LLaMA 3.1 8B' },
+      { id: 'allam-2-7b', name: 'ALLaM 2 7B (Groq)' },
     ]
   },
   {

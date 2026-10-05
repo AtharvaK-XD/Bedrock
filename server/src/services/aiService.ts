@@ -162,7 +162,7 @@ ${sanitized}
       const { key, nextIndex } = this.getRoundRobinKey(config.ai.openRouterKeys, this.openRouterKeyIndex);
       this.openRouterKeyIndex = nextIndex;
 
-      const openRouterModels = ['openai/gpt-4o-mini', 'meta-llama/llama-3.3-70b-instruct:free', 'deepseek/deepseek-r1:free'];
+      const openRouterModels = ['openai/gpt-4o-mini', 'meta-llama/llama-3.1-8b-instruct', 'deepseek/deepseek-r1'];
       for (const model of openRouterModels) {
         try {
           const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -203,7 +203,7 @@ ${sanitized}
       const { key, nextIndex } = this.getRoundRobinKey(config.ai.geminiKeys, this.geminiKeyIndex);
       this.geminiKeyIndex = nextIndex;
 
-      const geminiModels = ['gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.5-flash'];
+      const geminiModels = ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.5-flash'];
       for (const model of geminiModels) {
         try {
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
@@ -553,7 +553,34 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
         ? `${systemPrompt}\n\n${BEDROCK_CORE_GUARDRAILS}`
         : BEDROCK_CORE_GUARDRAILS;
 
-      // 1. HuggingFace models
+      // 1. Groq models (gpt-oss, qwen, llama, allam)
+      const isGroqModel = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'allam-2-7b'].includes(modelId) ||
+        (config.ai.groqKeys.length > 0 && (modelId.includes('gpt-oss') || modelId.includes('qwen') || modelId.startsWith('allam')));
+      if (isGroqModel) {
+        const { key } = this.getRoundRobinKey(config.ai.groqKeys, this.groqKeyIndex);
+        if (!key) throw new Error('Groq API Key is not configured on backend.');
+
+        const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${key}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: modelId,
+            messages: [
+              ...(effectiveSystemPrompt ? [{ role: 'system', content: effectiveSystemPrompt }] : []),
+              { role: 'user', content: delimitedUser },
+            ],
+            max_tokens: 1500,
+          }),
+        });
+        if (!res.ok) throw new Error(`Groq error (${res.status}): ${await res.text()}`);
+        const data = (await res.json()) as any;
+        return data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning || '';
+      }
+
+      // 2. HuggingFace models
       if (modelId.startsWith('hf/')) {
         const keys = config.ai.huggingFaceKeys;
         const key = keys.length > 0 ? keys[0] : '';
@@ -583,7 +610,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
         return data.choices?.[0]?.message?.content || '';
       }
 
-      // 2. OpenRouter models
+      // 3. OpenRouter models
       if (modelId.includes('/')) {
         const { key } = this.getRoundRobinKey(config.ai.openRouterKeys, this.openRouterKeyIndex);
         if (!key) throw new Error('OpenRouter API Key is not configured on backend.');
@@ -608,26 +635,43 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
         return data.choices?.[0]?.message?.content || '';
       }
 
-      // 3. Google Gemini models
+      // 4. Google Gemini models
       if (modelId.toLowerCase().includes('gemini')) {
         const { key } = this.getRoundRobinKey(config.ai.geminiKeys, this.geminiKeyIndex);
         if (!key) throw new Error('Google Gemini API Key is not configured on backend.');
 
-        const targetModel = modelId === 'gemini-2.5-flash' ? 'gemini-3.5-flash-lite' : modelId;
-        const res = await this.safeFetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${key}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: delimitedUser }] }],
-              ...(effectiveSystemPrompt ? { systemInstruction: { parts: [{ text: effectiveSystemPrompt }] } } : {}),
-            }),
+        const candidates = (modelId === 'gemini-2.5-flash' || modelId === 'gemini-1.5-flash')
+          ? ['gemini-flash-lite-latest', 'gemini-flash-latest']
+          : [modelId, 'gemini-flash-lite-latest', 'gemini-flash-latest'];
+
+        let lastErr: any = null;
+        for (const targetModel of candidates) {
+          try {
+            const res = await this.safeFetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${key}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: delimitedUser }] }],
+                  ...(effectiveSystemPrompt ? { systemInstruction: { parts: [{ text: effectiveSystemPrompt }] } } : {}),
+                }),
+              }
+            );
+            if (res.ok) {
+              const data = (await res.json()) as any;
+              return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            }
+            const errText = await res.text();
+            lastErr = new Error(`Google Gemini error (${res.status}): ${errText}`);
+            if (res.status === 503 || res.status === 404) continue;
+            throw lastErr;
+          } catch (e: any) {
+            lastErr = e;
           }
-        );
-        if (!res.ok) throw new Error(`Google Gemini error (${res.status}): ${await res.text()}`);
-        const data = (await res.json()) as any;
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        }
+        if (lastErr) throw lastErr;
+        return '';
       }
 
       // Default completion

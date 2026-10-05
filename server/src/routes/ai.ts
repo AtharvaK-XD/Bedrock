@@ -186,10 +186,12 @@ router.get('/models', requireAuth, (req, res) => {
       { id: 'openai/gpt-oss-120b', name: 'GPT OSS 120B (Groq)', provider: 'Groq', available: config.ai.groqKeys.length > 0 },
       { id: 'openai/gpt-oss-20b', name: 'GPT OSS 20B (Groq)', provider: 'Groq', available: config.ai.groqKeys.length > 0 },
       { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (Groq)', provider: 'Groq', available: config.ai.groqKeys.length > 0 },
-      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (OpenRouter)', provider: 'OpenRouter', available: config.ai.openRouterKeys.length > 0 },
-      { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (OpenRouter)', provider: 'OpenRouter', available: config.ai.openRouterKeys.length > 0 },
-      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', provider: 'Google', available: config.ai.geminiKeys.length > 0 },
+      { id: 'gemini-flash-latest', name: 'Gemini Flash Latest', provider: 'Google', available: config.ai.geminiKeys.length > 0 },
+      { id: 'gemini-flash-lite-latest', name: 'Gemini Flash Lite', provider: 'Google', available: config.ai.geminiKeys.length > 0 },
       { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', provider: 'Google', available: config.ai.geminiKeys.length > 0 },
+      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (OpenRouter)', provider: 'OpenRouter', available: config.ai.openRouterKeys.length > 0 },
+      { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B (OpenRouter)', provider: 'OpenRouter', available: config.ai.openRouterKeys.length > 0 },
+      { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1 (OpenRouter)', provider: 'OpenRouter', available: config.ai.openRouterKeys.length > 0 },
     ],
   });
 });
