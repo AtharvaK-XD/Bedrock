@@ -78,7 +78,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
           </div>
         </Link>
         <span className="px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-[10px] font-mono text-copper-300">
-          v1.2.0
+          v1.2.1
         </span>
       </div>
 

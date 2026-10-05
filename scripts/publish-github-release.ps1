@@ -1,4 +1,4 @@
-# Script to manage GitHub releases: Windows (v1.2.0) and macOS (v1.2.0-mac)
+# Script to manage GitHub releases: Windows (v1.2.1) and macOS (v1.2.1-mac)
 $ErrorActionPreference = "Stop"
 
 Write-Host "==> Fetching GitHub credentials..."
@@ -21,27 +21,28 @@ foreach ($repo in $repos) {
     Write-Host "==> Processing releases for repository: $repo"
     Write-Host "========================================================"
     
-    # ---------------- 1. Windows Release (v1.2.0) ----------------
+    # ---------------- 1. Windows Release (v1.2.1) ----------------
     $winRelease = $null
     try {
-        $winRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.0" -Headers $headers -Method Get
-        Write-Host "Windows Release v1.2.0 exists (ID: $($winRelease.id))."
+        $winRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.1" -Headers $headers -Method Get
+        Write-Host "Windows Release v1.2.1 exists (ID: $($winRelease.id))."
     } catch {
-        Write-Host "Creating Windows release v1.2.0..."
+        Write-Host "Creating Windows release v1.2.1..."
         $body = @{
-            tag_name = "v1.2.0"
+            tag_name = "v1.2.1"
             target_commitish = "main"
-            name = "Bedrock v1.2.0 - Desktop Workstation"
+            name = "Bedrock v1.2.1 - Desktop Workstation"
             body = @"
-# Bedrock v1.2.0 Desktop Workstation
+# Bedrock v1.2.1 Desktop Workstation
 
-This release delivers the dedicated desktop workstation interface with complete sidebar navigation and local BYOK support.
+This release delivers the dedicated desktop workstation interface with direct Google/GitHub OAuth consent integration, instant authentication handshakes, and local BYOK synthesis.
 
 ## Highlights
+- **Instant Headless OAuth Consent**: Bypasses intermediate verification cards and directs immediately to Google's / GitHub's native account selection and consent screen.
+- **Dedicated Desktop Layout**: Clean borderless workstation view directly routing into login on first run.
 - **Full Desktop Sidebar Navigation**: Seamless access to Dashboard, Prompt Generator, Branching Pipelines, Prompt Tester, and Library directly from the workstation sidebar.
-- **Dedicated Desktop Layout**: Clean borderless workstation view without web topbars or landing page redirects.
-- **Collapsible Generator History**: Dynamic docking alongside the desktop sidebar.
 - **BYOK Multi-Model Synthesis**: Built-in support for Gemini, Groq, OpenAI, Anthropic, and OpenRouter.
+- **Single-Instance Deep Linking**: Robust ``bedrock://`` deep link protocol support with window focus restoration.
 
 ---
 
@@ -58,6 +59,9 @@ This release delivers the dedicated desktop workstation interface with complete 
     }
 
     $winPath = "release\installer\Bedrock-Setup.exe"
+    if (-not (Test-Path $winPath)) {
+        $winPath = "release\Bedrock-Setup.exe"
+    }
     if (Test-Path $winPath) {
         $winId = $winRelease.id
         if ($winRelease.assets) {
@@ -70,24 +74,24 @@ This release delivers the dedicated desktop workstation interface with complete 
             }
         }
         $fileItem = Get-Item $winPath
-        Write-Host "==> Uploading Bedrock-Setup.exe ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to v1.2.0..."
+        Write-Host "==> Uploading Bedrock-Setup.exe ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to v1.2.1..."
         $uploadUrl = "https://uploads.github.com/repos/$repo/releases/$winId/assets?name=Bedrock-Setup.exe"
         & curl.exe -X POST -H "Authorization: Bearer $token" -H "Content-Type: application/octet-stream" -H "Accept: application/vnd.github.v3+json" --data-binary "@$winPath" "$uploadUrl"
     }
 
-    # ---------------- 2. macOS Dedicated Release (v1.2.0-mac) ----------------
+    # ---------------- 2. macOS Dedicated Release (v1.2.1-mac) ----------------
     $macRelease = $null
     try {
-        $macRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.0-mac" -Headers $headers -Method Get
-        Write-Host "macOS Release v1.2.0-mac exists (ID: $($macRelease.id))."
+        $macRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.1-mac" -Headers $headers -Method Get
+        Write-Host "macOS Release v1.2.1-mac exists (ID: $($macRelease.id))."
     } catch {
-        Write-Host "Creating dedicated macOS release v1.2.0-mac..."
+        Write-Host "Creating dedicated macOS release v1.2.1-mac..."
         $body = @{
-            tag_name = "v1.2.0-mac"
+            tag_name = "v1.2.1-mac"
             target_commitish = "main"
-            name = "Bedrock v1.2.0 - macOS Desktop Workstation"
+            name = "Bedrock v1.2.1 - macOS Desktop Workstation"
             body = @"
-# Bedrock v1.2.0 - macOS Desktop Workstation
+# Bedrock v1.2.1 - macOS Desktop Workstation
 
 Dedicated macOS release for Bedrock Prompt Engineering Workstation.
 Native build supporting both Apple Silicon (M1/M2/M3/M4) and Intel Macs.
@@ -122,14 +126,14 @@ Because this build is distributed directly without a paid Apple certificate:
             if ($macRelease.assets) {
                 foreach ($a in $macRelease.assets) {
                     if ($a.name -eq $mName) {
-                        Write-Host "Deleting existing $mName in v1.2.0-mac..."
+                        Write-Host "Deleting existing $mName in v1.2.1-mac..."
                         Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/assets/$($a.id)" -Headers $headers -Method Delete
                         Start-Sleep -Seconds 1
                     }
                 }
             }
             $fileItem = Get-Item $mPath
-            Write-Host "==> Uploading $mName ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to v1.2.0-mac..."
+            Write-Host "==> Uploading $mName ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to v1.2.1-mac..."
             $uploadUrl = "https://uploads.github.com/repos/$repo/releases/$macId/assets?name=$mName"
             & curl.exe -X POST -H "Authorization: Bearer $token" -H "Content-Type: application/octet-stream" -H "Accept: application/vnd.github.v3+json" --data-binary "@$mPath" "$uploadUrl"
         }
@@ -137,7 +141,7 @@ Because this build is distributed directly without a paid Apple certificate:
 
     Write-Host "`n==> Verifying latest Windows release for $repo..."
     $latest = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers $headers -Method Get
-    Write-Host "Latest release tag (should be v1.2.0): $($latest.tag_name)"
+    Write-Host "Latest release tag (should be v1.2.1): $($latest.tag_name)"
     foreach ($a in $latest.assets) {
         Write-Host "  - Windows Asset: $($a.name) ($([math]::Round($a.size / 1MB, 2)) MB)"
     }
