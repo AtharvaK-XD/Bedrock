@@ -24,6 +24,26 @@ Sentry.init({
   // Session Replay
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
+  ignoreErrors: [
+    /Error creating WebGL context/i,
+    /THREE\.WebGLRenderer: Error creating WebGL context/i,
+    /WebGL context was lost/i,
+    /ResizeObserver loop limit exceeded/i,
+  ],
+  beforeSend(event, hint) {
+    const error = hint?.originalException;
+    if (error && typeof error === 'object' && 'message' in error) {
+      const msg = String((error as any).message || '');
+      if (
+        msg.includes('Error creating WebGL context') ||
+        msg.includes('WebGLRenderer') ||
+        msg.includes('webglcontextlost')
+      ) {
+        return null;
+      }
+    }
+    return event;
+  },
 })
 
 const posthogOptions = {
