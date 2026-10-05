@@ -88,7 +88,7 @@ Return the final synthesized prompt cleanly. Avoid conversational meta-text like
   const userContent = sanitizeAndDelimitPrompt(`Concept: ${rawIdea}\nTarget Type: ${targetType}${clarificationContext}`);
 
   try {
-    const { text, model } = await executeAiCompletion(userContent, systemPrompt);
+    const { text, model } = await executeAiCompletion(userContent, systemPrompt, user?.id);
 
     if (user?.id) {
       await recordExecutionTrace({

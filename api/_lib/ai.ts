@@ -111,13 +111,18 @@ import {
   recordProviderFailure,
 } from './loadBalancer.js';
 
+import { recordLangfuseGeneration } from './langfuse.js';
+
 /**
  * Multi-provider execution with Upstash Redis distributed load balancing, circuit breaking, and automatic fallback
  */
 export async function executeAiCompletion(
   prompt: string,
-  systemPrompt?: string
+  systemPrompt?: string,
+  userId?: string
 ): Promise<{ text: string; model: string }> {
+  const startTime = new Date();
+
   // 1. Gather all candidates that have valid API keys
   const groqAvailable = Boolean(getApiKey('groq'));
   const geminiAvailable = Boolean(getApiKey('gemini'));
@@ -164,9 +169,23 @@ export async function executeAiCompletion(
       const text = await dispatchToProvider(provider);
       if (text && text.trim().length > 0) {
         await recordProviderSuccess(provider.id);
+        const modelName = `${provider.name} (${provider.model})`;
+
+        // Async non-blocking telemetry to Langfuse
+        recordLangfuseGeneration({
+          traceName: 'bedrock_ai_completion',
+          model: modelName,
+          input: { systemPrompt, prompt },
+          output: text,
+          userId,
+          startTime,
+          endTime: new Date(),
+          metadata: { providerId: provider.id, providerModel: provider.model },
+        }).catch((e) => console.warn('[Langfuse] Error in recordLangfuseGeneration:', e));
+
         return {
           text,
-          model: `${provider.name} (${provider.model})`,
+          model: modelName,
         };
       }
     } catch (err: any) {
@@ -175,6 +194,19 @@ export async function executeAiCompletion(
       lastError = err;
     }
   }
+
+  // Record failure trace in Langfuse
+  recordLangfuseGeneration({
+    traceName: 'bedrock_ai_completion',
+    model: 'all_providers_failed',
+    input: { systemPrompt, prompt },
+    output: null,
+    userId,
+    startTime,
+    endTime: new Date(),
+    level: 'ERROR',
+    statusMessage: lastError?.message || 'All providers failed',
+  }).catch((e) => console.warn('[Langfuse] Error reporting failure:', e));
 
   throw new Error(
     `All AI providers failed under load. Last error: ${lastError?.message || 'Unknown provider error'}`
