@@ -78,6 +78,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "electron:start": "electron .",
     "electron:build": "npm run build && electron-builder --win",
     "electron:build:mac": "npm run build && electron-builder --mac",
     "electron:pack": "npm run build && electron-builder --dir",
