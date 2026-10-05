@@ -50,7 +50,6 @@ export async function recordLangfuseGeneration(params: {
 
     generation.end({
       output: params.output,
-      endTime: params.endTime || new Date(),
     });
 
     await langfuse.flushAsync();
