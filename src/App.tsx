@@ -64,13 +64,13 @@ function AnimatedRoutes() {
       <Routes location={location} key={location.pathname}>
         {/* Root Route:
             - Website (browser/Vercel): STRICTLY the original Landing page
-            - Desktop app: Sign up required on first launch, then goes to app
+            - Desktop app: Login required on first launch, then goes to app
         */}
         <Route 
           path="/" 
           element={
             isDesktop ? (
-              isLoggedIn ? <Navigate to="/app" replace /> : <Navigate to="/signup" replace />
+              isLoggedIn ? <Navigate to="/app" replace /> : <Navigate to="/login" replace />
             ) : (
               <Landing />
             )
@@ -124,7 +124,7 @@ function AnimatedRoutes() {
                 <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
               </div>
             ) : !isLoggedIn ? (
-              <Navigate to={isDesktop ? "/signup" : "/"} replace />
+              <Navigate to={isDesktop ? "/login" : "/"} replace />
             ) : (
               <AppLayout>
                 <Routes>
@@ -151,7 +151,7 @@ function AnimatedRoutes() {
           path="*" 
           element={
             isDesktop ? (
-              <Navigate to={isLoggedIn ? "/app" : "/signup"} replace />
+              <Navigate to={isLoggedIn ? "/app" : "/login"} replace />
             ) : (
               <Navigate to="/" replace />
             )
