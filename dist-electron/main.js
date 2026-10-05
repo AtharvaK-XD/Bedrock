@@ -188,18 +188,11 @@ function startLocalServer() {
 
 		server.listen(0, "127.0.0.1", () => {
 			localServerPort = server.address().port;
-			resolve(`http://localhost:${localServerPort}`);
+			resolve(`http://127.0.0.1:${localServerPort}`);
 		});
 		server.on("error", reject);
 	});
 }
-
-// =================== Anti-Hacking & Anti-Debugging Flags ===================
-// Strip any command line switches that attackers use to inject debuggers
-app.commandLine.removeSwitch("remote-debugging-port");
-app.commandLine.removeSwitch("inspect");
-app.commandLine.removeSwitch("inspect-brk");
-app.commandLine.removeSwitch("enable-logging");
 
 var win;
 
@@ -218,43 +211,20 @@ function createWindow() {
 			contextIsolation: true, // Strict sandbox isolation between preload and page
 			nodeIntegration: false, // Prevent page scripts from accessing Node APIs
 			allowRunningInsecureContent: false, // Disallow HTTP content over HTTPS
-			devTools: false, // Disable DevTools core in the renderer process
+			devTools: true, // Enable DevTools for inspection and debugging
 			sandbox: false // Preload requires process context for window flags
 		},
 		autoHideMenuBar: true
 	});
 
-	// Remove default application menu (prevents View -> Toggle Developer Tools)
+	// Remove default application menu
 	win.removeMenu();
 
-	// =================== Block DevTools Keyboard Shortcuts ===================
-	win.webContents.on("before-input-event", (event, input) => {
-		const key = input.key.toUpperCase();
-		const isCtrlOrCmd = input.control || input.meta;
-
-		// Block F12 (Inspect Element / DevTools)
-		if (key === "F12") {
-			event.preventDefault();
-			return;
-		}
-
-		// Block Ctrl+Shift+I / Cmd+Option+I (Open DevTools)
-		if (isCtrlOrCmd && input.shift && (key === "I" || key === "J" || key === "C")) {
-			event.preventDefault();
-			return;
-		}
-
-		// Block Ctrl+U (View Source)
-		if (isCtrlOrCmd && key === "U") {
-			event.preventDefault();
-			return;
-		}
+	win.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
+		console.error("[Electron] Failed to load URL:", validatedURL, errorCode, errorDescription);
 	});
 
-	// =================== Block Right-Click "Inspect Element" ===================
-	win.webContents.on("context-menu", (e) => {
-		e.preventDefault(); // Disables right-click context menu entirely
-	});
+
 
 	// =================== Navigation & Phishing Guard ===================
 	// Prevent malicious scripts from navigating the app to arbitrary remote domains
