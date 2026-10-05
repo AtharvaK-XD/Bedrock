@@ -210,7 +210,9 @@ function createWindow() {
 			? path.join(process.env.VITE_PUBLIC, "logo.png")
 			: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
 		webPreferences: {
-			preload: path.join(__dirname, "preload.js"),
+			preload: fs.existsSync(path.join(__dirname, "preload.cjs"))
+				? path.join(__dirname, "preload.cjs")
+				: path.join(__dirname, "preload.js"),
 			webSecurity: true, // Maximum security: strictly enforce Same-Origin Policy
 			contextIsolation: true, // Strict sandbox isolation between preload and page
 			nodeIntegration: false, // Prevent page scripts from accessing Node APIs
