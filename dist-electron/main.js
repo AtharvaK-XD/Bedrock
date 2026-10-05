@@ -70,7 +70,9 @@ function handleProtocolUrl(rawUrl) {
 				if (win) {
 					if (win.isMinimized()) win.restore();
 					win.show();
+					win.setAlwaysOnTop(true);
 					win.focus();
+					win.setAlwaysOnTop(false);
 				}
 				if (process.platform === "darwin") {
 					app.focus({ steal: true });
@@ -115,7 +117,9 @@ function startLocalServer() {
 							if (win) {
 								if (win.isMinimized()) win.restore();
 								win.show();
+								win.setAlwaysOnTop(true);
 								win.focus();
+								win.setAlwaysOnTop(false);
 							}
 							if (process.platform === "darwin") {
 								app.focus({ steal: true });
@@ -186,7 +190,7 @@ function startLocalServer() {
 			}
 		});
 
-		server.listen(0, "127.0.0.1", () => {
+		server.listen(0, () => {
 			localServerPort = server.address().port;
 			resolve(`http://127.0.0.1:${localServerPort}`);
 		});
@@ -403,7 +407,7 @@ ipcMain.handle("auth:get-local-port", () => localServerPort);
 
 ipcMain.handle("auth:start-external", async (_event, { strategy, mode, nonce }) => {
 	const port = localServerPort;
-	const authUrl = `http://localhost:${port}/#/browser-auth?strategy=${encodeURIComponent(strategy || "oauth_google")}&mode=${encodeURIComponent(mode || "register")}&nonce=${encodeURIComponent(nonce || "")}&port=${port}`;
+	const authUrl = `http://127.0.0.1:${port}/#/browser-auth?strategy=${encodeURIComponent(strategy || "oauth_google")}&mode=${encodeURIComponent(mode || "register")}&nonce=${encodeURIComponent(nonce || "")}&port=${port}`;
 	shell.openExternal(authUrl);
 	return { success: true, url: authUrl };
 });
@@ -424,7 +428,9 @@ if (!hasSingleInstanceLock) {
 		if (win) {
 			if (win.isMinimized()) win.restore();
 			win.show();
+			win.setAlwaysOnTop(true);
 			win.focus();
+			win.setAlwaysOnTop(false);
 		}
 		if (Array.isArray(argv)) {
 			const deepLink = argv.find((arg) => typeof arg === "string" && arg.startsWith("bedrock://"));
