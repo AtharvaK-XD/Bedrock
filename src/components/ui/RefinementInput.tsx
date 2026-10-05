@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AI_AGENTS, AgentIcon } from './RichInput';
 import { usePromptQuota } from '../../lib/usePromptQuota';
@@ -196,10 +197,11 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
           <button 
             type="button" 
             onClick={() => fileInputRef.current?.click()}
-            className="text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-xl hover:bg-white/10 text-xs font-medium border border-white/5"
-            title="Attach files (Max 5MB)"
+            className="text-gray-400 hover:text-white transition-all p-2 rounded-xl hover:bg-white/10 border border-white/5 flex items-center justify-center active:scale-95"
+            title="Add files (Max 5MB)"
+            aria-label="Add files"
           >
-            Attach
+            <Plus className="w-3.5 h-3.5" />
           </button>
         </div>
 
