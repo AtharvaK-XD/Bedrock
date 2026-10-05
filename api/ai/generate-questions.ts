@@ -3,7 +3,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion, QuestionOutput } from '../_lib/ai.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
+import { BEDROCK_CORE_GUARDRAILS, buildQuestionsSystemPrompt } from '../_lib/aiPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -29,23 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Security: Check for prompt injection
   const isSuspicious = checkPromptInjection(ideaText, user?.id, ip);
 
-  const systemPrompt = `You are Bedrock's Senior Prompt Architect.
-Analyze the user's raw prompt concept for target type "${targetType}".
-Identify missing variables, constraints, target audience, format requirements, and edge cases.
-
-${BEDROCK_CORE_GUARDRAILS}
-
-Output exactly 3 to 4 high-value clarifying questions in JSON format.
-The JSON must be an array of objects matching:
-[
-  {
-    "id": "q1",
-    "questionText": "string",
-    "questionType": "single_select" | "multi_select" | "free_text",
-    "options": ["opt1", "opt2", "opt3"] // only if single_select or multi_select
-  }
-]
-Output ONLY raw JSON. No markdown backticks, no explanations.`;
+  const systemPrompt = buildQuestionsSystemPrompt(targetType);
 
   const safePrompt = sanitizeAndDelimitPrompt(ideaText);
 

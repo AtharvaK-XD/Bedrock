@@ -5,6 +5,8 @@ import { CircuitBreaker } from './circuitBreaker.js';
 import { CacheService } from './cacheService.js';
 import {
   BEDROCK_CORE_GUARDRAILS,
+  buildQuestionsSystemPrompt,
+  buildSynthesisSystemPrompt,
   buildRefineSystemPrompt,
   extractRefineResult,
 } from './aiPrompts.js';
@@ -311,18 +313,7 @@ YOUR QUESTIONS MUST FOCUS ON:
 
       const targetGuidance = targetGuidanceMap[targetType] || targetGuidanceMap.coding_agent;
 
-      const systemPrompt = `You are an elite product manager and technical architect.
-Your task is to analyze the user's idea and generate exactly 3 to 4 clarifying questions to scope the project.
-
-${BEDROCK_CORE_GUARDRAILS}
-
-Output MUST be strictly valid JSON without code fences or backticks.
-Each object in the array must contain:
-- "id": string (e.g. "q1")
-- "questionText": string
-- "questionType": "single_select" | "multi_select" | "free_text"
-- "options": string[] (required for select types, omitted for free_text)`;
-
+      const systemPrompt = buildQuestionsSystemPrompt(targetType);
       const prompt = `${targetGuidance}\n\n${delimitedIdea}\n\nGenerate exactly 3 to 4 essential clarifying questions as a JSON array tailored specifically to this mode's purpose.`;
 
       try {
@@ -446,60 +437,7 @@ Each object in the array must contain:
         })
         .join('\n\n');
 
-      const systemPrompt = `You are an elite principal software architect and prompt engineering director.
-Your mission is to generate a world-class, bespoke engineering specification and operational prompt tailored precisely to the user's project idea, target platform, and domain.
-
-${BEDROCK_CORE_GUARDRAILS}
-
-CRITICAL ARCHITECTURAL & FORMATTING DIRECTIVES:
-1. BAN ON COOKIE-CUTTER REPETITION:
-   - DO NOT use generic, robotic templates (e.g. NEVER default to the rigid "1. Executive Summary & Core Objective" 5-section boilerplate).
-   - Tailor the structural anatomy of the document directly to the project domain, complexity, and target audience.
-
-2. DYNAMICALLY SELECT THE OPTIMAL BLUEPRINT FORMAT:
-   - For Coding Agents (Cursor / Windsurf / Claude / Copilot):
-     Structure as an elite Agent Rulebook (.cursorrules / System Directive):
-     * Role Definition & Architectural Philosophy
-     * Master System Prompt block (encapsulated in a copy-pasteable markdown codeblock with strict XML tags <directives>, <constraints>, <workflow>)
-     * File Tree Blueprint & Component Topology
-     * Strict Negative Constraints ("NEVER DO X: e.g., never use any, never swallow errors, never import unverified packages")
-     * Concrete Schema Contracts (exact TypeScript interfaces / Zod schemas / Prisma models)
-     * Phased Step-by-Step Implementation Sequence with Verification Checklist
-   - For Full-Stack Web / Mobile Systems:
-     Structure as an End-to-End Production Architecture Blueprint:
-     * System Overview & High-Impact Value Proposition
-     * Architecture Topology (include a Mermaid diagram \`\`\`mermaid graph TD...\`\`\` for data and auth flows)
-     * API Contract Matrix (using Markdown tables: Route | Method | Request Payload | Response)
-     * Data Model & Persistence Layer (concrete schema definitions, indexes, relations)
-     * Security & Auth Guardrails (CORS, JWT/Sessions, Rate Limiting, Input Sanitization)
-     * Execution Milestones with Definition of Done
-   - For CLI Tools / Microservices / Automation:
-     Structure as a Dense Technical Specification:
-     * Command Hierarchy & Flag Specification Tables
-     * I/O Contract & Stream Pipelines (stdin, stdout, stderr, POSIX exit codes)
-     * Error Recovery Strategies & Graceful Degradation
-     * Unit & E2E Testing Protocol
-   - For Freelance / Client Specifications:
-     Structure as an Executive Scope of Work (SOW):
-     * Project Scope & Business Objectives
-     * Feature Deliverables Table (Feature | Priority | Acceptance Criteria)
-     * UI/UX Design System Tokens & Responsive Breakpoints
-     * Deployment & Handover Guide
-   - For Hackathon / MVP:
-     Structure as a Lean 24-Hour Sprint Plan:
-     * Problem / Solution & The 10x Demo Flow
-     * P0 Core Features vs P1 Stretch Goals
-     * Rapid Prototyping Stack & Third-Party APIs
-     * Demo Script & Judging Rubric Optimization
-
-3. RICH MARKDOWN STYLING:
-   - Use Markdown Tables for structured comparisons, APIs, or schema fields.
-   - Use Mermaid diagrams (\`\`\`mermaid...\`\`\`) where data flow, user journey, or node pipelines benefit from visualization.
-   - Use GitHub-flavored callouts (> [!IMPORTANT], > [!TIP], > [!WARNING]) for critical architectural warnings.
-   - Provide concrete, syntactically valid code and type definitions rather than vague descriptive prose.
-
-4. ACTIONABILITY:
-   - The document must be immediately actionable by an autonomous AI coding agent or senior engineer to build the full system without ambiguities.`;
+      const systemPrompt = buildSynthesisSystemPrompt(idea.targetType);
 
       const targetLabelMap: Record<string, string> = {
         coding_agent: 'Coding Agent (DEV)',

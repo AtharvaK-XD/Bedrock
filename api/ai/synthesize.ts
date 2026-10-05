@@ -3,7 +3,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, enforceServerQuota, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion } from '../_lib/ai.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
+import { BEDROCK_CORE_GUARDRAILS, buildSynthesisSystemPrompt } from '../_lib/aiPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -57,33 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }).join('\n');
   }
 
-  const systemPrompt = `You are Bedrock, the premier AI Prompt Architect for frontier intelligence.
-Your task is to synthesize the user's concept into an extraordinary, production-grade, highly structured prompt.
-
-${BEDROCK_CORE_GUARDRAILS}
-
-Structure the prompt with the following clear markdown sections:
-# [Prompt Title]
-
-## Role & Persona
-[Define the expert mindset, domain depth, and operational standards]
-
-## Objective & Task Definition
-[Clear, unambiguous mission statement]
-
-## Context & Core Inputs
-[Input variables, state context, and source materials]
-
-## Execution Protocol & Step-by-Step Instructions
-[Numbered sequence of execution]
-
-## Output Format & Specification
-[Strict output structure, formatting schema, and stylistic tone]
-
-## Negative Constraints & Guardrails
-[Critical anti-patterns, boundary limitations, and disallowed behaviors]
-
-Return the final synthesized prompt cleanly. Avoid conversational meta-text like "Sure, here is your prompt:". Start directly with the prompt content.`;
+  const systemPrompt = buildSynthesisSystemPrompt(targetType);
 
   const userContent = sanitizeAndDelimitPrompt(`Concept: ${rawIdea}\nTarget Type: ${targetType}${clarificationContext}`);
 
