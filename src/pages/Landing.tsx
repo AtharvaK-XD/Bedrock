@@ -218,6 +218,7 @@ export default function Landing() {
                     </svg>
                     Download for Mac (.dmg)
                   </a>
+                  <span className="text-xs text-gray-500 font-light">(Beta Version)</span>
                 </div>
               </div>
             </div>
