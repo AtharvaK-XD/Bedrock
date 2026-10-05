@@ -39,6 +39,14 @@ const QUICK_ACTIONS = [
     tag: 'INDEX',
     borderHover: 'group-hover:border-purple-500/40'
   },
+  { 
+    title: 'Prompt History', 
+    subtitle: 'Archived prompts, blueprints & generations', 
+    path: '/app/history', 
+    shortcut: '⌘H',
+    tag: 'HISTORY',
+    borderHover: 'group-hover:border-blue-500/40'
+  },
 ];
 
 export default function Dashboard() {

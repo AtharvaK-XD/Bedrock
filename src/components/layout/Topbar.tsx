@@ -20,6 +20,7 @@ const desktopNavItems = [
   { label: 'Branching', path: '/app/branching' },
   { label: 'Prompt Tester', path: '/app/tester' },
   { label: 'Library', path: '/app/library' },
+  { label: 'History', path: '/app/history' },
 ];
 
 export function Topbar() {

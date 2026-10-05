@@ -12,6 +12,7 @@ import Result from './pages/Result';
 import BranchingChat from './pages/BranchingChat';
 import PromptTester from './pages/PromptTester';
 import Library from './pages/Library';
+import History from './pages/History';
 import Pricing from './pages/Pricing';
 import Billing from './pages/Billing';
 import SettingsPage from './pages/Settings';
@@ -134,6 +135,7 @@ function AnimatedRoutes() {
                   <Route path="/branching" element={<BranchingChat />} />
                   <Route path="/tester" element={<PromptTester />} />
                   <Route path="/library" element={<Library />} />
+                  <Route path="/history" element={<History />} />
                   <Route path="/result" element={<Result />} />
                   <Route path="/pricing" element={isDesktop ? <Navigate to="/app" replace /> : <Pricing />} />
                   <Route path="/billing" element={isDesktop ? <Navigate to="/app" replace /> : <Billing />} />

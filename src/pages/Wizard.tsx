@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RichInput } from '../components/ui/RichInput';
 import { BorderBeam } from 'border-beam';
@@ -20,6 +20,7 @@ import { recordExecutionTrace } from '../lib/telemetry';
 
 export default function Wizard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const questionsRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<1 | 2>(1);
   const [idea, setIdea] = useState('');
@@ -86,6 +87,19 @@ export default function Wizard() {
   useEffect(() => {
     syncHistoryFromDb();
   }, []);
+
+  useEffect(() => {
+    if (location.state?.idea) {
+      setIdea(location.state.idea);
+      if (location.state.targetType) {
+        setTargetType(location.state.targetType);
+      }
+      if (location.state.id) {
+        setActivePromptId(location.state.id);
+      }
+      setStep(1);
+    }
+  }, [location.state]);
 
   const handleGenerateQuestions = async () => {
     if (!idea.trim()) return;
@@ -240,46 +254,47 @@ export default function Wizard() {
   const isDesktop = isDesktopApp();
 
   return (
-    <PageTransition>
-      <div className="relative min-h-[calc(100vh-80px)] w-full">
-        {/* Previous Prompts Sidebar */}
-        <GeneratorHistorySidebar
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={toggleSidebar}
-          activeId={activePromptId}
-          onSelectPrompt={handleSelectPrompt}
-          onNewPrompt={handleNewPrompt}
-        />
+    <PageTransition className={cn(isDesktop ? "h-full" : "")}>
+      <div className={cn("relative w-full", isDesktop ? "min-h-full flex-1" : "min-h-[calc(100vh-80px)]")}>
+        {/* Previous Prompts Sidebar (Browser / Website Only - Desktop has dedicated History workspace) */}
+        {!isDesktop && (
+          <>
+            <GeneratorHistorySidebar
+              isCollapsed={isSidebarCollapsed}
+              onToggleCollapse={toggleSidebar}
+              activeId={activePromptId}
+              onSelectPrompt={handleSelectPrompt}
+              onNewPrompt={handleNewPrompt}
+            />
 
-        {/* Mobile backdrop overlay */}
-        {!isSidebarCollapsed && (
-          <div
-            onClick={toggleSidebar}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
-          />
-        )}
-
-        {/* Floating Expand Trigger when minimized */}
-        {isSidebarCollapsed && (
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className={cn(
-              "fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d10]/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200",
-              isDesktop ? "top-4 left-68" : "top-22 left-4"
+            {/* Mobile backdrop overlay */}
+            {!isSidebarCollapsed && (
+              <div
+                onClick={toggleSidebar}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
+              />
             )}
-            title="Show previous prompts"
-          >
-            <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
-            <span className="text-xs font-mono">History</span>
-          </button>
+
+            {/* Floating Expand Trigger when minimized */}
+            {isSidebarCollapsed && (
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d10]/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200 top-22 left-4"
+                title="Show previous prompts"
+              >
+                <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-mono">History</span>
+              </button>
+            )}
+          </>
         )}
 
         {/* Main Generator Workspace */}
         <div className={cn(
-          "w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)] transition-all duration-300",
-          !isSidebarCollapsed ? "md:pl-72 lg:pl-76" : "md:pl-8",
-          isDesktop ? "flex flex-col" : ""
+          "w-full px-4 sm:px-8 py-6 lg:py-10 transition-all duration-300",
+          isDesktop ? "min-h-full flex flex-col flex-1" : "min-h-[calc(100vh-80px)]",
+          (!isDesktop && !isSidebarCollapsed) ? "md:pl-72 lg:pl-76" : "md:pl-8"
         )}>
         <div className={cn(
           "w-full flex flex-col gap-12 transition-all duration-500",

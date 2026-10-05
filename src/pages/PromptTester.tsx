@@ -5,8 +5,10 @@ import { cn } from '../lib/utils';
 import { testPrompt } from '../lib/api';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
 import { PageTransition } from '../components/layout/PageTransition';
+import { isDesktopApp } from '../lib/platform';
 
 export default function PromptTester() {
+  const isDesktop = isDesktopApp();
   const [prompt, setPrompt] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('You are a helpful assistant.');
   const [isTesting, setIsTesting] = useState(false);
@@ -185,8 +187,11 @@ export default function PromptTester() {
   };
 
   return (
-    <PageTransition>
-      <div className="w-full px-4 sm:px-8 py-6 lg:py-10 min-h-[calc(100vh-80px)] relative overflow-hidden">
+    <PageTransition className={cn(isDesktop ? "h-full" : "")}>
+      <div className={cn(
+        "w-full px-4 sm:px-8 py-6 lg:py-10 relative overflow-hidden",
+        isDesktop ? "min-h-full" : "min-h-[calc(100vh-80px)]"
+      )}>
         {/* Subtle ambient illumination behind the arena for realistic glass refraction */}
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[850px] h-[500px] bg-gradient-to-tr from-copper-500/5 via-white/[0.015] to-transparent blur-[160px] pointer-events-none rounded-full" />
         
