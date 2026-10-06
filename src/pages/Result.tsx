@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { RefinementInput } from '../components/ui/RefinementInput';
+import { ArrowLeftRight } from 'lucide-react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import ReactMarkdown from 'react-markdown';
 import { useState } from 'react';
@@ -91,20 +92,15 @@ export default function Result() {
         <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
           <span>Interactive prompt refinement</span>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setIsSwapped(!isSwapped)}
-            className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 border border-white/5"
-          >
-            Swap Panels
-          </button>
-          <button 
-            onClick={() => navigate('/')} 
-            className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 border border-white/5"
-          >
-            Start Over
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsSwapped(!isSwapped)}
+          title="Swap Panels"
+          aria-label="Swap Panels"
+          className="p-1.5 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 border border-white/5 flex items-center justify-center cursor-pointer"
+        >
+          <ArrowLeftRight className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Chat History */}

@@ -103,6 +103,8 @@ export function useAuth() {
     try {
       localStorage.removeItem(AUTH_STORAGE_KEY);
       localStorage.removeItem('bedrock_auth_event');
+      localStorage.removeItem('bedrock_active_user_id');
+      sessionStorage.clear();
     } catch (e) {
       console.error('Failed to clear local auth session', e);
     }

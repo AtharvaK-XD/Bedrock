@@ -3,9 +3,10 @@ import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import { prisma, logSecurityEvent } from '../db.js';
 import { config } from '../config.js';
-import { requireAuth, requireStrictAuth, AuthRequest } from '../middleware/auth.js';
+import { requireAuth, AuthRequest } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
 import { RegisterSchema, LoginSchema } from '../types.js';
+import { sendWelcomeEmail, sendSignInAlertEmail } from '../services/emailService.js';
 
 const router = Router();
 
@@ -68,6 +69,11 @@ router.post('/register', authLimiter, async (req, res, next) => {
       ipAddress: req.ip,
       endpoint: '/api/auth/register',
       message: `User registered: ${user.email}`,
+    });
+
+    // Send welcome email asynchronously via Resend
+    sendWelcomeEmail(user.email, user.name).catch((err) => {
+      console.warn('[AuthRoute] Non-blocking welcome email failed:', err);
     });
 
     res.status(201).json({
@@ -141,6 +147,11 @@ router.post('/login', authLimiter, async (req, res, next) => {
       message: `User logged in: ${user.email}`,
     });
 
+    // Send security sign-in alert asynchronously via Resend
+    sendSignInAlertEmail(user.email, user.name, req.ip).catch((err) => {
+      console.warn('[AuthRoute] Non-blocking sign-in alert email failed:', err);
+    });
+
     res.json({
       user: {
         id: user.id,
@@ -202,6 +213,30 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
     }
 
     res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Dispatch auth emails from client flows (Clerk OAuth, Desktop App, etc.)
+router.post('/send-email', authLimiter, async (req, res, next) => {
+  try {
+    const { email, name, type } = req.body || {};
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      res.status(400).json({ error: 'Valid email is required' });
+      return;
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanName = typeof name === 'string' ? name.trim() : undefined;
+
+    if (type === 'signup') {
+      const result = await sendWelcomeEmail(cleanEmail, cleanName);
+      res.status(200).json(result);
+    } else {
+      const result = await sendSignInAlertEmail(cleanEmail, cleanName, req.ip);
+      res.status(200).json(result);
+    }
   } catch (err) {
     next(err);
   }

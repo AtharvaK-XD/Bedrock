@@ -63,6 +63,14 @@ export const config = {
     sentryDsn: (process.env.SENTRY_DSN || '').trim(),
   },
 
+  email: {
+    provider: (process.env.EMAIL_PROVIDER || (process.env.GMAIL_APP_PASSWORD ? 'gmail' : 'resend')).trim(),
+    resendApiKey: (process.env.RESEND_API_KEY || '').trim(),
+    fromEmail: (process.env.RESEND_FROM_EMAIL || 'Bedrock <bedrockofficialpage@gmail.com>').trim(),
+    gmailUser: (process.env.GMAIL_USER || 'bedrockofficialpage@gmail.com').trim(),
+    gmailAppPassword: (process.env.GMAIL_APP_PASSWORD || '').trim(),
+  },
+
   redis: {
     url: (process.env.UPSTASH_REDIS_REST_URL || '').trim(),
     token: (process.env.UPSTASH_REDIS_REST_TOKEN || '').trim(),

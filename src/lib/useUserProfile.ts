@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { notifyAuthSuccess } from './sendAuthNotification';
 
 export interface UserProfile {
   name: string;
@@ -159,6 +160,19 @@ export function useUserProfile() {
               // RESET ALL DEMO/PREVIOUS DATA FOR BRAND NEW SIGNUP
               localStorage.removeItem(STORAGE_KEY);
               localStorage.removeItem('bedrock_generator_history');
+            }
+          }
+
+          // Dispatch email notification once per user session
+          if (clerkEmail) {
+            const sessionNotifyKey = `bedrock_session_email_notified_${clerkUser.id}`;
+            if (!sessionStorage.getItem(sessionNotifyKey)) {
+              sessionStorage.setItem(sessionNotifyKey, 'true');
+              notifyAuthSuccess({
+                email: clerkEmail,
+                name: clerkName,
+                type: isNewSignup ? 'signup' : 'signin',
+              });
             }
           }
           

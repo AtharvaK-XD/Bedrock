@@ -118,6 +118,7 @@
     "langfuse": "^3.39.2",
     "lenis": "^1.3.25",
     "lucide-react": "^1.28.0",
+    "nodemailer": "^10.0.15",
     "posthog-js": "^1.434.17",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -125,6 +126,7 @@
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^4.12.2",
     "react-router-dom": "^7.18.2",
+    "resend": "^6.32.1",
     "tailwind-merge": "^3.6.0",
     "three": "^0.185.1",
     "zod": "^3.25.76"
@@ -136,6 +138,7 @@
     "@tauri-apps/cli": "^2.11.4",
     "@tauri-apps/plugin-updater": "^2.10.1",
     "@types/node": "^24.13.3",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
