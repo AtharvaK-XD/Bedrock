@@ -7,6 +7,7 @@ import { useUserProfile } from '../../lib/useUserProfile';
 import { useSignIn, useSignUp } from '@clerk/react/legacy';
 import { useClerk } from '@clerk/react';
 import { isDesktopApp } from '../../lib/platform';
+import { notifyAuthSuccess } from '../../lib/sendAuthNotification';
 
 interface AuthCardProps {
   initialMode?: 'login' | 'register';
@@ -58,6 +59,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       const userEmail = payload.email || 'developer@bedrock.app';
       const userName = payload.name || userEmail.split('@')[0];
       await login(userEmail, undefined, userName, mode === 'register' ? 'register' : 'login');
+      notifyAuthSuccess({ email: userEmail, name: userName, type: mode === 'register' ? 'signup' : 'signin' });
       await updateProfile({
         name: userName,
         email: userEmail,
@@ -369,6 +371,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       const userEmail = email.trim() || 'user@bedrock.app';
       const userName = name.trim() || userEmail.split('@')[0];
       await login(userEmail, password, userName, mode === 'register' ? 'register' : 'login');
+      notifyAuthSuccess({ email: userEmail, name: userName, type: mode === 'register' ? 'signup' : 'signin' });
       await updateProfile({ name: userName, email: userEmail });
       setIsLoading(false);
       navigate(targetPath);
