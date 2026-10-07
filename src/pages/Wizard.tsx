@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { RichInput } from '../components/ui/RichInput';
 import { BorderBeam } from 'border-beam';
 import PixelCard from '../components/ui/PixelCard';
+import { EncryptedText } from '../components/ui/encrypted-text';
 import { generateQuestions, synthesizePrompt, getActiveApiKeys } from '../lib/api';
 import type { Question, Answer, IdeaPayload } from '../lib/api';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
@@ -541,10 +542,20 @@ export default function Wizard() {
                 <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 max-w-lg select-none pointer-events-none">
                   <div className="w-12 h-12 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin drop-shadow-[0_0_15px_rgba(200,168,107,0.5)]"></div>
                   <div className="mt-6 text-white font-display font-medium text-2xl sm:text-3xl tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
-                    {isGenerating ? 'Generating Follow-Up Questions' : 'Synthesizing Build-Ready Prompt'}
+                    <EncryptedText
+                      text={isGenerating ? 'Generating Follow-Up Questions' : 'Synthesizing Build-Ready Prompt'}
+                      encryptedClassName="text-neutral-500"
+                      revealedClassName="text-white"
+                      revealDelayMs={35}
+                    />
                   </div>
-                  <div className="mt-2.5 text-copper-400 font-mono text-xs sm:text-sm uppercase tracking-widest animate-pulse drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]">
-                    {isGenerating ? 'ANALYZING PROMPT REQUIREMENTS...' : 'ASSEMBLING FINALIZED PROMPT...'}
+                  <div className="mt-2.5 font-mono text-xs sm:text-sm uppercase tracking-widest drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]">
+                    <EncryptedText
+                      text={isGenerating ? 'ANALYZING PROMPT REQUIREMENTS...' : 'ASSEMBLING FINALIZED PROMPT...'}
+                      encryptedClassName="text-copper-700/60"
+                      revealedClassName="text-copper-400"
+                      revealDelayMs={45}
+                    />
                   </div>
                 </div>
               </PixelCard>
