@@ -118,6 +118,7 @@
     "langfuse": "^3.39.2",
     "lenis": "^1.3.25",
     "lucide-react": "^1.28.0",
+    "motion": "^14.0.0",
     "nodemailer": "^10.0.15",
     "posthog-js": "^1.434.17",
     "react": "^19.2.8",
