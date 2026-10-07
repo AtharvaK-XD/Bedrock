@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import type { IdeaPayload } from '../../lib/mockApi';
 import { usePromptQuota } from '../../lib/usePromptQuota';
 import { QuotaLimitModal } from './QuotaLimitModal';
+import { Button as StatefulButton } from './stateful-button';
 
 interface RichInputProps {
   value: string;
@@ -520,23 +521,20 @@ export function RichInput({
             </button>
           </div>
           
-          <button
+          <StatefulButton
             type="button"
             onClick={handleActionSubmit}
             disabled={!value.trim() || isLoading}
             className={cn(
-              "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 active:scale-[0.98]",
+              "px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 active:scale-[0.98]",
               isLimitReached
                 ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
-                : "bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                : "bg-emerald-500 hover:bg-emerald-400 text-zinc-950 hover:ring-2 hover:ring-emerald-400/50 shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
             )}
             title={isLimitReached ? `Limit reached. Resets in ${timeUntilSession}` : undefined}
           >
-            {isLoading && (
-              <span className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-zinc-950 rounded-full animate-spin inline-block"></span>
-            )}
             {isLimitReached ? 'Limit Reached' : 'Generate'}
-          </button>
+          </StatefulButton>
         </div>
 
         {/* Token Quota Progress */}
