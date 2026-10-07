@@ -16,6 +16,7 @@ import {
   Sparkles 
 } from 'lucide-react';
 import { Menu, MenuItem, ProductItem, HoveredLink } from '../ui/navbar-menu';
+import { openApiKeyModal } from '../../lib/apiKeyEvents';
 
 const websiteNavItems = [
   { label: 'Dashboard', path: '/app' },
@@ -26,6 +27,7 @@ const websiteNavItems = [
 ];
 
 const desktopNavItems = [
+  { label: 'Dashboard', path: '/app' },
   { label: 'Generator', path: '/app/generator' },
   { label: 'Branching', path: '/app/branching' },
   { label: 'Prompt Tester', path: '/app/tester' },
@@ -76,7 +78,7 @@ export function Topbar() {
   }, [isDesktop]);
 
   const navItems = isDesktop ? desktopNavItems : websiteNavItems;
-  const brandLink = isDesktop ? '/app/generator' : '/app';
+  const brandLink = '/app';
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 h-20 bg-transparent pointer-events-none">
@@ -257,18 +259,22 @@ export function Topbar() {
 
           {/* Desktop only: API Key Status Pill */}
           {isDesktop && (
-            <Link 
-              to="/app/settings" 
+            <button 
+              onClick={() => openApiKeyModal()}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all border shadow-sm",
-                location.pathname === '/app/settings'
-                  ? "bg-white/10 text-white border-white/20"
-                  : "bg-white/[0.03] text-gray-300 hover:text-white hover:bg-white/8 border-white/10"
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all border shadow-sm cursor-pointer",
+                hasKeys
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                  : "bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
               )}
-              title={hasKeys ? "API Keys Connected" : "No API Keys Connected"}
+              title={hasKeys ? "API Keys Connected (Click to manage)" : "No API Keys Connected (Click to setup)"}
             >
+              <span className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                hasKeys ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+              )} />
               <span className="font-mono text-[11px]">{hasKeys ? 'Keys Active' : 'Configure Keys'}</span>
-            </Link>
+            </button>
           )}
 
           <Link 

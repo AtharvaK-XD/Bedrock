@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, Zap, ShieldCheck, Cpu, ArrowUpRight, Sparkles } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
+import { EncryptedText } from '../components/ui/encrypted-text';
 import { NetworkTopology2D } from '../components/dashboard/NetworkTopology2D';
 import { AgentIcon } from '../components/ui/ModelLogos';
 import { getUserTelemetry, clearUserTraces, TELEMETRY_UPDATE_EVENT, type UserTelemetrySummary } from '../lib/telemetry';
@@ -135,6 +136,28 @@ export default function Dashboard() {
         {/* MAIN DASHBOARD CONTENT */}
         <div className="relative z-10 w-full px-4 sm:px-8 pt-6 flex flex-col gap-8">
           
+          {/* Executive Telemetry Header with EncryptedText */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-white/[0.06]">
+            <div className="flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <EncryptedText
+                text="BEDROCK WORKSTATION ACTIVE · REAL-TIME TELEMETRY CLUSTER"
+                encryptedClassName="text-copper-500/70 font-mono text-xs tracking-wider"
+                revealedClassName="text-emerald-400 font-mono text-xs font-semibold tracking-wider"
+                revealDelayMs={30}
+                flipDelayMs={30}
+              />
+            </div>
+            <div className="flex items-center gap-2 text-[11px] font-mono text-white/40">
+              <span className="px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/10 text-copper-300">
+                LAKEBASE POSTGRES
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                100% NOMINAL
+              </span>
+            </div>
+          </div>
+
           {/* EXECUTIVE TELEMETRY KPI GLASS CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {/* Card 1: Inferences */}

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AI_AGENTS, AgentIcon } from './RichInput';
+import { Button as StatefulButton } from './stateful-button';
 import { usePromptQuota } from '../../lib/usePromptQuota';
 import { QuotaLimitModal } from './QuotaLimitModal';
 
@@ -253,19 +254,19 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
             )}
           </div>
 
-          <button 
+          <StatefulButton 
             type="submit"
             disabled={!input.trim() && files.length === 0}
             className={cn(
-              "px-4 py-1.5 rounded-xl transition-all text-xs font-semibold uppercase tracking-wider",
+              "min-w-[90px] px-4 py-1.5 rounded-xl transition-all text-xs font-semibold uppercase tracking-wider",
               isLimitReached
                 ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
-                : "bg-copper-500 text-white hover:bg-copper-600 disabled:opacity-40 disabled:bg-white/10 disabled:text-gray-500"
+                : "bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-sm shadow-emerald-500/20"
             )}
             title={isLimitReached ? `Limit reached. Resets in ${timeUntilSession}` : undefined}
           >
             {isLimitReached ? 'Limit' : 'Refine'}
-          </button>
+          </StatefulButton>
         </div>
       </div>
       
