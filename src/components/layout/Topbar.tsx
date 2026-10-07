@@ -5,7 +5,17 @@ import { useUserProfile, resolveCleanName, resolveInitials } from '../../lib/use
 import { useAuth } from '../../lib/useAuth';
 import { useUser } from '@clerk/react';
 import { isDesktopApp } from '../../lib/platform';
-import { LogOut } from 'lucide-react';
+import { 
+  LogOut, 
+  LayoutDashboard, 
+  Wand2, 
+  GitBranch, 
+  FlaskConical, 
+  Bookmark, 
+  History as HistoryIcon, 
+  Sparkles 
+} from 'lucide-react';
+import { Menu, MenuItem, ProductItem, HoveredLink } from '../ui/navbar-menu';
 
 const websiteNavItems = [
   { label: 'Dashboard', path: '/app' },
@@ -39,6 +49,7 @@ export function Topbar() {
   const displayInitials = resolveInitials(displayName);
 
   const [hasKeys, setHasKeys] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -86,28 +97,154 @@ export function Topbar() {
           </span>
         </Link>
 
-        {/* Center Nav - Floating Air Island (Centered at true 50% horizontal axis) */}
-        <nav className="pointer-events-auto hidden md:flex items-center gap-1 bg-black/45 p-1.5 rounded-2xl border border-white/10 shadow-lg shadow-black/30 backdrop-blur-xl absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        {/* Center Nav - Floating Air Island (Centered at true 50% horizontal axis with Aceternity-style Animated Menu) */}
+        <Menu setActive={setActiveMenu}>
           {navItems.map((item) => {
             const isActive = item.path === '/app' 
               ? location.pathname === '/app' 
               : location.pathname.startsWith(item.path);
+
             return (
-              <Link
+              <MenuItem
                 key={item.label}
+                setActive={setActiveMenu}
+                active={activeMenu}
+                item={item.label}
                 to={item.path}
-                className={cn(
-                  "px-3.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-medium transition-all duration-200 whitespace-nowrap",
-                  isActive 
-                    ? "bg-white/15 text-white shadow-sm font-semibold border border-white/15" 
-                    : "text-gray-400 hover:text-white hover:bg-white/5"
-                )}
+                isActive={isActive}
               >
-                {item.label}
-              </Link>
+                {item.label === 'Dashboard' && (
+                  <div className="flex flex-col space-y-3 text-sm w-72">
+                    <div className="space-y-1">
+                      <ProductItem
+                        title="Telemetry & Overview"
+                        description="Real-time prompt analytics, latency stats & system health."
+                        to="/app"
+                        icon={LayoutDashboard}
+                      />
+                      <ProductItem
+                        title="Recent Activity"
+                        description="Access and resume your latest generated prompt sessions."
+                        to="/app"
+                        icon={Bookmark}
+                      />
+                    </div>
+                    <div className="border-t border-white/10 pt-2.5 flex flex-col space-y-1 px-1">
+                      {!isDesktop && <HoveredLink to="/app/pricing">Plans & Token Quotas</HoveredLink>}
+                      <HoveredLink to="/app/settings">API Integrations & Keys</HoveredLink>
+                    </div>
+                  </div>
+                )}
+
+                {item.label === 'Generator' && (
+                  <div className="flex flex-col space-y-3 text-sm w-80">
+                    <div className="space-y-1">
+                      <ProductItem
+                        title="Prompt Wizard"
+                        description="Adaptive questioning engine for complete, build-ready prompts."
+                        to="/app/generator"
+                        icon={Wand2}
+                      />
+                      <ProductItem
+                        title="Multi-Agent Synthesis"
+                        description="Target Claude Code, Cursor, Codex, Gemini & custom agents."
+                        to="/app/generator"
+                        icon={Sparkles}
+                      />
+                    </div>
+                    <div className="border-t border-white/10 pt-2.5 flex items-center justify-between px-1">
+                      <HoveredLink to="/app/generator">Start Fresh Prompt</HoveredLink>
+                      <HoveredLink to="/app/library">Import Blueprint</HoveredLink>
+                    </div>
+                  </div>
+                )}
+
+                {item.label === 'Branching' && (
+                  <div className="flex flex-col space-y-3 text-sm w-80">
+                    <div className="space-y-1">
+                      <ProductItem
+                        title="Visual Node Canvas"
+                        description="Split, fork, and map complex multi-step reasoning trees."
+                        to="/app/branching"
+                        icon={GitBranch}
+                      />
+                      <ProductItem
+                        title="Consensus & Merge"
+                        description="Dispatch parallel reasoning prompts and evaluate agreement."
+                        to="/app/branching"
+                        icon={FlaskConical}
+                      />
+                    </div>
+                    <div className="border-t border-white/10 pt-2.5 flex items-center justify-between px-1">
+                      <HoveredLink to="/app/branching">Open Canvas</HoveredLink>
+                      <HoveredLink to="/app/tester">Benchmark Results</HoveredLink>
+                    </div>
+                  </div>
+                )}
+
+                {item.label === 'Prompt Tester' && (
+                  <div className="flex flex-col space-y-3 text-sm w-80">
+                    <div className="space-y-1">
+                      <ProductItem
+                        title="Multi-LLM Playground"
+                        description="Side-by-side completions across Gemini, Groq, Anthropic & OpenAI."
+                        to="/app/tester"
+                        icon={FlaskConical}
+                      />
+                      <ProductItem
+                        title="Benchmark Matrix"
+                        description="Evaluate latency, token throughput, and response accuracy."
+                        to="/app/tester"
+                        icon={LayoutDashboard}
+                      />
+                    </div>
+                    <div className="border-t border-white/10 pt-2.5 flex items-center justify-between px-1">
+                      <HoveredLink to="/app/tester">New Evaluation</HoveredLink>
+                      <HoveredLink to="/app/settings">Provider Keys</HoveredLink>
+                    </div>
+                  </div>
+                )}
+
+                {item.label === 'Library' && (
+                  <div className="flex flex-col space-y-3 text-sm w-80">
+                    <div className="space-y-1">
+                      <ProductItem
+                        title="Curated Blueprints"
+                        description="Production-vetted system prompts across engineering domains."
+                        to="/app/library"
+                        icon={Bookmark}
+                      />
+                      <ProductItem
+                        title="Saved Prompts"
+                        description="Your private collection of versioned and refined prompts."
+                        to="/app/library"
+                        icon={Wand2}
+                      />
+                    </div>
+                    <div className="border-t border-white/10 pt-2.5 flex items-center justify-between px-1">
+                      <HoveredLink to="/app/library">Explore All</HoveredLink>
+                      <HoveredLink to="/app/generator">Create New</HoveredLink>
+                    </div>
+                  </div>
+                )}
+
+                {item.label === 'History' && (
+                  <div className="flex flex-col space-y-2 text-sm w-72">
+                    <ProductItem
+                      title="Execution History"
+                      description="Chronological log and telemetry of past prompt iterations."
+                      to="/app/history"
+                      icon={HistoryIcon}
+                    />
+                    <div className="border-t border-white/10 pt-2 px-1">
+                      <HoveredLink to="/app/history">View Full Audit Log</HoveredLink>
+                    </div>
+                  </div>
+                )}
+              </MenuItem>
             );
           })}
-        </nav>
+        </Menu>
 
         {/* Right User Actions - Floating Air Island */}
         <div className="pointer-events-auto flex items-center gap-2.5 sm:gap-3 bg-black/45 p-1.5 px-3 rounded-2xl border border-white/10 shadow-lg shadow-black/30 backdrop-blur-xl">
