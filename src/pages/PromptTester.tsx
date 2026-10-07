@@ -6,6 +6,8 @@ import { testPrompt } from '../lib/api';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
 import { PageTransition } from '../components/layout/PageTransition';
 import { isDesktopApp } from '../lib/platform';
+import { Button as StatefulButton } from '../components/ui/stateful-button';
+import { EncryptedText } from '../components/ui/encrypted-text';
 
 export default function PromptTester() {
   const isDesktop = isDesktopApp();
@@ -231,16 +233,13 @@ export default function PromptTester() {
               />
             </div>
 
-            <button
+            <StatefulButton
               onClick={handleTest}
               disabled={!prompt.trim() || isTesting}
-              className="w-full flex items-center justify-center gap-2 px-8 py-4 bg-copper-500 text-white rounded-xl font-semibold text-sm uppercase tracking-wider transition-all hover:bg-copper-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-copper-500/20 active:scale-[0.98]"
+              className="w-full rounded-xl px-8 py-4 text-sm font-semibold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-md shadow-emerald-500/20 active:scale-[0.98]"
             >
-              {isTesting && (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></span>
-              )}
               {isTesting ? 'Running Battle...' : 'Run Arena'}
-            </button>
+            </StatefulButton>
           </div>
 
           {/* Right: Output Arena Glass Cards */}
@@ -260,8 +259,15 @@ export default function PromptTester() {
                 <div className="flex-1 overflow-auto custom-scrollbar relative z-10" data-lenis-prevent="true">
                   {isTesting ? (
                     <div className="h-full flex items-center justify-center text-gray-400">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-6 h-6 border-2 border-gray-700 border-t-copper-500 rounded-full animate-spin"></div>
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-6 h-6 border-2 border-gray-700 border-t-emerald-400 rounded-full animate-spin"></div>
+                        <EncryptedText 
+                          text="STREAMING MODEL INFERENCE..." 
+                          encryptedClassName="text-copper-500/60 font-mono text-xs"
+                          revealedClassName="text-emerald-400 font-mono text-xs font-medium"
+                          revealDelayMs={30}
+                          flipDelayMs={30}
+                        />
                       </div>
                     </div>
                   ) : result1 ? (
@@ -292,8 +298,15 @@ export default function PromptTester() {
                 <div className="flex-1 overflow-auto custom-scrollbar relative z-10" data-lenis-prevent="true">
                   {isTesting ? (
                     <div className="h-full flex items-center justify-center text-gray-400">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-6 h-6 border-2 border-gray-700 border-t-copper-500 rounded-full animate-spin"></div>
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-6 h-6 border-2 border-gray-700 border-t-emerald-400 rounded-full animate-spin"></div>
+                        <EncryptedText 
+                          text="BENCHMARKING LATENCY & TOKENS..." 
+                          encryptedClassName="text-copper-500/60 font-mono text-xs"
+                          revealedClassName="text-emerald-400 font-mono text-xs font-medium"
+                          revealDelayMs={30}
+                          flipDelayMs={30}
+                        />
                       </div>
                     </div>
                   ) : result2 ? (

@@ -6,6 +6,7 @@ import { RichInput } from '../components/ui/RichInput';
 import { BorderBeam } from 'border-beam';
 import PixelCard from '../components/ui/PixelCard';
 import { EncryptedText } from '../components/ui/encrypted-text';
+import { Button as StatefulButton } from '../components/ui/stateful-button';
 import { generateQuestions, synthesizePrompt, getActiveApiKeys } from '../lib/api';
 import type { Question, Answer, IdeaPayload } from '../lib/api';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
@@ -501,16 +502,13 @@ export default function Wizard() {
                       ))}
 
                       <div className="pt-8 border-t border-white/5 flex justify-end pl-12">
-                        <button
+                        <StatefulButton
                           type="submit"
                           disabled={isSynthesizing}
-                          className="inline-flex items-center justify-center rounded-xl bg-white text-black hover:bg-gray-200 px-8 py-4 text-base font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-50 w-full sm:w-auto active:scale-[0.98]"
+                          className="rounded-xl px-8 py-4 text-base font-semibold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-lg shadow-emerald-500/20 w-full sm:w-auto"
                         >
-                          {isSynthesizing && (
-                            <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin mr-3 inline-block"></span>
-                          )}
                           Synthesize Prompt
-                        </button>
+                        </StatefulButton>
                       </div>
                     </form>
                   </div>

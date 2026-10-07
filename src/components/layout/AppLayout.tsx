@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Topbar } from './Topbar';
-import { Sidebar } from './Sidebar';
 import { ApiKeyGatewayModal } from '../auth/ApiKeyGatewayModal';
 import { hasApiKeysConfigured } from '../../lib/useAuth';
 import { isDesktopApp } from '../../lib/platform';
@@ -11,6 +11,41 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [gatewayError, setGatewayError] = useState<string | null>(null);
   const [manuallyOpened, setManuallyOpened] = useState(false);
   const isDesktop = isDesktopApp();
+  const navigate = useNavigate();
+
+  // Desktop keyboard shortcuts: ⌘1 to ⌘6
+  useEffect(() => {
+    if (!isDesktop) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.metaKey || e.ctrlKey) {
+        const keyMap: Record<string, string> = {
+          '1': '/app',
+          '2': '/app/generator',
+          '3': '/app/branching',
+          '4': '/app/tester',
+          '5': '/app/library',
+          '6': '/app/history',
+        };
+        if (keyMap[e.key]) {
+          e.preventDefault();
+          navigate(keyMap[e.key]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDesktop, navigate]);
 
   useEffect(() => {
     // Only enforce API key gateway modal automatically on Desktop App launch
@@ -54,14 +89,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="fixed inset-0 z-0 opacity-[0.05] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
 
       {isDesktop ? (
-        /* Desktop Application Layout: Sleek Left Sidebar + Full Height Workstation View */
-        <div className="flex h-screen w-screen overflow-hidden relative z-10">
-          <Sidebar onOpenKeyModal={() => {
-            setGatewayError(null);
-            setManuallyOpened(true);
-            setShowKeyGateway(true);
-          }} />
-          <main className="flex-1 relative h-full overflow-y-auto min-w-0 bg-black">
+        /* Desktop Application Layout: Full Height Workstation View with Floating Animated Topbar */
+        <div className="h-screen w-screen overflow-hidden flex flex-col relative z-10">
+          <Topbar />
+          <main className="flex-1 relative pt-20 overflow-y-auto min-w-0 bg-black custom-scrollbar">
             {children}
           </main>
         </div>

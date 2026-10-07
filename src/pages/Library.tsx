@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
 import { isDesktopApp } from '../lib/platform';
+import { Button as StatefulButton } from '../components/ui/stateful-button';
+import { DraggableCardContainer, DraggableCardBody } from '../components/ui/draggable-card';
 import {
   Search,
   Plus,
@@ -14,6 +16,9 @@ import {
   MoreHorizontal,
   RotateCcw,
   Sparkles,
+  LayoutGrid,
+  Layers,
+  ArrowUpRight,
 } from 'lucide-react';
 
 export interface PromptItem {
@@ -341,6 +346,7 @@ export default function Library() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'deck'>('grid');
 
   // Modals & Menu States
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -570,6 +576,38 @@ export default function Library() {
               )}
             </div>
 
+            {/* View Mode Toggle: Grid vs Physics Deck */}
+            <div className="flex items-center p-1 rounded-xl bg-[#141414] border border-white/10 shadow-sm text-xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition-all cursor-pointer",
+                  viewMode === 'grid'
+                    ? "bg-white/15 text-white font-semibold shadow-sm"
+                    : "text-neutral-400 hover:text-white"
+                )}
+                title="Standard Grid View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Grid</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('deck')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition-all cursor-pointer",
+                  viewMode === 'deck'
+                    ? "bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30 shadow-sm"
+                    : "text-neutral-400 hover:text-white"
+                )}
+                title="Tactile 3D Draggable Cards"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Physics Deck</span>
+              </button>
+            </div>
+
             <button
               onClick={handleOpenCreate}
               className="h-[42px] px-4 rounded-xl bg-white hover:bg-neutral-200 text-black font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer active:scale-[0.98]"
@@ -598,16 +636,70 @@ export default function Library() {
           ))}
         </div>
 
-        {/* Prompts Grid */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
-          }}
-        >
+        {viewMode === 'deck' ? (
+          <div className="w-full relative min-h-[620px] rounded-3xl border border-white/10 bg-[#0a0a0d]/90 backdrop-blur-2xl overflow-hidden p-6 shadow-2xl">
+            <div className="absolute top-6 left-6 z-20 flex items-center gap-2 text-xs font-mono text-neutral-400 bg-black/60 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Interactive Physics Deck · Click & drag prompt blueprints freely across the workstation</span>
+            </div>
+            <DraggableCardContainer className="relative flex min-h-[580px] w-full items-center justify-center overflow-clip">
+              {filteredPrompts.slice(0, 8).map((prompt, index) => {
+                const offsets = [
+                  "top-14 left-[10%] rotate-[-5deg]",
+                  "top-20 left-[34%] rotate-[3deg]",
+                  "top-12 right-[12%] rotate-[-3deg]",
+                  "bottom-16 left-[16%] rotate-[6deg]",
+                  "bottom-12 left-[42%] rotate-[-4deg]",
+                  "bottom-20 right-[15%] rotate-[4deg]",
+                  "top-32 left-[24%] rotate-[-2deg]",
+                  "bottom-32 right-[28%] rotate-[2deg]",
+                ];
+                const positionClass = offsets[index % offsets.length];
+                return (
+                  <DraggableCardBody
+                    key={prompt.id}
+                    className={cn(
+                      "absolute w-72 sm:w-80 p-5 rounded-2xl bg-[#13151f]/95 border border-white/15 shadow-2xl backdrop-blur-xl cursor-grab active:cursor-grabbing",
+                      positionClass
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/10 text-copper-300 border border-white/10 uppercase">
+                        {prompt.category}
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-500">
+                        {prompt.date}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-bold text-white mb-2 leading-snug line-clamp-2">
+                      {prompt.title}
+                    </h3>
+                    <p className="text-xs text-neutral-400 line-clamp-3 mb-4 font-mono leading-relaxed">
+                      {prompt.snippet}
+                    </p>
+                    <button
+                      onClick={() => setSelectedPromptForView(prompt)}
+                      className="w-full py-1.5 px-3 rounded-xl bg-white/10 hover:bg-emerald-500 hover:text-zinc-950 text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Inspect Blueprint</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                  </DraggableCardBody>
+                );
+              })}
+            </DraggableCardContainer>
+          </div>
+        ) : (
+          /* Prompts Grid */
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+            }}
+          >
           {filteredPrompts.map((prompt) => (
             <motion.div
               key={prompt.id}
@@ -760,6 +852,7 @@ export default function Library() {
             </div>
           )}
         </motion.div>
+        )}
 
         {/* View / Inspector Modal */}
         <AnimatePresence>
@@ -980,12 +1073,12 @@ export default function Library() {
                     >
                       Cancel
                     </button>
-                    <button
+                    <StatefulButton
                       type="submit"
-                      className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-semibold text-xs transition-colors cursor-pointer active:scale-[0.98]"
+                      className="min-w-[130px] px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-xs shadow-md shadow-emerald-500/20 active:scale-[0.98]"
                     >
                       {isCreatingNew ? 'Create Prompt' : 'Save Changes'}
-                    </button>
+                    </StatefulButton>
                   </div>
                 </form>
               </motion.div>
