@@ -90,7 +90,11 @@
     "test:attacks": "cd server && npx tsx tests/security-attack-suite.ts",
     "test:k6:ratelimit": "node scripts/run-k6.js run tests/k6-rate-limit-test.js",
     "test:k6:load": "node scripts/run-k6.js run tests/k6-load-balancing-test.js",
-    "test:k6:wizard": "node scripts/run-k6.js run tests/k6-wizard-load-test.js"
+    "test:k6:wizard": "node scripts/run-k6.js run tests/k6-wizard-load-test.js",
+    "video": "remotion studio remotion/index.ts",
+    "video:render": "remotion render remotion/index.ts BedrockStartupIntro public/bedrock-intro.mp4",
+    "video:render:4k": "remotion render remotion/index.ts BedrockStartupIntro4K public/bedrock-intro-4k.mp4",
+    "video:still": "remotion still remotion/index.ts BedrockStartupIntro public/bedrock-intro-poster.jpg --frame=700"
   },
   "dependencies": {
     "@clerk/react": "^6.17.0",
@@ -121,6 +125,7 @@
     "motion": "^14.0.0",
     "nodemailer": "^10.0.15",
     "posthog-js": "^1.434.17",
+    "postprocessing": "^6.39.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.84.0",
@@ -134,6 +139,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@remotion/cli": "^4.0.534",
     "@tailwindcss/typography": "^0.5.20",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/cli": "^2.11.4",
@@ -150,6 +156,7 @@
     "electron-packager": "^17.1.2",
     "oxlint": "^1.75.0",
     "postcss": "^8.5.25",
+    "remotion": "^4.0.534",
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
