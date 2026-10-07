@@ -162,9 +162,37 @@
   }
 }
 
-/* React Flow Overrides */
+/* React Flow Smoothness & GPU Drag Optimization */
 .react-flow__nodesselection-rect {
   display: none !important;
+}
+
+.react-flow__viewport {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.react-flow__renderer {
+  contain: layout paint size;
+}
+
+.react-flow__node {
+  will-change: transform;
+  transform: translateZ(0);
+  transition: none !important;
+}
+
+.react-flow__node.dragging,
+.react-flow__node:active {
+  cursor: grabbing !important;
+  user-select: none !important;
+  will-change: transform;
+  z-index: 9999 !important;
+  transition: none !important;
+}
+
+.react-flow__edge-path {
+  shape-rendering: geometricPrecision;
 }
 
 /* Explicitly prevent BorderBeam and parent wrappers from clipping dropdowns */

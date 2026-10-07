@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef, memo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -273,7 +273,7 @@ const DeletableEdge = ({
 };
 
 // Generic Node component with Unique Shapes and Specialized Roles
-const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData, selected: boolean }) => {
+const GenericNode = memo(({ id, data, selected }: { id: string, data: PromptNodeData, selected: boolean }) => {
   const { setNodes, getNodes, getEdges } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
   const [copied, setCopied] = useState(false);
@@ -285,7 +285,7 @@ const GenericNode = ({ id, data, selected }: { id: string, data: PromptNodeData,
 
   useEffect(() => {
     updateNodeInternals(id);
-  }, [id, data, updateNodeInternals]);
+  }, [id, data.nodeType, updateNodeInternals]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -485,7 +485,7 @@ ${upstreamText || data.description}`;
   return (
     <div
       className={cn(
-        "relative flex flex-col backdrop-blur-xl transition-all duration-200 shadow-2xl animate-in fade-in duration-150 group",
+        "relative flex flex-col backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-150 shadow-2xl group select-none",
         getShapeClasses()
       )}
     >
@@ -828,7 +828,8 @@ ${upstreamText || data.description}`;
       </div>
     </div>
   );
-};
+});
+GenericNode.displayName = 'GenericNode';
 
 const nodeTypes = { genericNode: GenericNode };
 const edgeTypes = { deletableEdge: DeletableEdge };
@@ -1630,7 +1631,17 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
           panOnDrag={toolMode === 'pan' ? true : [1, 2]}
           selectionOnDrag={toolMode === 'select'}
           selectionMode={SelectionMode.Partial}
-          panOnScroll={true}
+          zoomOnScroll={true}
+          panOnScroll={false}
+          zoomOnPinch={true}
+          zoomOnDoubleClick={false}
+          panActivationKeyCode="Space"
+          minZoom={0.15}
+          maxZoom={2.5}
+          autoPanOnNodeDrag={true}
+          autoPanSpeed={25}
+          nodeDragThreshold={1}
+          elevateNodesOnSelect={true}
           fitView
           className="bg-transparent"
           proOptions={{ hideAttribution: true }}
