@@ -64,87 +64,249 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let html = '';
   if (isSignup) {
     html = `
-      <!DOCTYPE html>
-      <html>
-        <body style="margin: 0; padding: 0; background-color: #050505; color: #ededed; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-          <div style="max-width: 600px; margin: 40px auto; background-color: #0c0c0c; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);">
-            <div style="background: linear-gradient(180deg, #181512 0%, #0c0c0c 100%); padding: 36px 32px 20px 32px; border-bottom: 1px solid rgba(200, 168, 107, 0.15);">
-              <div style="display: inline-block; padding: 4px 10px; background-color: rgba(200, 168, 107, 0.1); border: 1px solid rgba(200, 168, 107, 0.25); border-radius: 6px; font-family: monospace; font-size: 11px; font-weight: 700; color: #c8a86b; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px;">
-                PROMPT ENGINEERING STUDIO
-              </div>
-              <h1 style="margin: 0; font-size: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Bedrock</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #08090c; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #08090c; color: #ededed;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #08090c; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 540px; background-color: #111318; border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 16px; overflow: hidden; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);">
+          <tr>
+            <td style="height: 3px; background: linear-gradient(90deg, #c8a86b 0%, #dfc38a 50%, #9c7b41 100%); font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td style="padding: 26px 32px 18px 32px;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="left" style="vertical-align: middle;">
+                    <table border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="vertical-align: middle;">
+                          <img src="https://bedrock-steel.vercel.app/logo-tight.png" width="30" height="30" alt="Bedrock" style="display: block; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);" />
+                        </td>
+                        <td style="padding-left: 12px; vertical-align: middle;">
+                          <div style="font-size: 14px; font-weight: 700; color: #ffffff; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.1;">BEDROCK</div>
+                          <div style="font-size: 10px; font-family: monospace; color: #6b7280; letter-spacing: 0.05em; text-transform: uppercase;">WORKSTATION</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <span style="display: inline-block; padding: 5px 12px; background-color: rgba(200, 168, 107, 0.1); border: 1px solid rgba(200, 168, 107, 0.28); border-radius: 20px; font-family: -apple-system, monospace; font-size: 11px; font-weight: 600; color: #dfc38a; letter-spacing: 0.04em;">
+                      ● NEW ARCHITECT
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="height: 1px; background-color: rgba(255, 255, 255, 0.06); font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td style="padding: 32px 32px 24px 32px;">
+              <table border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
+                <tr>
+                  <td style="width: 44px; height: 44px; background: rgba(200, 168, 107, 0.12); border: 1px solid rgba(200, 168, 107, 0.28); border-radius: 12px; text-align: center; vertical-align: middle; font-size: 20px;">
+                    ✨
+                  </td>
+                </tr>
+              </table>
+              <h1 style="margin: 0 0 10px 0; font-size: 23px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; line-height: 1.3;">
                 Welcome to Bedrock, ${displayName}
               </h1>
-            </div>
-            <div style="padding: 32px; font-size: 15px; line-height: 1.65; color: #a1a1aa;">
-              <p style="margin-top: 0; color: #d4d4d8;">
-                Your account has been successfully initialized. You now have full access to Bedrock's next-generation workspace for synthesis, iterative prompt refinement, and multi-model agent execution.
+              <p style="margin: 0 0 24px 0; font-size: 14.5px; line-height: 1.6; color: #9ca3af;">
+                Your account is ready. You now have complete access to autonomous prompt synthesis, interactive split-pane refinement, and multi-model agent routing.
               </p>
-              <div style="margin: 28px 0; padding: 20px; background-color: #121214; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 10px;">
-                <div style="font-size: 13px; font-weight: 600; color: #c8a86b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">
-                  ⚡ Core Capabilities Unlocked:
-                </div>
-                <ul style="margin: 0; padding-left: 20px; color: #a1a1aa; font-size: 14px;">
-                  <li style="margin-bottom: 6px;"><strong style="color: #ffffff;">Intelligent Synthesis:</strong> Multi-turn guided wizard for precision prompts.</li>
-                  <li style="margin-bottom: 6px;"><strong style="color: #ffffff;">Split-Pane Refinement:</strong> Instant markdown updates alongside conversational steering.</li>
-                  <li style="margin-bottom: 6px;"><strong style="color: #ffffff;">Universal Provider Bridge:</strong> Zero-latency proxy across frontier AI models.</li>
-                </ul>
-              </div>
-              <div style="margin: 32px 0 24px 0;">
-                <a href="https://bedrock-steel.vercel.app/app" style="display: inline-block; background-color: #c8a86b; color: #050505; font-size: 14px; font-weight: 600; text-decoration: none; padding: 13px 28px; border-radius: 8px;">
-                  Launch Bedrock Studio →
-                </a>
-              </div>
-              <p style="font-size: 13px; color: #71717a; margin-bottom: 0;">
-                Account Identifier: <span style="font-family: monospace; color: #a1a1aa;">${to}</span>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #171a22; border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 12px; margin-bottom: 24px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 16px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <div style="font-size: 13.5px; font-weight: 600; color: #ffffff; margin-bottom: 4px;">⚡ Intelligent Synthesis</div>
+                    <div style="font-size: 12.5px; color: #9ca3af; line-height: 1.5;">Guided multi-turn wizard to construct bulletproof prompt architectures.</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 16px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <div style="font-size: 13.5px; font-weight: 600; color: #ffffff; margin-bottom: 4px;">🔄 Split-Pane Refinement</div>
+                    <div style="font-size: 12.5px; color: #9ca3af; line-height: 1.5;">Live markdown synchronization paired with conversational steering.</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <div style="font-size: 13.5px; font-weight: 600; color: #ffffff; margin-bottom: 4px;">🌐 Universal Provider Bridge</div>
+                    <div style="font-size: 12.5px; color: #9ca3af; line-height: 1.5;">Zero-latency routing across Gemini, Groq, Claude, and OpenAI models.</div>
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td align="center">
+                    <a href="https://bedrock-steel.vercel.app/app" style="display: block; width: 100%; box-sizing: border-box; text-align: center; background: linear-gradient(180deg, #dfc38a 0%, #c8a86b 100%); color: #090a0d; font-weight: 600; font-size: 14px; padding: 13px 20px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(200, 168, 107, 0.25); letter-spacing: 0.01em;">
+                      Launch Bedrock Workstation &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 0; font-size: 12px; color: #6b7280; font-family: monospace;">
+                Account: <span style="color: #9ca3af;">${to}</span>
               </p>
-            </div>
-            <div style="padding: 20px 32px; background-color: #070707; border-top: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: #52525b;">
-              Bedrock Architecture Inc. — Sent officially from ${gmailUser}
-            </div>
-          </div>
-        </body>
-      </html>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 22px 32px 28px 32px; background-color: #0d0e13; border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center;">
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280; line-height: 1.5;">
+                Bedrock Prompt Engineering Workstation &bull; Welcome Protocol
+              </p>
+              <p style="margin: 0; font-size: 11.5px; color: #4b5563;">
+                Dispatched by <span style="color: #6b7280;">bedrockofficialpage@gmail.com</span> &bull; <a href="https://bedrock-steel.vercel.app" style="color: #9ca3af; text-decoration: underline;">bedrock.app</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
     `;
   } else {
     const loginTimestamp = new Date().toUTCString();
     const ip = (req.headers['x-forwarded-for'] as string) || req.socket?.remoteAddress;
     html = `
-      <!DOCTYPE html>
-      <html>
-        <body style="margin: 0; padding: 0; background-color: #050505; color: #ededed; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-          <div style="max-width: 600px; margin: 40px auto; background-color: #0c0c0c; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);">
-            <div style="padding: 28px 32px 18px 32px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
-              <div style="display: inline-block; padding: 4px 10px; background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; font-family: monospace; font-size: 11px; font-weight: 700; color: #a1a1aa; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px;">
-                SECURITY AUDIT LOG
-              </div>
-              <h1 style="margin: 0; font-size: 22px; font-weight: 600; color: #ffffff; letter-spacing: -0.01em;">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Alert: Successful Sign-In to Bedrock</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #08090c; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #08090c; color: #ededed;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #08090c; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 540px; background-color: #111318; border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 16px; overflow: hidden; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);">
+          <tr>
+            <td style="height: 3px; background: linear-gradient(90deg, #c8a86b 0%, #dfc38a 50%, #9c7b41 100%); font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td style="padding: 26px 32px 18px 32px;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="left" style="vertical-align: middle;">
+                    <table border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="vertical-align: middle;">
+                          <img src="https://bedrock-steel.vercel.app/logo-tight.png" width="30" height="30" alt="Bedrock" style="display: block; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);" />
+                        </td>
+                        <td style="padding-left: 12px; vertical-align: middle;">
+                          <div style="font-size: 14px; font-weight: 700; color: #ffffff; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.1;">BEDROCK</div>
+                          <div style="font-size: 10px; font-family: monospace; color: #6b7280; letter-spacing: 0.05em; text-transform: uppercase;">WORKSTATION</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <span style="display: inline-block; padding: 5px 12px; background-color: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 20px; font-family: -apple-system, monospace; font-size: 11px; font-weight: 600; color: #4ade80; letter-spacing: 0.04em;">
+                      ● AUTHORIZED
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="height: 1px; background-color: rgba(255, 255, 255, 0.06); font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td style="padding: 32px 32px 24px 32px;">
+              <table border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
+                <tr>
+                  <td style="width: 44px; height: 44px; background: rgba(200, 168, 107, 0.12); border: 1px solid rgba(200, 168, 107, 0.28); border-radius: 12px; text-align: center; vertical-align: middle; font-size: 20px;">
+                    🛡️
+                  </td>
+                </tr>
+              </table>
+              <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; line-height: 1.3;">
                 Successful Sign-In Detected
               </h1>
-            </div>
-            <div style="padding: 28px 32px; font-size: 14.5px; line-height: 1.6; color: #a1a1aa;">
-              <p style="margin-top: 0; color: #d4d4d8;">
-                Hello <strong>${displayName}</strong>, we noticed a successful authentication to your Bedrock session.
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #9ca3af;">
+                Hello <strong style="color: #f3f4f6;">${displayName}</strong>, we noticed a successful authentication to your Bedrock session.
               </p>
-              <div style="margin: 22px 0; padding: 18px; background-color: #121214; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; font-size: 13.5px;">
-                <div style="margin-bottom: 8px;">
-                  <span style="color: #71717a;">Account:</span> <span style="color: #ffffff; font-family: monospace;">${to}</span>
-                </div>
-                <div style="margin-bottom: 8px;">
-                  <span style="color: #71717a;">Timestamp:</span> <span style="color: #ffffff;">${loginTimestamp}</span>
-                </div>
-                ${ip ? `<div><span style="color: #71717a;">IP Origin:</span> <span style="color: #c8a86b; font-family: monospace;">${ip}</span></div>` : ''}
-              </div>
-              <p style="font-size: 13px; color: #71717a; margin-bottom: 0;">
-                If this was you, no action is required. If you did not authorize this session, please review your credentials or reset your account password.
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #171a22; border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 12px; margin-bottom: 24px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: #6b7280; font-family: monospace; text-transform: uppercase; letter-spacing: 0.05em; width: 32%;">
+                    Account
+                  </td>
+                  <td style="padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; color: #f3f4f6; font-weight: 500;">
+                    <a href="#" style="color: #f3f4f6 !important; text-decoration: none !important; cursor: default;">${to}</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: #6b7280; font-family: monospace; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Timestamp
+                  </td>
+                  <td style="padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; color: #d1d5db;">
+                    ${loginTimestamp}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 14px 18px; font-size: 12px; color: #6b7280; font-family: monospace; text-transform: uppercase; letter-spacing: 0.05em;">
+                    IP Origin
+                  </td>
+                  <td style="padding: 14px 18px; font-size: 13px;">
+                    <span style="display: inline-block; padding: 2px 8px; background-color: rgba(200, 168, 107, 0.12); border: 1px solid rgba(200, 168, 107, 0.25); border-radius: 5px; font-family: monospace; font-size: 12px; color: #dfc38a;">
+                      ${ip || 'Verified Connection'}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td align="center">
+                    <a href="https://bedrock-steel.vercel.app/app" style="display: block; width: 100%; box-sizing: border-box; text-align: center; background: linear-gradient(180deg, #dfc38a 0%, #c8a86b 100%); color: #090a0d; font-weight: 600; font-size: 14px; padding: 13px 20px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(200, 168, 107, 0.25); letter-spacing: 0.01em;">
+                      Launch Bedrock Workstation &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 10px;">
+                <tr>
+                  <td style="padding: 14px 16px; font-size: 12.5px; line-height: 1.5; color: #9ca3af;">
+                    <strong style="color: #fca5a5;">Didn't recognize this sign-in?</strong> If this wasn't you, someone may have unauthorized access. <a href="https://bedrock-steel.vercel.app/app/settings" style="color: #dfc38a; text-decoration: underline;">Change your password</a> immediately.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 22px 32px 28px 32px; background-color: #0d0e13; border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center;">
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280; line-height: 1.5;">
+                Bedrock Prompt Engineering Workstation &bull; Automated Security Protocol
               </p>
-            </div>
-            <div style="padding: 18px 32px; background-color: #070707; border-top: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: #52525b;">
-              Bedrock Architecture Security • Automated notification from ${gmailUser}
-            </div>
-          </div>
-        </body>
-      </html>
+              <p style="margin: 0; font-size: 11.5px; color: #4b5563;">
+                Dispatched by <span style="color: #6b7280;">${gmailUser}</span> &bull; <a href="https://bedrock-steel.vercel.app" style="color: #9ca3af; text-decoration: underline;">bedrock.app</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
     `;
   }
 
