@@ -11,17 +11,20 @@ export const Scene6ArenaAndLibrary: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // 3D Staggered Windows Animations
+  // 3D Staggered Windows Animations with Organic Counter-Float
   const leftSpring = spring({ frame, fps, config: { damping: 14, stiffness: 70 } });
   const rightSpring = spring({ frame: Math.max(0, frame - 20), fps, config: { damping: 14, stiffness: 70 } });
 
+  const ambientFloatX = Math.sin(frame * 0.04) * 0.7;
+  const ambientFloatY = Math.cos(frame * 0.035) * 0.7;
+
   const leftScale = interpolate(leftSpring, [0, 1], [0.75, 0.9]);
-  const leftRotateY = interpolate(leftSpring, [0, 1], [25, 12]);
-  const leftRotateX = interpolate(leftSpring, [0, 1], [15, 6]);
+  const leftRotateY = interpolate(leftSpring, [0, 1], [25, 12]) + ambientFloatY;
+  const leftRotateX = interpolate(leftSpring, [0, 1], [15, 6]) + ambientFloatX;
 
   const rightScale = interpolate(rightSpring, [0, 1], [0.75, 0.9]);
-  const rightRotateY = interpolate(rightSpring, [0, 1], [-25, -12]);
-  const rightRotateX = interpolate(rightSpring, [0, 1], [15, 6]);
+  const rightRotateY = interpolate(rightSpring, [0, 1], [-25, -12]) - ambientFloatY;
+  const rightRotateX = interpolate(rightSpring, [0, 1], [15, 6]) - ambientFloatX;
 
   // Top Badge Spring
   const badgeSpring = spring({ frame: Math.max(0, frame - 15), fps, config: { damping: 12, stiffness: 90 } });

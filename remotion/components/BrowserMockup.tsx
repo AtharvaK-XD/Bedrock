@@ -152,20 +152,36 @@ export const BrowserMockup: React.FC<BrowserMockupProps> = ({
               <polygon points="3,3 10,21 13,13 21,10" fill="#10b981" stroke="#ffffff" strokeWidth="1.5" />
             </svg>
             {cursorClick && (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '0px',
-                  top: '0px',
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '50%',
-                  border: '2px solid #34d399',
-                  animation: 'none',
-                  transform: 'translate(-8px, -8px)',
-                  boxShadow: '0 0 12px #34d399',
-                }}
-              />
+              <>
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '0px',
+                    top: '0px',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    border: '2px solid #34d399',
+                    transform: 'translate(-12px, -12px) scale(1.3)',
+                    boxShadow: '0 0 16px #10b981, inset 0 0 10px rgba(16, 185, 129, 0.4)',
+                    opacity: 0.9,
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '0px',
+                    top: '0px',
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    border: '1.5px solid rgba(52, 211, 153, 0.5)',
+                    transform: 'translate(-20px, -20px) scale(1.6)',
+                    boxShadow: '0 0 20px rgba(52, 211, 153, 0.4)',
+                    opacity: 0.6,
+                  }}
+                />
+              </>
             )}
           </div>
         )}

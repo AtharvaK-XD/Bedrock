@@ -12,11 +12,13 @@ export const Scene5BranchingDAGCanvas: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // 3D Camera Dynamics (Dramatic wide angle to straight on)
+  // 3D Camera Dynamics with Organic Levitation (Dramatic wide angle to straight on)
   const entranceSpring = spring({ frame, fps, config: { damping: 14, stiffness: 65 } });
   const scale = interpolate(entranceSpring, [0, 1], [0.82, 0.98]);
-  const rotateX = interpolate(entranceSpring, [0, 1], [15, 3]);
-  const rotateY = interpolate(entranceSpring, [0, 1], [20, 4]);
+  const ambientFloatX = Math.sin(frame * 0.04) * 0.7;
+  const ambientFloatY = Math.cos(frame * 0.036) * 0.7;
+  const rotateX = interpolate(entranceSpring, [0, 1], [15, 3]) + ambientFloatX;
+  const rotateY = interpolate(entranceSpring, [0, 1], [20, 4]) + ambientFloatY;
 
   // Specular sheen sweep position across the browser glass (0% to 100%)
   const sheenOffset = interpolate(frame, [15, 170], [-20, 120]);

@@ -12,11 +12,13 @@ export const Scene3DashboardTelemetry: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // 3D Camera Tilt & Zoom
+  // 3D Camera Tilt & Zoom with Organic Ambient Levitation
   const entranceSpring = spring({ frame, fps, config: { damping: 14, stiffness: 65 } });
   const scale = interpolate(entranceSpring, [0, 1], [0.82, 0.96]);
-  const rotateX = interpolate(entranceSpring, [0, 1], [14, 4]);
-  const rotateY = interpolate(entranceSpring, [0, 1], [18, 5]);
+  const ambientFloatX = Math.sin(frame * 0.042) * 0.7;
+  const ambientFloatY = Math.cos(frame * 0.035) * 0.7;
+  const rotateX = interpolate(entranceSpring, [0, 1], [14, 4]) + ambientFloatX;
+  const rotateY = interpolate(entranceSpring, [0, 1], [18, 5]) + ambientFloatY;
 
   // Telemetry Numbers Ticking Up
   const inferenceCount = Math.floor(interpolate(frame, [15, 220], [200, 1428], { extrapolateRight: 'clamp' }));

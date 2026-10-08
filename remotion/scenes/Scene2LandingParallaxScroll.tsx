@@ -12,11 +12,13 @@ export const Scene2LandingParallaxScroll: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // 3D Camera Dynamics & Spring Physics
+  // 3D Camera Dynamics & Spring Physics with Subtle Organic Floating Float
   const entranceSpring = spring({ frame, fps, config: { damping: 14, stiffness: 60 } });
   const scale = interpolate(entranceSpring, [0, 1], [0.78, 0.96]);
-  const rotateX = interpolate(entranceSpring, [0, 1], [18, 5]);
-  const rotateY = interpolate(entranceSpring, [0, 1], [-16, -3]);
+  const ambientFloatX = Math.sin(frame * 0.045) * 0.75;
+  const ambientFloatY = Math.cos(frame * 0.038) * 0.75;
+  const rotateX = interpolate(entranceSpring, [0, 1], [18, 5]) + ambientFloatX;
+  const rotateY = interpolate(entranceSpring, [0, 1], [-16, -3]) + ambientFloatY;
 
   // Dynamic Parallax Scroll Effect across the Landing Page
   // From frame 40 to 220, scrolls smoothly down through the hero and showcase

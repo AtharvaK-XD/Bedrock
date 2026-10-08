@@ -12,11 +12,13 @@ export const Scene4SynthesisWizard: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // 3D Camera Zoom into the editor
+  // 3D Camera Zoom into the editor with Organic Ambient Float
   const entranceSpring = spring({ frame, fps, config: { damping: 14, stiffness: 65 } });
   const scale = interpolate(entranceSpring, [0, 1], [0.82, 1.02]);
-  const rotateX = interpolate(entranceSpring, [0, 1], [-12, -2]);
-  const rotateY = interpolate(entranceSpring, [0, 1], [-16, -2]);
+  const ambientFloatX = Math.sin(frame * 0.04) * 0.65;
+  const ambientFloatY = Math.cos(frame * 0.035) * 0.65;
+  const rotateX = interpolate(entranceSpring, [0, 1], [-12, -2]) + ambientFloatX;
+  const rotateY = interpolate(entranceSpring, [0, 1], [-16, -2]) + ambientFloatY;
 
   // Specular sheen sweep position across the browser glass (0% to 100%)
   const sheenOffset = interpolate(frame, [15, 170], [-20, 120]);
