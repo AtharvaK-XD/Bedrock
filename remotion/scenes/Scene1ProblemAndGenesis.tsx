@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 
 const GLYPHS = '01#@$%&*<>[]{}~=+/ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -347,7 +347,7 @@ export const Scene1ProblemAndGenesis: React.FC = () => {
             zIndex: 10,
           }}
         >
-          {/* 3D Polyhedron Geometric Monolith */}
+          {/* Authentic Bedrock 3D Monolith Logo Badge */}
           <div
             style={{
               position: 'relative',
@@ -361,31 +361,58 @@ export const Scene1ProblemAndGenesis: React.FC = () => {
               marginBottom: '28px',
             }}
           >
-            <svg
-              width="240"
-              height="240"
-              viewBox="0 0 360 360"
+            {/* Outer Holographic Orbital Ring */}
+            <div
               style={{
-                filter: 'drop-shadow(0 20px 60px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 40px rgba(16, 185, 129, 0.5))',
+                position: 'absolute',
+                width: '240px',
+                height: '240px',
+                borderRadius: '50%',
+                border: '2px solid rgba(16, 185, 129, 0.45)',
+                boxShadow: '0 0 35px rgba(16, 185, 129, 0.35)',
+                transform: `rotateZ(${genesisFrame * 1.5}deg)`,
+              }}
+            />
+
+            {/* Inner Holographic Orbital Ring */}
+            <div
+              style={{
+                position: 'absolute',
+                width: '200px',
+                height: '200px',
+                borderRadius: '50%',
+                border: '1.5px dashed rgba(52, 211, 153, 0.6)',
+                transform: `rotateZ(${-genesisFrame * 2}deg)`,
+              }}
+            />
+
+            {/* 3D Glass Badge Housing the Authentic Bedrock Logo */}
+            <div
+              style={{
+                width: '180px',
+                height: '180px',
+                borderRadius: '40px',
+                background: 'radial-gradient(circle at 35% 30%, #162622 0%, #08110f 100%)',
+                border: '2.5px solid rgba(16, 185, 129, 0.65)',
+                boxShadow:
+                  '0 30px 70px rgba(0, 0, 0, 0.95), 0 0 50px rgba(16, 185, 129, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                zIndex: 10,
               }}
             >
-              <defs>
-                <linearGradient id="facetDark" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#1a202c" />
-                  <stop offset="100%" stopColor="#0b0e15" />
-                </linearGradient>
-                <linearGradient id="emeraldRim" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6ee7b7" />
-                  <stop offset="50%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#047857" />
-                </linearGradient>
-              </defs>
-
-              <polygon points="180,30 290,110 180,160 70,110" fill="#1e293b" stroke="url(#emeraldRim)" strokeWidth="3" />
-              <polygon points="70,110 180,160 180,310 70,240" fill="url(#facetDark)" stroke="url(#emeraldRim)" strokeWidth="3" />
-              <polygon points="180,160 290,110 290,240 180,310" fill="#0f172a" stroke="url(#emeraldRim)" strokeWidth="3" />
-              <circle cx="180" cy="160" r="14" fill="#34d399" filter="drop-shadow(0 0 16px #10b981)" />
-            </svg>
+              <Img
+                src={staticFile('logo.png')}
+                style={{
+                  width: '120px',
+                  height: '120px',
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 0 20px rgba(52, 211, 153, 0.8)) drop-shadow(0 10px 20px rgba(0, 0, 0, 0.9))',
+                }}
+              />
+            </div>
           </div>
 
           {/* Kinetic Decrypted Title */}

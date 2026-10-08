@@ -52,10 +52,18 @@ export const BedrockStartupIntro: React.FC = () => {
         <Audio src={staticFile('audio/whoosh.wav')} volume={0.65} />
       </Sequence>
 
-      {/* Synchronized SFX: Scene 4 Synthesis Wizard Heavy Whoosh & Click (Frame 970) */}
+      {/* Synchronized SFX: Scene 4 Synthesis Wizard Heavy Whoosh (Frame 970) */}
       <Sequence from={970} durationInFrames={45}>
         <Audio src={staticFile('audio/whoosh-heavy.wav')} volume={0.7} />
-        <Audio src={staticFile('audio/click.wav')} volume={0.7} />
+      </Sequence>
+      {/* Synchronized SFX: Scene 4 Click on Generate (Frame 1020) */}
+      <Sequence from={1020} durationInFrames={20}>
+        <Audio src={staticFile('audio/click.wav')} volume={0.85} />
+      </Sequence>
+      {/* Synchronized SFX: Scene 4 Synthesis Result Reveal Chime & Bass Impact (Frame 1095) */}
+      <Sequence from={1095} durationInFrames={60}>
+        <Audio src={staticFile('audio/chime.wav')} volume={0.85} />
+        <Audio src={staticFile('audio/impact.wav')} volume={0.65} />
       </Sequence>
 
       {/* Synchronized SFX: Scene 5 Branching Canvas Whoosh (Frame 1240) */}
