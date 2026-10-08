@@ -170,50 +170,23 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         'BedrockOAuthPopup',
         `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
       );
-      if (popup) {
-        popup.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>Connecting to ${strategy === 'oauth_github' ? 'GitHub' : 'Google'}...</title>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body {
-                  margin: 0;
-                  background-color: #050505;
-                  color: #e4e4e7;
-                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  height: 100vh;
-                }
-                .loader {
-                  display: flex;
-                  flex-direction: column;
-                  align-items: center;
-                  gap: 16px;
-                }
-                .spinner {
-                  width: 32px;
-                  height: 32px;
-                  border: 3px solid rgba(255,255,255,0.1);
-                  border-top-color: #10b981;
-                  border-radius: 50%;
-                  animation: spin 0.8s linear infinite;
-                }
-                @keyframes spin { to { transform: rotate(360deg); } }
-                p { font-size: 14px; color: #a1a1aa; margin: 0; }
-              </style>
-            </head>
-            <body>
-              <div class="loader">
-                <div class="spinner"></div>
-                <p>Opening ${strategy === 'oauth_github' ? 'GitHub' : 'Google'} Authorization...</p>
-              </div>
-            </body>
-          </html>
-        `);
+      if (popup && popup.document) {
+        popup.document.title = `Connecting to ${strategy === 'oauth_github' ? 'GitHub' : 'Google'}...`;
+        popup.document.body.style.backgroundColor = '#050505';
+        popup.document.body.style.color = '#e4e4e7';
+        popup.document.body.style.display = 'flex';
+        popup.document.body.style.alignItems = 'center';
+        popup.document.body.style.justifyContent = 'center';
+        popup.document.body.style.height = '100vh';
+        popup.document.body.style.margin = '0';
+        popup.document.body.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        popup.document.body.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+            <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.1);border-top-color:#10b981;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <p style="font-size:14px;color:#a1a1aa;margin:0;">Opening ${strategy === 'oauth_github' ? 'GitHub' : 'Google'} Authorization...</p>
+          </div>
+          <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+        `;
       }
     } catch {
       popup = null;
@@ -222,10 +195,26 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     let authDone = false;
     let cleanup = () => {};
 
-    const handleSuccess = () => {
+    const handleSuccess = async () => {
       if (authDone) return;
       authDone = true;
       cleanup();
+
+      try {
+        const clerkUser = (clerk as any)?.user || (window as any).Clerk?.user;
+        const userEmail = clerkUser?.primaryEmailAddress?.emailAddress || clerkUser?.emailAddresses?.[0]?.emailAddress || 'developer@bedrock.app';
+        const userName = clerkUser?.fullName || clerkUser?.firstName || userEmail.split('@')[0];
+        await login(userEmail, undefined, userName, mode === 'register' ? 'register' : 'login');
+        notifyAuthSuccess({ email: userEmail, name: userName, type: mode === 'register' ? 'signup' : 'signin' });
+        await updateProfile({
+          name: userName,
+          email: userEmail,
+          avatarUrl: clerkUser?.imageUrl || '',
+        });
+      } catch (e) {
+        console.warn('Post-auth profile sync warning:', e);
+      }
+
       setIsLoading(false);
       navigate(targetPath);
     };
@@ -238,7 +227,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     window.addEventListener('message', handleAuthMessage);
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === 'bedrock_auth_event') {
+      if (event.key === 'bedrock_auth_event' || event.key === 'bedrock_auth_session') {
         handleSuccess();
       }
     };
@@ -252,7 +241,8 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             (clerk as any)?.session ||
             (clerk as any)?.user ||
             (window as any).Clerk?.session ||
-            (window as any).Clerk?.user
+            (window as any).Clerk?.user ||
+            localStorage.getItem('bedrock_auth_session')
           );
           if (finalSessionCheck) {
             handleSuccess();
@@ -260,7 +250,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             cleanup();
             setIsLoading(false);
           }
-        }, 500);
+        }, 600);
       }
     }, 400);
 
@@ -271,12 +261,22 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     };
 
     try {
-      if (!clerk.loaded) {
+      const clerkInstance: any = clerk || (window as any).Clerk;
+      if (!clerkInstance?.loaded) {
         await new Promise<void>((resolve) => {
-          if (typeof (clerk as any).addOnLoaded === 'function') {
-            (clerk as any).addOnLoaded(() => resolve());
+          if (typeof clerkInstance?.addOnLoaded === 'function') {
+            clerkInstance.addOnLoaded(() => resolve());
           }
-          setTimeout(resolve, 2000);
+          const timer = setInterval(() => {
+            if ((window as any).Clerk?.loaded || clerk?.loaded) {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 50);
+          setTimeout(() => {
+            clearInterval(timer);
+            resolve();
+          }, 2500);
         });
       }
 
@@ -292,44 +292,58 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         }
       }
 
-      let client: any = null;
-      try {
-        client = (clerk as any).client;
-      } catch {
-        // ignore
-      }
-      if (!client && typeof window !== 'undefined') {
-        client = (window as any).Clerk?.client;
-      }
+      const activeClerk = clerk || (window as any).Clerk;
+      const activeClient = activeClerk?.client;
+      const targetSignIn = activeClient?.signIn || (window as any).Clerk?.client?.signIn || signIn;
+      const targetSignUp = activeClient?.signUp || (window as any).Clerk?.client?.signUp || signUp;
 
-      const targetSignIn = signIn || client?.signIn || (clerk as any).client?.signIn;
-      const targetSignUp = signUp || client?.signUp || (clerk as any).client?.signUp;
-      const authResource = mode === 'register' 
-        ? (targetSignUp || targetSignIn) 
-        : (targetSignIn || targetSignUp);
-
+      // Always pass consent verification prompt so Google & GitHub display account chooser & consent
       const oidcPrompt = 'select_account consent';
 
-      if (typeof authResource?.authenticateWithPopup === 'function' && popup && !popup.closed) {
-        try {
-          await authResource.authenticateWithPopup({
-            strategy,
-            popup,
-            redirectUrl: callbackUrl,
-            redirectUrlComplete: targetUrl,
-            oidcPrompt,
-          });
-          return;
-        } catch (popupErr: any) {
-          console.warn('authenticateWithPopup error, trying fallback:', popupErr);
+      const primaryResource = mode === 'register' ? (targetSignUp || targetSignIn) : (targetSignIn || targetSignUp);
+      const fallbackResource = primaryResource === targetSignIn ? targetSignUp : targetSignIn;
+
+      if (popup && !popup.closed) {
+        let popupStarted = false;
+        if (typeof primaryResource?.authenticateWithPopup === 'function') {
+          try {
+            await primaryResource.authenticateWithPopup({
+              strategy,
+              popup,
+              redirectUrl: callbackUrl,
+              redirectUrlComplete: targetUrl,
+              oidcPrompt,
+            });
+            popupStarted = true;
+            return;
+          } catch (popupErr: any) {
+            console.warn('Primary authenticateWithPopup error, trying secondary:', popupErr);
+          }
+        }
+
+        if (!popupStarted && typeof fallbackResource?.authenticateWithPopup === 'function' && !popup.closed) {
+          try {
+            await fallbackResource.authenticateWithPopup({
+              strategy,
+              popup,
+              redirectUrl: callbackUrl,
+              redirectUrlComplete: targetUrl,
+              oidcPrompt,
+            });
+            popupStarted = true;
+            return;
+          } catch (fallbackErr: any) {
+            console.warn('Fallback authenticateWithPopup error:', fallbackErr);
+          }
         }
       }
 
-      if (typeof authResource?.authenticateWithRedirect === 'function') {
+      // If popup was blocked or failed, proceed with redirect
+      if (typeof primaryResource?.authenticateWithRedirect === 'function') {
         if (popup && !popup.closed) {
           popup.close();
         }
-        await authResource.authenticateWithRedirect({
+        await primaryResource.authenticateWithRedirect({
           strategy,
           redirectUrl: callbackUrl,
           redirectUrlComplete: targetUrl,
@@ -338,13 +352,15 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
         return;
       }
 
-      if (typeof clerk.redirectToSignIn === 'function') {
+      if (typeof fallbackResource?.authenticateWithRedirect === 'function') {
         if (popup && !popup.closed) {
           popup.close();
         }
-        await clerk.redirectToSignIn({
-          signInFallbackRedirectUrl: targetUrl,
-          signInForceRedirectUrl: targetUrl,
+        await fallbackResource.authenticateWithRedirect({
+          strategy,
+          redirectUrl: callbackUrl,
+          redirectUrlComplete: targetUrl,
+          oidcPrompt,
         });
         return;
       }

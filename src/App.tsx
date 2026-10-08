@@ -45,8 +45,8 @@ function AnimatedRoutes() {
   const isDesktop = isDesktopApp();
   
   useEffect(() => {
-    // If desktop or browser receives OAuth callback path without hash, redirect to hash router path
-    if (typeof window !== 'undefined' && !window.location.hash) {
+    // Desktop App (Electron/Tauri): uses HashRouter, so redirect raw callback URLs to hash routes
+    if (isDesktop && typeof window !== 'undefined' && !window.location.hash) {
       if (
         window.location.pathname.includes('browser-auth') ||
         window.location.pathname.includes('sso-callback')
@@ -56,9 +56,16 @@ function AnimatedRoutes() {
       }
     }
 
+    // Web Browser Mode (Vercel): uses BrowserRouter; if an external callback erroneously has a hash, restore clean browser pathname
+    if (!isDesktop && typeof window !== 'undefined' && window.location.hash && window.location.hash.includes('sso-callback')) {
+      const cleanPath = window.location.hash.replace(/^#/, '');
+      window.location.replace(`${window.location.origin}${cleanPath}`);
+      return;
+    }
+
     window.scrollTo(0, 0);
     ScrollTrigger.refresh();
-  }, [location.pathname]);
+  }, [location.pathname, isDesktop]);
   
   return (
     <AnimatePresence mode="wait">
