@@ -59,9 +59,33 @@ export function useAuth() {
     };
   }, []);
 
-  const isClerkLoggedIn = Boolean(clerkAuth?.userId);
+  const isClerkLoggedIn = Boolean(
+    clerkAuth?.userId ||
+    (typeof window !== 'undefined' && ((window as any).Clerk?.session || (window as any).Clerk?.user))
+  );
   const isLoggedIn = isClerkLoggedIn || localSession.isLoggedIn;
   const isLoaded = clerkAuth ? clerkAuth.isLoaded : true;
+
+  // Persist session into local storage when Clerk user signs in
+  useEffect(() => {
+    if (isClerkLoggedIn) {
+      const activeUser = user || (typeof window !== 'undefined' ? (window as any).Clerk?.user : null);
+      const email = activeUser?.primaryEmailAddress?.emailAddress || activeUser?.emailAddresses?.[0]?.emailAddress;
+      const name = activeUser?.fullName || activeUser?.firstName || (email ? email.split('@')[0] : undefined);
+      if (email && !localSession.isLoggedIn) {
+        const sessionData: AuthSession = {
+          isLoggedIn: true,
+          email,
+          name: name || 'Developer',
+          loginTime: new Date().toISOString(),
+        };
+        try {
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(sessionData));
+        } catch {}
+        setLocalSession(sessionData);
+      }
+    }
+  }, [isClerkLoggedIn, user, localSession.isLoggedIn]);
 
   const session: AuthSession = isClerkLoggedIn
     ? {

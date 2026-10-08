@@ -1,14 +1,33 @@
-import { useEffect } from 'react';
-import { AuthenticateWithRedirectCallback, useAuth } from '@clerk/react';
+import { useEffect, useRef } from 'react';
+import { AuthenticateWithRedirectCallback, useAuth, useClerk, useUser } from '@clerk/react';
+import { useNavigate } from 'react-router-dom';
 import { PageTransition } from '../components/layout/PageTransition';
 
 export default function SSOCallback() {
   const { isSignedIn } = useAuth();
+  const { user } = useUser();
+  const clerk = useClerk();
+  const navigate = useNavigate();
+  const completedRef = useRef(false);
 
   useEffect(() => {
-    const notifyAndClose = () => {
+    const notifyAndComplete = () => {
+      if (completedRef.current) return;
+      completedRef.current = true;
+
       try {
+        const clerkUser = user || (window as any).Clerk?.user || (clerk as any)?.user;
+        const email = clerkUser?.primaryEmailAddress?.emailAddress || clerkUser?.emailAddresses?.[0]?.emailAddress || 'developer@bedrock.app';
+        const name = clerkUser?.fullName || clerkUser?.firstName || email.split('@')[0];
+        
+        localStorage.setItem('bedrock_auth_session', JSON.stringify({
+          isLoggedIn: true,
+          email,
+          name,
+          loginTime: new Date().toISOString()
+        }));
         localStorage.setItem('bedrock_auth_event', Date.now().toString());
+        window.dispatchEvent(new Event('bedrock_auth_update'));
       } catch {
         // ignore
       }
@@ -17,7 +36,7 @@ export default function SSOCallback() {
         try {
           window.opener.postMessage('clerk-auth-complete', '*');
         } catch {
-          // ignore cross-origin if any
+          // ignore
         }
         setTimeout(() => {
           try {
@@ -25,39 +44,44 @@ export default function SSOCallback() {
           } catch {
             // ignore
           }
-        }, 150);
+        }, 200);
+      } else {
+        navigate('/app', { replace: true });
       }
     };
 
     if (isSignedIn) {
-      notifyAndClose();
+      notifyAndComplete();
     }
 
     // In case session becomes active before hook triggers
     const interval = setInterval(() => {
       const hasSession = Boolean(
         (window as any).Clerk?.session || 
-        (window as any).Clerk?.user
+        (window as any).Clerk?.user ||
+        clerk?.session ||
+        clerk?.user
       );
       if (hasSession) {
         clearInterval(interval);
-        notifyAndClose();
+        notifyAndComplete();
       }
-    }, 200);
+    }, 150);
 
     return () => clearInterval(interval);
-  }, [isSignedIn]);
+  }, [isSignedIn, user, clerk, navigate]);
 
   return (
     <PageTransition className="flex items-center justify-center min-h-screen bg-[#050505]">
       <div className="flex flex-col items-center justify-center gap-4">
         <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
-        <p className="text-gray-400 font-medium text-sm">Authenticating...</p>
+        <p className="text-gray-400 font-medium text-sm">Completing authentication...</p>
         <AuthenticateWithRedirectCallback
           signInFallbackRedirectUrl="/app"
           signUpFallbackRedirectUrl="/app"
           signInForceRedirectUrl="/app"
           signUpForceRedirectUrl="/app"
+          continueSignUpUrl="/signup"
         />
       </div>
     </PageTransition>
