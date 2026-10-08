@@ -92,9 +92,13 @@ export const Scene2LandingParallaxScroll: React.FC = () => {
         </span>
       </div>
 
-      {/* Real Bedrock Website Mockup with 3D Tilt and Parallax Scroll */}
+      {/* Real Bedrock Website Mockup with 3D Tilt and Continuous Parallax Scroll */}
       <BrowserMockup
-        imageSrc="screenshots/01_landing_hero.png"
+        images={[
+          'screenshots/01_landing_hero.png',
+          'screenshots/01b_landing_showcase.png',
+          'screenshots/01c_landing_features.png',
+        ]}
         url="https://bedrockxai.com"
         rotateX={rotateX}
         rotateY={rotateY}

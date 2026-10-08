@@ -124,23 +124,28 @@ export const Scene7MonolithicFinale: React.FC = () => {
         {/* Monolith 3D Icon Badge */}
         <div
           style={{
-            width: '130px',
-            height: '130px',
-            borderRadius: '32px',
-            background: 'linear-gradient(135deg, #132220 0%, #07100e 100%)',
-            border: '2.5px solid rgba(16, 185, 129, 0.7)',
-            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.95), 0 0 50px rgba(16, 185, 129, 0.45)',
+            width: '140px',
+            height: '140px',
+            borderRadius: '36px',
+            background: 'radial-gradient(circle at 35% 30%, #162622 0%, #08110f 100%)',
+            border: '2.5px solid rgba(16, 185, 129, 0.75)',
+            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.95), 0 0 50px rgba(16, 185, 129, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: '26px',
+            position: 'relative',
           }}
         >
-          <svg width="72" height="72" viewBox="0 0 24 24" fill="none">
-            <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" stroke="#34d399" strokeWidth="1.8" fill="rgba(16, 185, 129, 0.2)" />
-            <line x1="12" y1="2" x2="12" y2="22" stroke="#10b981" strokeWidth="2.2" />
-            <circle cx="12" cy="12" r="4.5" fill="#34d399" filter="drop-shadow(0 0 10px #34d399)" />
-          </svg>
+          <Img
+            src={staticFile('logo.png')}
+            style={{
+              width: '92px',
+              height: '92px',
+              objectFit: 'contain',
+              filter: 'drop-shadow(0 0 24px rgba(52, 211, 153, 0.85)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.8))',
+            }}
+          />
         </div>
 
         {/* Monolithic Title */}

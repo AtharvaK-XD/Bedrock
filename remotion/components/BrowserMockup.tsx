@@ -2,7 +2,9 @@ import React from 'react';
 import { Img, staticFile } from 'remotion';
 
 interface BrowserMockupProps {
-  imageSrc: string;
+  imageSrc?: string;
+  images?: string[];
+  children?: React.ReactNode;
   url: string;
   rotateX?: number;
   rotateY?: number;
@@ -20,6 +22,8 @@ interface BrowserMockupProps {
 
 export const BrowserMockup: React.FC<BrowserMockupProps> = ({
   imageSrc,
+  images,
+  children,
   url,
   rotateX = 0,
   rotateY = 0,
@@ -124,15 +128,40 @@ export const BrowserMockup: React.FC<BrowserMockupProps> = ({
           backgroundColor: '#06080d',
         }}
       >
-        <Img
-          src={staticFile(imageSrc)}
-          style={{
-            width: '100%',
-            height: 'auto',
-            transform: `translateY(${panY}px)`,
-            display: 'block',
-          }}
-        />
+        {children ? (
+          children
+        ) : images && images.length > 0 ? (
+          <div
+            style={{
+              width: '100%',
+              transform: `translateY(${panY}px)`,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            {images.map((img, idx) => (
+              <Img
+                key={idx}
+                src={staticFile(img)}
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block',
+                }}
+              />
+            ))}
+          </div>
+        ) : imageSrc ? (
+          <Img
+            src={staticFile(imageSrc)}
+            style={{
+              width: '100%',
+              height: 'auto',
+              transform: `translateY(${panY}px)`,
+              display: 'block',
+            }}
+          />
+        ) : null}
 
         {/* Dynamic Simulated Precision Cursor */}
         {cursorX !== undefined && cursorY !== undefined && (
