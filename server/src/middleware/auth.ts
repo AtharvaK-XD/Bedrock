@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
+import { prisma, DEFAULT_USER_ID, logSecurityEvent } from '../db.js';
 import { AuthRequest } from '../types.js';
 
 export type { AuthRequest } from '../types.js';
