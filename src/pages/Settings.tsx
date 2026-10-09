@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ArrowUpCircle,
   RefreshCw,
+  Info,
 } from 'lucide-react';
 import { AgentIcon } from '../components/ui/ModelLogos';
 import { subscribeToUpdates, checkForUpdates, applyUpdate } from '../lib/updater';
@@ -1062,7 +1063,7 @@ export default function Settings() {
                             <div className="flex items-center gap-2">
                               <span className="text-lg font-bold text-white">Bedrock Desktop</span>
                               <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-copper-500/10 text-copper-400 border border-copper-500/20">
-                                v1.2.1
+                                v1.2.2
                               </span>
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                 Release
@@ -1132,8 +1133,26 @@ export default function Settings() {
                         )}
 
                         {updateStatus.status === 'error' && (
-                          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
-                            Update check: {updateStatus.error || 'Could not connect to GitHub releases.'}
+                          <div className={cn(
+                            "p-4 rounded-xl border text-xs flex items-start gap-3 transition-colors",
+                            updateStatus.error?.includes('latest local build')
+                              ? "bg-amber-500/10 border-amber-500/25 text-amber-200/90"
+                              : "bg-rose-500/10 border-rose-500/20 text-rose-300"
+                          )}>
+                            <Info className={cn(
+                              "w-4 h-4 shrink-0 mt-0.5",
+                              updateStatus.error?.includes('latest local build') ? "text-amber-400" : "text-rose-400"
+                            )} />
+                            <div className="space-y-0.5">
+                              <span className="font-semibold block text-white/90">
+                                {updateStatus.error?.includes('latest local build')
+                                  ? 'Current Development Build'
+                                  : 'Update Check Notice'}
+                              </span>
+                              <span className="opacity-90 leading-relaxed font-sans block">
+                                {updateStatus.error || 'Could not connect to GitHub releases.'}
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>

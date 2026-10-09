@@ -24,10 +24,28 @@ function notifyListeners(status: UpdateStatus) {
   listeners.forEach((fn) => fn(status));
 }
 
+export function sanitizeUpdaterError(error?: string): string | undefined {
+  if (!error) return undefined;
+  if (error.includes('404') || error.includes('latest.yml')) {
+    return 'No published releases found on GitHub (Bedrockxai/Bedrock). You are currently running the latest local build.';
+  }
+  if (error.includes('ERR_INTERNET_DISCONNECTED') || error.includes('ENOTFOUND')) {
+    return 'Network disconnected. Please check your internet connection.';
+  }
+  if (error.includes('HttpError:')) {
+    return 'Unable to fetch release details from GitHub. Please try again later.';
+  }
+  return error.split('\n')[0];
+}
+
 // Hook into Electron autoUpdater IPC if available
 if (typeof window !== 'undefined' && (window as any).electronUpdater?.onStatusChange) {
   (window as any).electronUpdater.onStatusChange((data: any) => {
-    notifyListeners(data);
+    if (data?.status === 'error' && data.error) {
+      notifyListeners({ ...data, error: sanitizeUpdaterError(data.error) });
+    } else {
+      notifyListeners(data);
+    }
   });
 }
 
@@ -42,13 +60,15 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
       notifyListeners({ status: 'checking' });
       const res = await (window as any).electronUpdater.checkForUpdates();
       if (res?.error) {
-        notifyListeners({ status: 'error', error: res.error });
-        return { status: 'error', error: res.error };
+        const cleanErr = sanitizeUpdaterError(res.error);
+        notifyListeners({ status: 'error', error: cleanErr });
+        return { status: 'error', error: cleanErr };
       }
       return currentStatus;
     } catch (err: any) {
-      notifyListeners({ status: 'error', error: err?.message || 'Check failed' });
-      return { status: 'error', error: err?.message };
+      const cleanErr = sanitizeUpdaterError(err?.message || 'Check failed');
+      notifyListeners({ status: 'error', error: cleanErr });
+      return { status: 'error', error: cleanErr };
     }
   }
 

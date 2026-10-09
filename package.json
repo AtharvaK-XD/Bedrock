@@ -1,7 +1,7 @@
 {
   "name": "bedrock-desktop",
   "private": true,
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Bedrock Prompt Engineering App",
   "author": "Bedrock Inc",
   "type": "module",
@@ -9,12 +9,14 @@
   "build": {
     "appId": "com.bedrock.desktop",
     "productName": "Bedrock",
+    "icon": "build/icon.ico",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "build/**/*"
     ],
     "publish": [
       {
@@ -33,7 +35,19 @@
       }
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "uninstallDisplayName": "Bedrock",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Bedrock"
     },
     "mac": {
       "target": [
