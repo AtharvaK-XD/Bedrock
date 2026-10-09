@@ -176,8 +176,8 @@ export function useUserProfile() {
             }
           }
           
-          if (clerkName && (profile.name.startsWith('user_') || profile.name !== clerkName || (!profile.avatarUrl && clerkAvatar))) {
-            const current = getStoredProfile();
+          const current = getStoredProfile();
+          if (clerkName && (current.name.startsWith('user_') || current.name !== clerkName || (!current.avatarUrl && clerkAvatar))) {
             const updated: UserProfile = {
               ...current,
               name: clerkName,

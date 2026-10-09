@@ -1,8 +1,7 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
-import { prisma, DEFAULT_USER_ID, logSecurityEvent } from '../db.js';
-import { AuthRequest, AuthenticatedUser } from '../types.js';
+import { AuthRequest } from '../types.js';
 
 export type { AuthRequest } from '../types.js';
 
@@ -162,7 +161,7 @@ export async function requireStrictAuth(
       isGuest: false,
     };
     next();
-  } catch (err: any) {
+  } catch {
     res.status(401).json({ error: 'Invalid or expired session token' });
   }
 }

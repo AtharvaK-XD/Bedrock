@@ -145,7 +145,7 @@ export default function BrowserAuthCallback() {
                 <button
                   type="button"
                   onClick={handleManualOpenApp}
-                  className="w-full flex items-center justify-center gap-2 bg-emerald-500 text-black rounded-xl py-3.5 font-semibold hover:bg-emerald-400 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400/50 cursor-pointer text-sm shadow-lg shadow-emerald-500/20"
+                  className="w-full flex items-center justify-center gap-2 bg-[#2C9A8B] text-white rounded-xl py-3.5 font-semibold hover:bg-[#1F7A6E] transition-all focus:outline-none focus:ring-2 focus:ring-copper-400/50 cursor-pointer text-sm shadow-lg shadow-[#2C9A8B]/25 active:scale-[0.98]"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Return to Bedrock Desktop

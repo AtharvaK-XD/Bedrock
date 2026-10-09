@@ -3,7 +3,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion, QuestionOutput } from '../_lib/ai.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { BEDROCK_CORE_GUARDRAILS, buildQuestionsSystemPrompt } from '../_lib/aiPrompts.js';
+import { buildQuestionsSystemPrompt } from '../_lib/aiPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Security: Check for prompt injection
-  const isSuspicious = checkPromptInjection(ideaText, user?.id, ip);
+  checkPromptInjection(ideaText, user?.id, ip);
 
   const systemPrompt = buildQuestionsSystemPrompt(targetType);
 

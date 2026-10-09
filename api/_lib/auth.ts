@@ -1,5 +1,5 @@
 import type { VercelRequest } from '@vercel/node';
-import { getDb, UserRow, logSecurityEvent } from './db.js';
+import { getDb, UserRow } from './db.js';
 
 export interface AuthenticatedUser {
   id: string;

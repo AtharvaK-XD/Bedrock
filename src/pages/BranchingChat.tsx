@@ -56,7 +56,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-export const NODE_CONFIG = {
+const NODE_CONFIG = {
   system: { 
     title: 'System Persona', 
     desc: 'Sets authoritative persona & behavioral rules', 
@@ -147,7 +147,7 @@ export const NODE_CONFIG = {
   }
 };
 
-export const SYSTEM_PERSONAS = [
+const SYSTEM_PERSONAS = [
   { id: 'architect', name: 'Software Architect', desc: 'You are a Senior AI & Software Architect. Provide robust, clean, scalable architectures with strict type safety and best practices.' },
   { id: 'reviewer', name: 'Code Reviewer', desc: 'You are a strict Senior Code Reviewer. Audit for performance bottlenecks, edge cases, vulnerabilities, and code smell.' },
   { id: 'writer', name: 'Creative Writer', desc: 'You are a world-class copywriter and storyteller. Produce clear, persuasive, and evocative explanations.' },
@@ -155,7 +155,7 @@ export const SYSTEM_PERSONAS = [
   { id: 'concise', name: 'Concise Assistant', desc: 'Be extremely concise. Answer directly in bullet points without introductory greetings or polite closing remarks.' }
 ];
 
-export const DATA_PRESETS = [
+const DATA_PRESETS = [
   {
     id: 'user_profile',
     name: 'User Profile Context',
@@ -173,21 +173,21 @@ export const DATA_PRESETS = [
   }
 ];
 
-export const CODE_TEMPLATES = [
+const CODE_TEMPLATES = [
   { id: 'uppercase', name: 'To Uppercase', code: '// Convert upstream text to uppercase\nreturn input.trim().toUpperCase();' },
   { id: 'json_parse', name: 'Parse & Format JSON', code: '// Pretty-print valid JSON or return original\ntry {\n  const obj = JSON.parse(input);\n  return JSON.stringify(obj, null, 2);\n} catch (e) {\n  return input;\n}' },
   { id: 'word_count', name: 'Word Counter', code: '// Calculate input statistics\nconst count = input.trim().split(/\\s+/).filter(Boolean).length;\nreturn `[Metrics]\\nWord Count: ${count}\\nLength: ${input.length} chars\\n\\n${input}`;' },
   { id: 'extract_code', name: 'Extract Code Blocks', code: '// Extract code from markdown fences\nconst match = input.match(/```(?:[a-z]*)\\n([\\s\\S]*?)```/i);\nreturn match ? match[1].trim() : input;' }
 ];
 
-export const EVAL_CRITERIA = [
+const EVAL_CRITERIA = [
   { id: 'accuracy', name: 'Accuracy & Reliability' },
   { id: 'clarity', name: 'Clarity & Concise Tone' },
   { id: 'code_quality', name: 'Code Quality & Safety' },
   { id: 'guardrails', name: 'Policy & Guardrails' }
 ];
 
-export const MERGE_STRATEGIES = [
+const MERGE_STRATEGIES = [
   { id: 'concat', name: 'Concatenate with Divider (---)' },
   { id: 'bullets', name: 'Bulleted Streams List' },
   { id: 'json', name: 'JSON Array Payload' },
@@ -301,9 +301,44 @@ const GenericNode = memo(({ id, data, selected }: { id: string, data: PromptNode
       const allNodes = getNodes() as Node<PromptNodeData>[];
       
       const incomingEdges = edges.filter(e => e.target === id);
-      const parentNodes = incomingEdges.map(e => allNodes.find(n => n.id === e.source)).filter(Boolean) as Node<PromptNodeData>[];
       
-      const upstreamText = parentNodes
+      // Filter out edges originating from inactive condition branches
+      const activeIncomingEdges = incomingEdges.filter(e => {
+        const sourceNode = allNodes.find(n => n.id === e.source);
+        if (!sourceNode || sourceNode.data.nodeType !== 'condition') return true;
+        if (sourceNode.data.conditionResult === undefined) return true;
+        if (e.sourceHandle === 'true' && !sourceNode.data.conditionResult) return false;
+        if (e.sourceHandle === 'false' && sourceNode.data.conditionResult) return false;
+        return true;
+      });
+
+      // If all incoming edges were disabled by upstream conditions, mark as skipped
+      if (incomingEdges.length > 0 && activeIncomingEdges.length === 0) {
+        setNodes(nodes => nodes.map(n => n.id === id ? { 
+          ...n, 
+          data: { 
+            ...n.data, 
+            status: 'idle', 
+            output: '[Branch Skipped: Condition criteria was not met]' 
+          } 
+        } : n));
+        return;
+      }
+
+      const parentNodes = activeIncomingEdges
+        .map(e => allNodes.find(n => n.id === e.source))
+        .filter(Boolean) as Node<PromptNodeData>[];
+      
+      // Separate system personas from operational data/prompts
+      const sysNodes = parentNodes.filter(p => p.data.nodeType === 'system');
+      const nonSysNodes = parentNodes.filter(p => p.data.nodeType !== 'system');
+
+      const sysPrompt = sysNodes
+        .map(p => p.data.output || p.data.description)
+        .filter(Boolean)
+        .join('\n\n');
+
+      const upstreamText = nonSysNodes
         .map(p => p.data.output || p.data.description || p.data.title)
         .filter(Boolean)
         .join('\n\n');
@@ -361,22 +396,21 @@ const GenericNode = memo(({ id, data, selected }: { id: string, data: PromptNode
             }
           }
           extraData.conditionResult = passed;
-          outputResult = passed 
-            ? `✓ [TRUE PATH]: Rule passed ("${data.conditionValue || 'match'}")` 
-            : `✗ [FALSE PATH]: Rule failed ("${data.conditionValue || 'mismatch'}")`;
+          // Forward upstream data to downstream nodes, preserving payload
+          outputResult = upstreamText || data.description || (passed ? 'Condition Passed' : 'Condition Failed');
           break;
         }
 
         case 'merge': {
           const strategy = data.mergeStrategy || 'concat';
           if (strategy === 'concat') {
-            outputResult = parentNodes.map(p => `--- Source: ${p.data.title} ---\n${p.data.output || p.data.description}`).join('\n\n');
+            outputResult = nonSysNodes.map(p => `--- Source: ${p.data.title} ---\n${p.data.output || p.data.description}`).join('\n\n');
           } else if (strategy === 'bullets') {
-            outputResult = parentNodes.map(p => `• [${p.data.title}]: ${p.data.output || p.data.description}`).join('\n');
+            outputResult = nonSysNodes.map(p => `• [${p.data.title}]: ${p.data.output || p.data.description}`).join('\n');
           } else if (strategy === 'json') {
-            outputResult = JSON.stringify(parentNodes.map(p => ({ source: p.data.title, content: p.data.output || p.data.description })), null, 2);
+            outputResult = JSON.stringify(nonSysNodes.map(p => ({ source: p.data.title, content: p.data.output || p.data.description })), null, 2);
           } else if (strategy === 'synthesize') {
-            const synthesisPrompt = `Synthesize and unify these ${parentNodes.length} workflow branches into a coherent output:\n\n${upstreamText}`;
+            const synthesisPrompt = `Synthesize and unify these ${nonSysNodes.length} workflow branches into a coherent output:\n\n${upstreamText}`;
             outputResult = await testPrompt(data.modelId, 'You are an expert synthesizer. Merge all context into a single coherent output.', synthesisPrompt);
           }
           break;
@@ -411,9 +445,28 @@ ${upstreamText || data.description}`;
 
         case 'prompt':
         default: {
-          const sysPrompt = parentNodes.filter(p => p.data.nodeType === 'system').map(p => p.data.output || p.data.description).join('\n\n');
-          const userPrompt = data.description || data.title;
-          outputResult = await testPrompt(data.modelId, sysPrompt || upstreamText, userPrompt);
+          let resolvedPrompt = data.description || data.title;
+          
+          // Interpolate template variables {{var}} or {{nodeTitle}}
+          for (const p of nonSysNodes) {
+            const val = p.data.output || p.data.description || '';
+            resolvedPrompt = resolvedPrompt.replace(new RegExp(`{{\\s*${p.id}\\s*}}`, 'gi'), val);
+            const slug = p.data.title.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            resolvedPrompt = resolvedPrompt.replace(new RegExp(`{{\\s*${slug}\\s*}}`, 'gi'), val);
+            p.data.title.split(/[\s_-]+/).forEach(word => {
+              if (word.length > 2) {
+                resolvedPrompt = resolvedPrompt.replace(new RegExp(`{{\\s*${word}\\s*}}`, 'gi'), val);
+              }
+            });
+          }
+
+          // If upstream context exists and was not explicitly templated via {{var}}, provide it as input context
+          let finalUserPrompt = resolvedPrompt;
+          if (upstreamText && !data.description.includes('{{')) {
+            finalUserPrompt = `[Upstream Input Context]\n${upstreamText}\n\n[Instruction]\n${resolvedPrompt}`;
+          }
+
+          outputResult = await testPrompt(data.modelId, sysPrompt, finalUserPrompt);
           break;
         }
       }
@@ -903,7 +956,7 @@ function CustomSelect({
   );
 }
 
-export const CURATED_TEMPLATES = [
+const CURATED_TEMPLATES = [
   {
     id: 'template-consensus',
     title: 'Multi-Model Consensus & Synthesizer',
@@ -1464,6 +1517,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
       setTimeout(() => setSaveStatus('idle'), 2500);
       return res;
     } catch (e) {
+      console.error('[Branching] Failed to save workflow:', e);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
       if (!silent) alert('Failed to save workflow.');

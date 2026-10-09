@@ -236,7 +236,7 @@ export default function PromptTester() {
             <StatefulButton
               onClick={handleTest}
               disabled={!prompt.trim() || isTesting}
-              className="w-full rounded-xl px-8 py-4 text-sm font-semibold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-md shadow-emerald-500/20 active:scale-[0.98]"
+              className="w-full rounded-xl px-8 py-4 text-sm font-semibold uppercase tracking-wider bg-[#2C9A8B] hover:bg-[#1F7A6E] text-white shadow-md shadow-[#2C9A8B]/25 active:scale-[0.98] transition-all"
             >
               {isTesting ? 'Running Battle...' : 'Run Arena'}
             </StatefulButton>

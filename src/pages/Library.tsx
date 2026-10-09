@@ -32,7 +32,7 @@ export interface PromptItem {
   isCustom?: boolean;
 }
 
-export const DEFAULT_CURATED_PROMPTS: PromptItem[] = [
+const DEFAULT_CURATED_PROMPTS: PromptItem[] = [
   {
     id: 'sec-audit-1',
     title: 'Senior Security & Vulnerability Auditor',
@@ -679,7 +679,7 @@ export default function Library() {
                     </p>
                     <button
                       onClick={() => setSelectedPromptForView(prompt)}
-                      className="w-full py-1.5 px-3 rounded-xl bg-white/10 hover:bg-emerald-500 hover:text-zinc-950 text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="w-full py-1.5 px-3 rounded-xl bg-white/10 hover:bg-[#2C9A8B] hover:text-white text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <span>Inspect Blueprint</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1075,7 +1075,7 @@ export default function Library() {
                     </button>
                     <StatefulButton
                       type="submit"
-                      className="min-w-[130px] px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-xs shadow-md shadow-emerald-500/20 active:scale-[0.98]"
+                      className="min-w-[130px] px-5 py-2 rounded-xl bg-[#2C9A8B] hover:bg-[#1F7A6E] text-white font-semibold text-xs shadow-md shadow-[#2C9A8B]/25 active:scale-[0.98] transition-all"
                     >
                       {isCreatingNew ? 'Create Prompt' : 'Save Changes'}
                     </StatefulButton>
