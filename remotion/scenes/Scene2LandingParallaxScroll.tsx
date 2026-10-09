@@ -12,28 +12,28 @@ export const Scene2LandingParallaxScroll: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // 3D Camera Dynamics & Spring Physics with Subtle Organic Floating Float
+  // 3D Camera Dynamics & Spring Physics with Continuous Cinematic Dolly Push-in
   const entranceSpring = spring({ frame, fps, config: { damping: 14, stiffness: 60 } });
-  const scale = interpolate(entranceSpring, [0, 1], [0.78, 0.96]);
+  const cameraDolly = interpolate(frame, [0, 290], [0.96, 1.05]);
+  const cameraOrbitY = interpolate(frame, [40, 270], [-4, 3]);
+  const cameraOrbitX = interpolate(frame, [40, 270], [5, 1.5]);
+
+  const scale = interpolate(entranceSpring, [0, 1], [0.76, 0.96]) * cameraDolly;
   const ambientFloatX = Math.sin(frame * 0.045) * 0.75;
   const ambientFloatY = Math.cos(frame * 0.038) * 0.75;
-  const rotateX = interpolate(entranceSpring, [0, 1], [18, 5]) + ambientFloatX;
-  const rotateY = interpolate(entranceSpring, [0, 1], [-16, -3]) + ambientFloatY;
+  const rotateX = (frame < 40 ? interpolate(entranceSpring, [0, 1], [18, 5]) : cameraOrbitX) + ambientFloatX;
+  const rotateY = (frame < 40 ? interpolate(entranceSpring, [0, 1], [-16, -4]) : cameraOrbitY) + ambientFloatY;
 
-  // Dynamic Parallax Scroll Effect across the Landing Page
-  // From frame 40 to 220, scrolls smoothly down through the hero and showcase
-  const panY = interpolate(frame, [40, 230], [0, -420], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
+  // Static Landing Page Hero (No parallax scroll down)
+  const panY = 0;
 
   // Specular sheen sweep position across the browser glass (0% to 100%)
   const sheenOffset = interpolate(frame, [20, 180], [-20, 120]);
 
-  // Simulated precision mouse cursor gliding across the page
-  const cursorX = interpolate(frame, [50, 120, 170], [30, 52, 60], { extrapolateRight: 'clamp' });
-  const cursorY = interpolate(frame, [50, 120, 170], [80, 58, 62], { extrapolateRight: 'clamp' });
-  const cursorClick = frame >= 120 && frame <= 135;
+  // Simulated precision mouse cursor gliding to Download CTA on static hero
+  const cursorX = interpolate(frame, [40, 110, 150], [45, 19, 19], { extrapolateRight: 'clamp' });
+  const cursorY = interpolate(frame, [40, 110, 150], [75, 53, 53], { extrapolateRight: 'clamp' });
+  const cursorClick = frame >= 115 && frame <= 130;
 
   // Header Badge Spring
   const badgeSpring = spring({ frame: Math.max(0, frame - 25), fps, config: { damping: 12, stiffness: 90 } });
@@ -92,13 +92,9 @@ export const Scene2LandingParallaxScroll: React.FC = () => {
         </span>
       </div>
 
-      {/* Real Bedrock Website Mockup with 3D Tilt and Continuous Parallax Scroll */}
+      {/* Real Bedrock Website Mockup with 3D Tilt - Static Landing Hero */}
       <BrowserMockup
-        images={[
-          'screenshots/01_landing_hero.png',
-          'screenshots/01b_landing_showcase.png',
-          'screenshots/01c_landing_features.png',
-        ]}
+        imageSrc="screenshots/01_landing_hero.png"
         url="https://bedrockxai.com"
         rotateX={rotateX}
         rotateY={rotateY}

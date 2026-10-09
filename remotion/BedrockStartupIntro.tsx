@@ -75,6 +75,14 @@ export const BedrockStartupIntro: React.FC = () => {
       <Sequence from={1510} durationInFrames={60}>
         <Audio src={staticFile('audio/impact.wav')} volume={0.75} />
       </Sequence>
+      {/* Synchronized SFX: Scene 6 Zoom into Arena Card (Frame 1535) */}
+      <Sequence from={1535} durationInFrames={40}>
+        <Audio src={staticFile('audio/whoosh.wav')} volume={0.58} />
+      </Sequence>
+      {/* Synchronized SFX: Scene 6 Zoom into Library Card (Frame 1605) */}
+      <Sequence from={1605} durationInFrames={40}>
+        <Audio src={staticFile('audio/whoosh.wav')} volume={0.62} />
+      </Sequence>
 
       {/* Synchronized SFX: Scene 7 Emerald Shockwave & Climax (Frame 1690) */}
       <Sequence from={1690} durationInFrames={90}>

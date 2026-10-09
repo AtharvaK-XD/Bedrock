@@ -261,7 +261,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
               "min-w-[90px] px-4 py-1.5 rounded-xl transition-all text-xs font-semibold uppercase tracking-wider",
               isLimitReached
                 ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
-                : "bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-sm shadow-emerald-500/20"
+                : "bg-[#2C9A8B] hover:bg-[#1F7A6E] text-white shadow-sm shadow-[#2C9A8B]/20"
             )}
             title={isLimitReached ? `Limit reached. Resets in ${timeUntilSession}` : undefined}
           >

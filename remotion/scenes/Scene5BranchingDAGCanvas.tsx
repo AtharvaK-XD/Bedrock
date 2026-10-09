@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { BrowserMockup } from '../components/BrowserMockup';
+import { BranchingCanvasShowcase } from '../components/BranchingCanvasShowcase';
 
 export const Scene5BranchingDAGCanvas: React.FC = () => {
   const frame = useCurrentFrame();
@@ -12,13 +13,17 @@ export const Scene5BranchingDAGCanvas: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // 3D Camera Dynamics with Organic Levitation (Dramatic wide angle to straight on)
+  // 3D Camera Dynamics with Continuous Cinematic Dolly & Orbit
   const entranceSpring = spring({ frame, fps, config: { damping: 14, stiffness: 65 } });
-  const scale = interpolate(entranceSpring, [0, 1], [0.82, 0.98]);
+  const cameraDolly = interpolate(frame, [0, 290], [0.96, 1.05]);
+  const cameraOrbitX = interpolate(frame, [40, 260], [3, 1]);
+  const cameraOrbitY = interpolate(frame, [40, 260], [4, -3]);
+
+  const scale = interpolate(entranceSpring, [0, 1], [0.80, 0.96]) * cameraDolly;
   const ambientFloatX = Math.sin(frame * 0.04) * 0.7;
   const ambientFloatY = Math.cos(frame * 0.036) * 0.7;
-  const rotateX = interpolate(entranceSpring, [0, 1], [15, 3]) + ambientFloatX;
-  const rotateY = interpolate(entranceSpring, [0, 1], [20, 4]) + ambientFloatY;
+  const rotateX = (frame < 40 ? interpolate(entranceSpring, [0, 1], [15, 3]) : cameraOrbitX) + ambientFloatX;
+  const rotateY = (frame < 40 ? interpolate(entranceSpring, [0, 1], [20, 4]) : cameraOrbitY) + ambientFloatY;
 
   // Specular sheen sweep position across the browser glass (0% to 100%)
   const sheenOffset = interpolate(frame, [15, 170], [-20, 120]);
@@ -79,16 +84,17 @@ export const Scene5BranchingDAGCanvas: React.FC = () => {
         </span>
       </div>
 
-      {/* Real Bedrock Branching Canvas Mockup */}
+      {/* Real Bedrock Branching Canvas Mockup with Interactive Multi-Node Workflow */}
       <BrowserMockup
-        imageSrc="screenshots/04_branching_canvas.png"
         url="bedrock://app/branching"
         rotateX={rotateX}
         rotateY={rotateY}
         scale={scale}
         glowColor="rgba(6, 182, 212, 0.45)"
         sheenOffset={sheenOffset}
-      />
+      >
+        <BranchingCanvasShowcase frame={frame} />
+      </BrowserMockup>
 
       {/* Node Acceleration Feature Pills */}
       <div

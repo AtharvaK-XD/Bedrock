@@ -12,13 +12,23 @@ export const Scene4SynthesisWizard: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // 3D Camera Zoom into the editor with Organic Ambient Float
+  // 3D Camera Zoom & Continuous Dolly Push-in with Organic Float
   const entranceSpring = spring({ frame, fps, config: { damping: 14, stiffness: 65 } });
-  const scale = interpolate(entranceSpring, [0, 1], [0.82, 0.98]);
+  const cameraDolly = interpolate(frame, [0, 290], [0.96, 1.05]);
+  const cameraOrbitX = interpolate(frame, [40, 270], [-2, 2]);
+  const cameraOrbitY = interpolate(frame, [40, 270], [-2, 3.5]);
+
+  const scale = interpolate(entranceSpring, [0, 1], [0.80, 0.96]) * cameraDolly;
   const ambientFloatX = Math.sin(frame * 0.04) * 0.65;
   const ambientFloatY = Math.cos(frame * 0.035) * 0.65;
-  const rotateX = interpolate(entranceSpring, [0, 1], [-12, -2]) + ambientFloatX;
-  const rotateY = interpolate(entranceSpring, [0, 1], [-16, -2]) + ambientFloatY;
+  const rotateX = (frame < 40 ? interpolate(entranceSpring, [0, 1], [-12, -2]) : cameraOrbitX) + ambientFloatX;
+  const rotateY = (frame < 40 ? interpolate(entranceSpring, [0, 1], [-16, -2]) : cameraOrbitY) + ambientFloatY;
+
+  // Smooth scroll down the synthesized prompt in Phase C
+  const promptScrollY = interpolate(frame, [150, 260], [0, -75], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
 
   // Specular sheen sweep position across the browser glass (0% to 100%)
   const sheenOffset = interpolate(frame, [15, 170], [-20, 120]);
@@ -346,7 +356,7 @@ export const Scene4SynthesisWizard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Synthesized Prompt Markdown Viewport */}
+              {/* Synthesized Prompt Markdown Viewport with Smooth Scroll Animation */}
               <div
                 style={{
                   flex: 1,
@@ -360,8 +370,10 @@ export const Scene4SynthesisWizard: React.FC = () => {
                   border: '1px solid rgba(16, 185, 129, 0.25)',
                   boxShadow: 'inset 0 2px 10px rgba(0, 0, 0, 0.8)',
                   overflow: 'hidden',
+                  position: 'relative',
                 }}
               >
+                <div style={{ transform: `translateY(${promptScrollY}px)`, transition: 'transform 0.1s linear' }}>
                 <div style={{ color: '#34d399', fontWeight: 800, marginBottom: '8px' }}>
                   # SYSTEM PERSONA: DISTRIBUTED REDIS ORCHESTRATOR
                 </div>
@@ -393,6 +405,7 @@ export const Scene4SynthesisWizard: React.FC = () => {
                   &lt;runtime_target&gt; Dual-Runtime: Tauri 2.0 / Electron 43.3 Native Engine &lt;/runtime_target&gt;
                 </div>
               </div>
+            </div>
             </div>
           </div>
         )}
