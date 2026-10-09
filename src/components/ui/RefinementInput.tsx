@@ -11,6 +11,13 @@ interface RefinementInputProps {
   className?: string;
 }
 
+const DEFAULT_PLACEHOLDERS = [
+  "What would you like to change or refine in this prompt?",
+  "Add a constraint or output format...",
+  "Make the tone more direct and concise...",
+  "Rewrite this for a production coding agent..."
+];
+
 export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
   const [input, setInput] = useState('');
   const [model, setModel] = useState('Gemini 2.5 Flash');
@@ -69,13 +76,6 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const defaultPlaceholders = [
-    "What would you like to change or refine in this prompt?",
-    "Add a constraint or output format...",
-    "Make the tone more direct and concise...",
-    "Rewrite this for a production coding agent..."
-  ];
-
   const [placeholderText, setPlaceholderText] = useState("");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(true);
@@ -84,9 +84,9 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
     let timeout: ReturnType<typeof setTimeout>;
     
     if (isTyping) {
-      if (placeholderText.length < defaultPlaceholders[placeholderIndex].length) {
+      if (placeholderText.length < DEFAULT_PLACEHOLDERS[placeholderIndex].length) {
         timeout = setTimeout(() => {
-          setPlaceholderText(defaultPlaceholders[placeholderIndex].slice(0, placeholderText.length + 1));
+          setPlaceholderText(DEFAULT_PLACEHOLDERS[placeholderIndex].slice(0, placeholderText.length + 1));
         }, 40);
       } else {
         timeout = setTimeout(() => {
@@ -99,7 +99,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
           setPlaceholderText(placeholderText.slice(0, -1));
         }, 20);
       } else {
-        setPlaceholderIndex((prev) => (prev + 1) % defaultPlaceholders.length);
+        setPlaceholderIndex((prev) => (prev + 1) % DEFAULT_PLACEHOLDERS.length);
         setIsTyping(true);
       }
     }

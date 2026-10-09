@@ -3,7 +3,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, enforceServerQuota, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion } from '../_lib/ai.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { BEDROCK_CORE_GUARDRAILS, buildSynthesisSystemPrompt } from '../_lib/aiPrompts.js';
+import { buildSynthesisSystemPrompt } from '../_lib/aiPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

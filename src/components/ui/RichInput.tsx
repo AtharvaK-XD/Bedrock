@@ -155,6 +155,13 @@ export const AI_AGENTS = [
 import { AgentIcon, ModelLogo, getLogoComponent } from './ModelLogos';
 export { AgentIcon, ModelLogo, getLogoComponent };
 
+const DEFAULT_GENERATOR_PLACEHOLDERS = [
+  "Describe the prompt, agent persona, or pipeline you want to construct...",
+  "Help me review a tricky pull request in a legacy codebase...",
+  "Write a landing page headline that converts...",
+  "Create a detailed brief for a UX designer..."
+];
+
 export function RichInput({
   value,
   onChange,
@@ -247,13 +254,6 @@ export function RichInput({
     };
   }, []);
 
-  const defaultPlaceholders = [
-    "Describe the prompt, agent persona, or pipeline you want to construct...",
-    "Help me review a tricky pull request in a legacy codebase...",
-    "Write a landing page headline that converts...",
-    "Create a detailed brief for a UX designer..."
-  ];
-
   const [placeholderText, setPlaceholderText] = useState("");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(true);
@@ -262,9 +262,9 @@ export function RichInput({
     let timeout: ReturnType<typeof setTimeout>;
     
     if (isTyping) {
-      if (placeholderText.length < defaultPlaceholders[placeholderIndex].length) {
+      if (placeholderText.length < DEFAULT_GENERATOR_PLACEHOLDERS[placeholderIndex].length) {
         timeout = setTimeout(() => {
-          setPlaceholderText(defaultPlaceholders[placeholderIndex].slice(0, placeholderText.length + 1));
+          setPlaceholderText(DEFAULT_GENERATOR_PLACEHOLDERS[placeholderIndex].slice(0, placeholderText.length + 1));
         }, 40);
       } else {
         timeout = setTimeout(() => {
@@ -277,7 +277,7 @@ export function RichInput({
           setPlaceholderText(placeholderText.slice(0, -1));
         }, 20);
       } else {
-        setPlaceholderIndex((prev) => (prev + 1) % defaultPlaceholders.length);
+        setPlaceholderIndex((prev) => (prev + 1) % DEFAULT_GENERATOR_PLACEHOLDERS.length);
         setIsTyping(true);
       }
     }

@@ -37,7 +37,7 @@ export interface ModelGroup {
   models: ModelOption[];
 }
 
-export const MODEL_GROUPS: ModelGroup[] = [
+const MODEL_GROUPS: ModelGroup[] = [
   {
     group: 'Google DeepMind (Recommended)',
     models: [
