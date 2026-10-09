@@ -505,7 +505,7 @@ export default function Wizard() {
                         <StatefulButton
                           type="submit"
                           disabled={isSynthesizing}
-                          className="rounded-xl px-8 py-4 text-base font-semibold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-lg shadow-emerald-500/20 w-full sm:w-auto"
+                          className="rounded-xl px-8 py-4 text-base font-semibold bg-[#2C9A8B] hover:bg-[#1F7A6E] text-white shadow-lg shadow-[#2C9A8B]/25 w-full sm:w-auto transition-all active:scale-[0.98]"
                         >
                           Synthesize Prompt
                         </StatefulButton>

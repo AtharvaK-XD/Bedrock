@@ -27,28 +27,32 @@ export const Scene1ProblemAndGenesis: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // Camera Slow Zoom
-  const cameraZoom = interpolate(frame, [0, 450], [0.95, 1.08]);
+  // Continuous Cinematic Camera Slow Push-in
+  const cameraZoom = interpolate(frame, [0, 450], [0.94, 1.10]);
 
   // Phase 1: The Problem (Frames 0 - 165 / 0s - 5.5s)
   const problemSpring = spring({ frame, fps, config: { damping: 14, stiffness: 80 } });
+  const problemZoom = interpolate(frame, [0, 165], [0.95, 1.05]);
+  const problemRotateX = interpolate(frame, [0, 165], [9, 1]);
+  const problemRotateY = interpolate(frame, [0, 165], [-11, 2]);
   const problemCardOpacity = interpolate(frame, [0, 15, 155, 175], [0, 1, 1, 0]);
   const glitchOffset = frame < 165 && frame % 12 < 3 ? Math.sin(frame * 4) * 4 : 0;
 
   // Phase 2: The Transformation (Frames 165 - 315 / 5.5s - 10.5s)
   const transformFrame = Math.max(0, frame - 165);
   const transformSpring = spring({ frame: transformFrame, fps, config: { damping: 13, stiffness: 75 } });
-  const laserScanY = interpolate(transformFrame, [15, 75], [-20, 360], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
+  const transformZoom = interpolate(transformFrame, [0, 150], [0.95, 1.06]);
+  const transformRotateX = interpolate(transformFrame, [0, 150], [8, -1]);
+  const transformRotateY = interpolate(transformFrame, [0, 150], [10, -2]);
+
   const transformCardOpacity = interpolate(frame, [165, 185, 305, 325], [0, 1, 1, 0]);
 
   // Phase 3: The Monolith Genesis (Frames 315 - 450 / 10.5s - 15.0s)
   const genesisFrame = Math.max(0, frame - 315);
   const monolithSpring = spring({ frame: genesisFrame, fps, config: { damping: 14, mass: 0.9, stiffness: 70 } });
-  const monolithRotateY = interpolate(genesisFrame, [0, 135], [-25, 20]);
-  const monolithRotateX = interpolate(genesisFrame, [0, 135], [18, -6]);
+  const monolithRotateY = interpolate(genesisFrame, [0, 135], [-24, 18]);
+  const monolithRotateX = interpolate(genesisFrame, [0, 135], [16, -4]);
+  const monolithZoom = interpolate(genesisFrame, [0, 135], [0.95, 1.07]);
   const decryptProgress = interpolate(genesisFrame, [10, 80], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
@@ -98,7 +102,8 @@ export const Scene1ProblemAndGenesis: React.FC = () => {
             flexDirection: 'column',
             alignItems: 'center',
             opacity: problemCardOpacity,
-            transform: `scale(${problemSpring}) translateX(${glitchOffset}px)`,
+            transform: `scale(${problemSpring * problemZoom}) rotateX(${problemRotateX}deg) rotateY(${problemRotateY}deg) translateX(${glitchOffset}px)`,
+            transformStyle: 'preserve-3d',
             zIndex: 10,
           }}
         >
@@ -212,7 +217,8 @@ export const Scene1ProblemAndGenesis: React.FC = () => {
             flexDirection: 'column',
             alignItems: 'center',
             opacity: transformCardOpacity,
-            transform: `scale(${transformSpring})`,
+            transform: `scale(${transformSpring * transformZoom}) rotateX(${transformRotateX}deg) rotateY(${transformRotateY}deg)`,
+            transformStyle: 'preserve-3d',
             zIndex: 10,
           }}
         >
@@ -280,19 +286,7 @@ export const Scene1ProblemAndGenesis: React.FC = () => {
               overflow: 'hidden',
             }}
           >
-            {/* Emerald Laser Scanline Sweep */}
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                top: `${laserScanY}px`,
-                height: '3px',
-                background: 'linear-gradient(90deg, transparent, rgba(52, 211, 153, 0.9), #10b981, rgba(52, 211, 153, 0.9), transparent)',
-                boxShadow: '0 0 20px #10b981, 0 0 40px #34d399',
-                zIndex: 20,
-              }}
-            />
+
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '11px', color: '#10b981', fontWeight: 800 }}>
               <span>BEDROCK_COMPILED_BLUEPRINT_v1.2.2</span>
@@ -343,7 +337,7 @@ export const Scene1ProblemAndGenesis: React.FC = () => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            transform: `scale(${monolithSpring})`,
+            transform: `scale(${monolithSpring * monolithZoom})`,
             zIndex: 10,
           }}
         >
@@ -361,30 +355,7 @@ export const Scene1ProblemAndGenesis: React.FC = () => {
               marginBottom: '28px',
             }}
           >
-            {/* Outer Holographic Orbital Ring */}
-            <div
-              style={{
-                position: 'absolute',
-                width: '240px',
-                height: '240px',
-                borderRadius: '50%',
-                border: '2px solid rgba(16, 185, 129, 0.45)',
-                boxShadow: '0 0 35px rgba(16, 185, 129, 0.35)',
-                transform: `rotateZ(${genesisFrame * 1.5}deg)`,
-              }}
-            />
 
-            {/* Inner Holographic Orbital Ring */}
-            <div
-              style={{
-                position: 'absolute',
-                width: '200px',
-                height: '200px',
-                borderRadius: '50%',
-                border: '1.5px dashed rgba(52, 211, 153, 0.6)',
-                transform: `rotateZ(${-genesisFrame * 2}deg)`,
-              }}
-            />
 
             {/* 3D Glass Badge Housing the Authentic Bedrock Logo */}
             <div

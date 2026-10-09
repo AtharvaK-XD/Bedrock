@@ -526,10 +526,10 @@ export function RichInput({
             onClick={handleActionSubmit}
             disabled={!value.trim() || isLoading}
             className={cn(
-              "px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 active:scale-[0.98]",
+              "px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-400/50 active:scale-[0.98]",
               isLimitReached
                 ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
-                : "bg-emerald-500 hover:bg-emerald-400 text-zinc-950 hover:ring-2 hover:ring-emerald-400/50 shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                : "bg-[#2C9A8B] hover:bg-[#1F7A6E] text-white hover:ring-2 hover:ring-copper-400/50 shadow-md shadow-[#2C9A8B]/20 disabled:opacity-40 disabled:cursor-not-allowed"
             )}
             title={isLimitReached ? `Limit reached. Resets in ${timeUntilSession}` : undefined}
           >

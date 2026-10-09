@@ -39,8 +39,10 @@ export const Scene7MonolithicFinale: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // Slow Cinematic Zoom
-  const cameraZoom = interpolate(frame, [0, 110], [1, 1.05]);
+  // Slow Cinematic Push-in and 3D Perspective
+  const cameraZoom = interpolate(frame, [0, 110], [0.96, 1.08]);
+  const cameraRotateX = interpolate(frame, [0, 110], [4, 0]);
+  const cameraRotateY = interpolate(frame, [0, 110], [-3, 1]);
 
   return (
     <AbsoluteFill
@@ -53,7 +55,8 @@ export const Scene7MonolithicFinale: React.FC = () => {
         justifyContent: 'center',
         fontFamily: "'Space Grotesk', 'Inter', sans-serif",
         overflow: 'hidden',
-        transform: `scale(${cameraZoom})`,
+        perspective: '1400px',
+        transform: `scale(${cameraZoom}) rotateX(${cameraRotateX}deg) rotateY(${cameraRotateY}deg)`,
       }}
     >
       {/* Background Volumetric Emerald Aura */}

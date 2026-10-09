@@ -12,13 +12,23 @@ export const Scene3DashboardTelemetry: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  // 3D Camera Tilt & Zoom with Organic Ambient Levitation
+  // 3D Camera Tilt, Dolly Push-in & Smooth Dashboard Scroll
   const entranceSpring = spring({ frame, fps, config: { damping: 14, stiffness: 65 } });
-  const scale = interpolate(entranceSpring, [0, 1], [0.82, 0.96]);
+  const cameraDolly = interpolate(frame, [0, 290], [0.96, 1.05]);
+  const cameraOrbitX = interpolate(frame, [40, 260], [4, 1.5]);
+  const cameraOrbitY = interpolate(frame, [40, 260], [5, -2]);
+
+  const scale = interpolate(entranceSpring, [0, 1], [0.78, 0.96]) * cameraDolly;
   const ambientFloatX = Math.sin(frame * 0.042) * 0.7;
   const ambientFloatY = Math.cos(frame * 0.035) * 0.7;
-  const rotateX = interpolate(entranceSpring, [0, 1], [14, 4]) + ambientFloatX;
-  const rotateY = interpolate(entranceSpring, [0, 1], [18, 5]) + ambientFloatY;
+  const rotateX = (frame < 40 ? interpolate(entranceSpring, [0, 1], [14, 4]) : cameraOrbitX) + ambientFloatX;
+  const rotateY = (frame < 40 ? interpolate(entranceSpring, [0, 1], [18, 5]) : cameraOrbitY) + ambientFloatY;
+
+  // Smooth UI Scroll Down through Telemetry Charts & Metrics HUD
+  const panY = interpolate(frame, [45, 230], [0, -110], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
 
   // Telemetry Numbers Ticking Up
   const inferenceCount = Math.floor(interpolate(frame, [15, 220], [200, 1428], { extrapolateRight: 'clamp' }));
@@ -81,13 +91,14 @@ export const Scene3DashboardTelemetry: React.FC = () => {
         </span>
       </div>
 
-      {/* Real Bedrock Telemetry Dashboard Mockup */}
+      {/* Real Bedrock Telemetry Dashboard Mockup with Dynamic Pan & Dolly Zoom */}
       <BrowserMockup
         imageSrc="screenshots/02_dashboard_hud.png"
         url="bedrock://app/dashboard"
         rotateX={rotateX}
         rotateY={rotateY}
         scale={scale}
+        panY={panY}
         glowColor="rgba(16, 185, 129, 0.45)"
         sheenOffset={sheenOffset}
       />
