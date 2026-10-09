@@ -1,6 +1,6 @@
 # Bedrock
 
-Bedrock is an enterprise-grade prompt engineering workstation and orchestration platform. Available as a cross-platform desktop application and full-stack cloud service, Bedrock bridges the gap between raw LLM APIs and structured prompt architecture through automated synthesis, interactive dual-panel refinement, visual node-based execution graphs, parallel multi-model benchmarking, real-time telemetry, and a hardened production backend.
+Bedrock is an enterprise-grade prompt engineering workstation and orchestration platform. Available as a cross-platform desktop application and full-stack cloud service, Bedrock bridges the gap between raw LLM APIs and structured prompt architecture through automated synthesis, interactive dual-panel refinement, visual node-based execution graphs, parallel multi-model benchmarking, real-time telemetry, a hardened production backend, and programmatic Remotion motion graphics rendering.
 
 ---
 
@@ -10,31 +10,31 @@ Bedrock is an enterprise-grade prompt engineering workstation and orchestration 
 ┌────────────────────────────────────────────────────────┐
 │               BEDROCK PRESENTATION LAYER               │
 │   React 19 + TypeScript + Vite + Tailwind CSS + GSAP   │
-└───────────┬────────────────────────────────┬───────────┘
-            │                                │
-            ▼                                ▼
-┌───────────────────────────┐    ┌───────────────────────────┐
-│   NATIVE DESKTOP CLIENT   │    │    CLOUD & SERVERLESS     │
-│    Tauri 2.0 / Electron   │    │   Vercel / Node.js API    │
-├───────────────────────────┤    ├───────────────────────────┤
-│ • OS Security Sandboxing  │    │ • Clerk Auth & OAuth SSO  │
-│ • Zero DevTools Tampering │    │ • Multi-Model AI Proxy    │
-│ • Native Auto-Updater     │    │ • Anti-Prompt Injection   │
-│ • GPU Physics Acceleration│    │ • Razorpay Webhook Engine │
-└───────────────────────────┘    │ • Sliding Rate Limiters   │
-                                 └─────────────┬─────────────┘
-                                               │
-            ┌──────────────────────────────────┤
-            │                                  │
-            ▼                                  ▼
-┌───────────────────────────┐    ┌───────────────────────────┐
-│    AI PROVIDER MATRIX     │    │  PERSISTENCE & TELEMETRY  │
-├───────────────────────────┤    ├───────────────────────────┤
-│ • Google Gemini (2.5 Pro) │    │ • Neon Serverless Postgres│
-│ • Groq (Llama 3.3 / 8B)   │    │ • Real-time Traces & HUD  │
-│ • OpenRouter & HuggingFace│    │ • Dynamic Activity Heatmap│
-│ • Multi-Key Round Robin   │    │ • PostHog & Sentry Tracing│
-└───────────────────────────┘    └───────────────────────────┘
+└───────────┬───────────────────┬────────────────┬───────┘
+            │                   │                │
+            ▼                   ▼                ▼
+┌───────────────────────┐ ┌───────────┐ ┌───────────────────────────┐
+│ NATIVE DESKTOP CLIENT │ │ REMOTION  │ │    CLOUD & SERVERLESS     │
+│  Electron / Tauri 2.0 │ │  ENGINE   │ │   Vercel / Node.js API    │
+├───────────────────────┤ ├───────────┤ ├───────────────────────────┤
+│ • Branded Win32 AUMID │ │ • 4K 60fps│ │ • Clerk Auth & OAuth SSO  │
+│ • Zero DevTools Leak  │ │ • Live HUD│ │ • Multi-Model AI Proxy    │
+│ • Native Auto-Updater │ │ • DAG FX  │ │ • Anti-Prompt Injection   │
+│ • GPU Physics Canvas  │ │ • Crystal │ │ • Razorpay Webhook Engine │
+└───────────────────────┘ └───────────┘ │ • Sliding Rate Limiters   │
+                                        └─────────────┬─────────────┘
+                                                      │
+            ┌─────────────────────────────────────────┤
+            │                                         │
+            ▼                                         ▼
+┌───────────────────────────┐           ┌───────────────────────────┐
+│    AI PROVIDER MATRIX     │           │  PERSISTENCE & TELEMETRY  │
+├───────────────────────────┤           ├───────────────────────────┤
+│ • Google Gemini (Flash/Pro│           │ • Neon Serverless Postgres│
+│ • Groq (Llama 3.3 / 8B)   │           │ • Real-time Traces & HUD  │
+│ • OpenRouter & HuggingFace│           │ • Dynamic Activity Heatmap│
+│ • Multi-Key Round Robin   │           │ • PostHog & Sentry Tracing│
+└───────────────────────────┘           └───────────────────────────┘
 ```
 
 ---
@@ -63,12 +63,12 @@ Bedrock is an enterprise-grade prompt engineering workstation and orchestration 
   - **Code Script**: Executes transformations and custom formatting logic between nodes.
   - **Merge**: Combines multiple branch outputs into a unified input payload.
   - **Evaluation**: Performs rubric-based scoring and quality grading on generation results.
-- **Execution States**: Real-time visual status indicators (idle, running, success, error) with per-node execution controls.
+- **Execution States**: Real-time visual status indicators (idle, running, success, error) with hardware-accelerated pan/zoom (`translate3d`), Spacebar panning, and per-node execution triggers.
 
 ### 4. Multi-Model Prompt Benchmark Console
 - **Parallel Dual Execution**: Dispatches identical prompt configurations across two distinct model providers simultaneously to benchmark variance, latency, formatting compliance, and token efficiency.
 - **Supported Model Providers**:
-  - **Google Gemini**: Gemini 2.5 Pro, Gemini 2.5 Flash
+  - **Google Gemini**: Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 3.5 Flash Lite
   - **Groq**: Llama 3.3 70B Versatile, Llama 3.1 8B Instant
   - **OpenRouter**: Llama 3.1 8B, Gemma 2 9B, Mistral 7B, Phi-3 Mini, Nvidia Nemotron 70B
   - **Hugging Face Serverless**: Mistral 7B Instruct, Qwen 2.5 72B, Meta Llama 3 8B, Zephyr 7B
@@ -76,7 +76,7 @@ Bedrock is an enterprise-grade prompt engineering workstation and orchestration 
 
 ### 5. Identity, Authentication & Profile Management
 - **Clerk Authentication**: Enterprise authentication powered by `@clerk/react` supporting email/password and single sign-on.
-- **Multi-Provider OAuth SSO**: Seamless one-click authentication with GitHub and Google OAuth via dedicated popup windows.
+- **Instant Headless OAuth SSO**: Direct 1-click authentication with GitHub and Google OAuth bypassing intermediate cards via desktop loopback listener.
 - **Self-Service Password Reset**: Interactive in-app forgot password flow utilizing Clerk email verification OTP codes with automated session cleanup.
 - **Neon DB User Sync**: Automatically syncs Clerk user identity, avatars, real display names, and billing tiers to the cloud PostgreSQL database.
 - **Zero-Data Isolation for New Signups**: Each new user account receives a clean slate with personal prompt history and telemetry isolated in the database.
@@ -87,16 +87,31 @@ Bedrock is an enterprise-grade prompt engineering workstation and orchestration 
 - **2D Network Topology**: Interactive canvas visualization (`NetworkTopology2D`) mapping real-time data flows between the client, API gateway, AI models, and database.
 - **Prompt Activity Heatmap**: 52-week GitHub-style contribution calendar displaying daily prompt engineering activity calculated directly from user database records.
 
-### 7. Luxury Glassmorphic Design System
-- **Custom Model Selector**: Handcrafted frosted-glass dropdown in Settings replacing default OS `<select>` elements with glowing provider badges and smooth animations.
-- **Dark Mode Aesthetic**: Custom HSL color palettes, subtle mesh gradients, and interactive hover effects.
-- **Cinematic Transitions**: Silky smooth scrolling powered by Lenis and hardware-accelerated animations via GSAP and Framer Motion.
+### 7. Luxury Glassmorphic Design System & Motion Graphics
+- **Matrix Decryption Scrambler**: Cybernetic text descrambler animation (`<EncryptedText>`) deployed across Telemetry cluster banners, Arena inference feeds, and modal headers.
+- **Aceternity Floating Island Topbar**: Dynamic air-island navigation (`Menu`, `MenuItem`, `ProductItem`, `HoveredLink`) with spring physics hover cards.
+- **Tactile 3D Draggable Cards Deck in Library**: View switcher (`[Grid | Physics Deck]`) enabling freeform spatial card interaction with 3D tilt tracking (`rotateX`, `rotateY`), glare dynamics, and inertia damping.
+- **Luxury Stateful Action Buttons**: Emerald green (`#10b981`) `<StatefulButton>` with Framer Motion `useAnimate` spinners and confirmation badges across Wizard, Arena, Refine, and Library workflows.
 
 ### 8. Cloud-Native Serverless & Express Architecture
 - **Vercel Serverless (`api/`)**: Production edge-compatible serverless functions for prompt synthesis, refinement, traces, billing, and user management.
 - **Express 5 API (`server/`)**: High-performance local and self-hosted REST backend built with TypeScript and NodeNext ESM.
 - **Neon Serverless PostgreSQL**: High-performance cloud database with connection pooling (`DATABASE_URL`) and direct access (`DIRECT_URL`) for zero-maintenance auto-scaling.
 - **Observability Suite**: Sentry React SDK for exception monitoring and PostHog for telemetry and user session replays.
+
+### 9. Remotion Programmatic Motion & Cinematic Video Engine
+- **Code-Driven Video Generation**: Native Remotion 4.0 rendering suite (`remotion/`) generating 1080p and 4K 60fps video directly from Bedrock React components.
+- **Compositions**:
+  - `BedrockStartupIntro` (1080x1920 / 1920x1080, 60fps, 720 frames, 12 seconds): High-production launch video featuring encrypted hex decryption, 3D Monolith reveal, interactive DAG animation, live Prompt Wizard synthesis with neural HUD compiler, and split-screen refinement.
+  - `BedrockStartupIntro4K` (3840x2160, 60fps): Ultra-high definition master cinema rendering.
+- **Remotion Studio**: Live hot-reloading timeline editing with frame-accurate scrubbing via `npm run video`.
+
+### 10. Native Desktop Distribution & Background Auto-Updater (v1.2.2)
+- **Windows Taskbar Alignment**: Embedded multi-resolution Win32 PE `.ico` icon resource into `Bedrock.exe` and registered explicit Windows `com.bedrock.desktop` AppUserModelId.
+- **Cross-Platform Installers**:
+  - Windows: NSIS Installer (`Bedrock-Setup.exe` / `Bedrock-Setup-1.2.2.exe`).
+  - macOS: Dedicated Apple Silicon (`arm64`) and Intel (`x64`) Universal bundle (`Bedrock-Mac.dmg`, `Bedrock-Mac.zip`).
+- **Verified Background Auto-Updater**: Uses signed `latest.yml` manifests and SHA-512 blockmaps hosted on GitHub Releases (`Bedrockxai/Bedrock` & `AtharvaK-XD/Bedrock`). Includes graceful pre-release / development build error sanitization.
 
 ---
 
@@ -111,11 +126,12 @@ Bedrock implements defense-in-depth across the client, network, application, and
 | **Database Encryption & Isolation** | Neon Serverless PostgreSQL with SSL/TLS encryption, parameterized SQL queries, foreign key cascades, and per-user data tenancy. |
 | **API Key Cryptography** | User API keys are prefixed with `bdk_live_`, masked in UI responses, and stored exclusively as SHA-256 cryptographic hashes. |
 | **Rate Limiting & DDoS Shield** | Layer-7 tiered sliding-window rate limiters: General endpoints (300 req / 15 min), Auth routes (15 req / 15 min), and Webhook endpoints. |
-| **Desktop Lockdown** | Electron & Tauri runtimes enforce context isolation, disable `nodeIntegration`, block remote modules, and lock out DevTools / debugger shortcuts in production builds. |
+| **Desktop Lockdown & Sandbox** | Electron & Tauri runtimes enforce context isolation, disable `nodeIntegration`, block remote modules, and lock out DevTools / debugger shortcuts in production builds. |
+| **Windows Taskbar & Protocol Isolation** | Explicit `com.bedrock.desktop` AppUserModelId prevents runner process hijacking; `bedrock://` deep link protocol verifies cryptographic nonces before focus restoration. |
 | **HTTP Security Headers** | Helmet-enforced Content Security Policy (CSP), HTTP Strict Transport Security (HSTS), and HTTP Parameter Pollution (`hpp`) protection. |
 | **CORS Policy** | Strict origin whitelisting supporting desktop custom protocols (`tauri://localhost`, `electron://localhost`) and official domains. |
 | **Input Validation** | All requests are validated at the gateway using strict Zod schemas with JSON payload size caps (2MB limit). |
-| **Automated Secret Scanning** | Continuous CI scanning across 790+ files (`npm run scan:secrets`) to prevent credentials, private keys, or API tokens from being committed. |
+| **Automated Secret Scanning** | Continuous CI scanning across 810+ files (`npm run scan:secrets`) to prevent credentials, private keys, or API tokens from being committed. |
 | **Observability & Error Auditing** | Integrated Sentry error tracing and PostHog analytics for immediate visibility into production anomalies. |
 
 ---
@@ -133,15 +149,23 @@ Bedrock/
 │   ├── user/                    # User profile management and sync
 │   ├── workflows/               # Canvas workflow graph persistence
 │   └── health.ts                # Liveness and readiness probes
+├── build/                       # Win32 PE icon assets and installer artwork
+├── dist-electron/               # Electron main process and preload bridge bundles
 ├── docs/                        # Compliance, legal, and operational documentation
 │   ├── DATA_RETENTION_POLICY.md # Data lifecycle, export, and deletion policies
 │   ├── INCIDENT_RESPONSE.md     # Security incident escalation and containment playbook
 │   ├── PRIVACY_POLICY.md        # GDPR, CCPA, and DPDP-compliant privacy policy
 │   └── TERMS_OF_SERVICE.md      # Platform usage terms and SLA specifications
-├── public/                      # Static branding assets and application icons
+├── public/                      # Static branding assets, icons, audio, and demo videos
+├── remotion/                    # Remotion 4.0 programmatic video rendering pipeline
+│   ├── components/              # Motion components (HUD, Monolith, DAG Showcase, Audio)
+│   ├── scenes/                  # Multi-scene compositions (Decryption, Monolith, Wizard, etc.)
+│   ├── Root.tsx                 # Remotion composition registry (1080p and 4K masters)
+│   └── index.ts                 # Video entry point and asset loaders
 ├── scripts/
+│   ├── publish-github-release.ps1 # Dual-track automated GitHub release publisher
 │   ├── scan-secrets.js          # Automated pre-commit and CI credential leak scanner
-│   └── release.js               # Automated GitHub release tag and artifact publisher
+│   └── run-k6.js                # Load testing executor for Upstash rate limiters
 ├── server/                      # Hardened Express 5 backend (standalone / self-hosted)
 │   ├── prisma/                  # Prisma ORM schema and migrations (PostgreSQL / SQLite)
 │   ├── src/
@@ -162,11 +186,11 @@ Bedrock/
 │   │   ├── dashboard/           # Real-time telemetry HUD and 2D network topology graph
 │   │   ├── generator/           # History sidebar, clarifying questions, and prompt input
 │   │   ├── landing/             # Hero section, feature matrices, and interactive previews
-│   │   ├── layout/              # Sidebar navigation, Topbar, and star field background
+│   │   ├── layout/              # Floating island Topbar, Workstation Sidebar, and canvas
 │   │   ├── profile/             # PromptActivityHeatmap and user statistics
 │   │   └── ui/                  # Frosted-glass dropdowns, badges, buttons, and modals
 │   ├── lib/                     # API adapters, telemetry engine, updater hooks, auth helpers
-│   ├── pages/                   # Application views (Wizard, Canvas, Tester, Dashboard, Profile, Settings, etc.)
+│   ├── pages/                   # Application views (Wizard, Canvas, Tester, Dashboard, Settings, etc.)
 │   ├── App.tsx                  # Root layout, routing, Lenis smooth scroll, and theme provider
 │   └── index.css                # Global design system tokens and Tailwind CSS rules
 ├── src-tauri/                   # Rust native desktop runtime (Tauri 2.0)
@@ -174,6 +198,7 @@ Bedrock/
 │   └── tauri.conf.json          # Desktop packaging and bundle configuration
 ├── .github/
 │   └── workflows/
+│       ├── build-mac.yml        # Cloud macOS universal bundle compiler
 │       ├── release.yml          # Automated multi-platform desktop release builder
 │       └── security.yml         # Continuous secret scanning, dependency audit, and build check
 ├── vite.config.ts               # Vite configuration with API reverse proxies
@@ -315,6 +340,33 @@ npm run dev
 ```
 Access the application in your browser at `http://localhost:5173`.
 
+### Run Native Electron Desktop Workstation
+```bash
+# Launch Electron application in development mode
+npm run electron:start
+
+# Compile production assets and package Windows NSIS installer
+npm run electron:build
+
+# Compile production assets and package macOS DMG and ZIP
+npm run electron:build:mac
+```
+
+### Run Remotion Studio & Render Video
+```bash
+# Launch Remotion Studio hot-reload timeline preview
+npm run video
+
+# Render master 1080p 60fps startup film
+npm run video:render
+
+# Render master 4K 60fps ultra-HD film
+npm run video:render:4k
+
+# Export frame 700 preview still poster
+npm run video:still
+```
+
 ### Run Standalone Express 5 Backend (Optional)
 ```bash
 cd server
@@ -333,12 +385,16 @@ npm run tauri dev
 
 | Command | Purpose |
 | :--- | :--- |
-| `npm run scan:secrets` | Scans all repository files for accidental secret or API key leaks. |
+| `npm run scan:secrets` | Scans all repository files for accidental secret or API key leaks across 810+ files. |
 | `npm run test:injection` | Executes automated adversarial prompt injection attack suites against the backend parser. |
 | `npm run test:attacks` | Runs security attack suites covering rate limiting, XSS, and payload fuzz testing. |
+| `npm run test:k6:ratelimit` | Stress-tests Upstash sliding-window rate limiters under concurrent synthetic load. |
+| `npm run test:k6:load` | Benchmarks multi-provider AI proxy load balancing and failover latency. |
+| `npm run test:k6:wizard` | End-to-end stress tests prompt synthesis lifecycle under sustained traffic. |
 | `npm run build` | Validates TypeScript type compliance (`tsc -b`) and compiles production web assets. |
-| `npm run lint` | Runs Oxlint across the frontend codebase for high-performance static analysis. |
-| `npm run tauri build` | Packages release-optimized native desktop installers (`.msi`, `.dmg`, `.AppImage`). |
+| `npm run lint` | Runs Oxlint across the codebase for ultra-fast AST-level static analysis. |
+| `npm run electron:build` | Generates release-ready Windows NSIS installer with embedded Win32 PE icons. |
+| `npm run video:render` | Executes headless Chromium Remotion render generating master startup video. |
 
 ---
 
