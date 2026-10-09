@@ -1,4 +1,4 @@
-# Script to manage GitHub releases: Windows (v1.2.1) and macOS (v1.2.1-mac)
+# Script to manage GitHub releases: Windows (v1.2.2) and macOS (v1.2.2-mac)
 $ErrorActionPreference = "Stop"
 
 Write-Host "==> Fetching GitHub credentials..."
@@ -21,33 +21,33 @@ foreach ($repo in $repos) {
     Write-Host "==> Processing releases for repository: $repo"
     Write-Host "========================================================"
     
-    # ---------------- 1. Windows Release (v1.2.1) ----------------
+    # ---------------- 1. Windows Release (v1.2.2) ----------------
     $winRelease = $null
     try {
-        $winRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.1" -Headers $headers -Method Get
-        Write-Host "Windows Release v1.2.1 exists (ID: $($winRelease.id))."
+        $winRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.2" -Headers $headers -Method Get
+        Write-Host "Windows Release v1.2.2 exists (ID: $($winRelease.id))."
     } catch {
-        Write-Host "Creating Windows release v1.2.1..."
+        Write-Host "Creating Windows release v1.2.2..."
         $body = @{
-            tag_name = "v1.2.1"
+            tag_name = "v1.2.2"
             target_commitish = "main"
-            name = "Bedrock v1.2.1 - Desktop Workstation"
+            name = "Bedrock v1.2.2 - Desktop Workstation"
             body = @"
-# Bedrock v1.2.1 Desktop Workstation
+# Bedrock v1.2.2 Desktop Workstation
 
-This release delivers the dedicated desktop workstation interface with direct Google/GitHub OAuth consent integration, instant authentication handshakes, and local BYOK synthesis.
+This release delivers brand taskbar icon synchronization, seamless auto-updater integration with verified manifest assets, and workstation UI enhancements.
 
 ## Highlights
+- **Taskbar Brand Icon Alignment**: Embedded native high-resolution PE multi-format icon resource and registered explicit Windows ``com.bedrock.desktop`` AppUserModelId.
+- **Auto-Updater Synchronization**: Native ``latest.yml`` manifests and blockmaps for background update verification and one-click upgrades.
 - **Instant Headless OAuth Consent**: Bypasses intermediate verification cards and directs immediately to Google's / GitHub's native account selection and consent screen.
-- **Dedicated Desktop Layout**: Clean borderless workstation view directly routing into login on first run.
-- **Full Desktop Sidebar Navigation**: Seamless access to Dashboard, Prompt Generator, Branching Pipelines, Prompt Tester, and Library directly from the workstation sidebar.
+- **Full Desktop Sidebar Navigation**: Seamless access to Dashboard, Prompt Generator, Branching Pipelines, Prompt Tester, Library, and Settings.
 - **BYOK Multi-Model Synthesis**: Built-in support for Gemini, Groq, OpenAI, Anthropic, and OpenRouter.
-- **Single-Instance Deep Linking**: Robust ``bedrock://`` deep link protocol support with window focus restoration.
 
 ---
 
 ### Downloads
-- **Windows Installer**: Download `Bedrock-Setup.exe` below.
+- **Windows Installer**: `Bedrock-Setup.exe` (or `Bedrock-Setup-1.2.2.exe`)
 "@
             draft = $false
             prerelease = $false
@@ -55,43 +55,49 @@ This release delivers the dedicated desktop workstation interface with direct Go
         } | ConvertTo-Json
 
         $winRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers -Method Post -Body $body
-        Write-Host "Windows release created successfully (ID: $($winRelease.id))."
+        Write-Host "Windows release v1.2.2 created successfully (ID: $($winRelease.id))."
     }
 
-    $winPath = "release\installer\Bedrock-Setup.exe"
-    if (-not (Test-Path $winPath)) {
-        $winPath = "release\Bedrock-Setup.exe"
-    }
-    if (Test-Path $winPath) {
-        $winId = $winRelease.id
-        if ($winRelease.assets) {
-            foreach ($a in $winRelease.assets) {
-                if ($a.name -eq "Bedrock-Setup.exe") {
-                    Write-Host "Deleting old Bedrock-Setup.exe asset ($($a.id))..."
-                    Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/assets/$($a.id)" -Headers $headers -Method Delete
-                    Start-Sleep -Seconds 1
+    $winId = $winRelease.id
+    $winAssets = @(
+        @{ Name = "Bedrock-Setup.exe"; Path = "release\Bedrock-Setup.exe"; ContentType = "application/octet-stream" },
+        @{ Name = "Bedrock-Setup-1.2.2.exe"; Path = "release\Bedrock-Setup-1.2.2.exe"; ContentType = "application/octet-stream" },
+        @{ Name = "latest.yml"; Path = "release\latest.yml"; ContentType = "text/yaml" },
+        @{ Name = "Bedrock-Setup-1.2.2.exe.blockmap"; Path = "release\Bedrock-Setup-1.2.2.exe.blockmap"; ContentType = "application/octet-stream" }
+    )
+
+    foreach ($item in $winAssets) {
+        if (Test-Path $item.Path) {
+            if ($winRelease.assets) {
+                foreach ($a in $winRelease.assets) {
+                    if ($a.name -eq $item.Name) {
+                        Write-Host "Deleting existing $($item.Name) in v1.2.2 (ID: $($a.id))..."
+                        Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/assets/$($a.id)" -Headers $headers -Method Delete
+                        Start-Sleep -Seconds 1
+                    }
                 }
             }
+            $fileItem = Get-Item $item.Path
+            Write-Host "==> Uploading $($item.Name) ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to v1.2.2..."
+            $uploadUrl = "https://uploads.github.com/repos/$repo/releases/$winId/assets?name=$($item.Name)"
+            & curl.exe -s -S -X POST -H "Authorization: Bearer $token" -H "Content-Type: $($item.ContentType)" -H "Accept: application/vnd.github.v3+json" --data-binary "@$($item.Path)" "$uploadUrl" | Out-Null
+            Write-Host "    $($item.Name) uploaded successfully."
         }
-        $fileItem = Get-Item $winPath
-        Write-Host "==> Uploading Bedrock-Setup.exe ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to v1.2.1..."
-        $uploadUrl = "https://uploads.github.com/repos/$repo/releases/$winId/assets?name=Bedrock-Setup.exe"
-        & curl.exe -X POST -H "Authorization: Bearer $token" -H "Content-Type: application/octet-stream" -H "Accept: application/vnd.github.v3+json" --data-binary "@$winPath" "$uploadUrl"
     }
 
-    # ---------------- 2. macOS Dedicated Release (v1.2.1-mac) ----------------
+    # ---------------- 2. macOS Dedicated Release (v1.2.2-mac) ----------------
     $macRelease = $null
     try {
-        $macRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.1-mac" -Headers $headers -Method Get
-        Write-Host "macOS Release v1.2.1-mac exists (ID: $($macRelease.id))."
+        $macRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.2-mac" -Headers $headers -Method Get
+        Write-Host "macOS Release v1.2.2-mac exists (ID: $($macRelease.id))."
     } catch {
-        Write-Host "Creating dedicated macOS release v1.2.1-mac..."
+        Write-Host "Creating dedicated macOS release v1.2.2-mac..."
         $body = @{
-            tag_name = "v1.2.1-mac"
+            tag_name = "v1.2.2-mac"
             target_commitish = "main"
-            name = "Bedrock v1.2.1 - macOS Desktop Workstation"
+            name = "Bedrock v1.2.2 - macOS Desktop Workstation"
             body = @"
-# Bedrock v1.2.1 - macOS Desktop Workstation
+# Bedrock v1.2.2 - macOS Desktop Workstation
 
 Dedicated macOS release for Bedrock Prompt Engineering Workstation.
 Native build supporting both Apple Silicon (M1/M2/M3/M4) and Intel Macs.
@@ -115,7 +121,7 @@ Because this build is distributed directly without a paid Apple certificate:
         } | ConvertTo-Json
 
         $macRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers -Method Post -Body $body
-        Write-Host "macOS release created successfully (ID: $($macRelease.id))."
+        Write-Host "macOS release v1.2.2-mac created successfully (ID: $($macRelease.id))."
     }
 
     $macId = $macRelease.id
@@ -126,25 +132,47 @@ Because this build is distributed directly without a paid Apple certificate:
             if ($macRelease.assets) {
                 foreach ($a in $macRelease.assets) {
                     if ($a.name -eq $mName) {
-                        Write-Host "Deleting existing $mName in v1.2.1-mac..."
+                        Write-Host "Deleting existing $mName in v1.2.2-mac..."
                         Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/assets/$($a.id)" -Headers $headers -Method Delete
                         Start-Sleep -Seconds 1
                     }
                 }
             }
             $fileItem = Get-Item $mPath
-            Write-Host "==> Uploading $mName ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to v1.2.1-mac..."
+            Write-Host "==> Uploading $mName ($([math]::Round($fileItem.Length / 1MB, 2)) MB) to v1.2.2-mac..."
             $uploadUrl = "https://uploads.github.com/repos/$repo/releases/$macId/assets?name=$mName"
-            & curl.exe -X POST -H "Authorization: Bearer $token" -H "Content-Type: application/octet-stream" -H "Accept: application/vnd.github.v3+json" --data-binary "@$mPath" "$uploadUrl"
+            & curl.exe -s -S -X POST -H "Authorization: Bearer $token" -H "Content-Type: application/octet-stream" -H "Accept: application/vnd.github.v3+json" --data-binary "@$mPath" "$uploadUrl" | Out-Null
+            Write-Host "    $mName uploaded successfully."
         }
+    }
+
+    # ---------------- 3. Backfill latest.yml to v1.2.1 for seamless updater migration ----------------
+    try {
+        $oldRel = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/v1.2.1" -Headers $headers -Method Get
+        if ($oldRel) {
+            Write-Host "Ensuring latest.yml exists on v1.2.1 for auto-updater compatibility..."
+            if ($oldRel.assets) {
+                foreach ($a in $oldRel.assets) {
+                    if ($a.name -eq "latest.yml") {
+                        Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/assets/$($a.id)" -Headers $headers -Method Delete
+                        Start-Sleep -Seconds 1
+                    }
+                }
+            }
+            $uploadUrl = "https://uploads.github.com/repos/$repo/releases/$($oldRel.id)/assets?name=latest.yml"
+            & curl.exe -s -S -X POST -H "Authorization: Bearer $token" -H "Content-Type: text/yaml" -H "Accept: application/vnd.github.v3+json" --data-binary "@release\latest.yml" "$uploadUrl" | Out-Null
+            Write-Host "    latest.yml attached to v1.2.1 on $repo."
+        }
+    } catch {
+        Write-Host "Could not backfill v1.2.1 on $repo (skipped)."
     }
 
     Write-Host "`n==> Verifying latest Windows release for $repo..."
     $latest = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers $headers -Method Get
-    Write-Host "Latest release tag (should be v1.2.1): $($latest.tag_name)"
+    Write-Host "Latest release tag: $($latest.tag_name)"
     foreach ($a in $latest.assets) {
-        Write-Host "  - Windows Asset: $($a.name) ($([math]::Round($a.size / 1MB, 2)) MB)"
+        Write-Host "  - Asset: $($a.name) ($([math]::Round($a.size / 1MB, 2)) MB)"
     }
 }
 
-Write-Host "`n==> Finished isolated release configuration!"
+Write-Host "`n==> Finished isolated release configuration for both accounts!"

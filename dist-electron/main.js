@@ -1,9 +1,14 @@
 import { createRequire } from "node:module";
-import { BrowserWindow, app, shell, session, dialog, ipcMain } from "electron";
+import { BrowserWindow, app, shell, session, dialog, ipcMain, nativeImage } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
 import http from "node:http";
+
+// Ensure Windows taskbar groups windows correctly under Bedrock and displays the branded icon
+if (process.platform === "win32") {
+	app.setAppUserModelId("com.bedrock.desktop");
+}
 
 const require = createRequire(import.meta.url);
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -23,8 +28,8 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 // User agent identifying the Bedrock desktop environment
 app.userAgentFallback = process.platform === "darwin"
-	? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.2.1 Electron/43.3.0"
-	: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.2.1 Electron/43.3.0";
+	? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.2.2 Electron/43.3.0"
+	: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.2.2 Electron/43.3.0";
 
 const MIME_TYPES = {
 	".html": "text/html",
@@ -198,17 +203,39 @@ function startLocalServer() {
 	});
 }
 
+function getAppIcon() {
+	const candidates = [
+		path.join(process.env.APP_ROOT, "build", "icon.ico"),
+		path.join(process.env.APP_ROOT, "src-tauri", "icons", "icon.ico"),
+		path.join(__dirname, "..", "src-tauri", "icons", "icon.ico"),
+		path.join(process.env.VITE_PUBLIC, "favicon.ico"),
+		path.join(process.env.VITE_PUBLIC, "logo.png"),
+		path.join(process.env.APP_ROOT, "public", "logo.png"),
+		path.join(process.env.APP_ROOT, "public", "favicon.ico")
+	];
+	for (const candidate of candidates) {
+		try {
+			if (fs.existsSync(candidate)) {
+				const nImg = nativeImage.createFromPath(candidate);
+				if (!nImg.isEmpty()) {
+					return { path: candidate, native: nImg };
+				}
+			}
+		} catch {}
+	}
+	return null;
+}
+
 var win;
 
 function createWindow() {
+	const appIcon = getAppIcon();
 	win = new BrowserWindow({
 		width: 1200,
 		height: 800,
 		minWidth: 900,
 		minHeight: 600,
-		icon: fs.existsSync(path.join(process.env.VITE_PUBLIC, "logo.png"))
-			? path.join(process.env.VITE_PUBLIC, "logo.png")
-			: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
+		icon: appIcon ? appIcon.native : undefined,
 		webPreferences: {
 			preload: fs.existsSync(path.join(__dirname, "preload.cjs"))
 				? path.join(__dirname, "preload.cjs")
@@ -222,6 +249,10 @@ function createWindow() {
 		},
 		autoHideMenuBar: true
 	});
+
+	if (appIcon && appIcon.native) {
+		win.setIcon(appIcon.native);
+	}
 
 	// Remove default application menu
 	win.removeMenu();
@@ -357,9 +388,18 @@ function setupAutoUpdater(mainWindow) {
 
 		autoUpdater.on("error", (err) => {
 			console.warn("[AutoUpdater] Error during check:", err?.message || err);
+			const rawMsg = err?.message || String(err || "");
+			let friendlyMsg = rawMsg.split("\n")[0];
+			if (rawMsg.includes("404") || rawMsg.includes("latest.yml")) {
+				friendlyMsg = "No published releases found on GitHub (Bedrockxai/Bedrock). You are running the latest local build.";
+			} else if (rawMsg.includes("ERR_INTERNET_DISCONNECTED") || rawMsg.includes("ENOTFOUND")) {
+				friendlyMsg = "Network disconnected. Please check your internet connection.";
+			} else if (rawMsg.includes("HttpError")) {
+				friendlyMsg = "Unable to fetch release details from GitHub. Please try again later.";
+			}
 			mainWindow?.webContents.send("updater:status", {
 				status: "error",
-				error: err?.message || "Update check failed",
+				error: friendlyMsg,
 			});
 		});
 
@@ -383,7 +423,12 @@ ipcMain.handle("updater:check", async () => {
 			const res = await autoUpdater.checkForUpdates();
 			return { success: true, updateInfo: res?.updateInfo };
 		} catch (err) {
-			return { success: false, error: err.message };
+			const rawMsg = err?.message || String(err || "");
+			let friendlyMsg = rawMsg.split("\n")[0];
+			if (rawMsg.includes("404") || rawMsg.includes("latest.yml")) {
+				friendlyMsg = "No published releases found on GitHub (Bedrockxai/Bedrock). You are running the latest local build.";
+			}
+			return { success: false, error: friendlyMsg };
 		}
 	}
 	return {

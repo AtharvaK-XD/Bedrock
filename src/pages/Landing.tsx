@@ -200,7 +200,7 @@ export default function Landing() {
                     Download for Windows
                   </a>
                   <div className="flex flex-col text-sm text-gray-500 font-medium">
-                    <span>Version 1.2.1</span>
+                    <span>Version 1.2.2</span>
                     <span>Native Desktop Experience</span>
                   </div>
                 </div>
@@ -208,7 +208,7 @@ export default function Landing() {
                 <div className="flex items-center gap-2.5 pl-1">
                   <span className="text-xs text-gray-500 font-light">Available for macOS:</span>
                   <a
-                    href="https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.2.1-mac/Bedrock-Mac.dmg"
+                    href="https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.2.2-mac/Bedrock-Mac.dmg"
                     download
                     data-cursor="hover"
                     className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-200"
