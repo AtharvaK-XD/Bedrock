@@ -24,12 +24,14 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { ExportModal } from '../components/ui/ExportModal';
+import { AgentIcon } from '../components/ui/ModelLogos';
 
 export interface PromptItem {
   id: string;
   title: string;
   category: string;
   tags: string[];
+  models?: string[];
   date: string;
   snippet: string;
   content: string;
@@ -42,6 +44,7 @@ const DEFAULT_CURATED_PROMPTS: PromptItem[] = [
     title: 'Senior Security & Vulnerability Auditor',
     category: 'Security',
     tags: ['Security', 'Coding', 'Audit'],
+    models: ['claude', 'gpt-4o', 'mistral', 'deepseek'],
     date: 'Verified',
     snippet: 'Performs strict OWASP Top 10 code audit, detects race conditions, memory leaks, unvalidated inputs, and auth bypasses.',
     content: `You are a Principal Security Engineer and Static Analysis Expert. Review the provided code with high rigor.
@@ -63,6 +66,7 @@ Output format:
     title: 'Strict Domain-Driven Design (DDD) Entity Generator',
     category: 'Architecture',
     tags: ['Coding', 'Architecture', 'TypeScript'],
+    models: ['copilot', 'claude', 'gpt-4o', 'openrouter'],
     date: 'Verified',
     snippet: 'Generates type-safe domain entities with opaque branded IDs, immutable value objects, and Zod runtime parsers.',
     content: `You are a Senior TypeScript Architect specializing in Domain-Driven Design (DDD) and Type-Driven Development.
@@ -81,6 +85,7 @@ Do not use 'any' or loose type assertions. Provide clean, zero-dependency TypeSc
     title: 'PostgreSQL Query & Index Optimization Specialist',
     category: 'Database',
     tags: ['Database', 'Coding', 'Performance'],
+    models: ['deepseek', 'gpt-4o', 'meta', 'mistral'],
     date: 'Verified',
     snippet: 'Diagnoses sequential scans, expensive joins, and buffer thrashing to generate optimal B-Tree, GIN, or Partial indexes.',
     content: `You are a Senior Database Reliability Engineer (DBRE) and PostgreSQL performance tuning specialist.
@@ -100,6 +105,7 @@ Given the SQL query and optional EXPLAIN (ANALYZE, BUFFERS) execution plan:
     title: 'Zero-Downtime Safe Schema Migration Planner',
     category: 'Database',
     tags: ['Database', 'DevOps', 'System'],
+    models: ['cohere', 'claude', 'meta', 'copilot'],
     date: 'Verified',
     snippet: 'Designs backward-compatible expand-and-contract migrations, concurrent index generation, and rollback procedures.',
     content: `You are a Principal Infrastructure Engineer specializing in zero-downtime database migrations on live production clusters with high write traffic.
@@ -119,6 +125,7 @@ Given the desired schema change (e.g. column rename, table split, NOT NULL addit
     title: 'Prompt Injection Defense & Jailbreak Hardening',
     category: 'Security',
     tags: ['Security', 'System', 'Prompt Engineering'],
+    models: ['openrouter', 'gpt-4o', 'mistral', 'claude'],
     date: 'Verified',
     snippet: 'Hardens system instructions against indirect prompt injection, delimiter hijacking, and unauthorized system override.',
     content: `You are an AI Safety and Adversarial Robustness Specialist. Transform the provided system instructions into an injection-hardened metaprompt.
@@ -774,9 +781,17 @@ export default function Library() {
                       <h3 className="text-sm font-bold text-white mb-2 leading-snug line-clamp-2">
                         {prompt.title}
                       </h3>
-                      <p className="text-xs text-neutral-400 line-clamp-3 mb-4 font-mono leading-relaxed">
+                      <p className="text-xs text-neutral-400 line-clamp-3 mb-3 font-mono leading-relaxed">
                         {prompt.snippet}
                       </p>
+                      <div className="flex items-center justify-between mb-3 pt-2 border-t border-white/5">
+                        <div className="flex items-center gap-1">
+                          {(prompt.models || ['claude', 'mistral', 'copilot', 'meta']).slice(0, 4).map((m) => (
+                            <AgentIcon key={m} model={m} className="w-2.5 h-2.5" badgeClassName="w-4 h-4 bg-white/5 border-white/10" />
+                          ))}
+                        </div>
+                        <span className="text-[10px] font-mono text-neutral-500">LLM Tested</span>
+                      </div>
                       <button
                         onClick={() => setSelectedPromptForView(prompt)}
                         className="w-full py-1.5 px-3 rounded-xl bg-white/10 hover:bg-[#2C9A8B] hover:text-white text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -916,7 +931,14 @@ export default function Library() {
                 </div>
 
                 <div className="flex items-center justify-between pt-3.5 border-t border-white/[0.08]">
-                  <span className="text-xs font-mono text-neutral-500">{prompt.date}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-neutral-500">{prompt.date}</span>
+                    <div className="flex items-center gap-1">
+                      {(prompt.models || ['claude', 'mistral', 'meta', 'copilot']).slice(0, 4).map((m) => (
+                        <AgentIcon key={m} model={m} className="w-2.5 h-2.5" badgeClassName="w-4 h-4 bg-white/5 border-white/10" />
+                      ))}
+                    </div>
+                  </div>
                   <button
                     onClick={(e) => handleCopy(prompt.id, prompt.content, e)}
                     className={cn(
@@ -1021,6 +1043,21 @@ export default function Library() {
                     <p className="text-sm text-neutral-300 leading-relaxed bg-white/[0.02] p-3 rounded-xl border border-white/5">
                       {selectedPromptForView.snippet}
                     </p>
+                  </div>
+
+                  {/* Model Compatibility Row */}
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider font-semibold">
+                      Tested & Optimized Models
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {(selectedPromptForView.models || ['mistral', 'cohere', 'copilot', 'meta', 'openrouter', 'claude', 'gpt-4o', 'deepseek', 'huggingface', 'nvidia']).map((m) => (
+                        <div key={m} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-white/20 transition-colors">
+                          <AgentIcon model={m} className="w-3.5 h-3.5" badgeClassName="w-4.5 h-4.5 bg-transparent border-0 shadow-none p-0" />
+                          <span className="text-xs font-mono text-neutral-300 capitalize">{m}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div>

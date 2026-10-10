@@ -21,8 +21,13 @@ export function extractPromptVariables(prompt: string): string[] {
 export const EXPORT_MODELS = [
   { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', provider: 'Anthropic' },
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
+  { id: 'mistral-large-latest', name: 'Mistral Large', provider: 'Mistral AI' },
+  { id: 'command-r-plus', name: 'Command R+', provider: 'Cohere' },
+  { id: 'copilot-pro', name: 'Copilot / Phi-4', provider: 'Microsoft' },
+  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Meta' },
+  { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', provider: 'DeepSeek' },
+  { id: 'openrouter/auto', name: 'Auto Route', provider: 'OpenRouter' },
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google' },
-  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq' },
 ];
 
 export const EXPORT_TARGETS: ExportTarget[] = [

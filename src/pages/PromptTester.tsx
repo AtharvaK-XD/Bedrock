@@ -256,6 +256,17 @@ export default function PromptTester() {
                 {/* Ambient glass sheen */}
                 <div className="absolute -top-24 -right-24 w-52 h-52 bg-white/[0.02] rounded-full blur-3xl pointer-events-none" />
                 
+                {/* Branded Header */}
+                <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10 relative z-10">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <AgentIcon agent={agent1} model={model1.id} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                    <span className="text-xs font-semibold text-white truncate">{agent1.name} · {model1.name}</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-400 shrink-0 uppercase">
+                    Side A
+                  </span>
+                </div>
+
                 <div className="flex-1 overflow-auto custom-scrollbar relative z-10" data-lenis-prevent="true">
                   {isTesting ? (
                     <div className="h-full flex items-center justify-center text-gray-400">
@@ -295,6 +306,17 @@ export default function PromptTester() {
                 {/* Ambient glass sheen */}
                 <div className="absolute -top-24 -right-24 w-52 h-52 bg-white/[0.02] rounded-full blur-3xl pointer-events-none" />
                 
+                {/* Branded Header */}
+                <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10 relative z-10">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <AgentIcon agent={agent2} model={model2.id} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                    <span className="text-xs font-semibold text-white truncate">{agent2.name} · {model2.name}</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-400 shrink-0 uppercase">
+                    Side B
+                  </span>
+                </div>
+
                 <div className="flex-1 overflow-auto custom-scrollbar relative z-10" data-lenis-prevent="true">
                   {isTesting ? (
                     <div className="h-full flex items-center justify-center text-gray-400">
