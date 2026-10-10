@@ -1,6 +1,6 @@
 export interface IdeaPayload {
   ideaText: string;
-  targetType: 'coding_agent' | 'freelancer_brief' | 'hackathon_pitch' | 'no_code';
+  targetType: 'coding_agent' | 'freelancer_brief' | 'hackathon_pitch' | 'no_code' | 'image_generation' | 'video_generation';
 }
 
 export interface Question {

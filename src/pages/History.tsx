@@ -32,7 +32,9 @@ import {
   Rocket, 
   Plus,
   X,
-  FileText
+  FileText,
+  Image as ImageIcon,
+  Video as VideoIcon
 } from 'lucide-react';
 import { ExportModal } from '../components/ui/ExportModal';
 
@@ -42,6 +44,30 @@ const TARGET_TYPE_MAP: Record<string, { label: string; icon: any; color: string;
     icon: Code2,
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+  },
+  image_generation: {
+    label: 'Image Generation',
+    icon: ImageIcon,
+    color: 'text-fuchsia-400',
+    badgeBg: 'bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-300'
+  },
+  video_generation: {
+    label: 'Video Generation',
+    icon: VideoIcon,
+    color: 'text-violet-400',
+    badgeBg: 'bg-violet-500/10 border-violet-500/20 text-violet-300'
+  },
+  freelancer_brief: {
+    label: 'Freelancer',
+    icon: Briefcase,
+    color: 'text-purple-400',
+    badgeBg: 'bg-purple-500/10 border-purple-500/20 text-purple-300'
+  },
+  no_code: {
+    label: 'No-Code',
+    icon: Layers,
+    color: 'text-blue-400',
+    badgeBg: 'bg-blue-500/10 border-blue-500/20 text-blue-300'
   },
   full_stack: {
     label: 'Full Stack App',

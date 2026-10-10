@@ -7,7 +7,7 @@ import {
 
 export interface IdeaPayload {
   ideaText: string;
-  targetType: 'coding_agent' | 'freelancer_brief' | 'hackathon_pitch' | 'no_code';
+  targetType: 'coding_agent' | 'freelancer_brief' | 'hackathon_pitch' | 'no_code' | 'image_generation' | 'video_generation';
 }
 
 export interface Question {
@@ -423,6 +423,99 @@ function getFallbackQuestions(targetType: IdeaPayload['targetType']): Question[]
     ];
   }
 
+  if (targetType === 'image_generation') {
+    return [
+      {
+        id: 'visual_style',
+        questionText: 'What artistic medium, photographic aesthetic, or visual style do you want?',
+        questionType: 'single_select',
+        options: [
+          'Ultra-Realistic Photography (85mm lens, 35mm film grain, 8K)',
+          'Cinematic Concept Art & Sci-Fi / Dark Fantasy',
+          'Stylized 3D Animation / Pixar & Unreal Engine 5 Render',
+          'Anime & Manga / Studio Ghibli Aesthetic',
+          'High-Fashion Editorial & Studio Portraiture',
+          'Vintage Oil Painting / Cyberpunk Neon Noir',
+        ],
+      },
+      {
+        id: 'lighting_atmosphere',
+        questionText: 'What lighting setup, atmosphere, and environmental mood do you envision?',
+        questionType: 'single_select',
+        options: [
+          'Golden Hour Sunlight with Warm Volumetric Rays',
+          'Moody Neon Lighting with Wet Ground Reflections',
+          'Dramatic Studio Chiaroscuro & Strong Rim Light',
+          'Soft Ethereal Diffused Light with Morning Mist',
+          'Dark Moody Atmospheric Shadows with Candlelight / Fire',
+        ],
+      },
+      {
+        id: 'aspect_ratio_model',
+        questionText: 'Which target AI image generator and aspect ratio will you use?',
+        questionType: 'single_select',
+        options: [
+          'Midjourney v6.1 (16:9 Widescreen Landscape)',
+          'Midjourney v6.1 (9:16 Vertical Portrait / Mobile)',
+          'FLUX.1 [dev / pro] (1:1 Square)',
+          'DALL-E 3 (Ultra-Detailed Descriptive Framing)',
+          'Stable Diffusion XL / ComfyUI (Photorealistic)',
+        ],
+      },
+      {
+        id: 'negative_elements',
+        questionText: 'What specific subjects, details, or textures must be emphasized or excluded?',
+        questionType: 'free_text',
+      },
+    ];
+  }
+
+  if (targetType === 'video_generation') {
+    return [
+      {
+        id: 'camera_motion',
+        questionText: 'What cinematic camera movement and framing should anchor the shot?',
+        questionType: 'single_select',
+        options: [
+          'Dynamic FPV Drone Sweeping Fly-Through',
+          'Smooth Steadicam Tracking Shot (Forward Push-In)',
+          'Cinematic Slow Orbital Pan Around Subject (360°)',
+          'Dramatic Dolly Zoom / Hitchcock Vertigo Effect',
+          'Macro Extreme Close-Up with Racked Focus',
+          'Locked-Off Static Master Shot with Intense Subject Action',
+        ],
+      },
+      {
+        id: 'temporal_pacing',
+        questionText: 'What motion dynamics, physical speed, and pacing should the scene exhibit?',
+        questionType: 'single_select',
+        options: [
+          'Hypnotic Slow-Motion (120 FPS High-Speed Shutter)',
+          'Kinetic Fast-Paced Action with High Motion Energy',
+          'Subtle Atmospheric Ambient Motion (Wind, Smoke, Rain)',
+          'Speed-Ramped Transition (Fast to Ultra Slow-Mo)',
+        ],
+      },
+      {
+        id: 'video_model_target',
+        questionText: 'Which AI video generator model and format are you targeting?',
+        questionType: 'single_select',
+        options: [
+          'Runway Gen-3 Alpha (16:9 Cinematic Widescreen)',
+          'OpenAI Sora (Ultra High-Fidelity 4K Motion)',
+          'Luma Dream Machine (Photorealistic Physics)',
+          'Kling AI 1.5 (High Dynamic Motion Range)',
+          'Pika 2.0 / Hailuo (Expressive Cinematic FX)',
+        ],
+      },
+      {
+        id: 'scene_narrative',
+        questionText: 'Describe the core action sequence, subject behavior, and emotional arc:',
+        questionType: 'free_text',
+      },
+    ];
+  }
+
   if (targetType === 'no_code') {
     return [
       {
@@ -578,6 +671,22 @@ YOUR QUESTIONS MUST FOCUS ON:
 2. The 2-minute live demo "wow factor" moment that will make judges lean in and give high scores.
 3. High-velocity rapid prototyping shortcuts and P0 must-have core flow vs P1 cut-list features.`,
 
+      image_generation: `TARGET FORMAT: IMAGE GENERATION (IMG)
+PURPOSE: The user is creating an expert visual prompt for frontier AI image generators (Midjourney v6.1, FLUX.1 [dev/pro], DALL-E 3, Stable Diffusion XL).
+CRITICAL RULE (STRICT): ABSOLUTELY ZERO CODING, ZERO PROGRAMMING LANGUAGES, ZERO FRAMEWORKS, ZERO DATABASES, AND ZERO SOFTWARE TECH STACKS.
+YOUR QUESTIONS MUST FOCUS ONLY ON VISUALS:
+1. Visual art medium and aesthetic genre (e.g. 35mm film photography, cinematic concept art, Unreal Engine 5 render, anime, oil painting).
+2. Lighting setup, color grading, atmosphere, and environmental mood (e.g. golden hour, volumetric rays, neon noir reflections, dramatic chiaroscuro).
+3. Camera optics, lens focal length, composition framing, and target aspect ratio (e.g. 85mm f/1.4 lens, wide angle, 16:9 widescreen vs 9:16 vertical).`,
+
+      video_generation: `TARGET FORMAT: VIDEO GENERATION (VIDEO)
+PURPOSE: The user is creating a cinematic prompt for frontier AI video generators (Runway Gen-3 Alpha, OpenAI Sora, Luma Dream Machine, Kling AI, Pika).
+CRITICAL RULE (STRICT): ABSOLUTELY ZERO CODING, ZERO PROGRAMMING LANGUAGES, ZERO FRAMEWORKS, ZERO DATABASES, AND ZERO SOFTWARE TECH STACKS.
+YOUR QUESTIONS MUST FOCUS ONLY ON CINEMATOGRAPHY:
+1. Cinematic camera movement and framing (e.g. FPV drone fly-through, steadycam tracking shot, orbital 360 pan, dolly zoom).
+2. Temporal pacing, physical motion dynamics, and speed (e.g. 120 FPS slow motion, kinetic action, fluid smoke/water physics).
+3. Scene lighting, atmosphere, environmental transformation, and target video model/aspect ratio.`,
+
       no_code: `TARGET FORMAT: NO-CODE (NOCODE)
 PURPOSE: The user is building a visual application using visual app builders and automation pipelines (Bubble, FlutterFlow, Webflow, Make, Airtable).
 YOUR QUESTIONS MUST FOCUS ON:
@@ -728,6 +837,8 @@ CRITICAL ARCHITECTURAL & FORMATTING DIRECTIVES:
 
   const targetLabelMap: Record<string, string> = {
     coding_agent: 'Coding Agent (DEV)',
+    image_generation: 'Image Generation (IMG)',
+    video_generation: 'Video Generation (VIDEO)',
     freelancer_brief: 'Freelancer (BRIEF)',
     hackathon_pitch: 'Hackathon (PITCH)',
     no_code: 'No-Code (NOCODE)',
@@ -742,6 +853,46 @@ The user explicitly selected "Coding Agent (DEV)". You MUST structure the entire
 4. Strict Negative Constraints: "NEVER use any", "NEVER use placeholder comments like // TODO", "NEVER swallow errors", "NEVER mutate state directly".
 5. Concrete Schema Contracts: Syntactically valid TypeScript interfaces, Zod schemas, and Prisma/Drizzle models.
 6. Phased Implementation Sequence with Verification Checklist: Step-by-step order of operations with automated terminal verification commands (e.g. npm test, vitest, tsc --noEmit).`,
+
+    image_generation: `MANDATORY BLUEPRINT FORMAT: PRODUCTION AI IMAGE GENERATION MASTER PROMPT SYSTEM
+The user explicitly selected "Image Generation (IMG)". You MUST structure the entire document as an expert visual art and photo prompt guide tailored for frontier models like Midjourney v6.1, FLUX.1 [dev/pro], DALL-E 3, and Stable Diffusion XL.
+CRITICAL MANDATE: ABSOLUTELY ZERO CODE, ZERO PROGRAMMING LANGUAGES, ZERO SOFTWARE ARCHITECTURE, AND ZERO TECH STACKS ALLOWED UNLESS THE USER EXPLICITLY REQUESTS CODE. DO NOT INCLUDE ANY TERMINAL COMMANDS, JAVASCRIPT, OR CODING SYNTAX.
+Structure the document into the following dedicated sections:
+1. Visual Concept Summary & Art Direction: Core creative vision, artistic medium, aesthetic genre, emotional tone, and narrative context.
+2. Master Midjourney v6.1 Prompt (Ready to Copy-Paste):
+   - Formatted in a distinct copy-pasteable codeblock.
+   - Includes subject, action, environment, lighting, camera lens, color grading, style, and exact parameters (e.g. --ar 16:9 --v 6.1 --style raw --stylize 250).
+3. Master FLUX.1 / DALL-E 3 Natural Language Prompt (Ready to Copy-Paste):
+   - Ultra-descriptive photorealistic or illustrative natural language description optimized for FLUX.1 and DALL-E 3 prompt comprehension.
+4. Optical & Cinematography Specifications:
+   - Lens & Focal Length (e.g. Hasselblad 500C, Sony A7R V with 85mm f/1.2 G-Master).
+   - Aperture, Shutter Speed & Depth of Field (bokeh characteristics, foreground/background separation).
+   - Lighting Setup: Key light, fill light, rim light, volumetric dust/fog, color temperature (e.g. 3200K tungsten vs 5600K daylight).
+5. Color Palette & Film Stock Profile: Exact hex or color names, film stock simulation (e.g. Kodak Portra 400, Fujifilm Superia, CineStill 800T, Technicolor).
+6. Negative Prompt & Exclusion List: Exact comma-separated negative prompt block for Stable Diffusion / ComfyUI to eliminate artifacts (e.g. bad anatomy, deformed limbs, blurry, low resolution, text, watermark, signature).
+7. Composition & Aspect Ratio Variations Matrix: Markdown table providing variation prompts for 16:9 (Desktop/Cinema), 9:16 (TikTok/Instagram Reels), 1:1 (Square), and 4:5 (Portrait).`,
+
+    video_generation: `MANDATORY BLUEPRINT FORMAT: CINEMATIC AI VIDEO GENERATION PRODUCTION MASTER PROMPT
+The user explicitly selected "Video Generation (VIDEO)". You MUST structure the entire document as an elite cinematic prompt system for frontier video models like Runway Gen-3 Alpha, OpenAI Sora, Luma Dream Machine, Kling AI, and Pika 2.0.
+CRITICAL MANDATE: ABSOLUTELY ZERO CODE, ZERO PROGRAMMING LANGUAGES, ZERO SOFTWARE ARCHITECTURE, AND ZERO TECH STACKS ALLOWED UNLESS THE USER EXPLICITLY REQUESTS CODE. DO NOT INCLUDE ANY TERMINAL COMMANDS, JAVASCRIPT, OR CODING SYNTAX.
+Structure the document into the following dedicated sections:
+1. Cinematic Scene Overview & Vision: Visual premise, mood, pacing, and overall cinematic reference (e.g. Denis Villeneuve sci-fi, Roger Deakins natural lighting, Christopher Nolan realism).
+2. Master Runway Gen-3 Alpha Prompt (Ready to Copy-Paste):
+   - Formatted in a distinct copy-pasteable codeblock.
+   - Formatted using standard director directives: [Camera Movement] + [Subject Action] + [Environment & Lighting] + [Temporal Speed].
+3. Master OpenAI Sora / Luma Dream Machine Prompt (Ready to Copy-Paste):
+   - Richly textured narrative prompt focusing on physical consistency, fluid dynamics, lighting transitions, and temporal persistence.
+4. Camera Motion & Shot Choreography:
+   - Specific camera trajectory (e.g. FPV drone sweeping descent, slow orbital 360-degree dolly shot, seamless push-in).
+   - Motion speed and inertia (e.g. steady 24fps cinematic crawl, sudden snap-zoom, fluid slow-motion).
+5. Temporal Dynamics & Physics Breakdown:
+   - Fluid motion, particle dynamics (sparks, rain, smoke, fabric flutter).
+   - Speed ramping (e.g. normal speed transitioning to 120fps slow-motion).
+6. Shot-by-Shot Timeline / Multi-Clip Storyboard:
+   - Markdown table detailing Shot # | Timestamp (Seconds) | Camera Movement | Subject Action | Lighting / FX.
+7. Technical Generation Settings & Motion Controls:
+   - Motion Strength / Camera Slider values (Runway Motion Brush, Kling camera controls, Luma camera paths).
+   - Aspect ratio and resolution guidelines (16:9 cinematic vs 9:16 vertical reels).`,
 
     freelancer_brief: `MANDATORY BLUEPRINT FORMAT: EXECUTIVE SCOPE OF WORK (SOW) & CLIENT PROJECT CHARTER
 The user explicitly selected "Freelancer (BRIEF)". You MUST structure the entire document as a professional Scope of Work and client deliverables contract:

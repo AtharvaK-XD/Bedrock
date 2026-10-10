@@ -17,6 +17,8 @@ interface RichInputProps {
 
 const targetOptions: { id: IdeaPayload['targetType']; label: string; tag: string }[] = [
   { id: 'coding_agent', label: 'Coding Agent', tag: 'DEV' },
+  { id: 'image_generation', label: 'Image Generation', tag: 'IMG' },
+  { id: 'video_generation', label: 'Video Generation', tag: 'VIDEO' },
   { id: 'freelancer_brief', label: 'Freelancer', tag: 'BRIEF' },
   { id: 'hackathon_pitch', label: 'Hackathon', tag: 'PITCH' },
   { id: 'no_code', label: 'No-Code', tag: 'NOCODE' },
