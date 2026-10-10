@@ -54,7 +54,7 @@ export const GenerateQuestionsSchema = z.object({
     .min(3, 'Idea text must be at least 3 characters')
     .max(5000, 'Idea text cannot exceed 5,000 characters')
     .trim(),
-  targetType: z.enum(['coding_agent', 'freelancer_brief', 'hackathon_pitch', 'no_code']).default('coding_agent'),
+  targetType: z.enum(['coding_agent', 'freelancer_brief', 'hackathon_pitch', 'no_code', 'image_generation', 'video_generation']).default('coding_agent'),
 });
 
 export const SynthesizeSchema = z.object({

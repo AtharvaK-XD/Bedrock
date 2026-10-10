@@ -4,7 +4,7 @@ export interface HistoryPromptItem {
   id: string;
   title: string;
   ideaText: string;
-  targetType?: 'coding_agent' | 'full_stack' | 'cli_tool' | 'freelance_sow' | 'hackathon_mvp' | string;
+  targetType?: 'coding_agent' | 'image_generation' | 'video_generation' | 'full_stack' | 'cli_tool' | 'freelance_sow' | 'hackathon_mvp' | 'no_code' | string;
   promptText?: string;
   isPinned: boolean;
   statusColor?: string;

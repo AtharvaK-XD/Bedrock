@@ -165,7 +165,7 @@ export default function Landing() {
   }, []);
 
   // Split text for scrub reveal
-  const statementText = "Bedrock bridges the gap between human intent and machine understanding, turning chaotic ideas into structured, high-performance prompts.";
+  const statementText = "Bedrock bridges the gap between raw human concepts and machine execution, transforming chaotic ideas into production-grade agent directives, visual media prompts, and orchestrated DAG pipelines.";
 
   return (
     <PageTransition className="bg-black text-white font-sans selection:bg-copper-500/40 selection:text-white relative overflow-hidden flex flex-col min-h-screen">
@@ -187,7 +187,7 @@ export default function Landing() {
               </h1>
               
               <p className="hero-fade-up text-lg md:text-xl text-gray-400 leading-relaxed max-w-xl font-light mb-12">
-                The most advanced environment for prompt engineering. Refine your thoughts into precise instructions with unparalleled clarity.
+                The unified workstation for frontier prompt engineering. Synthesize autonomous agent directives, orchestrate visual DAG workflows, and benchmark across 10 AI providers.
               </p>
 
               <div className="hero-fade-up flex flex-col items-start gap-4">
@@ -259,7 +259,7 @@ export default function Landing() {
               <div className="max-w-7xl mx-auto w-full">
                 <div className="reveal-container max-w-2xl">
                   <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="The Arena" /></h3>
-                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Test your prompts against multiple models simultaneously. See how Gemini 2.5, Llama 3.1, and Mistral interpret the exact same instructions, side by side." /></p>
+                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Benchmark your prompts side-by-side across 10 frontier models in real time. Compare Claude 3.7, GPT-4o, DeepSeek-R1, and Gemini 2.5 with live latency and token telemetry." /></p>
                 </div>
               </div>
             </div>
@@ -267,8 +267,8 @@ export default function Landing() {
             <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
               <div className="max-w-7xl mx-auto w-full">
                 <div className="horizontal-reveal reveal-container max-w-2xl">
-                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="Prompt Optimizer" /></h3>
-                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Our meta-prompting engine analyzes your draft and automatically rewrites it using advanced techniques like Chain-of-Thought and Role Prompting." /></p>
+                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="Branching Canvas" /></h3>
+                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Orchestrate non-linear prompt pipelines on a visual DAG canvas. Build complex logic with condition routers, dynamic data stores, script transforms, and consensus merges." /></p>
                 </div>
               </div>
             </div>
@@ -276,8 +276,8 @@ export default function Landing() {
             <div className="horizontal-panel w-screen h-full flex flex-col justify-center px-6 sm:px-12">
               <div className="max-w-7xl mx-auto w-full">
                 <div className="horizontal-reveal reveal-container max-w-2xl">
-                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="Library Sync" /></h3>
-                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Save your best performing prompts in a searchable local database. Tag, categorize, and instantly copy them directly to your clipboard." /></p>
+                  <h3 className="font-display text-[clamp(4rem,8vw,10rem)] leading-[0.9] tracking-tight mb-8"><RevealText text="Physics Deck" /></h3>
+                  <p className="text-2xl text-gray-400 font-light"><RevealText text="Explore curated blueprints on an expansive physics deck with infinite zoom from 5% to 300%. Drag blueprints with 1:1 inertia and compile directly into 15 IDE rules and SDKs." /></p>
                 </div>
               </div>
             </div>
@@ -289,9 +289,9 @@ export default function Landing() {
         <section className="ide-section relative z-10 w-full min-h-screen flex items-center justify-center py-40 px-6 sm:px-12">
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
             <div className="reveal-container w-full lg:w-1/2 flex flex-col gap-8">
-              <h2 className="font-display text-5xl md:text-6xl tracking-tight"><RevealText text="Structured Output." /> <br/><RevealText text="Ready for Code." /></h2>
+              <h2 className="font-display text-5xl md:text-6xl tracking-tight"><RevealText text="Multi-Target Export." /> <br/><RevealText text="15 Ready Formats." /></h2>
               <p className="text-xl text-gray-400 font-light max-w-lg">
-                <RevealText text="Bedrock doesn't just give you a block of text. It generates structured JSON schemas and exact system instructions ready to be embedded directly into your Python or Node.js applications." />
+                <RevealText text="Bedrock compiles any prompt into native .cursorrules, CLAUDE.md, Windsurf Cascade, GitHub Copilot instructions, Vercel AI SDK routes, Python clients, and raw cURL payloads with a single click." />
               </p>
             </div>
             <div className="w-full lg:w-1/2">
@@ -302,26 +302,26 @@ export default function Landing() {
                     <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
                     <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
                   </div>
-                  <span className="text-xs text-gray-400 font-mono ml-1">app.py</span>
+                  <span className="text-xs text-gray-400 font-mono ml-1">export_agent.py</span>
                 </div>
                 <div className="p-6 text-gray-300">
-                  <div className="code-line"><span className="text-pink-400">import</span> groq</div>
+                  <div className="code-line"><span className="text-pink-400">import</span> anthropic</div>
                   <div className="code-line"><span className="text-pink-400">import</span> json</div>
                   <div className="code-line mb-4"></div>
-                  <div className="code-line"><span className="text-blue-400">const</span> BEDROCK_PROMPT = <span className="text-yellow-300">"""</span></div>
-                  <div className="code-line text-yellow-300">System: You are an expert data analyst.</div>
-                  <div className="code-line text-yellow-300">Context: The user will provide raw CSV data.</div>
-                  <div className="code-line text-yellow-300">Task: Extract the key metrics and format as JSON.</div>
+                  <div className="code-line text-gray-500"># Compiled via Bedrock Multi-Target Exporter</div>
+                  <div className="code-line"><span className="text-blue-400">BEDROCK_DIRECTIVE</span> = <span className="text-yellow-300">"""</span></div>
+                  <div className="code-line text-yellow-300">&lt;role&gt;Autonomous Senior Software Engineer&lt;/role&gt;</div>
+                  <div className="code-line text-yellow-300">&lt;negative_constraints&gt;No any types. Zero unhandled rejections.&lt;/negative_constraints&gt;</div>
+                  <div className="code-line text-yellow-300">&lt;verification_protocol&gt;tsc --noEmit &amp;&amp; npm run build&lt;/verification_protocol&gt;</div>
                   <div className="code-line text-yellow-300">"""</div>
                   <div className="code-line mb-4"></div>
-                  <div className="code-line"><span className="text-pink-400">def</span> <span className="text-green-400">process_data</span>(data):</div>
-                  <div className="code-line pl-4"><span className="text-pink-400">return</span> groq.chat.completions.create(</div>
-                  <div className="code-line pl-8">model=<span className="text-yellow-300">"llama-3.1-70b"</span>,</div>
-                  <div className="code-line pl-8">messages=[</div>
-                  <div className="code-line pl-12">{`{"role": "system", "content": BEDROCK_PROMPT},`}</div>
-                  <div className="code-line pl-12">{`{"role": "user", "content": data}`}</div>
-                  <div className="code-line pl-8">]</div>
-                  <div className="code-line pl-4">)</div>
+                  <div className="code-line">client = anthropic.Anthropic()</div>
+                  <div className="code-line">stream = client.messages.stream(</div>
+                  <div className="code-line pl-4">model=<span className="text-yellow-300">"claude-3-7-sonnet"</span>,</div>
+                  <div className="code-line pl-4">max_tokens=<span className="text-purple-400">4096</span>,</div>
+                  <div className="code-line pl-4">system=BEDROCK_DIRECTIVE,</div>
+                  <div className="code-line pl-4">messages=[{`{"role": "user", "content": "Build feature"}`}]</div>
+                  <div className="code-line">)</div>
                 </div>
               </div>
             </div>
@@ -332,16 +332,16 @@ export default function Landing() {
         <section className="relative z-10 w-full min-h-screen flex flex-col justify-center py-32 px-6 sm:px-12 max-w-7xl mx-auto">
           <div className="reveal-container text-center mb-24">
             <h2 className="font-display text-5xl md:text-7xl tracking-tight mb-6"><RevealText text="Everything you need." /></h2>
-            <p className="text-xl text-gray-400 font-light"><RevealText text="A comprehensive suite of tools for prompt engineers." /></p>
+            <p className="text-xl text-gray-400 font-light"><RevealText text="A unified workstation for modern prompt and agent engineering." /></p>
           </div>
           <div className="features-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: <Sparkles className="w-5 h-5" />, title: "Semantic Analysis", desc: "Our engine evaluates your initial thought and identifies missing context automatically." },
-              { icon: <Layers className="w-5 h-5" />, title: "Structured Frameworks", desc: "Outputs are formatted using industry-standard prompt structures for maximum reliability." },
-              { icon: <Layout className="w-5 h-5" />, title: "Side-by-Side Arena", desc: "Instantly benchmark your refined prompt across Gemini 2.5, Llama 3.1, and Mistral." },
-              { icon: <Shield className="w-5 h-5" />, title: "Local Privacy", desc: "Built as a native desktop application. Your proprietary prompts never leak." },
-              { icon: <Database className="w-5 h-5" />, title: "Vector DB Sync", desc: "Coming soon: Sync your prompt library with your local RAG databases." },
-              { icon: <Globe className="w-5 h-5" />, title: "API Integration", desc: "Export straight to your codebase or call the Bedrock proxy API." }
+              { icon: <Sparkles className="w-5 h-5" />, title: "Multi-Agent Synthesis", desc: "Transforms raw briefs into production directives with clarifying questions across 7 archetypes including Coding, Image, and Video Generation." },
+              { icon: <Layers className="w-5 h-5" />, title: "Visual DAG Branching", desc: "Node-based canvas for non-linear prompt orchestration. Build complex logic with condition routers, dynamic data stores, and consensus merges." },
+              { icon: <Layout className="w-5 h-5" />, title: "Side-by-Side Arena", desc: "Instantly benchmark your refined prompts across 10 frontier models including Claude 3.7, GPT-4o, DeepSeek-R1, and Gemini 2.5." },
+              { icon: <Shield className="w-5 h-5" />, title: "Local Privacy & BYOK", desc: "Built as a native desktop application with client-side credential encryption. Your proprietary prompts and API keys never leak." },
+              { icon: <Database className="w-5 h-5" />, title: "Tactile Physics Deck", desc: "Interactive blueprint catalog featuring infinite zoom from 5% to 300%, freeform 1:1 momentum physics, and curated engineering patterns." },
+              { icon: <Globe className="w-5 h-5" />, title: "15-Target Exporters", desc: "Export directly into .cursorrules, CLAUDE.md, Windsurf, Copilot, Vercel AI SDK, Python, cURL, and typed JSON API payloads." }
             ].map((feature, idx) => (
               <div key={idx} data-cursor="hover" className="feature-card group flex flex-col p-8 rounded-3xl bg-[#0a0a0a]/80 backdrop-blur-md border border-white/5 hover:border-white/10 transition-colors duration-500">
                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-300 mb-6 group-hover:text-copper-400 group-hover:bg-copper-500/10 transition-colors duration-500">
