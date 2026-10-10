@@ -102,13 +102,18 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-black/80 backdrop-blur-2xl">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-black/80 backdrop-blur-2xl"
+        data-lenis-prevent="true"
+        onWheel={(e) => e.stopPropagation()}
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className="relative w-full max-w-2xl rounded-3xl glass-panel-luxury p-6 sm:p-8 shadow-[0_32px_90px_rgba(0,0,0,0.95)] border border-white/15 overflow-hidden my-auto"
+          data-lenis-prevent="true"
         >
           {/* Specular highlight rim */}
           <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />

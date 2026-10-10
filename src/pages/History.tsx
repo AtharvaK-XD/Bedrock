@@ -293,12 +293,15 @@ export default function HistoryPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+              data-lenis-prevent="true"
+              onWheel={(e) => e.stopPropagation()}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 className="w-full max-w-md bg-[#0e1015] border border-white/15 rounded-2xl p-6 shadow-2xl space-y-4"
+                data-lenis-prevent="true"
               >
                 <div className="flex items-center gap-3 text-rose-400">
                   <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
