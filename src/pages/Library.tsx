@@ -874,6 +874,7 @@ export default function Library() {
             <div
               className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
               onClick={() => setSelectedPromptForView(null)}
+              data-lenis-prevent="true"
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.96 }}
@@ -881,6 +882,7 @@ export default function Library() {
                 exit={{ opacity: 0, scale: 0.96 }}
                 onClick={(e) => e.stopPropagation()}
                 className="bg-[#121212] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+                data-lenis-prevent="true"
               >
                 {/* Modal Header */}
                 <div className="px-6 py-4 border-b border-white/10 flex items-start justify-between gap-4 shrink-0 bg-[#161616]">
@@ -909,7 +911,11 @@ export default function Library() {
                 </div>
 
                 {/* Modal Body: Prompt Content */}
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+                <div 
+                  className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4 overscroll-contain"
+                  data-lenis-prevent="true"
+                  onWheel={(e) => e.stopPropagation()}
+                >
                   <div>
                     <div className="text-xs font-mono font-semibold uppercase text-neutral-400 tracking-wider mb-1.5">
                       Summary
@@ -929,7 +935,10 @@ export default function Library() {
                       </div>
                     </div>
                     <div className="relative">
-                      <pre className="w-full p-4 bg-black/60 border border-white/10 rounded-xl text-neutral-200 font-mono text-xs leading-relaxed whitespace-pre-wrap select-all overflow-x-auto">
+                      <pre 
+                        className="w-full p-4 bg-black/60 border border-white/10 rounded-xl text-neutral-200 font-mono text-xs leading-relaxed whitespace-pre-wrap select-all overflow-x-auto"
+                        data-lenis-prevent="true"
+                      >
                         {selectedPromptForView.content}
                       </pre>
                     </div>
@@ -985,6 +994,7 @@ export default function Library() {
             <div
               className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
               onClick={() => { setIsCreatingNew(false); setEditingPrompt(null); }}
+              data-lenis-prevent="true"
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.96 }}
@@ -992,6 +1002,7 @@ export default function Library() {
                 exit={{ opacity: 0, scale: 0.96 }}
                 onClick={(e) => e.stopPropagation()}
                 className="bg-[#121212] border border-white/15 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+                data-lenis-prevent="true"
               >
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-[#161616]">
@@ -1007,8 +1018,12 @@ export default function Library() {
                 </div>
 
                 {/* Form Body */}
-                <form onSubmit={handleSaveForm} className="flex flex-col flex-1 min-h-0">
-                  <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+                <form onSubmit={handleSaveForm} className="flex flex-col flex-1 min-h-0" data-lenis-prevent="true">
+                  <div 
+                    className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4 overscroll-contain"
+                    data-lenis-prevent="true"
+                    onWheel={(e) => e.stopPropagation()}
+                  >
                     {/* Title */}
                     <div>
                       <label className="block text-xs font-mono font-medium text-neutral-400 uppercase tracking-wider mb-1.5">
@@ -1081,8 +1096,10 @@ export default function Library() {
                         rows={9}
                         value={formData.content}
                         onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                        onWheel={(e) => e.stopPropagation()}
                         placeholder="Enter the full, detailed prompt template..."
                         className="w-full p-3.5 bg-black/60 border border-white/10 rounded-xl text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:border-copper-500/50 font-mono text-xs leading-relaxed resize-y custom-scrollbar"
+                        data-lenis-prevent="true"
                       />
                     </div>
                   </div>
