@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { RefinementInput } from '../components/ui/RefinementInput';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, Code2, Download, Copy, Check } from 'lucide-react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import ReactMarkdown from 'react-markdown';
 import { useState } from 'react';
@@ -16,6 +16,7 @@ import { openApiKeyModal } from '../lib/apiKeyEvents';
 import { addPromptToHistory } from '../lib/generatorHistory';
 import { recordExecutionTrace } from '../lib/telemetry';
 import { isDesktopApp } from '../lib/platform';
+import { ExportModal } from '../components/ui/ExportModal';
 
 const TypewriterText = ({ text }: { text: string }) => {
   const words = text.split(' ');
@@ -58,6 +59,7 @@ export default function Result() {
   const [isSwapped, setIsSwapped] = useState(false);
 
   const [copied, setCopied] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   if (!promptText) {
     return (
@@ -214,8 +216,18 @@ export default function Result() {
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button 
+            type="button"
+            onClick={() => setIsExportModalOpen(true)}
+            className="px-3.5 py-1.5 bg-gradient-to-r from-copper-500/20 via-amber-500/15 to-emerald-500/15 border border-copper-500/40 hover:border-copper-500/70 text-copper-300 hover:text-white transition-all rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-[0.98]"
+            title="Export as .cursorrules, CLAUDE.md, Vercel AI SDK, Python, or API payload"
+          >
+            <Code2 className="w-3.5 h-3.5 text-copper-400" />
+            <span>Export Blueprint</span>
+          </button>
+          <button 
+            type="button"
             onClick={handleCopy} 
             className={cn(
               "px-3 py-1.5 border transition-colors rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer",
@@ -224,13 +236,25 @@ export default function Result() {
                 : "bg-[#222] border-white/10 hover:bg-white/10 text-gray-200"
             )}
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? (
+              <>
+                <Check className="w-3 h-3 text-emerald-400" />
+                <span>Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3 h-3 text-gray-400" />
+                <span>Copy</span>
+              </>
+            )}
           </button>
           <button 
+            type="button"
             onClick={handleDownload} 
-            className="px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-xs font-semibold text-gray-200 uppercase tracking-wider cursor-pointer"
+            className="px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-xs font-semibold text-gray-200 uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
           >
-            Download
+            <Download className="w-3 h-3 text-gray-400" />
+            <span>Download</span>
           </button>
         </div>
       </div>
@@ -347,6 +371,14 @@ export default function Result() {
         </AnimatePresence>,
         document.body
       )}
+
+      {/* Export Blueprint Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        promptText={promptText}
+        title={idea || 'Bedrock Prompt'}
+      />
     </PageTransition>
   );
 }

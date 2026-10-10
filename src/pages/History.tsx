@@ -34,6 +34,7 @@ import {
   X,
   FileText
 } from 'lucide-react';
+import { ExportModal } from '../components/ui/ExportModal';
 
 const TARGET_TYPE_MAP: Record<string, { label: string; icon: any; color: string; badgeBg: string }> = {
   coding_agent: {
@@ -93,6 +94,7 @@ export default function HistoryPage() {
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [exportingHistoryItem, setExportingHistoryItem] = useState<HistoryPromptItem | null>(null);
 
   // Sync with storage and background db sync
   useEffect(() => {
@@ -619,22 +621,34 @@ export default function HistoryPage() {
                           </span>
                         </div>
 
-                        <button
-                          onClick={() => handleCopyText(activeItem.promptText!, `prompt-${activeItem.id}`)}
-                          className="flex items-center gap-1 text-[11px] font-mono text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
-                        >
-                          {copiedId === `prompt-${activeItem.id}` ? (
-                            <>
-                              <Check className="w-3 h-3 text-emerald-400" />
-                              <span className="text-emerald-400">Copied</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3" />
-                              <span>Copy Full Prompt</span>
-                            </>
-                          )}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExportingHistoryItem(activeItem)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-copper-500/20 via-amber-500/15 to-emerald-500/15 border border-copper-500/40 hover:border-copper-500/70 text-copper-300 hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-[0.98]"
+                            title="Export to .cursorrules, CLAUDE.md, Vercel AI SDK, Python, or API payload"
+                          >
+                            <Code2 className="w-3 h-3 text-copper-400" />
+                            <span>Export Blueprint</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleCopyText(activeItem.promptText!, `prompt-${activeItem.id}`)}
+                            className="flex items-center gap-1 text-[11px] font-mono text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
+                          >
+                            {copiedId === `prompt-${activeItem.id}` ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span className="text-emerald-400">Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Copy Full Prompt</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="max-h-72 overflow-y-auto p-4 rounded-xl bg-black/60 border border-white/[0.08] text-xs font-mono text-gray-300 leading-relaxed whitespace-pre-wrap select-text scrollbar-thin scrollbar-thumb-white/10">
@@ -691,6 +705,14 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
+
+      {/* Export Blueprint Modal */}
+      <ExportModal
+        isOpen={Boolean(exportingHistoryItem)}
+        onClose={() => setExportingHistoryItem(null)}
+        promptText={exportingHistoryItem?.promptText || ''}
+        title={exportingHistoryItem?.title || 'Bedrock Prompt'}
+      />
     </PageTransition>
   );
 }

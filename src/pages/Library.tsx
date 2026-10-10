@@ -19,7 +19,9 @@ import {
   LayoutGrid,
   Layers,
   ArrowUpRight,
+  Code2,
 } from 'lucide-react';
+import { ExportModal } from '../components/ui/ExportModal';
 
 export interface PromptItem {
   id: string;
@@ -354,6 +356,7 @@ export default function Library() {
   const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [exportingPrompt, setExportingPrompt] = useState<PromptItem | null>(null);
 
   // Form State for Create/Edit Modal
   const [formData, setFormData] = useState({
@@ -747,6 +750,17 @@ export default function Library() {
                         <Copy className="w-3.5 h-3.5 text-neutral-400" />
                         <span>Duplicate</span>
                       </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(null);
+                          setExportingPrompt(prompt);
+                        }}
+                        className="w-full text-left px-3 py-1.5 rounded-lg text-copper-300 hover:text-white hover:bg-copper-500/15 flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <Code2 className="w-3.5 h-3.5 text-copper-400" />
+                        <span>Export Blueprint</span>
+                      </button>
                       <div className="my-1 border-t border-white/10" />
                       {deleteConfirmId === prompt.id ? (
                         <div className="px-2 py-1 flex items-center gap-1">
@@ -934,6 +948,15 @@ export default function Library() {
 
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
+                      onClick={() => setExportingPrompt(selectedPromptForView)}
+                      className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-copper-500/20 via-amber-500/15 to-emerald-500/15 border border-copper-500/40 hover:border-copper-500/70 text-copper-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
+                    >
+                      <Code2 className="w-3.5 h-3.5 text-copper-400" />
+                      <span>Export Blueprint</span>
+                    </button>
+
+                    <button
                       onClick={() => handleCopy(selectedPromptForView.id, selectedPromptForView.content)}
                       className="px-4 py-1.5 rounded-lg bg-copper-500 hover:bg-copper-400 text-black font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
                     >
@@ -1085,6 +1108,14 @@ export default function Library() {
             </div>
           )}
         </AnimatePresence>
+
+        {/* Export Blueprint Modal */}
+        <ExportModal
+          isOpen={Boolean(exportingPrompt)}
+          onClose={() => setExportingPrompt(null)}
+          promptText={exportingPrompt?.content || ''}
+          title={exportingPrompt?.title || 'Bedrock Prompt'}
+        />
       </div>
     </PageTransition>
   );
