@@ -54,7 +54,7 @@ This release restores the dedicated Desktop Workstation Sidebar navigation layou
             make_latest = "true"
         } | ConvertTo-Json
 
-        $winRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers -Method Post -Body $body
+        $winRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers -Method Post -Body $body -ContentType "application/json"
         Write-Host "Windows release v1.2.4 created successfully (ID: $($winRelease.id))."
     }
 
@@ -120,7 +120,7 @@ Because this build is distributed directly without a paid Apple certificate:
             make_latest = "false"
         } | ConvertTo-Json
 
-        $macRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers -Method Post -Body $body
+        $macRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers -Method Post -Body $body -ContentType "application/json"
         Write-Host "macOS release v1.2.4-mac created successfully (ID: $($macRelease.id))."
     }
 
