@@ -105,6 +105,7 @@
     "test:k6:ratelimit": "node scripts/run-k6.js run tests/k6-rate-limit-test.js",
     "test:k6:load": "node scripts/run-k6.js run tests/k6-load-balancing-test.js",
     "test:k6:wizard": "node scripts/run-k6.js run tests/k6-wizard-load-test.js",
+    "motion": "npm --prefix motion-canvas run dev",
     "video": "remotion studio remotion/index.ts",
     "video:render": "remotion render remotion/index.ts BedrockStartupIntro public/bedrock-intro.mp4",
     "video:render:4k": "remotion render remotion/index.ts BedrockStartupIntro4K public/bedrock-intro-4k.mp4",
@@ -113,6 +114,8 @@
   "dependencies": {
     "@clerk/react": "^6.17.0",
     "@hookform/resolvers": "^5.7.1",
+    "@motion-canvas/2d": "^3.17.2",
+    "@motion-canvas/core": "^3.17.2",
     "@neon/config": "^1.8.3",
     "@neon/env": "^1.4.8",
     "@neondatabase/serverless": "^1.1.0",
