@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Key, Eye, EyeOff, Sparkles, ExternalLink, ShieldCheck, CheckCircle2, Cpu } from 'lucide-react';
+import { Key, Eye, EyeOff, ExternalLink, ShieldCheck, CheckCircle2, Sparkles } from 'lucide-react';
 import { API_KEYS_UPDATED_EVENT } from '../../lib/apiKeyEvents';
+import {
+  GeminiLogo,
+  LlamaLogo,
+  OpenAILogo,
+  MistralLogo,
+  CohereLogo,
+  OpenRouterLogo,
+  ClaudeLogo,
+  DeepSeekLogo,
+  HuggingFaceLogo,
+  NvidiaLogo,
+} from '../ui/ModelLogos';
 
 const STORAGE_KEY_API_KEYS = 'bedrock_api_keys';
 
@@ -21,12 +33,26 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
         gemini: parsed.geminiKey || import.meta.env.VITE_GEMINI_API_KEY || '',
         groq: parsed.groqKey || import.meta.env.VITE_GROQ_API_KEY || '',
         openai: parsed.openAiKey || import.meta.env.VITE_OPENAI_API_KEY || '',
+        mistral: parsed.mistralKey || import.meta.env.VITE_MISTRAL_API_KEY || '',
+        cohere: parsed.cohereKey || import.meta.env.VITE_COHERE_API_KEY || '',
+        openrouter: parsed.openRouterKey || import.meta.env.VITE_OPENROUTER_API_KEY || '',
+        anthropic: parsed.anthropicKey || import.meta.env.VITE_ANTHROPIC_API_KEY || '',
+        deepseek: parsed.deepSeekKey || import.meta.env.VITE_DEEPSEEK_API_KEY || '',
+        huggingface: parsed.huggingFaceKey || import.meta.env.VITE_HF_API_KEY || '',
+        nvidia: parsed.nvidiaKey || import.meta.env.VITE_NVIDIA_API_KEY || '',
       };
     } catch {
       return {
         gemini: import.meta.env.VITE_GEMINI_API_KEY || '',
         groq: import.meta.env.VITE_GROQ_API_KEY || '',
         openai: import.meta.env.VITE_OPENAI_API_KEY || '',
+        mistral: import.meta.env.VITE_MISTRAL_API_KEY || '',
+        cohere: import.meta.env.VITE_COHERE_API_KEY || '',
+        openrouter: import.meta.env.VITE_OPENROUTER_API_KEY || '',
+        anthropic: import.meta.env.VITE_ANTHROPIC_API_KEY || '',
+        deepseek: import.meta.env.VITE_DEEPSEEK_API_KEY || '',
+        huggingface: import.meta.env.VITE_HF_API_KEY || '',
+        nvidia: import.meta.env.VITE_NVIDIA_API_KEY || '',
       };
     }
   };
@@ -35,6 +61,13 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
   const [geminiKey, setGeminiKey] = useState(stored.gemini);
   const [groqKey, setGroqKey] = useState(stored.groq);
   const [openAiKey, setOpenAiKey] = useState(stored.openai);
+  const [mistralKey, setMistralKey] = useState(stored.mistral);
+  const [cohereKey, setCohereKey] = useState(stored.cohere);
+  const [openRouterKey, setOpenRouterKey] = useState(stored.openrouter);
+  const [anthropicKey, setAnthropicKey] = useState(stored.anthropic);
+  const [deepSeekKey, setDeepSeekKey] = useState(stored.deepseek);
+  const [huggingFaceKey, setHuggingFaceKey] = useState(stored.huggingface);
+  const [nvidiaKey, setNvidiaKey] = useState(stored.nvidia);
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(initialError || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -46,6 +79,13 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
       setGeminiKey(latest.gemini);
       setGroqKey(latest.groq);
       setOpenAiKey(latest.openai);
+      setMistralKey(latest.mistral);
+      setCohereKey(latest.cohere);
+      setOpenRouterKey(latest.openrouter);
+      setAnthropicKey(latest.anthropic);
+      setDeepSeekKey(latest.deepseek);
+      setHuggingFaceKey(latest.huggingface);
+      setNvidiaKey(latest.nvidia);
       if (initialError) {
         setError(initialError);
       }
@@ -61,9 +101,16 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
     const gTrimmed = geminiKey.trim();
     const grTrimmed = groqKey.trim();
     const oTrimmed = openAiKey.trim();
+    const mTrimmed = mistralKey.trim();
+    const cTrimmed = cohereKey.trim();
+    const orTrimmed = openRouterKey.trim();
+    const aTrimmed = anthropicKey.trim();
+    const dsTrimmed = deepSeekKey.trim();
+    const hfTrimmed = huggingFaceKey.trim();
+    const nvTrimmed = nvidiaKey.trim();
 
-    if (!gTrimmed && !grTrimmed && !oTrimmed) {
-      setError('Please provide at least one API key (e.g. Gemini or Groq) to unlock the desktop workstation.');
+    if (!gTrimmed && !grTrimmed && !oTrimmed && !mTrimmed && !cTrimmed && !orTrimmed && !aTrimmed && !dsTrimmed && !hfTrimmed && !nvTrimmed) {
+      setError('Please provide at least one API key to unlock the workstation.');
       return;
     }
 
@@ -81,6 +128,13 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
         geminiKey: gTrimmed,
         groqKey: grTrimmed,
         openAiKey: oTrimmed,
+        mistralKey: mTrimmed,
+        cohereKey: cTrimmed,
+        openRouterKey: orTrimmed,
+        anthropicKey: aTrimmed,
+        deepSeekKey: dsTrimmed,
+        huggingFaceKey: hfTrimmed,
+        nvidiaKey: nvTrimmed,
         defaultModel: gTrimmed ? 'gemini-3.5-flash-lite' : 'openai/gpt-oss-120b',
       };
 
@@ -165,7 +219,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
             <div className="rounded-2xl glass-subcard p-4 border border-white/10 hover:border-white/20 transition-all">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  <GeminiLogo className="w-4 h-4" />
                   <label className="text-xs font-semibold text-white">Google Gemini API Key</label>
                   <span className="text-[10px] font-mono bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2 py-0.2 rounded-full">
                     Recommended · Free Tier
@@ -199,12 +253,12 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
               </div>
             </div>
 
-            {/* Option 2: Groq API Key */}
+            {/* Option 2: Groq / Meta LLaMA Key */}
             <div className="rounded-2xl glass-subcard p-4 border border-white/10 hover:border-white/20 transition-all">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Cpu className="w-4 h-4 text-emerald-400" />
-                  <label className="text-xs font-semibold text-white">Groq API Key</label>
+                  <LlamaLogo className="w-4 h-4" />
+                  <label className="text-xs font-semibold text-white">Meta LLaMA / Groq Key</label>
                   <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2 py-0.2 rounded-full">
                     Fast LLaMA 3.3
                   </span>
@@ -237,14 +291,14 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
               </div>
             </div>
 
-            {/* Toggle Other Providers (OpenAI, etc.) */}
+            {/* Toggle Other Providers (OpenAI, Mistral, Cohere, etc.) */}
             <div className="pt-1">
               <button
                 type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="text-xs font-mono text-white/50 hover:text-white/80 transition-colors flex items-center gap-1.5"
+                className="text-xs font-mono text-white/50 hover:text-white/80 transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                <span>{showAdvanced ? '− Hide additional providers' : '+ Add OpenAI / other providers'}</span>
+                <span>{showAdvanced ? '− Hide additional providers' : '+ Add Mistral, Cohere, OpenRouter & OpenAI'}</span>
               </button>
             </div>
 
@@ -256,9 +310,13 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-3 overflow-hidden"
                 >
+                  {/* OpenAI */}
                   <div className="rounded-2xl glass-subcard p-4 border border-white/10">
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-semibold text-white">OpenAI API Key (Optional)</label>
+                      <div className="flex items-center gap-2">
+                        <OpenAILogo className="w-4 h-4" />
+                        <label className="text-xs font-semibold text-white">OpenAI API Key</label>
+                      </div>
                       <span className="text-[10px] font-mono text-white/40">sk-...</span>
                     </div>
                     <div className="relative">
@@ -275,6 +333,195 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
                       >
                         {showKey['openai'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mistral AI */}
+                  <div className="rounded-2xl glass-subcard p-4 border border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <MistralLogo className="w-4 h-4" />
+                        <label className="text-xs font-semibold text-white">Mistral AI Key</label>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">mistral-...</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showKey['mistral'] ? 'text' : 'password'}
+                        value={mistralKey}
+                        onChange={(e) => setMistralKey(e.target.value)}
+                        placeholder="Key from console.mistral.ai..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleShowKey('mistral')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                      >
+                        {showKey['mistral'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Cohere */}
+                  <div className="rounded-2xl glass-subcard p-4 border border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <CohereLogo className="w-4 h-4" />
+                        <label className="text-xs font-semibold text-white">Cohere API Key</label>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">cohere-...</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showKey['cohere'] ? 'text' : 'password'}
+                        value={cohereKey}
+                        onChange={(e) => setCohereKey(e.target.value)}
+                        placeholder="Key from dashboard.cohere.com..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleShowKey('cohere')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                      >
+                        {showKey['cohere'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* OpenRouter */}
+                  <div className="rounded-2xl glass-subcard p-4 border border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <OpenRouterLogo className="w-4 h-4" />
+                        <label className="text-xs font-semibold text-white">OpenRouter API Key</label>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">sk-or-...</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showKey['openrouter'] ? 'text' : 'password'}
+                        value={openRouterKey}
+                        onChange={(e) => setOpenRouterKey(e.target.value)}
+                        placeholder="sk-or-v1-..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleShowKey('openrouter')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                      >
+                        {showKey['openrouter'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Anthropic Claude */}
+                  <div className="rounded-2xl glass-subcard p-4 border border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <ClaudeLogo className="w-4 h-4" />
+                        <label className="text-xs font-semibold text-white">Anthropic API Key</label>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">sk-ant-...</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showKey['anthropic'] ? 'text' : 'password'}
+                        value={anthropicKey}
+                        onChange={(e) => setAnthropicKey(e.target.value)}
+                        placeholder="sk-ant-api03-..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleShowKey('anthropic')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                      >
+                        {showKey['anthropic'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* DeepSeek */}
+                  <div className="rounded-2xl glass-subcard p-4 border border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <DeepSeekLogo className="w-4 h-4" />
+                        <label className="text-xs font-semibold text-white">DeepSeek API Key</label>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">sk-...</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showKey['deepseek'] ? 'text' : 'password'}
+                        value={deepSeekKey}
+                        onChange={(e) => setDeepSeekKey(e.target.value)}
+                        placeholder="sk-..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleShowKey('deepseek')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                      >
+                        {showKey['deepseek'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Hugging Face */}
+                  <div className="rounded-2xl glass-subcard p-4 border border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <HuggingFaceLogo className="w-4 h-4" />
+                        <label className="text-xs font-semibold text-white">Hugging Face User Access Token</label>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">hf_...</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showKey['huggingface'] ? 'text' : 'password'}
+                        value={huggingFaceKey}
+                        onChange={(e) => setHuggingFaceKey(e.target.value)}
+                        placeholder="hf_..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleShowKey('huggingface')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                      >
+                        {showKey['huggingface'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Nvidia NIM */}
+                  <div className="rounded-2xl glass-subcard p-4 border border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <NvidiaLogo className="w-4 h-4" />
+                        <label className="text-xs font-semibold text-white">Nvidia NIM API Key</label>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">nvapi-...</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showKey['nvidia'] ? 'text' : 'password'}
+                        value={nvidiaKey}
+                        onChange={(e) => setNvidiaKey(e.target.value)}
+                        placeholder="nvapi-..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleShowKey('nvidia')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                      >
+                        {showKey['nvidia'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>

@@ -10,7 +10,6 @@ import {
   Sparkles,
   Bot,
   Terminal,
-  Cpu,
   ChevronDown,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -20,6 +19,7 @@ import {
   extractPromptVariables,
   type ExportCategory,
 } from '../../lib/exportGenerators';
+import { AgentIcon } from './ModelLogos';
 
 export interface ExportModalProps {
   isOpen: boolean;
@@ -226,12 +226,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                       type="button"
                       onClick={() => setSelectedTargetId(target.id)}
                       className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer font-medium',
+                        'flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer font-medium',
                         isSelected
                           ? 'bg-copper-500/15 border border-copper-500/40 text-copper-300 font-semibold shadow-sm'
                           : 'bg-black/40 border border-white/5 text-neutral-400 hover:text-white hover:bg-white/5'
                       )}
                     >
+                      <AgentIcon model={target.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4 bg-transparent border-0 shadow-none p-0" />
                       <span>{target.name}</span>
                       <span className="text-[10px] font-mono opacity-70">({target.extension})</span>
                     </button>
@@ -260,7 +261,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 border border-white/10 hover:border-white/20 text-xs font-medium text-neutral-200 cursor-pointer"
                   >
-                    <Cpu className="w-3.5 h-3.5 text-copper-400" />
+                    <AgentIcon model={selectedModel} className="w-3.5 h-3.5" badgeClassName="w-4 h-4 bg-transparent border-0 shadow-none p-0" />
                     <span>Model: {EXPORT_MODELS.find((m) => m.id === selectedModel)?.name || selectedModel}</span>
                     <ChevronDown className="w-3 h-3 text-neutral-400" />
                   </button>
@@ -272,7 +273,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 5 }}
                         data-lenis-prevent="true"
-                        className="absolute right-0 top-full mt-1.5 w-52 rounded-2xl bg-[#14161c] border border-white/10 shadow-2xl p-1.5 z-50 space-y-0.5"
+                        className="absolute right-0 top-full mt-1.5 w-60 rounded-2xl bg-[#14161c] border border-white/10 shadow-2xl p-1.5 z-50 space-y-0.5"
                       >
                         {EXPORT_MODELS.map((m) => (
                           <button
@@ -289,8 +290,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                                 : 'text-neutral-300 hover:bg-white/5'
                             )}
                           >
-                            <span>{m.name}</span>
-                            <span className="text-[10px] font-mono opacity-60">{m.provider}</span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <AgentIcon model={m.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4 bg-transparent border-0 shadow-none p-0" />
+                              <span className="truncate">{m.name}</span>
+                            </div>
+                            <span className="text-[10px] font-mono opacity-60 ml-2 shrink-0">{m.provider}</span>
                           </button>
                         ))}
                       </motion.div>
