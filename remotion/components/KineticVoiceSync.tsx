@@ -73,12 +73,6 @@ export const KineticVoiceSync: React.FC = () => {
           gap: '8px',
           flexWrap: 'wrap',
           maxWidth: '1200px',
-          padding: '16px 32px',
-          borderRadius: '16px',
-          backgroundColor: 'rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
         }}
       >
         {words.map((word, i) => {
