@@ -354,9 +354,10 @@ export default function Library() {
 
   // Physics Deck Zoom & Canvas States
   const [deckZoom, setDeckZoom] = useState<number>(1);
+  const [deckResetKey, setDeckResetKey] = useState<number>(0);
   const deckContainerRef = useRef<HTMLDivElement>(null);
 
-  // Handle Ctrl + Scroll Wheel Zoom (just like Branching Canvas / Figma)
+  // Handle Ctrl + Scroll Wheel Zoom (smooth infinite scaling from 5% up to 300%)
   useEffect(() => {
     if (viewMode !== 'deck') return;
     const container = deckContainerRef.current;
@@ -372,7 +373,7 @@ export default function Library() {
         const zoomDelta = -e.deltaY * 0.0018;
         setDeckZoom((prev) => {
           const next = prev + zoomDelta;
-          return Math.min(Math.max(Number(next.toFixed(3)), 0.35), 2.2);
+          return Math.min(Math.max(Number(next.toFixed(3)), 0.05), 3.0);
         });
       }
     };
@@ -693,7 +694,7 @@ export default function Library() {
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => setDeckZoom((prev) => Math.max(Number((prev - 0.15).toFixed(2)), 0.35))}
+                  onClick={() => setDeckZoom((prev) => Math.max(Number((prev - 0.1).toFixed(2)), 0.05))}
                   className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   title="Zoom Out (or Ctrl + Scroll Down)"
                 >
@@ -702,16 +703,19 @@ export default function Library() {
 
                 <button
                   type="button"
-                  onClick={() => setDeckZoom(1)}
+                  onClick={() => {
+                    setDeckZoom(1);
+                    setDeckResetKey((k) => k + 1);
+                  }}
                   className="px-2 py-1 rounded-lg text-xs font-mono font-semibold text-neutral-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Reset Zoom to 100%"
+                  title="Reset Zoom to 100% & Re-center Blueprints"
                 >
                   {Math.round(deckZoom * 100)}%
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setDeckZoom((prev) => Math.min(Number((prev + 0.15).toFixed(2)), 2.2))}
+                  onClick={() => setDeckZoom((prev) => Math.min(Number((prev + 0.15).toFixed(2)), 3.0))}
                   className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   title="Zoom In (or Ctrl + Scroll Up)"
                 >
@@ -720,9 +724,12 @@ export default function Library() {
 
                 <button
                   type="button"
-                  onClick={() => setDeckZoom(1)}
+                  onClick={() => {
+                    setDeckZoom(1);
+                    setDeckResetKey((k) => k + 1);
+                  }}
                   className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Reset to 100%"
+                  title="Reset Zoom to 100% & Re-center Blueprints"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
@@ -731,7 +738,7 @@ export default function Library() {
 
             {/* Scalable Canvas Container */}
             <div
-              className="relative w-full h-full min-h-[720px] flex items-center justify-center transition-transform duration-75 ease-out select-none"
+              className="relative w-full h-full min-h-[720px] flex items-center justify-center select-none"
               style={{
                 transform: `scale(${deckZoom})`,
                 transformOrigin: 'center center',
@@ -741,22 +748,24 @@ export default function Library() {
               <DraggableCardContainer className="relative flex min-h-[700px] w-full items-center justify-center overflow-visible">
                 {filteredPrompts.slice(0, 8).map((prompt, index) => {
                   const offsets = [
-                    "top-[12%] left-[6%] rotate-[-4deg]",
-                    "top-[8%] left-[34%] rotate-[2deg]",
-                    "top-[14%] right-[8%] rotate-[-3deg]",
-                    "bottom-[14%] left-[10%] rotate-[5deg]",
-                    "bottom-[10%] left-[38%] rotate-[-2deg]",
-                    "bottom-[16%] right-[10%] rotate-[3deg]",
-                    "top-[38%] left-[20%] rotate-[-1deg]",
-                    "top-[36%] right-[22%] rotate-[2deg]",
+                    { pos: "top-[12%] left-[6%]", rotate: -4 },
+                    { pos: "top-[8%] left-[34%]", rotate: 2 },
+                    { pos: "top-[14%] right-[8%]", rotate: -3 },
+                    { pos: "bottom-[14%] left-[10%]", rotate: 5 },
+                    { pos: "bottom-[10%] left-[38%]", rotate: -2 },
+                    { pos: "bottom-[16%] right-[10%]", rotate: 3 },
+                    { pos: "top-[38%] left-[20%]", rotate: -1 },
+                    { pos: "top-[36%] right-[22%]", rotate: 2 },
                   ];
-                  const positionClass = offsets[index % offsets.length];
+                  const config = offsets[index % offsets.length];
                   return (
                     <DraggableCardBody
-                      key={prompt.id}
+                      key={`${prompt.id}-${deckResetKey}`}
+                      zoomScale={deckZoom}
+                      initialRotate={config.rotate}
                       className={cn(
                         "absolute w-72 sm:w-80 p-5 rounded-2xl bg-[#13151f]/95 border border-white/15 shadow-2xl backdrop-blur-xl cursor-grab active:cursor-grabbing",
-                        positionClass
+                        config.pos
                       )}
                     >
                       <div className="flex items-center justify-between mb-2">
