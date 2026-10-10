@@ -106,10 +106,11 @@ Bedrock is an enterprise-grade prompt engineering workstation and orchestration 
   - `BedrockStartupIntro4K` (3840x2160, 60fps): Ultra-high definition master cinema rendering.
 - **Remotion Studio**: Live hot-reloading timeline editing with frame-accurate scrubbing via `npm run video`.
 
-### 10. Native Desktop Distribution & Background Auto-Updater (v1.2.3)
+### 10. Native Desktop Distribution & Background Auto-Updater (v1.2.4)
+- **Dedicated Desktop Sidebar Workstation Architecture**: Native desktop layout with sleek left-hand `Sidebar` navigation, quick keyboard shortcuts (`⌘1`–`⌘6`), live API key status indicator, and edge-to-edge workstation viewports, while preserving the floating Aceternity `Topbar` for the web application.
 - **Windows Taskbar Alignment**: Embedded multi-resolution Win32 PE `.ico` icon resource into `Bedrock.exe` and registered explicit Windows `com.bedrock.desktop` AppUserModelId.
 - **Cross-Platform Installers**:
-  - Windows: NSIS Installer (`Bedrock-Setup.exe` / `Bedrock-Setup-1.2.3.exe`).
+  - Windows: NSIS Installer (`Bedrock-Setup.exe` / `Bedrock-Setup-1.2.4.exe`).
   - macOS: Dedicated Apple Silicon (`arm64`) and Intel (`x64`) Universal bundle (`Bedrock-Mac.dmg`, `Bedrock-Mac.zip`).
 - **Verified Background Auto-Updater**: Uses signed `latest.yml` manifests and SHA-512 blockmaps hosted on GitHub Releases (`Bedrockxai/Bedrock` & `AtharvaK-XD/Bedrock`). Includes graceful pre-release / development build error sanitization.
 - **Multi-Target Blueprint Exporters**: 15 compilation targets across IDE rulebooks (Cursor, Claude Code, Windsurf, Copilot), Modern AI SDKs (Vercel AI SDK, OpenAI TS/Python, Anthropic TS/Python, Google Gen AI, LangChain), and raw API payloads with hardware-isolated wheel scrolling.

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Topbar } from './Topbar';
+import { Sidebar } from './Sidebar';
 import { ApiKeyGatewayModal } from '../auth/ApiKeyGatewayModal';
 import { hasApiKeysConfigured } from '../../lib/useAuth';
 import { isDesktopApp } from '../../lib/platform';
@@ -89,10 +90,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="fixed inset-0 z-0 opacity-[0.05] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
 
       {isDesktop ? (
-        /* Desktop Application Layout: Full Height Workstation View with Floating Animated Topbar */
-        <div className="h-screen w-screen overflow-hidden flex flex-col relative z-10">
-          <Topbar />
-          <main className="flex-1 relative pt-20 overflow-y-auto min-w-0 bg-black custom-scrollbar">
+        /* Desktop Application Layout: Sleek Left Sidebar + Full Height Workstation View */
+        <div className="flex h-screen w-screen overflow-hidden relative z-10">
+          <Sidebar onOpenKeyModal={() => {
+            setGatewayError(null);
+            setManuallyOpened(true);
+            setShowKeyGateway(true);
+          }} />
+          <main className="flex-1 relative h-full overflow-y-auto min-w-0 bg-black custom-scrollbar">
             {children}
           </main>
         </div>

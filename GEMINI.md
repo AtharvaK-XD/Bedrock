@@ -20,3 +20,10 @@ Whenever any change is made to this codebase—including new features, UI/UX cha
 ## 2. Sync Trigger Protocol
 - **After Code Modifications**: Before concluding any task that adds or alters functionality, call the `obsidian` MCP tool (`vault_write` or `vault_patch`) to reflect the modifications in the relevant note.
 - **Link Integrity**: Keep `Bedrock.md` as the single bridge between the project ecosystem and its internal architectural sub-nodes.
+
+## 3. Workstation Layout Invariant (STRICT)
+- **Desktop Application vs. Website Navigation**:
+  - **Desktop App (`isDesktopApp() === true`)**: MUST ALWAYS use the dedicated left-hand **`Sidebar`** (`Sidebar.tsx`) with full-height workstation views (`h-screen w-screen overflow-hidden`) and global `⌘1`–`⌘6` keyboard shortcuts.
+  - **Website (`isDesktopApp() === false`)**: MUST ALWAYS use the floating Aceternity **`Topbar`** (`Topbar.tsx`) navigation island with scrolling page views.
+  - **Feature Parity Invariant**: Apart from this single Desktop Sidebar vs. Website Topbar layout difference, ALL features, workspaces (Dashboard, Generator, Branching, Tester, Library, History), AI models/providers, brand logos, settings, prompt directives, and options between the Desktop App and Website MUST be 100% identical at all times.
+
