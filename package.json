@@ -1,7 +1,7 @@
 {
   "name": "bedrock-desktop",
   "private": true,
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Bedrock Prompt Engineering App",
   "author": "Bedrock Inc",
   "type": "module",

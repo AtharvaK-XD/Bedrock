@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '../../lib/utils';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useUserProfile } from '../../lib/useUserProfile';
-import { useAuth } from '../../lib/useAuth';
+import { useAuth, hasApiKeysConfigured } from '../../lib/useAuth';
 import { useUser } from '@clerk/react';
 import { 
   LayoutDashboard,
@@ -75,17 +75,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
 
   useEffect(() => {
     const checkKeys = () => {
-      try {
-        const raw = localStorage.getItem('bedrock_api_keys');
-        if (!raw) {
-          setHasKeys(false);
-          return;
-        }
-        const parsed = JSON.parse(raw);
-        setHasKeys(Boolean(parsed.geminiKey || parsed.groqKey || parsed.openAiKey || parsed.anthropicKey || parsed.openRouterKey));
-      } catch {
-        setHasKeys(false);
-      }
+      setHasKeys(hasApiKeysConfigured());
     };
     checkKeys();
     window.addEventListener('bedrock_api_keys_updated', checkKeys);
@@ -113,7 +103,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
           </div>
         </Link>
         <span className="px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-[10px] font-mono text-copper-300">
-          v1.2.3
+          v1.2.4
         </span>
       </div>
 
