@@ -679,11 +679,6 @@ export default function Library() {
             data-lenis-prevent="true"
             className="w-full -mx-1 sm:-mx-3 lg:-mx-6 w-[calc(100%+0.5rem)] sm:w-[calc(100%+1.5rem)] lg:w-[calc(100%+3rem)] relative min-h-[780px] lg:min-h-[850px] h-[calc(100vh-210px)] max-h-[1200px] rounded-3xl border border-white/10 bg-[#08090d] shadow-[0_32px_100px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl overflow-hidden p-6 select-none bg-[radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:28px_28px]"
           >
-            {/* Top Left Status & Title Badge */}
-            <div className="absolute top-5 left-5 z-20 flex items-center gap-2 text-xs font-mono text-neutral-400 bg-[#0d0f17]/90 px-3.5 py-1.5 rounded-xl border border-white/10 backdrop-blur-md shadow-lg pointer-events-none">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Interactive Physics Deck · Freeform Blueprints</span>
-            </div>
 
             {/* Top Right Zoom Controls HUD */}
             <div className="absolute top-5 right-5 z-20 flex items-center gap-2 bg-[#0d0f17]/95 px-2.5 py-1.5 rounded-2xl border border-white/15 backdrop-blur-xl shadow-2xl">
