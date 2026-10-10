@@ -1063,7 +1063,7 @@ export default function Settings() {
                             <div className="flex items-center gap-2">
                               <span className="text-lg font-bold text-white">Bedrock Desktop</span>
                               <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-copper-500/10 text-copper-400 border border-copper-500/20">
-                                v1.2.2
+                                v1.2.3
                               </span>
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                 Release
