@@ -113,54 +113,54 @@ export const Scene4DAGBranching: React.FC = () => {
           </h2>
         </div>
 
-        {/* SVG Bezier DAG Connecting Cables (Thin, Elegant) */}
-        <svg
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            zIndex: 10,
-          }}
-        >
-          {/* Root to Branch 1 */}
-          <path
-            d="M 640 540 C 780 540, 800 370, 980 370"
-            fill="none"
-            stroke="rgba(255,255,255,0.15)"
-            strokeWidth="1.5"
-          />
-          <circle r="3" fill="#ffffff" style={{ offsetPath: "path('M 640 540 C 780 540, 800 370, 980 370')", animation: 'dash 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1)', offsetDistance: `${(frame * 0.8) % 100}%` }} />
-
-          {/* Root to Branch 2 */}
-          <path
-            d="M 640 540 C 780 540, 800 540, 980 540"
-            fill="none"
-            stroke="rgba(255,255,255,0.15)"
-            strokeWidth="1.5"
-          />
-          <circle r="3" fill="#ffffff" style={{ offsetPath: "path('M 640 540 C 780 540, 800 540, 980 540')", animation: 'dash 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1)', offsetDistance: `${(frame * 0.8 + 20) % 100}%` }} />
-
-          {/* Root to Branch 3 (Pruned) */}
-          <path
-            d="M 640 540 C 780 540, 800 710, 980 710"
-            fill="none"
-            stroke={isPruned ? "rgba(239, 68, 68, 0.3)" : "rgba(255,255,255,0.15)"}
-            strokeWidth="1.5"
-            strokeDasharray={isPruned ? '4 8' : 'none'}
-            opacity={branch3Opacity}
-          />
-        </svg>
-
         {/* DAG Nodes Container */}
         <div style={{ position: 'relative', width: '1300px', height: '600px', zIndex: 20 }}>
+          {/* SVG Bezier DAG Connecting Cables (Thin, Elegant) */}
+          <svg
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: 10,
+            }}
+          >
+            {/* Root to Branch 1 */}
+            <path
+              d="M 720 308 C 820 308, 800 138, 900 138"
+              fill="none"
+              stroke="rgba(255,255,255,0.15)"
+              strokeWidth="1.5"
+            />
+            <circle r="3" fill="#ffffff" style={{ offsetPath: "path('M 720 308 C 820 308, 800 138, 900 138')", animation: 'dash 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1)', offsetDistance: `${(frame * 0.8) % 100}%` }} />
+
+            {/* Root to Branch 2 */}
+            <path
+              d="M 720 308 L 900 308"
+              fill="none"
+              stroke="rgba(255,255,255,0.15)"
+              strokeWidth="1.5"
+            />
+            <circle r="3" fill="#ffffff" style={{ offsetPath: "path('M 720 308 L 900 308')", animation: 'dash 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1)', offsetDistance: `${(frame * 0.8 + 20) % 100}%` }} />
+
+            {/* Root to Branch 3 (Pruned) */}
+            <path
+              d="M 720 308 C 820 308, 800 478, 900 478"
+              fill="none"
+              stroke={isPruned ? "rgba(239, 68, 68, 0.3)" : "rgba(255,255,255,0.15)"}
+              strokeWidth="1.5"
+              strokeDasharray={isPruned ? '4 8' : 'none'}
+              opacity={branch3Opacity}
+            />
+          </svg>
+
           {/* ROOT NODE */}
           <div
             style={{
               position: 'absolute',
               left: '420px',
-              top: '230px',
+              top: '258px',
               transform: `scale(${rootSpring}) translateY(${interpolate(rootSpring, [0, 1], [20, 0])}px)`,
               opacity: rootSpring,
               width: '280px',
