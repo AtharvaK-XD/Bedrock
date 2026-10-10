@@ -1,0 +1,72 @@
+1
+00:00:00,100 --> 00:00:01,742
+You're writing prompts.
+
+2
+00:00:01,692 --> 00:00:03,338
+But prompts are brittle.
+
+3
+00:00:03,338 --> 00:00:06,185
+When models update, your production breaks.
+
+4
+00:00:06,185 --> 00:00:07,664
+Enter Bedrock.
+
+5
+00:00:07,664 --> 00:00:10,750
+A unified workstation for frontier models.
+
+6
+00:00:10,750 --> 00:00:15,169
+Claude 3.7, GPT-4.5, Gemini.
+
+7
+00:00:15,169 --> 00:00:16,707
+One interface.
+
+8
+00:00:16,707 --> 00:00:18,185
+Zero lock-in.
+
+9
+00:00:18,185 --> 00:00:19,938
+Stop writing text.
+
+10
+00:00:19,938 --> 00:00:21,976
+Start compiling intent.
+
+11
+00:00:21,976 --> 00:00:26,347
+Our synthesis engine generates hardened system directives instantly.
+
+12
+00:00:26,347 --> 00:00:29,719
+Visualize reasoning on an infinite DAG canvas.
+
+13
+00:00:29,719 --> 00:00:35,054
+Branch workflows, run parallel tests, and prune hallucinations in real time.
+
+14
+00:00:35,054 --> 00:00:37,616
+Pit models against each other in the Arena.
+
+15
+00:00:37,616 --> 00:00:41,476
+Then export production-ready code across fifteen frameworks.
+
+16
+00:00:41,476 --> 00:00:42,859
+Stop guessing.
+
+17
+00:00:42,859 --> 00:00:44,480
+Build with certainty.
+
+18
+00:00:44,480 --> 00:00:47,338
+Download Bedrock for Mac and Windows.
+
