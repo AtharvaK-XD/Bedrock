@@ -20,6 +20,8 @@ import {
   Layers,
   ArrowUpRight,
   Code2,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { ExportModal } from '../components/ui/ExportModal';
 
@@ -350,6 +352,37 @@ export default function Library() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'deck'>('grid');
 
+  // Physics Deck Zoom & Canvas States
+  const [deckZoom, setDeckZoom] = useState<number>(1);
+  const deckContainerRef = useRef<HTMLDivElement>(null);
+
+  // Handle Ctrl + Scroll Wheel Zoom (just like Branching Canvas / Figma)
+  useEffect(() => {
+    if (viewMode !== 'deck') return;
+    const container = deckContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // If user holds Ctrl (or Cmd) OR does pinch-to-zoom on trackpad
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        // deltaY > 0 means scroll down -> zoom out (make cards smaller)
+        // deltaY < 0 means scroll up -> zoom in (make cards bigger)
+        const zoomDelta = -e.deltaY * 0.0018;
+        setDeckZoom((prev) => {
+          const next = prev + zoomDelta;
+          return Math.min(Math.max(Number(next.toFixed(3)), 0.35), 2.2);
+        });
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [viewMode]);
+
   // Modals & Menu States
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [selectedPromptForView, setSelectedPromptForView] = useState<PromptItem | null>(null);
@@ -640,57 +673,118 @@ export default function Library() {
         </div>
 
         {viewMode === 'deck' ? (
-          <div className="w-full relative min-h-[620px] rounded-3xl border border-white/10 bg-[#0a0a0d]/90 backdrop-blur-2xl overflow-hidden p-6 shadow-2xl">
-            <div className="absolute top-6 left-6 z-20 flex items-center gap-2 text-xs font-mono text-neutral-400 bg-black/60 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-md">
+          <div 
+            ref={deckContainerRef}
+            data-lenis-prevent="true"
+            className="w-full -mx-1 sm:-mx-3 lg:-mx-6 w-[calc(100%+0.5rem)] sm:w-[calc(100%+1.5rem)] lg:w-[calc(100%+3rem)] relative min-h-[780px] lg:min-h-[850px] h-[calc(100vh-210px)] max-h-[1200px] rounded-3xl border border-white/10 bg-[#08090d] shadow-[0_32px_100px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl overflow-hidden p-6 select-none bg-[radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:28px_28px]"
+          >
+            {/* Top Left Status & Title Badge */}
+            <div className="absolute top-5 left-5 z-20 flex items-center gap-2 text-xs font-mono text-neutral-400 bg-[#0d0f17]/90 px-3.5 py-1.5 rounded-xl border border-white/10 backdrop-blur-md shadow-lg pointer-events-none">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Interactive Physics Deck · Click & drag prompt blueprints freely across the workstation</span>
+              <span>Interactive Physics Deck · Freeform Blueprints</span>
             </div>
-            <DraggableCardContainer className="relative flex min-h-[580px] w-full items-center justify-center overflow-clip">
-              {filteredPrompts.slice(0, 8).map((prompt, index) => {
-                const offsets = [
-                  "top-14 left-[10%] rotate-[-5deg]",
-                  "top-20 left-[34%] rotate-[3deg]",
-                  "top-12 right-[12%] rotate-[-3deg]",
-                  "bottom-16 left-[16%] rotate-[6deg]",
-                  "bottom-12 left-[42%] rotate-[-4deg]",
-                  "bottom-20 right-[15%] rotate-[4deg]",
-                  "top-32 left-[24%] rotate-[-2deg]",
-                  "bottom-32 right-[28%] rotate-[2deg]",
-                ];
-                const positionClass = offsets[index % offsets.length];
-                return (
-                  <DraggableCardBody
-                    key={prompt.id}
-                    className={cn(
-                      "absolute w-72 sm:w-80 p-5 rounded-2xl bg-[#13151f]/95 border border-white/15 shadow-2xl backdrop-blur-xl cursor-grab active:cursor-grabbing",
-                      positionClass
-                    )}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/10 text-copper-300 border border-white/10 uppercase">
-                        {prompt.category}
-                      </span>
-                      <span className="text-[10px] font-mono text-neutral-500">
-                        {prompt.date}
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-bold text-white mb-2 leading-snug line-clamp-2">
-                      {prompt.title}
-                    </h3>
-                    <p className="text-xs text-neutral-400 line-clamp-3 mb-4 font-mono leading-relaxed">
-                      {prompt.snippet}
-                    </p>
-                    <button
-                      onClick={() => setSelectedPromptForView(prompt)}
-                      className="w-full py-1.5 px-3 rounded-xl bg-white/10 hover:bg-[#2C9A8B] hover:text-white text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+
+            {/* Top Right Zoom Controls HUD */}
+            <div className="absolute top-5 right-5 z-20 flex items-center gap-2 bg-[#0d0f17]/95 px-2.5 py-1.5 rounded-2xl border border-white/15 backdrop-blur-xl shadow-2xl">
+              <span className="text-[10px] font-mono text-neutral-400 px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 hidden sm:inline">
+                Ctrl + Scroll to Zoom
+              </span>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setDeckZoom((prev) => Math.max(Number((prev - 0.15).toFixed(2)), 0.35))}
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Zoom Out (or Ctrl + Scroll Down)"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeckZoom(1)}
+                  className="px-2 py-1 rounded-lg text-xs font-mono font-semibold text-neutral-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Reset Zoom to 100%"
+                >
+                  {Math.round(deckZoom * 100)}%
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeckZoom((prev) => Math.min(Number((prev + 0.15).toFixed(2)), 2.2))}
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Zoom In (or Ctrl + Scroll Up)"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeckZoom(1)}
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Reset to 100%"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scalable Canvas Container */}
+            <div
+              className="relative w-full h-full min-h-[720px] flex items-center justify-center transition-transform duration-75 ease-out select-none"
+              style={{
+                transform: `scale(${deckZoom})`,
+                transformOrigin: 'center center',
+                willChange: 'transform',
+              }}
+            >
+              <DraggableCardContainer className="relative flex min-h-[700px] w-full items-center justify-center overflow-visible">
+                {filteredPrompts.slice(0, 8).map((prompt, index) => {
+                  const offsets = [
+                    "top-[12%] left-[6%] rotate-[-4deg]",
+                    "top-[8%] left-[34%] rotate-[2deg]",
+                    "top-[14%] right-[8%] rotate-[-3deg]",
+                    "bottom-[14%] left-[10%] rotate-[5deg]",
+                    "bottom-[10%] left-[38%] rotate-[-2deg]",
+                    "bottom-[16%] right-[10%] rotate-[3deg]",
+                    "top-[38%] left-[20%] rotate-[-1deg]",
+                    "top-[36%] right-[22%] rotate-[2deg]",
+                  ];
+                  const positionClass = offsets[index % offsets.length];
+                  return (
+                    <DraggableCardBody
+                      key={prompt.id}
+                      className={cn(
+                        "absolute w-72 sm:w-80 p-5 rounded-2xl bg-[#13151f]/95 border border-white/15 shadow-2xl backdrop-blur-xl cursor-grab active:cursor-grabbing",
+                        positionClass
+                      )}
                     >
-                      <span>Inspect Blueprint</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    </button>
-                  </DraggableCardBody>
-                );
-              })}
-            </DraggableCardContainer>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/10 text-copper-300 border border-white/10 uppercase">
+                          {prompt.category}
+                        </span>
+                        <span className="text-[10px] font-mono text-neutral-500">
+                          {prompt.date}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-bold text-white mb-2 leading-snug line-clamp-2">
+                        {prompt.title}
+                      </h3>
+                      <p className="text-xs text-neutral-400 line-clamp-3 mb-4 font-mono leading-relaxed">
+                        {prompt.snippet}
+                      </p>
+                      <button
+                        onClick={() => setSelectedPromptForView(prompt)}
+                        className="w-full py-1.5 px-3 rounded-xl bg-white/10 hover:bg-[#2C9A8B] hover:text-white text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>Inspect Blueprint</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </button>
+                    </DraggableCardBody>
+                  );
+                })}
+              </DraggableCardContainer>
+            </div>
           </div>
         ) : (
           /* Prompts Grid */
