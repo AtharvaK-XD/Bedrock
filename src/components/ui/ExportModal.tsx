@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import {
@@ -115,12 +115,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const codeContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleCodeWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+  };
+
   if (typeof document === 'undefined') return null;
 
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 overflow-hidden">
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 overflow-hidden"
+          data-lenis-prevent="true"
+        >
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -137,6 +146,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: 'spring', damping: 30, stiffness: 350 }}
             className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl bg-[#0f1115] border border-white/10 shadow-2xl overflow-hidden z-10"
+            data-lenis-prevent="true"
           >
             {/* Header */}
             <div className="px-6 py-5 border-b border-white/10 flex items-start justify-between gap-4 shrink-0 bg-[#13161c]">
@@ -204,7 +214,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </div>
 
               {/* Sub-Target Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto py-3 custom-scrollbar">
+              <div 
+                className="flex items-center gap-2 overflow-x-auto py-3 custom-scrollbar"
+                data-lenis-prevent="true"
+              >
                 {categoryTargets.map((target) => {
                   const isSelected = target.id === currentTarget.id;
                   return (
@@ -258,6 +271,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 5 }}
+                        data-lenis-prevent="true"
                         className="absolute right-0 top-full mt-1.5 w-52 rounded-2xl bg-[#14161c] border border-white/10 shadow-2xl p-1.5 z-50 space-y-0.5"
                       >
                         {EXPORT_MODELS.map((m) => (
@@ -288,7 +302,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
             {/* Variable Pills (if prompt has placeholders) */}
             {detectedVariables.length > 0 && (
-              <div className="px-6 py-2 bg-emerald-500/5 border-b border-emerald-500/10 flex items-center gap-2 overflow-x-auto text-xs shrink-0">
+              <div 
+                className="px-6 py-2 bg-emerald-500/5 border-b border-emerald-500/10 flex items-center gap-2 overflow-x-auto text-xs shrink-0"
+                data-lenis-prevent="true"
+              >
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="text-[11px] font-mono text-emerald-300 font-semibold uppercase shrink-0">
                   Detected Variables:
@@ -307,10 +324,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             )}
 
             {/* Code Body */}
-            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-[#0b0c0f]">
+            <div 
+              ref={codeContainerRef}
+              onWheel={handleCodeWheel}
+              className="flex-1 min-h-0 overflow-y-auto p-6 custom-scrollbar bg-[#0b0c0f] overscroll-contain"
+              data-lenis-prevent="true"
+            >
               <div className="relative group">
-                <pre className="w-full p-5 bg-[#07080a] border border-white/10 rounded-2xl text-neutral-200 font-mono text-xs leading-relaxed overflow-x-auto selection:bg-copper-500/30">
-                  <code>{generatedCode}</code>
+                <pre 
+                  className="w-full p-5 bg-[#07080a] border border-white/10 rounded-2xl text-neutral-200 font-mono text-xs leading-relaxed overflow-x-auto selection:bg-copper-500/30"
+                  data-lenis-prevent="true"
+                >
+                  <code data-lenis-prevent="true">{generatedCode}</code>
                 </pre>
               </div>
             </div>
