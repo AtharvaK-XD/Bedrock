@@ -244,6 +244,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             {/* Target Settings Bar & Variable Indicators */}
             <div className="px-6 py-3 bg-[#13161c]/80 border-b border-white/5 flex flex-wrap items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2">
+                <AgentIcon model={currentTarget.id} className="w-3.5 h-3.5" badgeClassName="w-5 h-5 bg-white/5 border-white/10 p-0.5" />
                 <span className="text-xs font-semibold text-white">{currentTarget.filename}</span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-white/5 border border-white/10 text-neutral-300">
                   {currentTarget.badge}

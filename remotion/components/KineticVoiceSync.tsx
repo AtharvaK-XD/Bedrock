@@ -9,10 +9,10 @@ interface SubtitleCue {
 
 // Calibrated against the +8% edge-tts ChristopherNeural master narration
 const CUES: SubtitleCue[] = [
-  { startFrame: 3, endFrame: 107, text: "Engineering AI prompts isn't guess work anymore." },
-  { startFrame: 107, endFrame: 175, text: "It is software architecture." },
-  { startFrame: 175, endFrame: 341, text: "But today, prompts decay, models drift, and production systems break silently." },
-  { startFrame: 341, endFrame: 392, text: "Meet Bedrock." },
+  { startFrame: 3, endFrame: 107, text: "The modern software landscape is a labyrinth." },
+  { startFrame: 107, endFrame: 230, text: "We chain prompts, we wrangle context, we pray for coherence." },
+  { startFrame: 230, endFrame: 340, text: "The result? Fragile abstractions built on shifting sands." },
+  { startFrame: 353, endFrame: 392, text: "Meet Bedrock." },
   { startFrame: 392, endFrame: 517, text: "The premier engineering workstation built for frontier intelligence." },
   { startFrame: 517, endFrame: 581, text: "Ten frontier models." },
   { startFrame: 581, endFrame: 633, text: "Zero lock-in." },
@@ -20,11 +20,11 @@ const CUES: SubtitleCue[] = [
   { startFrame: 694, endFrame: 811, text: "From zero-shot to production-grade directives in milliseconds." },
   { startFrame: 811, endFrame: 970, text: "Multi-pass reasoning, strict schema validation, and zero-coding archetypes." },
   { startFrame: 970, endFrame: 1104, text: "Architect complex agentic reasoning on an infinite DAG canvas." },
-  { startFrame: 1104, endFrame: 1307, text: "Branch workflows, run parallel evaluations, and prune dead paths with tactile physics." },
+  { startFrame: 1104, endFrame: 1307, text: "Branch workflows, run parallel evaluations, and prune dead paths with sub-millisecond tactile physics." },
   { startFrame: 1307, endFrame: 1407, text: "Pit frontier LLMs head-to-head in the Arena." },
   { startFrame: 1407, endFrame: 1548, text: "Then export hardened system directives across fifteen production frameworks." },
-  { startFrame: 1548, endFrame: 1600, text: "Stop guessing." },
-  { startFrame: 1600, endFrame: 1656, text: "Start engineering." },
+  { startFrame: 1562, endFrame: 1600, text: "Stop guessing." },
+  { startFrame: 1614, endFrame: 1656, text: "Start engineering." },
   { startFrame: 1656, endFrame: 1698, text: "Bedrock." },
   { startFrame: 1698, endFrame: 1785, text: "The bedrock of intelligent software." },
 ];
@@ -54,13 +54,14 @@ export const KineticVoiceSync: React.FC = () => {
     <div
       style={{
         position: 'absolute',
-        bottom: '60px',
+        bottom: '6%',
         left: 0,
         right: 0,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         opacity: barOpacity,
+        filter: `blur(${interpolate(frame, [currentCue.startFrame, currentCue.startFrame + 15], [12, 0], { extrapolateRight: 'clamp' })}px)`,
         zIndex: 50,
         pointerEvents: 'none',
       }}
@@ -85,7 +86,7 @@ export const KineticVoiceSync: React.FC = () => {
                 fontSize: '28px',
                 fontWeight: 500,
                 fontFamily: "'Inter', sans-serif",
-                color: isSpoken ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+                color: isSpoken ? '#ffffff' : 'rgba(255, 255, 255, 0.35)',
                 transition: 'color 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                 letterSpacing: '-0.02em',
               }}

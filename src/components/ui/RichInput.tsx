@@ -112,9 +112,11 @@ export const AI_AGENTS = [
   },
   {
     id: 'grok',
-    name: 'Grok',
-    description: 'Real-time, X-aware responses',
+    name: 'Grok (xAI)',
+    description: 'Real-time reasoning and frontier intelligence',
     models: [
+      { id: 'grok-3', name: 'Grok 3' },
+      { id: 'grok-2', name: 'Grok 2' },
       { id: 'grok-1.5', name: 'Grok-1.5' }
     ]
   },

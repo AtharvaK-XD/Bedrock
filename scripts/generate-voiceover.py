@@ -9,8 +9,8 @@ RATE = "+8%"  # Calibrated for snappy delivery fitting exactly 60 seconds
 ACTS = [
     {
         "id": "act1_genesis",
-        "text": "Engineering AI prompts isn't guess work anymore. It is software architecture. But today, prompts decay, models drift, and production systems break silently.",
-        "start_sec": 1.2,
+        "text": "The modern software landscape is a labyrinth. We chain prompts, we wrangle context, we pray for coherence. The result? Fragile abstractions built on shifting sands.",
+        "start_sec": 0.1,
     },
     {
         "id": "act2_workstation",
