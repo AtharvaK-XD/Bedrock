@@ -102,6 +102,14 @@ const MODEL_GROUPS: ModelGroup[] = [
       { id: 'copilot-pro', name: 'Microsoft Copilot Pro', tag: 'Ecosystem', tagColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
     ],
   },
+  {
+    group: 'xAI (Grok)',
+    models: [
+      { id: 'grok-3', name: 'Grok 3 (xAI)', tag: 'Flagship Reasoning', tagColor: 'text-neutral-200 bg-white/10 border-white/20' },
+      { id: 'grok-2-1212', name: 'Grok 2 (xAI)', tag: 'Real-Time X', tagColor: 'text-neutral-300 bg-white/5 border-white/10' },
+      { id: 'grok-beta', name: 'Grok Beta', tag: 'Fast', tagColor: 'text-neutral-400 bg-white/5 border-white/10' },
+    ],
+  },
 ];
 
 type Tab = 'account' | 'api-keys' | 'notifications' | 'privacy' | 'updates';
@@ -119,6 +127,7 @@ interface ApiKeysState {
   copilotKey: string;
   deepSeekKey: string;
   nvidiaKey: string;
+  xaiKey: string;
 }
 
 const DEFAULT_API_KEYS: ApiKeysState = {
@@ -134,6 +143,7 @@ const DEFAULT_API_KEYS: ApiKeysState = {
   copilotKey: '',
   deepSeekKey: '',
   nvidiaKey: '',
+  xaiKey: '',
 };
 
 const STORAGE_KEY_API_KEYS = 'bedrock_api_keys';
@@ -1201,6 +1211,55 @@ export default function Settings() {
                               className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
                             >
                               <span>Nvidia Build</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        </div>
+
+                        {/* 12. xAI (Grok) */}
+                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <AgentIcon agent={{ id: 'grok' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
+                                xAI (Grok) API Key
+                              </label>
+                            </div>
+                            <span className={cn(
+                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
+                              apiKeys.xaiKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
+                            )}>
+                              {apiKeys.xaiKey ? 'Configured' : 'Not Set'}
+                            </span>
+                          </div>
+                          <div className="relative flex items-center">
+                            <input
+                              type={showKey['xai'] ? 'text' : 'password'}
+                              placeholder="xai-..."
+                              value={apiKeys.xaiKey || ''}
+                              onChange={(e) => setApiKeys((prev) => ({ ...prev, xaiKey: e.target.value }))}
+                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
+                            />
+                            <div className="absolute right-2 flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => toggleShowKey('xai')}
+                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
+                                title={showKey['xai'] ? 'Hide key' : 'Show key'}
+                              >
+                                {showKey['xai'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <p className="text-xs text-gray-500 font-mono">Powers Grok 3 and real-time reasoning models.</p>
+                            <a
+                              href="https://console.x.ai"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
+                            >
+                              <span>xAI Console</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>

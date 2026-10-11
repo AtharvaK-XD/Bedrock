@@ -1357,9 +1357,9 @@ export default function Profile() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { id: 'mistral', name: 'Mistral Large', provider: 'Mistral AI', desc: 'Superior coding, creative depth, and reasoning.' },
-                    { id: 'qwen', name: 'Qwen 2.5 72B', provider: 'Alibaba Cloud / HF', desc: 'State-of-the-art open-weights reasoning and instruction following.' },
-                    { id: 'gemini', name: 'Gemini 1.5 Pro', provider: 'Google', desc: 'Massive context window for deep document synthesis.' },
-                    { id: 'llama', name: 'Llama 3 70B', provider: 'Meta / Groq', desc: 'Ultra-low latency inference via specialized LPUs.' },
+                    { id: 'gemini', name: 'Gemini 2.5 Flash', provider: 'Google', desc: 'Massive context window for deep document synthesis.' },
+                    { id: 'grok', name: 'Grok 3', provider: 'xAI', desc: 'Real-time reasoning and frontier intelligence.' },
+                    { id: 'llama', name: 'Llama 3.3 70B', provider: 'Meta / Groq', desc: 'Ultra-low latency inference via specialized LPUs.' },
                   ].map((m, idx) => (
                     <div
                       key={m.id}
@@ -1371,7 +1371,10 @@ export default function Profile() {
                       )}
                     >
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="font-semibold text-white text-sm">{m.name}</span>
+                        <div className="flex items-center gap-2">
+                          <AgentIcon agent={{ id: m.id }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5 bg-white/5 border border-white/10" />
+                          <span className="font-semibold text-white text-sm">{m.name}</span>
+                        </div>
                         {idx === 0 && (
                           <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-copper-500 text-white uppercase">
                             Primary

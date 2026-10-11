@@ -13,6 +13,7 @@ import {
   DeepSeekLogo,
   HuggingFaceLogo,
   NvidiaLogo,
+  GrokLogo,
 } from '../ui/ModelLogos';
 
 const STORAGE_KEY_API_KEYS = 'bedrock_api_keys';
@@ -40,6 +41,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
         deepseek: parsed.deepSeekKey || import.meta.env.VITE_DEEPSEEK_API_KEY || '',
         huggingface: parsed.huggingFaceKey || import.meta.env.VITE_HF_API_KEY || '',
         nvidia: parsed.nvidiaKey || import.meta.env.VITE_NVIDIA_API_KEY || '',
+        xai: parsed.xaiKey || import.meta.env.VITE_XAI_API_KEY || '',
       };
     } catch {
       return {
@@ -53,6 +55,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
         deepseek: import.meta.env.VITE_DEEPSEEK_API_KEY || '',
         huggingface: import.meta.env.VITE_HF_API_KEY || '',
         nvidia: import.meta.env.VITE_NVIDIA_API_KEY || '',
+        xai: import.meta.env.VITE_XAI_API_KEY || '',
       };
     }
   };
@@ -68,6 +71,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
   const [deepSeekKey, setDeepSeekKey] = useState(stored.deepseek);
   const [huggingFaceKey, setHuggingFaceKey] = useState(stored.huggingface);
   const [nvidiaKey, setNvidiaKey] = useState(stored.nvidia);
+  const [xaiKey, setXaiKey] = useState(stored.xai);
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(initialError || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -86,6 +90,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
       setDeepSeekKey(latest.deepseek);
       setHuggingFaceKey(latest.huggingface);
       setNvidiaKey(latest.nvidia);
+      setXaiKey(latest.xai);
       if (initialError) {
         setError(initialError);
       }
@@ -108,8 +113,9 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
     const dsTrimmed = deepSeekKey.trim();
     const hfTrimmed = huggingFaceKey.trim();
     const nvTrimmed = nvidiaKey.trim();
+    const xTrimmed = xaiKey.trim();
 
-    if (!gTrimmed && !grTrimmed && !oTrimmed && !mTrimmed && !cTrimmed && !orTrimmed && !aTrimmed && !dsTrimmed && !hfTrimmed && !nvTrimmed) {
+    if (!gTrimmed && !grTrimmed && !oTrimmed && !mTrimmed && !cTrimmed && !orTrimmed && !aTrimmed && !dsTrimmed && !hfTrimmed && !nvTrimmed && !xTrimmed) {
       setError('Please provide at least one API key to unlock the workstation.');
       return;
     }
@@ -135,7 +141,8 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
         deepSeekKey: dsTrimmed,
         huggingFaceKey: hfTrimmed,
         nvidiaKey: nvTrimmed,
-        defaultModel: gTrimmed ? 'gemini-3.5-flash-lite' : 'openai/gpt-oss-120b',
+        xaiKey: xTrimmed,
+        defaultModel: gTrimmed ? 'gemini-3.5-flash-lite' : (xTrimmed ? 'grok-3' : 'openai/gpt-oss-120b'),
       };
 
       localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(updated));
@@ -522,6 +529,33 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
                       >
                         {showKey['nvidia'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* xAI / Grok */}
+                  <div className="rounded-2xl glass-subcard p-4 border border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <GrokLogo className="w-4 h-4" />
+                        <label className="text-xs font-semibold text-white">xAI (Grok) API Key</label>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">xai-...</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showKey['xai'] ? 'text' : 'password'}
+                        value={xaiKey}
+                        onChange={(e) => setXaiKey(e.target.value)}
+                        placeholder="xai-..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleShowKey('xai')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                      >
+                        {showKey['xai'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>

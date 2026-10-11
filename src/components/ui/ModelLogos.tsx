@@ -12,23 +12,29 @@ import claudeLogoImg from '../../assets/logos/claude.png';
 import deepseekLogoImg from '../../assets/logos/deepseek.png';
 import huggingfaceLogoImg from '../../assets/logos/huggingface.png';
 import nvidiaLogoImg from '../../assets/logos/nvidia.png';
+import geminiLogoImg from '../../assets/logos/gemini.png';
+import grokLogoImg from '../../assets/logos/grok.png';
+import cursorLogoImg from '../../assets/logos/cursor.png';
 
 export function GeminiLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={cn("shrink-0", className)}>
-      <defs>
-        <linearGradient id="gemini-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#4E82EE" />
-          <stop offset="35%" stopColor="#7B61FF" />
-          <stop offset="70%" stopColor="#C060D5" />
-          <stop offset="100%" stopColor="#F5576C" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M12 24c0-6.627-5.373-12-12-12 6.627 0 12-5.373 12-12 0 6.627 5.373 12 12 12-6.627 0-12 5.373-12 12z"
-        fill="url(#gemini-grad)"
-      />
-    </svg>
+    <img
+      src={geminiLogoImg}
+      alt="Google Gemini"
+      draggable={false}
+      className={cn("object-contain shrink-0 select-none", className)}
+    />
+  );
+}
+
+export function CursorLogo({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <img
+      src={cursorLogoImg}
+      alt="Cursor"
+      draggable={false}
+      className={cn("object-contain shrink-0 select-none", className)}
+    />
   );
 }
 
@@ -165,9 +171,12 @@ export function PerplexityLogo({ className = "w-4 h-4" }: { className?: string }
 
 export function GrokLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={cn("text-white shrink-0", className)}>
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
+    <img
+      src={grokLogoImg}
+      alt="xAI Grok"
+      draggable={false}
+      className={cn("object-contain shrink-0 select-none", className)}
+    />
   );
 }
 
@@ -326,6 +335,9 @@ export function getLogoComponent(idOrName?: string, fallbackName?: string): Reac
 
   // 13. Grok / xAI
   if (key.includes('grok') || key.includes('x.ai') || key.includes('xai')) return GrokLogo;
+
+  // 14. Cursor IDE / Cursorrules
+  if (key.includes('cursor') || key.includes('cursorrules')) return CursorLogo;
 
   // 14. Groq
   if (key.includes('groq')) return GroqLogo;
