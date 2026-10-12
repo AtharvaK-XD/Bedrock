@@ -15,6 +15,7 @@ import nvidiaLogoImg from '../../assets/logos/nvidia.png';
 import geminiLogoImg from '../../assets/logos/gemini.png';
 import grokLogoImg from '../../assets/logos/grok.png';
 import cursorLogoImg from '../../assets/logos/cursor.png';
+import universalLogoImg from '../../assets/logos/universal.png';
 
 export function GeminiLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -217,21 +218,12 @@ export function QwenLogo({ className = "w-4 h-4" }: { className?: string }) {
 
 export function UniversalLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={cn("shrink-0", className)}>
-      <defs>
-        <linearGradient id="univ-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#F59E0B" />
-          <stop offset="50%" stopColor="#D97706" />
-          <stop offset="100%" stopColor="#B45309" />
-        </linearGradient>
-      </defs>
-      <circle cx="12" cy="12" r="9.5" fill="#1C1917" stroke="rgba(245,158,11,0.3)" strokeWidth="1" />
-      <path
-        d="M12 4c.6 3.5 3.5 6.4 7 7-3.5.6-6.4 3.5-7 7-.6-3.5-3.5-6.4-7-7 3.5-.6 6.4-3.5 7-7z"
-        fill="url(#univ-grad)"
-      />
-      <circle cx="18" cy="6" r="1.5" fill="#FCD34D" />
-    </svg>
+    <img
+      src={universalLogoImg}
+      alt="Universal"
+      draggable={false}
+      className={cn("object-contain shrink-0 select-none", className)}
+    />
   );
 }
 
@@ -240,6 +232,16 @@ export function UniversalLogo({ className = "w-4 h-4" }: { className?: string })
  */
 export function getLogoComponent(idOrName?: string, fallbackName?: string): React.ComponentType<{ className?: string }> {
   const key = `${idOrName || ''} ${fallbackName || ''}`.toLowerCase().trim();
+
+  // 0. Universal (Global default)
+  if (
+    key.includes('universal') ||
+    key === 'auto' ||
+    key.includes('auto-select') ||
+    key.includes('all models')
+  ) {
+    return UniversalLogo;
+  }
 
   // 1. Nvidia
   if (key.includes('nvidia') || key.includes('nemotron')) return NvidiaLogo;
