@@ -19,7 +19,7 @@ jobs:
           node-version: 20
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci || npm install
 
       - name: Run Secret Leak Scanner
         run: npm run scan:secrets
@@ -33,7 +33,7 @@ jobs:
       - name: Run Server Typechecks
         working-directory: ./server
         run: |
-          npm ci
+          npm ci || npm install
           npx prisma generate
           npm audit --audit-level=critical || true
           npx tsc --noEmit
