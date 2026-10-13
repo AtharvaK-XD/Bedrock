@@ -192,51 +192,32 @@ export default function Landing() {
               </p>
 
               <div className="hero-fade-up flex flex-col items-start gap-4">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                  <a 
-                    href="https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.2.4-mac/Bedrock-Mac.dmg" 
-                    download
-                    data-cursor="hover"
-                    className="inline-flex items-center justify-center gap-3 px-8 py-4.5 bg-white text-black rounded-full font-semibold text-base hover:bg-gray-100 transition-all shadow-[0_0_24px_rgba(255,255,255,0.15)] hover:shadow-[0_0_36px_rgba(255,255,255,0.25)] hover:scale-[1.01] active:scale-[0.99] group cursor-pointer"
-                  >
-                    <AppleLogo className="w-5 h-5 shrink-0" />
-                    <span>Download for Mac</span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/10 text-black/80 font-mono font-medium">.dmg</span>
-                  </a>
-
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                   <a 
                     href="https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/Bedrock-Setup.exe" 
                     download
-                    data-cursor="hover"
-                    className="inline-flex items-center justify-center gap-3 px-8 py-4.5 bg-white/10 text-white border border-white/15 rounded-full font-semibold text-base hover:bg-white/15 hover:border-white/25 transition-all backdrop-blur-md hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                    className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-black rounded-full font-semibold text-lg hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
                   >
-                    <svg className="w-4 h-4 fill-current text-white shrink-0" viewBox="0 0 88 88">
-                      <path d="M0 12.402l35.687-4.86.016 34.423-35.67.202L0 12.402zm35.67 33.529l.028 34.453L.028 75.48l-.02-29.347 35.662-.202zm4.326-39.043L87.914 0v41.526l-47.918.378V6.888zm47.918 38.647L88 87.999l-47.962-6.791-.038-34.195 48.002.046z"/>
-                    </svg>
-                    <span>Download for Windows</span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-mono font-medium">.exe</span>
+                    Download for Windows
                   </a>
+                  <div className="flex flex-col text-sm text-gray-500 font-medium">
+                    <span>Version 1.2.4</span>
+                    <span>Native Desktop Experience</span>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 font-medium pl-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-gray-400">Version 1.2.4</span>
-                  </div>
-                  <span>•</span>
-                  <span className="flex items-center gap-1.5 text-gray-400">
-                    <AppleLogo className="w-3.5 h-3.5 inline shrink-0" />
-                    Apple Silicon & Intel Universal
-                  </span>
-                  <span>•</span>
+                <div className="flex items-center gap-2.5 pl-1">
+                  <span className="text-xs text-gray-500 font-light">Available for macOS:</span>
                   <a
-                    href="https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.2.4-mac/Bedrock-Mac.zip"
+                    href="https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.2.4-mac/Bedrock-Mac.dmg"
                     download
                     data-cursor="hover"
-                    className="text-gray-400 hover:text-white underline transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-200"
                   >
-                    macOS .zip archive
+                    <AppleLogo className="w-3.5 h-3.5 shrink-0" />
+                    Download for Mac (.dmg)
                   </a>
+                  <span className="text-xs text-gray-500 font-light">(Beta Version)</span>
                 </div>
               </div>
             </div>
@@ -375,46 +356,28 @@ export default function Landing() {
         {/* Immersive CTA */}
         <section className="reveal-section relative z-10 w-full min-h-screen flex flex-col items-center justify-center py-40 px-6 sm:px-12 text-center">
           
-          <h2 className="reveal-container font-display font-medium text-5xl md:text-8xl tracking-tight text-white mb-6">
+          <h2 className="reveal-container font-display font-medium text-5xl md:text-8xl tracking-tight text-white mb-8">
             <RevealText text="Ready to build?" />
           </h2>
-          <p className="text-gray-400 text-lg md:text-xl font-light max-w-xl mb-12">
-            Experience the native workstation with zero-latency local caching, global keyboard shortcuts, and hardware-accelerated rendering.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
-            <a 
-              href="https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.2.4-mac/Bedrock-Mac.dmg" 
+          <a 
+            href="https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/Bedrock-Setup.exe" 
+            download
+            data-cursor="hover"
+            className="inline-flex items-center justify-center gap-2 px-12 py-6 bg-white text-black rounded-full font-bold text-xl hover:bg-gray-100 hover:scale-[1.02] transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.15)] cursor-pointer"
+          >
+            Download Bedrock Free
+          </a>
+          <div className="flex items-center gap-2 mt-5 text-xs text-gray-500 font-light">
+            <span>Available for macOS:</span>
+            <a
+              href="https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.2.4-mac/Bedrock-Mac.dmg"
               download
               data-cursor="hover"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-black rounded-full font-bold text-lg hover:bg-gray-100 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.2)] cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-200"
             >
-              <AppleLogo className="w-5 h-5 shrink-0" />
-              <span>Download for macOS</span>
-            </a>
-
-            <a 
-              href="https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/Bedrock-Setup.exe" 
-              download
-              data-cursor="hover"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-5 bg-white/10 text-white border border-white/20 rounded-full font-bold text-lg hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 backdrop-blur-md cursor-pointer"
-            >
-              <svg className="w-5 h-5 fill-current text-white shrink-0" viewBox="0 0 88 88">
-                <path d="M0 12.402l35.687-4.86.016 34.423-35.67.202L0 12.402zm35.67 33.529l.028 34.453L.028 75.48l-.02-29.347 35.662-.202zm4.326-39.043L87.914 0v41.526l-47.918.378V6.888zm47.918 38.647L88 87.999l-47.962-6.791-.038-34.195 48.002.046z"/>
-              </svg>
-              <span>Download for Windows</span>
-            </a>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500 font-mono mt-8">
-            <span className="flex items-center gap-1.5 text-gray-400">
               <AppleLogo className="w-3.5 h-3.5 shrink-0" />
-              macOS Universal (Apple Silicon &amp; Intel)
-            </span>
-            <span>•</span>
-            <span>Windows 10/11 NSIS</span>
-            <span>•</span>
-            <span>Version 1.2.4 Free &amp; Open Source</span>
+              Download for Mac (.dmg)
+            </a>
           </div>
         </section>
 
