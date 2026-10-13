@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthCard } from '../components/auth/AuthCard';
 import { Shield, Sparkles, Layout, Layers, Database, Globe } from 'lucide-react';
-import { AppleLogo } from '../components/ui/ModelLogos';
+import { AppleLogo, WindowsLogo } from '../components/ui/ModelLogos';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Scene3D } from '../components/landing/Scene3D';
 import gsap from 'gsap';
@@ -198,6 +198,7 @@ export default function Landing() {
                     download
                     className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-black rounded-full font-semibold text-lg hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
                   >
+                    <WindowsLogo className="w-5 h-5 shrink-0" />
                     Download for Windows
                   </a>
                   <div className="flex flex-col text-sm text-gray-500 font-medium">
@@ -363,8 +364,9 @@ export default function Landing() {
             href="https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/Bedrock-Setup.exe" 
             download
             data-cursor="hover"
-            className="inline-flex items-center justify-center gap-2 px-12 py-6 bg-white text-black rounded-full font-bold text-xl hover:bg-gray-100 hover:scale-[1.02] transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.15)] cursor-pointer"
+            className="inline-flex items-center justify-center gap-3 px-12 py-6 bg-white text-black rounded-full font-bold text-xl hover:bg-gray-100 hover:scale-[1.02] transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.15)] cursor-pointer"
           >
+            <WindowsLogo className="w-5 h-5 shrink-0" />
             Download Bedrock Free
           </a>
           <div className="flex items-center gap-2 mt-5 text-xs text-gray-500 font-light">
