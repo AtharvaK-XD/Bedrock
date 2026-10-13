@@ -37,6 +37,14 @@ export function AppleIconSvg({ className = "w-4 h-4" }: { className?: string }) 
   );
 }
 
+export function WindowsLogo({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={cn("fill-current shrink-0", className)} viewBox="0 0 88 88">
+      <path d="M0 12.402l35.687-4.86.016 34.423-35.67.202L0 12.402zm35.67 33.529l.028 34.453L.028 75.48l-.02-29.347 35.662-.202zm4.326-39.043L87.914 0v41.526l-47.918.378V6.888zm47.918 38.647L88 87.999l-47.962-6.791-.038-34.195 48.002.046z" />
+    </svg>
+  );
+}
+
 export function GeminiLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <img
