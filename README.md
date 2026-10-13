@@ -94,7 +94,7 @@ Bedrock v1.2.4 features a **dedicated Desktop Sidebar Workstation** architecture
 | Platform | Installer Package | Architecture | Features |
 | :--- | :--- | :--- | :--- |
 | **Windows** | [**`Bedrock-Setup-1.2.4.exe`**](https://github.com/Bedrockxai/Bedrock/releases/latest) | `x64` | NSIS installer, Win32 PE embedded icon, `com.bedrock.desktop` AUMID, Background Auto-Updater |
-| **macOS** | [**`Bedrock-Mac.dmg`**](https://github.com/Bedrockxai/Bedrock/releases/latest) / [`.zip`](https://github.com/Bedrockxai/Bedrock/releases/latest) | Universal (`arm64` + `x64`) | Apple Silicon M-series & Intel Universal binary, drag-and-drop Applications installer |
+| <img src="./public/logos/apple.svg" width="14" height="14" alt="Apple" /> **macOS** | [**`Bedrock-Mac.dmg`**](https://github.com/Bedrockxai/Bedrock/releases/latest) / [`.zip`](https://github.com/Bedrockxai/Bedrock/releases/latest) | Universal (`arm64` + `x64`) | Apple Silicon M-series & Intel Universal binary, drag-and-drop Applications installer |
 | **Web** | [**`localhost:5173`**](#running-bedrock) | Modern Browsers | Edge-ready Vercel serverless deployment or self-hosted Express 5 backend |
 
 ---

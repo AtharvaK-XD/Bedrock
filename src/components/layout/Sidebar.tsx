@@ -4,6 +4,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useUserProfile } from '../../lib/useUserProfile';
 import { useAuth, hasApiKeysConfigured } from '../../lib/useAuth';
 import { useUser } from '@clerk/react';
+import { isMacOS } from '../../lib/platform';
+import { AppleLogo } from '../ui/ModelLogos';
 import { 
   LayoutDashboard,
   Wand2, 
@@ -37,6 +39,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
   const { logout } = useAuth();
   const { user: clerkUser } = useUser();
   const displayAvatar = profile.avatarUrl || clerkUser?.imageUrl;
+  const isMac = isMacOS();
 
   const [hasKeys, setHasKeys] = useState(false);
 
@@ -99,7 +102,10 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
           </div>
           <div className="flex flex-col">
             <span className="font-display font-bold text-base tracking-tight text-white leading-tight">Bedrock</span>
-            <span className="text-[10px] font-mono text-gray-500 tracking-wider uppercase">Workstation</span>
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-gray-500 tracking-wider uppercase">
+              {isMac && <AppleLogo className="w-3 h-3 inline shrink-0" />}
+              <span>{isMac ? 'macOS App' : 'Workstation'}</span>
+            </div>
           </div>
         </Link>
         <span className="px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-[10px] font-mono text-copper-300">
