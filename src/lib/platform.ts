@@ -42,3 +42,12 @@ export function isDesktopApp(): boolean {
   return false;
 }
 
+export function isMacOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Macintosh|Mac OS X|MacPPC|MacIntel/i.test(navigator.userAgent || '');
+}
+
+export function isWindows(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Win32|Win64|Windows/i.test(navigator.userAgent || '');
+}
