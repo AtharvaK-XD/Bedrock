@@ -8,6 +8,33 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,700;6..96,900&display=swap" rel="stylesheet">
     <title>Bedrock - Build-Ready Prompts</title>
+    <script>
+      (function() {
+        try {
+          var isPopup = 
+            window.name === 'BedrockOAuth' || 
+            (window.sessionStorage && window.sessionStorage.getItem('bedrock_auth_popup') === '1') ||
+            (window.location.search && window.location.search.indexOf('popup=1') !== -1);
+          var path = window.location.pathname;
+          if (isPopup && path !== '/popup-auth' && path !== '/sso-callback') {
+            try {
+              if (window.opener) {
+                window.opener.postMessage('clerk-auth-complete', '*');
+              }
+              if (window.localStorage) {
+                window.localStorage.setItem('bedrock_auth_event', Date.now().toString());
+              }
+              if (window.sessionStorage) {
+                window.sessionStorage.removeItem('bedrock_auth_popup');
+              }
+            } catch (e) {}
+            window.close();
+            setTimeout(function() { window.close(); }, 50);
+            setTimeout(function() { window.close(); }, 200);
+          }
+        } catch (err) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

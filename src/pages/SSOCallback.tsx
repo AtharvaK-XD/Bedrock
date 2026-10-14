@@ -10,6 +10,13 @@ export default function SSOCallback() {
   const navigate = useNavigate();
   const completedRef = useRef(false);
 
+  const isPopup = 
+    (typeof window !== 'undefined' && window.name === 'BedrockOAuth') ||
+    (typeof window !== 'undefined' && window.sessionStorage?.getItem('bedrock_auth_popup') === '1') ||
+    (typeof window !== 'undefined' && window.opener !== null) ||
+    new URLSearchParams(window.location.search).get('popup') === '1' ||
+    (typeof window !== 'undefined' && window.outerWidth > 0 && window.outerWidth < 700);
+
   useEffect(() => {
     const notifyAndComplete = () => {
       if (completedRef.current) return;
@@ -27,6 +34,11 @@ export default function SSOCallback() {
           loginTime: new Date().toISOString()
         }));
         localStorage.setItem('bedrock_auth_event', Date.now().toString());
+        try {
+          window.sessionStorage?.removeItem('bedrock_auth_popup');
+        } catch {
+          // ignore
+        }
         window.dispatchEvent(new Event('bedrock_auth_update'));
       } catch {
         // ignore
@@ -38,6 +50,21 @@ export default function SSOCallback() {
         } catch {
           // ignore
         }
+      }
+
+      if (isPopup) {
+        try {
+          window.close();
+        } catch {
+          // ignore
+        }
+        setTimeout(() => {
+          try {
+            window.close();
+          } catch {
+            // ignore
+          }
+        }, 50);
         setTimeout(() => {
           try {
             window.close();
@@ -54,6 +81,20 @@ export default function SSOCallback() {
       notifyAndComplete();
     }
 
+    // Clerk event listener for instant response
+    let unsubscribeClerk: (() => void) | undefined;
+    try {
+      if (typeof (clerk as any)?.addListener === 'function') {
+        unsubscribeClerk = (clerk as any).addListener((emission: any) => {
+          if (emission?.session || emission?.user) {
+            notifyAndComplete();
+          }
+        });
+      }
+    } catch {
+      // ignore
+    }
+
     // In case session becomes active before hook triggers
     const interval = setInterval(() => {
       const hasSession = Boolean(
@@ -66,21 +107,26 @@ export default function SSOCallback() {
         clearInterval(interval);
         notifyAndComplete();
       }
-    }, 150);
+    }, 100);
 
-    return () => clearInterval(interval);
-  }, [isSignedIn, user, clerk, navigate]);
+    return () => {
+      clearInterval(interval);
+      if (unsubscribeClerk) unsubscribeClerk();
+    };
+  }, [isSignedIn, user, clerk, navigate, isPopup]);
 
   return (
     <PageTransition className="flex items-center justify-center min-h-screen bg-[#050505]">
       <div className="flex flex-col items-center justify-center gap-4">
         <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
-        <p className="text-gray-400 font-medium text-sm">Completing authentication...</p>
+        <p className="text-gray-400 font-medium text-sm">
+          {isPopup ? 'Authentication complete! Closing window...' : 'Completing authentication...'}
+        </p>
         <AuthenticateWithRedirectCallback
-          signInFallbackRedirectUrl="/app"
-          signUpFallbackRedirectUrl="/app"
-          signInForceRedirectUrl="/app"
-          signUpForceRedirectUrl="/app"
+          signInFallbackRedirectUrl={isPopup ? '/sso-callback?popup=1' : '/app'}
+          signUpFallbackRedirectUrl={isPopup ? '/sso-callback?popup=1' : '/app'}
+          signInForceRedirectUrl={isPopup ? undefined : '/app'}
+          signUpForceRedirectUrl={isPopup ? undefined : '/app'}
           continueSignUpUrl="/signup"
         />
       </div>

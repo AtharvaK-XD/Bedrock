@@ -183,6 +183,14 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       authDone = true;
       cleanup();
 
+      if (popup && !popup.closed) {
+        try {
+          popup.close();
+        } catch {
+          // ignore
+        }
+      }
+
       try {
         let sessionData: any = null;
         try {
