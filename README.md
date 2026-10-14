@@ -366,7 +366,6 @@ Bedrock/
 
 ### 1. Prerequisites
 - **Node.js**: `v20.0.0` or higher (LTS recommended).
-- **npm**: `v10.0.0` or higher.
 - **Neon Account**: Free serverless PostgreSQL database ([neon.tech](https://neon.tech/)).
 - **Clerk Account**: Free authentication provider ([clerk.com](https://clerk.com/)).
 - **Rust Toolchain**: Optional, required only for native Tauri desktop compilation ([rustup.rs](https://rustup.rs/)).
