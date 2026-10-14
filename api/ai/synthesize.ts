@@ -61,7 +61,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const userContent = sanitizeAndDelimitPrompt(`Concept: ${rawIdea}\nTarget Type: ${targetType}${clarificationContext}`);
 
+  const wantsStream = Boolean(body.stream || req.query.stream === 'true' || req.headers.accept?.includes('text/event-stream'));
+
   try {
+    if (wantsStream) {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+
+      const { text, model } = await executeAiCompletion(
+        userContent,
+        systemPrompt,
+        user?.id,
+        (token) => {
+          res.write(`data: ${JSON.stringify({ token })}\n\n`);
+          if (typeof (res as any).flush === 'function') {
+            (res as any).flush();
+          }
+        }
+      );
+
+      if (user?.id) {
+        await recordExecutionTrace({
+          userId: user.id,
+          nodeOrigin: 'Wizard.synthesize',
+          modelTarget: model,
+          tokensUsed: Math.max(500, Math.round(text.length / 3.5)),
+          latencyMs: Date.now() - startTime,
+          status: 'success',
+        });
+      }
+
+      res.write(`data: ${JSON.stringify({ done: true, modelTarget: model, latencyMs: Date.now() - startTime })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
+
     const { text, model } = await executeAiCompletion(userContent, systemPrompt, user?.id);
 
     if (user?.id) {

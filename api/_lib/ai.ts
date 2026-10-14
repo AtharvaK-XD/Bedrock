@@ -38,9 +38,14 @@ function getApiKey(provider: 'groq' | 'gemini' | 'openrouter'): string {
 }
 
 /**
- * Calls Groq chat completions
+ * Calls Groq chat completions with optional streaming
  */
-async function callGroq(prompt: string, systemPrompt?: string, model = 'openai/gpt-oss-20b'): Promise<string> {
+async function callGroq(
+  prompt: string,
+  systemPrompt?: string,
+  model = 'llama-3.3-70b-versatile',
+  onToken?: (token: string) => void
+): Promise<string> {
   const key = getApiKey('groq');
   if (!key) throw new Error('GROQ_API_KEY is not configured on the server.');
 
@@ -49,6 +54,8 @@ async function callGroq(prompt: string, systemPrompt?: string, model = 'openai/g
     messages.push({ role: 'system', content: systemPrompt });
   }
   messages.push({ role: 'user', content: prompt });
+
+  const isStreaming = typeof onToken === 'function';
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -60,7 +67,8 @@ async function callGroq(prompt: string, systemPrompt?: string, model = 'openai/g
       model,
       messages,
       temperature: 0.3,
-      max_tokens: 3000,
+      max_tokens: 3500,
+      stream: isStreaming,
     }),
   });
 
@@ -69,14 +77,52 @@ async function callGroq(prompt: string, systemPrompt?: string, model = 'openai/g
     throw new Error(`Groq API returned ${res.status}: ${err}`);
   }
 
+  if (isStreaming && res.body) {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulated = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const dataStr = trimmed.slice(6);
+        if (dataStr === '[DONE]') continue;
+        try {
+          const json = JSON.parse(dataStr);
+          const chunk = json.choices?.[0]?.delta?.content || '';
+          if (chunk) {
+            accumulated += chunk;
+            onToken(chunk);
+          }
+        } catch {
+          // ignore malformed SSE line
+        }
+      }
+    }
+    return accumulated;
+  }
+
   const data = await res.json();
   return data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning || '';
 }
 
 /**
- * Calls Google Gemini REST API
+ * Calls Google Gemini REST API with optional SSE streaming
  */
-async function callGemini(prompt: string, systemPrompt?: string, model = 'gemini-flash-lite-latest'): Promise<string> {
+async function callGemini(
+  prompt: string,
+  systemPrompt?: string,
+  model = 'gemini-flash-lite-latest',
+  onToken?: (token: string) => void
+): Promise<string> {
   const key = getApiKey('gemini');
   if (!key) throw new Error('GEMINI_API_KEY is not configured on the server.');
 
@@ -84,10 +130,13 @@ async function callGemini(prompt: string, systemPrompt?: string, model = 'gemini
     ? ['gemini-flash-lite-latest', 'gemini-flash-latest']
     : [model, 'gemini-flash-lite-latest', 'gemini-flash-latest'];
 
+  const isStreaming = typeof onToken === 'function';
   let lastError: Error | null = null;
+
   for (const m of candidates) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
+      const endpoint = isStreaming ? 'streamGenerateContent?alt=sse&key=' : 'generateContent?key=';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:${endpoint}${key}`;
       const body: any = {
         contents: [{ parts: [{ text: prompt }] }],
       };
@@ -101,16 +150,48 @@ async function callGemini(prompt: string, systemPrompt?: string, model = 'gemini
         body: JSON.stringify(body),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (!res.ok) {
+        const err = await res.text();
+        lastError = new Error(`Gemini API returned ${res.status}: ${err}`);
+        if (res.status === 503 || res.status === 404) continue;
+        throw lastError;
       }
 
-      const err = await res.text();
-      lastError = new Error(`Gemini API returned ${res.status}: ${err}`);
-      // If 503 or 404, continue to next candidate
-      if (res.status === 503 || res.status === 404) continue;
-      throw lastError;
+      if (isStreaming && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const dataStr = trimmed.slice(6);
+            if (dataStr === '[DONE]') continue;
+            try {
+              const json = JSON.parse(dataStr);
+              const chunk = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              if (chunk) {
+                accumulated += chunk;
+                onToken(chunk);
+              }
+            } catch {
+              // ignore malformed line
+            }
+          }
+        }
+        if (accumulated) return accumulated;
+      }
+
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     } catch (e: any) {
       lastError = e;
     }
@@ -120,9 +201,14 @@ async function callGemini(prompt: string, systemPrompt?: string, model = 'gemini
 }
 
 /**
- * Calls OpenRouter REST API
+ * Calls OpenRouter REST API with optional streaming
  */
-async function callOpenRouter(prompt: string, systemPrompt?: string, model = 'openai/gpt-4o-mini'): Promise<string> {
+async function callOpenRouter(
+  prompt: string,
+  systemPrompt?: string,
+  model = 'openai/gpt-4o-mini',
+  onToken?: (token: string) => void
+): Promise<string> {
   const key = getApiKey('openrouter');
   if (!key) throw new Error('OPENROUTER_API_KEY is not configured on the server.');
 
@@ -131,6 +217,8 @@ async function callOpenRouter(prompt: string, systemPrompt?: string, model = 'op
     messages.push({ role: 'system', content: systemPrompt });
   }
   messages.push({ role: 'user', content: prompt });
+
+  const isStreaming = typeof onToken === 'function';
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -145,12 +233,46 @@ async function callOpenRouter(prompt: string, systemPrompt?: string, model = 'op
       messages,
       temperature: 0.3,
       max_tokens: 3000,
+      stream: isStreaming,
     }),
   });
 
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`OpenRouter API returned ${res.status}: ${err}`);
+  }
+
+  if (isStreaming && res.body) {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulated = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const dataStr = trimmed.slice(6);
+        if (dataStr === '[DONE]') continue;
+        try {
+          const json = JSON.parse(dataStr);
+          const chunk = json.choices?.[0]?.delta?.content || '';
+          if (chunk) {
+            accumulated += chunk;
+            onToken(chunk);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+    return accumulated;
   }
 
   const data = await res.json();
@@ -173,7 +295,8 @@ import { recordLangfuseGeneration } from './langfuse.js';
 export async function executeAiCompletion(
   prompt: string,
   systemPrompt?: string,
-  userId?: string
+  userId?: string,
+  onToken?: (token: string) => void
 ): Promise<{ text: string; model: string }> {
   const startTime = new Date();
 
@@ -197,22 +320,29 @@ export async function executeAiCompletion(
 
   // Helper to execute a single provider
   const dispatchToProvider = async (target: ProviderTarget): Promise<string> => {
-    if (target.id === 'groq-oss-120b') {
-      return await callGroq(prompt, systemPrompt, 'openai/gpt-oss-120b');
+    if (target.id === 'groq-llama-70b') {
+      return await callGroq(prompt, systemPrompt, 'llama-3.3-70b-versatile', onToken);
     }
-    if (target.id === 'groq-oss-20b') {
-      return await callGroq(prompt, systemPrompt, 'openai/gpt-oss-20b');
+    if (target.id === 'groq-llama-8b') {
+      return await callGroq(prompt, systemPrompt, 'llama-3.1-8b-instant', onToken);
     }
-    if (target.id === 'groq-qwen') {
-      return await callGroq(prompt, systemPrompt, 'qwen/qwen3.8-27b');
+    if (target.id === 'groq-deepseek') {
+      return await callGroq(prompt, systemPrompt, 'deepseek-r1-distill-llama-70b', onToken);
     }
     if (target.id === 'gemini-flash') {
-      return await callGemini(prompt, systemPrompt, 'gemini-flash-latest');
+      return await callGemini(prompt, systemPrompt, 'gemini-flash-latest', onToken);
     }
     if (target.id === 'openrouter-gpt4o') {
-      return await callOpenRouter(prompt, systemPrompt, 'openai/gpt-4o-mini');
+      return await callOpenRouter(prompt, systemPrompt, 'openai/gpt-4o-mini', onToken);
     }
-    throw new Error(`Unsupported provider: ${target.id}`);
+    // Fallback dynamic routing by model identifier
+    if (target.model.includes('llama') || target.id.startsWith('groq')) {
+      return await callGroq(prompt, systemPrompt, target.model, onToken);
+    }
+    if (target.model.includes('gemini') || target.id.startsWith('gemini')) {
+      return await callGemini(prompt, systemPrompt, target.model, onToken);
+    }
+    return await callOpenRouter(prompt, systemPrompt, target.model, onToken);
   };
 
   // 2. Select optimal provider via distributed round-robin / circuit health

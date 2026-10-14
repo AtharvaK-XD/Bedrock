@@ -466,7 +466,15 @@ ${upstreamText || data.description}`;
             finalUserPrompt = `[Upstream Input Context]\n${upstreamText}\n\n[Instruction]\n${resolvedPrompt}`;
           }
 
-          outputResult = await testPrompt(data.modelId, sysPrompt, finalUserPrompt);
+          outputResult = await testPrompt(data.modelId, sysPrompt, finalUserPrompt, (token) => {
+            setNodes(nodes => nodes.map(n => n.id === id ? {
+              ...n,
+              data: {
+                ...n.data,
+                output: (n.data.output || '') + token,
+              }
+            } : n));
+          });
           break;
         }
       }
@@ -960,7 +968,7 @@ const CURATED_TEMPLATES = [
   {
     id: 'template-consensus',
     title: 'Multi-Model Consensus & Synthesizer',
-    description: 'Dispatches identical reasoning prompts in parallel to Gemini 3.5 & Groq GPT-OSS, aggregates outputs via Synthesizer, and evaluates consensus with Quality Judge.',
+    description: 'Dispatches identical reasoning prompts in parallel to Gemini 3.5 & Groq Llama 3.3, aggregates outputs via Synthesizer, and evaluates consensus with Quality Judge.',
     category: 'Consensus',
     tag: 'PARALLEL',
     complexity: 'Advanced',
@@ -1011,10 +1019,10 @@ const CURATED_TEMPLATES = [
         type: 'genericNode',
         position: { x: 440, y: 400 },
         data: {
-          title: 'Groq GPT-OSS Engine',
+          title: 'Groq Llama 3.3 Engine',
           description: 'Examine Raft leader election race conditions and heartbeat latency thresholds under split-brain partitions.',
           agentId: 'llama',
-          modelId: 'openai/gpt-oss-120b',
+          modelId: 'llama-3.3-70b-versatile',
           nodeType: 'prompt',
           status: 'idle',
         },
@@ -1204,7 +1212,7 @@ const CURATED_TEMPLATES = [
           title: 'Sev-1 Dispatch Runbook',
           description: 'Generate high-urgency mitigation checklist, notify on-call SRE, and trigger isolation protocol.',
           agentId: 'llama',
-          modelId: 'openai/gpt-oss-120b',
+          modelId: 'llama-3.3-70b-versatile',
           nodeType: 'prompt',
           status: 'idle',
         },
@@ -1361,7 +1369,7 @@ const CURATED_TEMPLATES = [
           title: 'Adversarial Critique',
           description: 'Critique the draft prompt for ambiguity, missing edge cases (e.g. rollback, locks, zero-downtime), and safety.',
           agentId: 'llama',
-          modelId: 'openai/gpt-oss-120b',
+          modelId: 'llama-3.3-70b-versatile',
           nodeType: 'prompt',
           status: 'idle',
         },
@@ -2193,7 +2201,16 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                   onClick={async () => {
                     onNodeDataChange(activeNode.id, { status: 'running', output: undefined });
                     try {
-                      const output = await testPrompt(activeNode.data.modelId, '', activeNode.data.description || activeNode.data.title);
+                      let streamAcc = '';
+                      const output = await testPrompt(
+                        activeNode.data.modelId,
+                        '',
+                        activeNode.data.description || activeNode.data.title,
+                        (token) => {
+                          streamAcc += token;
+                          onNodeDataChange(activeNode.id, { output: streamAcc });
+                        }
+                      );
                       onNodeDataChange(activeNode.id, { status: 'success', output });
                     } catch (err: any) {
                       onNodeDataChange(activeNode.id, { status: 'error', output: err.message || 'Execution failed' });
