@@ -157,8 +157,91 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     const callbackUrl = `${origin}/sso-callback`;
     const targetUrl = targetPath;
 
+    const width = 500;
+    const height = 650;
+    const left = window.screenX + Math.max(0, (window.outerWidth - width) / 2);
+    const top = window.screenY + Math.max(0, (window.outerHeight - height) / 2);
+
+    let popup: Window | null = null;
     try {
-      // 1. Ensure Clerk is fully loaded before initiating redirect
+      popup = window.open(
+        '',
+        'BedrockOAuth',
+        `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no,toolbar=no,scrollbars=yes,resizable=yes`
+      );
+    } catch {
+      popup = null;
+    }
+
+    let authDone = false;
+    let cleanup = () => {};
+
+    const handleSuccess = async () => {
+      if (authDone) return;
+      authDone = true;
+      cleanup();
+
+      try {
+        let sessionData: any = null;
+        try {
+          const raw = localStorage.getItem('bedrock_auth_session');
+          if (raw) sessionData = JSON.parse(raw);
+        } catch {
+          // ignore parsing error
+        }
+
+        const clerkUser = (clerk as any)?.user || (window as any).Clerk?.user;
+        const userEmail = sessionData?.email || clerkUser?.primaryEmailAddress?.emailAddress || clerkUser?.emailAddresses?.[0]?.emailAddress || 'developer@bedrock.app';
+        const userName = sessionData?.name || clerkUser?.fullName || clerkUser?.firstName || userEmail.split('@')[0];
+        await login(userEmail, undefined, userName, mode === 'register' ? 'register' : 'login');
+        notifyAuthSuccess({ email: userEmail, name: userName, type: mode === 'register' ? 'signup' : 'signin' });
+        await updateProfile({
+          name: userName,
+          email: userEmail,
+          avatarUrl: clerkUser?.imageUrl || sessionData?.avatarUrl || '',
+        });
+      } catch (e) {
+        console.warn('Post-auth profile sync warning:', e);
+      }
+
+      setIsLoading(false);
+      navigate(targetPath);
+    };
+
+    const handleAuthMessage = (event: MessageEvent) => {
+      if (event.data === 'clerk-auth-complete') {
+        handleSuccess();
+      }
+    };
+    window.addEventListener('message', handleAuthMessage);
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'bedrock_auth_event' || event.key === 'bedrock_auth_session') {
+        handleSuccess();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    const popupCheckTimer = setInterval(() => {
+      if (popup && popup.closed) {
+        clearInterval(popupCheckTimer);
+        setTimeout(() => {
+          if (!authDone) {
+            cleanup();
+            setIsLoading(false);
+          }
+        }, 500);
+      }
+    }, 400);
+
+    cleanup = () => {
+      window.removeEventListener('message', handleAuthMessage);
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(popupCheckTimer);
+    };
+
+    try {
+      // 1. Ensure Clerk is fully loaded before initiating auth
       const clerkInstance: any = clerk || (window as any).Clerk;
       if (!clerkInstance?.loaded) {
         await new Promise<void>((resolve) => {
@@ -189,7 +272,76 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       const primaryResource = mode === 'register' ? (targetSignUp || targetSignIn) : (targetSignIn || targetSignUp);
       const fallbackResource = primaryResource === targetSignIn ? targetSignUp : targetSignIn;
 
-      // Direct standard OAuth redirect - immediately navigates to Google / GitHub consent screen
+      // 1. Attempt Popup OAuth flow so login stays within a neat centered popup window
+      if (typeof primaryResource?.authenticateWithPopup === 'function') {
+        try {
+          await primaryResource.authenticateWithPopup({
+            strategy,
+            redirectUrl: callbackUrl,
+            redirectUrlComplete: targetUrl,
+            oidcPrompt,
+            popup,
+          });
+
+          if (primaryResource.createdSessionId && typeof activeClerk?.setActive === 'function') {
+            await activeClerk.setActive({ session: primaryResource.createdSessionId });
+          }
+
+          await handleSuccess();
+          return;
+        } catch (popupErr: any) {
+          console.warn('Primary authenticateWithPopup error:', popupErr);
+          const errMsg = popupErr?.errors?.[0]?.message || popupErr?.message || '';
+          const isUserCancelled = 
+            errMsg.toLowerCase().includes('cancel') ||
+            errMsg.toLowerCase().includes('closed') ||
+            popupErr?.code === 'user_cancelled';
+
+          if (isUserCancelled) {
+            cleanup();
+            setIsLoading(false);
+            return;
+          }
+
+          // If primary resource failed due to account existence / mode mismatch, try fallback resource
+          if (typeof fallbackResource?.authenticateWithPopup === 'function') {
+            try {
+              await fallbackResource.authenticateWithPopup({
+                strategy,
+                redirectUrl: callbackUrl,
+                redirectUrlComplete: targetUrl,
+                oidcPrompt,
+                popup,
+              });
+
+              if (fallbackResource.createdSessionId && typeof activeClerk?.setActive === 'function') {
+                await activeClerk.setActive({ session: fallbackResource.createdSessionId });
+              }
+
+              await handleSuccess();
+              return;
+            } catch (fallbackPopupErr: any) {
+              console.warn('Fallback authenticateWithPopup error:', fallbackPopupErr);
+              const fbErrMsg = fallbackPopupErr?.errors?.[0]?.message || fallbackPopupErr?.message || '';
+              if (fbErrMsg.toLowerCase().includes('cancel') || fbErrMsg.toLowerCase().includes('closed')) {
+                cleanup();
+                setIsLoading(false);
+                return;
+              }
+            }
+          }
+        }
+      }
+
+      // 2. If popup is not supported or blocked by strict browser policy, gracefully fallback to redirect
+      if (popup && !popup.closed) {
+        try {
+          popup.close();
+        } catch {
+          // ignore
+        }
+      }
+
       if (typeof primaryResource?.authenticateWithRedirect === 'function') {
         try {
           await primaryResource.authenticateWithRedirect({
@@ -229,6 +381,14 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       throw new Error('Authentication service is still initializing. Please try again.');
     } catch (err: any) {
       console.error(`Failed to initiate ${strategy} OAuth:`, err);
+      if (popup && !popup.closed) {
+        try {
+          popup.close();
+        } catch {
+          // ignore
+        }
+      }
+      cleanup();
       setAuthError(err?.message || 'Authentication failed. Please try again.');
       setIsLoading(false);
     }
