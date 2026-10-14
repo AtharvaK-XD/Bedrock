@@ -173,6 +173,29 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       popup = null;
     }
 
+    if (popup && popup.document) {
+      try {
+        popup.document.title = `Connecting to ${strategy === 'oauth_github' ? 'GitHub' : 'Google'}...`;
+        popup.document.body.style.backgroundColor = '#050505';
+        popup.document.body.style.color = '#e4e4e7';
+        popup.document.body.style.display = 'flex';
+        popup.document.body.style.alignItems = 'center';
+        popup.document.body.style.justifyContent = 'center';
+        popup.document.body.style.height = '100vh';
+        popup.document.body.style.margin = '0';
+        popup.document.body.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        popup.document.body.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+            <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.1);border-top-color:#10b981;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <p style="font-size:14px;color:#a1a1aa;margin:0;">Opening ${strategy === 'oauth_github' ? 'GitHub' : 'Google'} authorization...</p>
+          </div>
+          <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+        `;
+      } catch {
+        // ignore
+      }
+    }
+
     let authDone = false;
     let cleanup = () => {};
 
@@ -226,11 +249,19 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       if (popup && popup.closed) {
         clearInterval(popupCheckTimer);
         setTimeout(() => {
-          if (!authDone) {
+          const isAuthed = Boolean(
+            (clerk as any)?.session ||
+            (clerk as any)?.user ||
+            (window as any).Clerk?.session ||
+            localStorage.getItem('bedrock_auth_session')
+          );
+          if (isAuthed) {
+            handleSuccess();
+          } else if (!authDone) {
             cleanup();
             setIsLoading(false);
           }
-        }, 500);
+        }, 600);
       }
     }, 400);
 
@@ -272,68 +303,82 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       const primaryResource = mode === 'register' ? (targetSignUp || targetSignIn) : (targetSignIn || targetSignUp);
       const fallbackResource = primaryResource === targetSignIn ? targetSignUp : targetSignIn;
 
-      // 1. Attempt Popup OAuth flow so login stays within a neat centered popup window
-      if (typeof primaryResource?.authenticateWithPopup === 'function') {
+      // 1. Retrieve the exact OAuth authorization URL with forced consent parameters from Clerk
+      let oauthUrl: string | null = null;
+
+      if (mode === 'register' && targetSignUp?.create) {
         try {
-          await primaryResource.authenticateWithPopup({
+          const signUpAttempt = await targetSignUp.create({
             strategy,
             redirectUrl: callbackUrl,
-            redirectUrlComplete: targetUrl,
+            actionCompleteRedirectUrl: targetUrl,
             oidcPrompt,
-            popup,
           });
-
-          if (primaryResource.createdSessionId && typeof activeClerk?.setActive === 'function') {
-            await activeClerk.setActive({ session: primaryResource.createdSessionId });
+          const urlObj = 
+            signUpAttempt?.verifications?.externalAccount?.externalVerificationRedirectURL ||
+            (signUpAttempt as any)?.firstFactorVerification?.externalVerificationRedirectURL ||
+            (signUpAttempt as any)?.externalVerificationRedirectURL;
+          if (urlObj) {
+            oauthUrl = typeof urlObj === 'string' ? urlObj : (urlObj.href || urlObj.toString());
           }
-
-          await handleSuccess();
-          return;
-        } catch (popupErr: any) {
-          console.warn('Primary authenticateWithPopup error:', popupErr);
-          const errMsg = popupErr?.errors?.[0]?.message || popupErr?.message || '';
-          const isUserCancelled = 
-            errMsg.toLowerCase().includes('cancel') ||
-            errMsg.toLowerCase().includes('closed') ||
-            popupErr?.code === 'user_cancelled';
-
-          if (isUserCancelled) {
-            cleanup();
-            setIsLoading(false);
-            return;
-          }
-
-          // If primary resource failed due to account existence / mode mismatch, try fallback resource
-          if (typeof fallbackResource?.authenticateWithPopup === 'function') {
-            try {
-              await fallbackResource.authenticateWithPopup({
-                strategy,
-                redirectUrl: callbackUrl,
-                redirectUrlComplete: targetUrl,
-                oidcPrompt,
-                popup,
-              });
-
-              if (fallbackResource.createdSessionId && typeof activeClerk?.setActive === 'function') {
-                await activeClerk.setActive({ session: fallbackResource.createdSessionId });
-              }
-
-              await handleSuccess();
-              return;
-            } catch (fallbackPopupErr: any) {
-              console.warn('Fallback authenticateWithPopup error:', fallbackPopupErr);
-              const fbErrMsg = fallbackPopupErr?.errors?.[0]?.message || fallbackPopupErr?.message || '';
-              if (fbErrMsg.toLowerCase().includes('cancel') || fbErrMsg.toLowerCase().includes('closed')) {
-                cleanup();
-                setIsLoading(false);
-                return;
-              }
-            }
-          }
+        } catch (signUpErr: any) {
+          console.warn('targetSignUp.create error, will attempt signIn:', signUpErr);
         }
       }
 
-      // 2. If popup is not supported or blocked by strict browser policy, gracefully fallback to redirect
+      if (!oauthUrl && targetSignIn?.create) {
+        try {
+          const signInAttempt = await targetSignIn.create({
+            strategy,
+            redirectUrl: callbackUrl,
+            actionCompleteRedirectUrl: targetUrl,
+            oidcPrompt,
+            signUpIfMissing: true,
+          });
+          const urlObj = 
+            signInAttempt?.firstFactorVerification?.externalVerificationRedirectURL ||
+            (signInAttempt as any)?.externalVerificationRedirectURL;
+          if (urlObj) {
+            oauthUrl = typeof urlObj === 'string' ? urlObj : (urlObj.href || urlObj.toString());
+          }
+        } catch (signInErr: any) {
+          console.warn('targetSignIn.create error:', signInErr);
+        }
+      }
+
+      if (!oauthUrl && targetSignUp?.create) {
+        try {
+          const signUpAttempt = await targetSignUp.create({
+            strategy,
+            redirectUrl: callbackUrl,
+            actionCompleteRedirectUrl: targetUrl,
+            oidcPrompt,
+          });
+          const urlObj = 
+            signUpAttempt?.verifications?.externalAccount?.externalVerificationRedirectURL ||
+            (signUpAttempt as any)?.firstFactorVerification?.externalVerificationRedirectURL ||
+            (signUpAttempt as any)?.externalVerificationRedirectURL;
+          if (urlObj) {
+            oauthUrl = typeof urlObj === 'string' ? urlObj : (urlObj.href || urlObj.toString());
+          }
+        } catch (signUpErr: any) {
+          console.warn('Secondary targetSignUp.create error:', signUpErr);
+        }
+      }
+
+      // If we obtained the OAuth URL and the popup is open, navigate the popup directly to Google / GitHub!
+      if (oauthUrl && popup && !popup.closed) {
+        popup.location.href = oauthUrl;
+        return;
+      }
+
+      // If popup was blocked by browser security, navigate current tab to the OAuth URL
+      if (oauthUrl && (!popup || popup.closed)) {
+        window.location.href = oauthUrl;
+        return;
+      }
+
+      // 2. Fallback to standard redirect if direct URL was not produced
       if (popup && !popup.closed) {
         try {
           popup.close();
