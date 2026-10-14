@@ -23,6 +23,15 @@ export default function PopupAuth() {
       setStatus('redirecting');
       setErrorMessage(null);
 
+      if (typeof window !== 'undefined') {
+        window.name = 'BedrockOAuth';
+        try {
+          window.sessionStorage.setItem('bedrock_auth_popup', '1');
+        } catch {
+          // ignore
+        }
+      }
+
       let client: any = null;
       try {
         client = (clerk as any).client;
@@ -40,8 +49,8 @@ export default function PopupAuth() {
       const origin = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file'))
         ? window.location.origin
         : 'https://bedrock-steel.vercel.app';
-      const callbackUrl = `${origin}/sso-callback`;
-      const targetUrl = `${origin}/app`;
+      const callbackUrl = `${origin}/sso-callback?popup=1`;
+      const targetUrl = `${origin}/sso-callback?popup=1`;
 
       // Direct redirection to Google / GitHub native consent screen
       if (typeof authResource?.authenticateWithRedirect === 'function') {

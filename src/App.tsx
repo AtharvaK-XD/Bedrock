@@ -67,6 +67,27 @@ function AnimatedRoutes() {
     window.scrollTo(0, 0);
     ScrollTrigger.refresh();
   }, [location.pathname, isDesktop]);
+
+  // OAuth Popup Safeguard: if an OAuth popup reaches /app, close it immediately
+  useEffect(() => {
+    const isPopup = 
+      (typeof window !== 'undefined' && window.name === 'BedrockOAuth') ||
+      (typeof window !== 'undefined' && window.sessionStorage?.getItem('bedrock_auth_popup') === '1') ||
+      (typeof window !== 'undefined' && window.location.search?.includes('popup=1'));
+
+    if (isPopup && location.pathname.startsWith('/app')) {
+      try {
+        if (window.opener) {
+          window.opener.postMessage('clerk-auth-complete', '*');
+        }
+        localStorage.setItem('bedrock_auth_event', Date.now().toString());
+        sessionStorage.removeItem('bedrock_auth_popup');
+      } catch {}
+      window.close();
+      setTimeout(() => window.close(), 50);
+      setTimeout(() => window.close(), 200);
+    }
+  }, [location.pathname]);
   
   return (
     <AnimatePresence mode="wait">

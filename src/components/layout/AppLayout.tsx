@@ -8,11 +8,41 @@ import { isDesktopApp } from '../../lib/platform';
 import { OPEN_API_KEY_MODAL_EVENT, type OpenApiKeyModalDetail } from '../../lib/apiKeyEvents';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const isPopup = 
+    (typeof window !== 'undefined' && window.name === 'BedrockOAuth') ||
+    (typeof window !== 'undefined' && window.sessionStorage?.getItem('bedrock_auth_popup') === '1');
+
+  useEffect(() => {
+    if (isPopup) {
+      try {
+        if (window.opener) {
+          window.opener.postMessage('clerk-auth-complete', '*');
+        }
+        localStorage.setItem('bedrock_auth_event', Date.now().toString());
+        sessionStorage.removeItem('bedrock_auth_popup');
+      } catch {}
+      window.close();
+      setTimeout(() => window.close(), 50);
+      setTimeout(() => window.close(), 200);
+    }
+  }, [isPopup]);
+
   const [showKeyGateway, setShowKeyGateway] = useState(false);
   const [gatewayError, setGatewayError] = useState<string | null>(null);
   const [manuallyOpened, setManuallyOpened] = useState(false);
   const isDesktop = isDesktopApp();
   const navigate = useNavigate();
+
+  if (isPopup) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#050505] text-sandstone-300">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
+          <span className="text-sm font-mono">Authentication complete. Closing window...</span>
+        </div>
+      </div>
+    );
+  }
 
   // Desktop keyboard shortcuts: ⌘1 to ⌘6
   useEffect(() => {
