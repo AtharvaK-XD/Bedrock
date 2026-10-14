@@ -24,6 +24,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import SSOCallback from './pages/SSOCallback';
 import BrowserAuth from './pages/BrowserAuth';
 import BrowserAuthCallback from './pages/BrowserAuthCallback';
+import PopupAuth from './pages/PopupAuth';
 import { ClerkProvider } from '@clerk/react';
 import { checkForUpdates } from './lib/updater';
 import { useAuth } from './lib/useAuth';
@@ -117,6 +118,7 @@ function AnimatedRoutes() {
           } 
         />
         <Route path="/sso-callback" element={<SSOCallback />} />
+        <Route path="/popup-auth" element={<PopupAuth />} />
         <Route path="/browser-auth" element={<BrowserAuth />} />
         <Route path="/browser-auth-callback" element={<BrowserAuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
