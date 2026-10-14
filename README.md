@@ -120,7 +120,6 @@ graph TD
 ### Prerequisites
 
 - Node.js 20.0.0 or higher
-- npm 10.0.0 or higher
 - [Neon](https://neon.tech/) account (Serverless PostgreSQL)
 - [Clerk](https://clerk.com/) account (Authentication)
 
