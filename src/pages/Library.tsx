@@ -766,39 +766,91 @@ export default function Library() {
                       zoomScale={deckZoom}
                       initialRotate={config.rotate}
                       className={cn(
-                        "absolute w-72 sm:w-80 p-5 rounded-2xl bg-[#13151f]/95 border border-white/15 shadow-2xl backdrop-blur-xl cursor-grab active:cursor-grabbing",
+                        "absolute w-80 sm:w-[350px] min-h-[460px] p-6 rounded-2xl bg-[#13151f]/95 border border-white/15 shadow-2xl backdrop-blur-xl cursor-grab active:cursor-grabbing flex flex-col justify-between",
                         config.pos
                       )}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/10 text-copper-300 border border-white/10 uppercase">
-                          {prompt.category}
-                        </span>
-                        <span className="text-[10px] font-mono text-neutral-500">
-                          {prompt.date}
-                        </span>
-                      </div>
-                      <h3 className="text-sm font-bold text-white mb-2 leading-snug line-clamp-2">
-                        {prompt.title}
-                      </h3>
-                      <p className="text-xs text-neutral-400 line-clamp-3 mb-3 font-mono leading-relaxed">
-                        {prompt.snippet}
-                      </p>
-                      <div className="flex items-center justify-between mb-3 pt-2 border-t border-white/5">
-                        <div className="flex items-center gap-1">
-                          {(prompt.models || ['claude', 'mistral', 'copilot', 'meta']).slice(0, 4).map((m) => (
-                            <AgentIcon key={m} model={m} className="w-2.5 h-2.5" badgeClassName="w-4 h-4 bg-white/5 border-white/10" />
+                      {/* Top Header Row */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-copper-500/15 text-copper-300 border border-copper-500/30 uppercase tracking-wider">
+                            {prompt.category}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full font-medium">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            {prompt.date}
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-base sm:text-lg font-bold text-white mb-2.5 leading-snug line-clamp-2">
+                          {prompt.title}
+                        </h3>
+
+                        {/* Snippet */}
+                        <p className="text-xs sm:text-sm text-neutral-300 line-clamp-3 mb-3.5 leading-relaxed font-mono">
+                          {prompt.snippet}
+                        </p>
+
+                        {/* Tags */}
+                        <div className="flex flex-wrap gap-1.5 mb-3.5">
+                          {prompt.tags?.slice(0, 3).map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-xs font-mono px-2.5 py-0.5 rounded-md bg-white/[0.06] text-neutral-300 border border-white/10"
+                            >
+                              #{tag}
+                            </span>
                           ))}
                         </div>
-                        <span className="text-[10px] font-mono text-neutral-500">LLM Tested</span>
+
+                        {/* Structured Specification HUD Grid */}
+                        <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] font-mono mb-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] uppercase text-neutral-500 tracking-wider font-semibold">Specification</span>
+                            <span className="text-xs text-neutral-200 font-medium truncate">
+                              {prompt.category === 'Security' ? 'OWASP / Delimited' :
+                               prompt.category === 'Agentic' ? 'Few-Shot CoT' :
+                               prompt.category === 'Architecture' ? 'System RFC Specs' :
+                               prompt.category === 'Database' ? 'PostgreSQL Tuned' :
+                               'Production Grade'}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] uppercase text-neutral-500 tracking-wider font-semibold">Est. Tokens</span>
+                            <span className="text-xs text-copper-300 font-semibold">
+                              ~{Math.round((prompt.content?.length || 600) / 4)} tokens
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => setSelectedPromptForView(prompt)}
-                        className="w-full py-1.5 px-3 rounded-xl bg-white/10 hover:bg-[#2C9A8B] hover:text-white text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <span>Inspect Blueprint</span>
-                        <ArrowUpRight className="w-3.5 h-3.5" />
-                      </button>
+
+                      {/* Bottom Footer Actions */}
+                      <div className="mt-auto">
+                        <div className="flex items-center justify-between mb-3.5 pt-3 border-t border-white/10">
+                          <div className="flex items-center gap-1.5">
+                            {(prompt.models || ['claude', 'gpt-4o', 'mistral', 'deepseek']).slice(0, 4).map((m) => (
+                              <AgentIcon
+                                key={m}
+                                model={m}
+                                className="w-3.5 h-3.5"
+                                badgeClassName="w-6 h-6 bg-white/5 border border-white/15 hover:border-white/30 transition-colors"
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs font-mono text-neutral-400 font-medium flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-copper-400" />
+                            LLM Tested
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setSelectedPromptForView(prompt)}
+                          className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-[#2C9A8B] hover:text-white text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.98]"
+                        >
+                          <span>Inspect Blueprint</span>
+                          <ArrowUpRight className="w-4 h-4" />
+                        </button>
+                      </div>
                     </DraggableCardBody>
                   );
                 })}
