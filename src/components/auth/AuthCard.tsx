@@ -191,27 +191,31 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
 
       // Direct standard OAuth redirect - immediately navigates to Google / GitHub consent screen
       if (typeof primaryResource?.authenticateWithRedirect === 'function') {
-        await primaryResource.authenticateWithRedirect({
-          strategy,
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: targetUrl,
-          continueSignUp: true,
-          continueSignIn: true,
-          oidcPrompt,
-        });
-        return;
+        try {
+          await primaryResource.authenticateWithRedirect({
+            strategy,
+            redirectUrl: callbackUrl,
+            redirectUrlComplete: targetUrl,
+            oidcPrompt,
+          });
+          return;
+        } catch (authErr: any) {
+          console.warn('Primary authenticateWithRedirect error:', authErr);
+        }
       }
 
       if (typeof fallbackResource?.authenticateWithRedirect === 'function') {
-        await fallbackResource.authenticateWithRedirect({
-          strategy,
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: targetUrl,
-          continueSignUp: true,
-          continueSignIn: true,
-          oidcPrompt,
-        });
-        return;
+        try {
+          await fallbackResource.authenticateWithRedirect({
+            strategy,
+            redirectUrl: callbackUrl,
+            redirectUrlComplete: targetUrl,
+            oidcPrompt,
+          });
+          return;
+        } catch (fallbackErr: any) {
+          console.warn('Fallback authenticateWithRedirect error:', fallbackErr);
+        }
       }
 
       if (typeof activeClerk?.redirectToSignIn === 'function') {
