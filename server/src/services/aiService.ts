@@ -123,7 +123,12 @@ ${sanitized}
       const { key, nextIndex } = this.getRoundRobinKey(config.ai.groqKeys, this.groqKeyIndex);
       this.groqKeyIndex = nextIndex;
 
-      const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
+      const groqModels = [
+        'llama-3.3-70b-versatile',
+        'llama-3.1-8b-instant',
+        'deepseek-r1-distill-llama-70b',
+        'mixtral-8x7b-32768',
+      ];
       for (const model of groqModels) {
         try {
           const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -694,12 +699,32 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
         ? `${systemPrompt}\n\n${BEDROCK_CORE_GUARDRAILS}`
         : BEDROCK_CORE_GUARDRAILS;
 
-      // 1. Groq models (gpt-oss, qwen, llama, allam)
-      const isGroqModel = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'allam-2-7b'].includes(modelId) ||
-        (config.ai.groqKeys.length > 0 && (modelId.includes('gpt-oss') || modelId.includes('qwen') || modelId.startsWith('allam')));
+      // 1. Groq models (llama, deepseek, mixtral, allam)
+      const isGroqModel = [
+        'llama-3.3-70b-versatile',
+        'llama-3.1-8b-instant',
+        'deepseek-r1-distill-llama-70b',
+        'mixtral-8x7b-32768',
+        'openai/gpt-oss-120b',
+        'openai/gpt-oss-20b',
+        'allam-2-7b'
+      ].includes(modelId) ||
+        (config.ai.groqKeys.length > 0 && (
+          modelId.includes('llama') ||
+          modelId.includes('deepseek') ||
+          modelId.includes('mixtral') ||
+          modelId.includes('groq') ||
+          modelId.includes('gpt-oss') ||
+          modelId.includes('qwen') ||
+          modelId.startsWith('allam')
+        ));
       if (isGroqModel) {
         const { key } = this.getRoundRobinKey(config.ai.groqKeys, this.groqKeyIndex);
         if (!key) throw new Error('Groq API Key is not configured on backend.');
+
+        const targetModel = modelId.includes('gpt-oss') || modelId.includes('qwen') || modelId === 'groq' || modelId === 'llama'
+          ? 'llama-3.3-70b-versatile'
+          : modelId;
 
         const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -708,7 +733,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: modelId,
+            model: targetModel,
             messages: [
               ...(effectiveSystemPrompt ? [{ role: 'system', content: effectiveSystemPrompt }] : []),
               { role: 'user', content: delimitedUser },

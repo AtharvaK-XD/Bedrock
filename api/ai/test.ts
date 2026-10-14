@@ -31,8 +31,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   checkPromptInjection(prompt, user?.id, ip);
 
+  const wantsStream = Boolean(body.stream || req.query?.stream === 'true' || req.headers.accept?.includes('text/event-stream'));
+
   try {
-    const { text, model } = await executeAiCompletion(prompt, systemPrompt);
+    if (wantsStream) {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+
+      const { text, model } = await executeAiCompletion(
+        prompt,
+        systemPrompt,
+        user?.id,
+        (token) => {
+          res.write(`data: ${JSON.stringify({ token })}\n\n`);
+          if (typeof (res as any).flush === 'function') {
+            (res as any).flush();
+          }
+        }
+      );
+
+      const latency = Date.now() - startTime;
+      const tokens = Math.max(100, Math.round(text.length / 4));
+
+      if (user?.id) {
+        await recordExecutionTrace({
+          userId: user.id,
+          nodeOrigin: 'Tester.test',
+          modelTarget: model,
+          tokensUsed: tokens,
+          latencyMs: latency,
+          status: 'success',
+        });
+      }
+
+      res.write(`data: ${JSON.stringify({ done: true, text, modelTarget: model, latencyMs: latency, tokensUsed: tokens, status: 'success' })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
+
+    const { text, model } = await executeAiCompletion(prompt, systemPrompt, user?.id);
     const latency = Date.now() - startTime;
     const tokens = Math.max(100, Math.round(text.length / 4));
 

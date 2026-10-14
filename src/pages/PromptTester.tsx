@@ -28,7 +28,7 @@ export default function PromptTester() {
   const [model1Id, setModel1Id] = useState(defaultGeminiAgent.models[1]?.id || defaultGeminiAgent.models[0].id);
   
   const [agent2Id, setAgent2Id] = useState(defaultLlamaAgent.id);
-  const [model2Id, setModel2Id] = useState(defaultLlamaAgent.models[0]?.id || 'openai/gpt-oss-120b');
+  const [model2Id, setModel2Id] = useState(defaultLlamaAgent.models[0]?.id || 'llama-3.3-70b-versatile');
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -48,8 +48,12 @@ export default function PromptTester() {
     
     try {
       const [res1, res2] = await Promise.allSettled([
-        testPrompt(model1Id, systemPrompt, prompt),
-        testPrompt(model2Id, systemPrompt, prompt)
+        testPrompt(model1Id, systemPrompt, prompt, (token) => {
+          setResult1(prev => prev + token);
+        }),
+        testPrompt(model2Id, systemPrompt, prompt, (token) => {
+          setResult2(prev => prev + token);
+        })
       ]);
 
       if (res1.status === 'fulfilled') {

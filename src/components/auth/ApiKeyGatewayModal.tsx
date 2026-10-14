@@ -142,7 +142,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
         huggingFaceKey: hfTrimmed,
         nvidiaKey: nvTrimmed,
         xaiKey: xTrimmed,
-        defaultModel: gTrimmed ? 'gemini-3.5-flash-lite' : (xTrimmed ? 'grok-3' : 'openai/gpt-oss-120b'),
+        defaultModel: gTrimmed ? 'gemini-3.5-flash-lite' : (xTrimmed ? 'grok-3' : 'llama-3.3-70b-versatile'),
       };
 
       localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(updated));

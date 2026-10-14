@@ -118,13 +118,14 @@ export function getActiveApiKeys() {
   }
 }
 
-// Resilient Gemini Direct Client
+// Resilient Gemini Direct Client with Streaming Support
 async function callGemini(
   prompt: string,
   systemInstruction?: string,
   apiKey?: string,
   targetModel?: string,
-  temperature = 0.7
+  temperature = 0.7,
+  onToken?: (token: string) => void
 ): Promise<string> {
   const key = apiKey || getActiveApiKeys().geminiKey;
   if (!key) {
@@ -137,10 +138,12 @@ async function callGemini(
 
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
+  const isStreaming = typeof onToken === 'function';
 
   for (const model of uniqueModels) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+      const endpoint = isStreaming ? 'streamGenerateContent?alt=sse&key=' : 'generateContent?key=';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}${key}`;
       const body: any = {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature },
@@ -156,6 +159,39 @@ async function callGemini(
       });
 
       if (response.ok) {
+        if (isStreaming && response.body) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let accumulated = '';
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data: ')) continue;
+              const dataStr = trimmed.slice(6);
+              if (dataStr === '[DONE]') continue;
+              try {
+                const json = JSON.parse(dataStr);
+                const chunk = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                if (chunk) {
+                  accumulated += chunk;
+                  onToken(chunk);
+                }
+              } catch {
+                // ignore malformed line
+              }
+            }
+          }
+          if (accumulated) return accumulated;
+        }
+
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) return text;
@@ -177,25 +213,28 @@ async function callGemini(
   throw lastError || new ApiError('Failed to generate response from Google Gemini', false, 'Google Gemini');
 }
 
-// Resilient Groq Direct Client
+// Resilient Groq Direct Client with Streaming Support & Official Model Targets
 async function callGroq(
   prompt: string,
   systemPrompt?: string,
   apiKey?: string,
   targetModel?: string,
-  temperature = 0.7
+  temperature = 0.7,
+  onToken?: (token: string) => void
 ): Promise<string> {
   const key = apiKey || getActiveApiKeys().groqKey;
   if (!key) {
     throw new ApiError('Groq API Key is required.', true, 'Groq', 401);
   }
 
-  const modelsToTry = targetModel
-    ? [targetModel, 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'llama-3.1-8b-instant']
-    : ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+  // Official production Groq models (zero 404 fictitious slugs)
+  const modelsToTry = targetModel && !targetModel.includes('gpt-oss') && !targetModel.includes('qwen3.8')
+    ? [targetModel, 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'deepseek-r1-distill-llama-70b']
+    : ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'deepseek-r1-distill-llama-70b'];
 
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
+  const isStreaming = typeof onToken === 'function';
 
   for (const model of uniqueModels) {
     try {
@@ -212,10 +251,44 @@ async function callGroq(
             { role: 'user', content: prompt },
           ],
           temperature,
+          stream: isStreaming,
         }),
       });
 
       if (response.ok) {
+        if (isStreaming && response.body) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let accumulated = '';
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data: ')) continue;
+              const dataStr = trimmed.slice(6);
+              if (dataStr === '[DONE]') continue;
+              try {
+                const json = JSON.parse(dataStr);
+                const chunk = json.choices?.[0]?.delta?.content || '';
+                if (chunk) {
+                  accumulated += chunk;
+                  onToken(chunk);
+                }
+              } catch {
+                // ignore
+              }
+            }
+          }
+          if (accumulated) return accumulated;
+        }
+
         const data = await response.json();
         const text = data.choices?.[0]?.message?.content;
         if (text) return text;
@@ -237,13 +310,14 @@ async function callGroq(
   throw lastError || new ApiError('Failed to generate response from Groq', false, 'Groq');
 }
 
-// Resilient OpenAI Direct Client
+// Resilient OpenAI Direct Client with Streaming Support
 async function callOpenAi(
   prompt: string,
   systemPrompt?: string,
   apiKey?: string,
   targetModel = 'gpt-4o',
-  temperature = 0.7
+  temperature = 0.7,
+  onToken?: (token: string) => void
 ): Promise<string> {
   const key = apiKey || getActiveApiKeys().openAiKey;
   if (!key) {
@@ -253,6 +327,7 @@ async function callOpenAi(
   const models = [targetModel, 'gpt-4o-mini', 'gpt-4o'];
   const uniqueModels = Array.from(new Set(models));
   let lastError: Error | null = null;
+  const isStreaming = typeof onToken === 'function';
 
   for (const model of uniqueModels) {
     try {
@@ -269,10 +344,44 @@ async function callOpenAi(
             { role: 'user', content: prompt },
           ],
           temperature,
+          stream: isStreaming,
         }),
       });
 
       if (response.ok) {
+        if (isStreaming && response.body) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let accumulated = '';
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data: ')) continue;
+              const dataStr = trimmed.slice(6);
+              if (dataStr === '[DONE]') continue;
+              try {
+                const json = JSON.parse(dataStr);
+                const chunk = json.choices?.[0]?.delta?.content || '';
+                if (chunk) {
+                  accumulated += chunk;
+                  onToken(chunk);
+                }
+              } catch {
+                // ignore
+              }
+            }
+          }
+          if (accumulated) return accumulated;
+        }
+
         const data = await response.json();
         return data.choices?.[0]?.message?.content || '';
       }
@@ -330,7 +439,7 @@ async function callOpenRouter(
   return data.choices?.[0]?.message?.content || '';
 }
 
-// Universal Client AI Dispatcher
+// Universal Client AI Dispatcher with Streaming Support
 export async function callClientAi(
   userPrompt: string,
   systemPrompt?: string,
@@ -338,19 +447,20 @@ export async function callClientAi(
     preferredProvider?: 'gemini' | 'groq' | 'openai' | 'openrouter' | 'huggingface';
     preferredModel?: string;
     temperature?: number;
+    onToken?: (token: string) => void;
   }
 ): Promise<string> {
   const keys = getActiveApiKeys();
 
   // Try preferred provider first
   if (options?.preferredProvider === 'gemini' && keys.geminiKey) {
-    return await callGemini(userPrompt, systemPrompt, keys.geminiKey, options.preferredModel, options.temperature);
+    return await callGemini(userPrompt, systemPrompt, keys.geminiKey, options.preferredModel, options.temperature, options.onToken);
   }
   if (options?.preferredProvider === 'groq' && keys.groqKey) {
-    return await callGroq(userPrompt, systemPrompt, keys.groqKey, options.preferredModel, options.temperature);
+    return await callGroq(userPrompt, systemPrompt, keys.groqKey, options.preferredModel, options.temperature, options.onToken);
   }
   if (options?.preferredProvider === 'openai' && keys.openAiKey) {
-    return await callOpenAi(userPrompt, systemPrompt, keys.openAiKey, options.preferredModel, options.temperature);
+    return await callOpenAi(userPrompt, systemPrompt, keys.openAiKey, options.preferredModel, options.temperature, options.onToken);
   }
   if (options?.preferredProvider === 'openrouter' && keys.openRouterKey) {
     return await callOpenRouter(userPrompt, systemPrompt, keys.openRouterKey, options.preferredModel, options.temperature);
@@ -358,13 +468,13 @@ export async function callClientAi(
 
   // Fallback in order of availability: Gemini -> Groq -> OpenAI -> OpenRouter
   if (keys.geminiKey) {
-    return await callGemini(userPrompt, systemPrompt, keys.geminiKey, options?.preferredModel, options?.temperature);
+    return await callGemini(userPrompt, systemPrompt, keys.geminiKey, options?.preferredModel, options?.temperature, options?.onToken);
   }
   if (keys.groqKey) {
-    return await callGroq(userPrompt, systemPrompt, keys.groqKey, options?.preferredModel, options?.temperature);
+    return await callGroq(userPrompt, systemPrompt, keys.groqKey, options?.preferredModel, options?.temperature, options?.onToken);
   }
   if (keys.openAiKey) {
-    return await callOpenAi(userPrompt, systemPrompt, keys.openAiKey, options?.preferredModel, options?.temperature);
+    return await callOpenAi(userPrompt, systemPrompt, keys.openAiKey, options?.preferredModel, options?.temperature, options?.onToken);
   }
   if (keys.openRouterKey) {
     return await callOpenRouter(userPrompt, systemPrompt, keys.openRouterKey, options?.preferredModel, options?.temperature);
@@ -766,7 +876,8 @@ Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored 
 export const synthesizePrompt = async (
   idea: IdeaPayload,
   answers: Answer[],
-  questions: Question[]
+  questions: Question[],
+  onToken?: (token: string) => void
 ): Promise<string> => {
   const keys = getActiveApiKeys();
   const hasClientKey = Boolean(
@@ -936,13 +1047,50 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
   // 1. Try secure backend synthesis first
   try {
     const authHeaders = await getAuthHeaders();
+    const isStreaming = typeof onToken === 'function';
     const response = await fetch('/api/ai/synthesize', {
       method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify({ idea, answers, questions }),
+      headers: {
+        ...authHeaders,
+        ...(isStreaming ? { Accept: 'text/event-stream' } : {}),
+      },
+      body: JSON.stringify({ idea, answers, questions, stream: isStreaming }),
     });
 
     if (response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      if (isStreaming && contentType.includes('text/event-stream') && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const dataStr = trimmed.slice(6);
+            if (dataStr === '[DONE]') continue;
+            try {
+              const json = JSON.parse(dataStr);
+              if (json.token) {
+                accumulated += json.token;
+                onToken(json.token);
+              }
+            } catch {
+              // ignore parse errors on interim chunks
+            }
+          }
+        }
+        if (accumulated) return accumulated;
+      }
+
       const data = await response.json();
       const text = data.promptText || data.content || '';
       if (text) return text;
@@ -968,7 +1116,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
 
   // 2. Client fallback if client keys configured
   if (hasClientKey) {
-    return await callClientAi(userPrompt, systemPrompt, { temperature: 0.7 });
+    return await callClientAi(userPrompt, systemPrompt, { temperature: 0.7, onToken });
   }
 
   throw new ApiError(
@@ -1062,7 +1210,8 @@ export const refinePrompt = async (
 export const testPrompt = async (
   modelId: string,
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
+  onToken?: (token: string) => void
 ): Promise<string> => {
   const keys = getActiveApiKeys();
   const lowerModel = modelId.toLowerCase();
@@ -1077,10 +1226,10 @@ export const testPrompt = async (
       modelId === 'gemini-2.5-flash' || modelId === 'gemini'
         ? 'gemini-3.5-flash-lite'
         : modelId;
-    return await callGemini(userPrompt, effectiveSystemPrompt, keys.geminiKey, targetModel);
+    return await callGemini(userPrompt, effectiveSystemPrompt, keys.geminiKey, targetModel, 0.7, onToken);
   }
 
-  // 2. Groq
+  // 2. Groq (Production models: llama-3.3-70b-versatile, llama-3.1-8b-instant, deepseek-r1-distill-llama-70b)
   if (
     (lowerModel.includes('llama') ||
       lowerModel.includes('oss') ||
@@ -1089,15 +1238,15 @@ export const testPrompt = async (
     keys.groqKey
   ) {
     const targetModel =
-      modelId === 'llama-3.3-70b-versatile' || modelId === 'llama' || modelId === 'groq'
-        ? 'openai/gpt-oss-120b'
+      modelId === 'llama' || modelId === 'groq' || modelId.includes('gpt-oss') || modelId.includes('qwen3.8')
+        ? 'llama-3.3-70b-versatile'
         : modelId;
-    return await callGroq(userPrompt, effectiveSystemPrompt, keys.groqKey, targetModel);
+    return await callGroq(userPrompt, effectiveSystemPrompt, keys.groqKey, targetModel, 0.7, onToken);
   }
 
   // 3. OpenAI
   if ((lowerModel.includes('gpt') || lowerModel.includes('openai')) && keys.openAiKey) {
-    return await callOpenAi(userPrompt, effectiveSystemPrompt, keys.openAiKey, modelId);
+    return await callOpenAi(userPrompt, effectiveSystemPrompt, keys.openAiKey, modelId, 0.7, onToken);
   }
 
   // 4. Hugging Face
@@ -1137,19 +1286,61 @@ export const testPrompt = async (
     keys.geminiKey || keys.groqKey || keys.openAiKey || keys.openRouterKey || keys.huggingFaceKey
   );
   if (hasAnyKey) {
-    return await callClientAi(userPrompt, effectiveSystemPrompt);
+    return await callClientAi(userPrompt, effectiveSystemPrompt, { onToken });
   }
 
   // 7. Backend proxy fallback
   try {
     const authHeaders = await getAuthHeaders();
+    const isStreaming = typeof onToken === 'function';
     const response = await fetch('/api/ai/test', {
       method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify({ targetModel: modelId, systemPrompt: effectiveSystemPrompt, prompt: userPrompt }),
+      headers: {
+        ...authHeaders,
+        ...(isStreaming ? { Accept: 'text/event-stream' } : {}),
+      },
+      body: JSON.stringify({
+        targetModel: modelId,
+        systemPrompt: effectiveSystemPrompt,
+        prompt: userPrompt,
+        stream: isStreaming,
+      }),
     });
 
     if (response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      if (isStreaming && contentType.includes('text/event-stream') && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const dataStr = trimmed.slice(6);
+            if (dataStr === '[DONE]') continue;
+            try {
+              const json = JSON.parse(dataStr);
+              if (json.token) {
+                accumulated += json.token;
+                onToken(json.token);
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+        if (accumulated) return accumulated;
+      }
+
       const data = await response.json();
       return data.text || data.content || '';
     }

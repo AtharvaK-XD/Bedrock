@@ -10,23 +10,23 @@ export interface ProviderTarget {
 
 export const AI_PROVIDERS: ProviderTarget[] = [
   {
-    id: 'groq-oss-120b',
-    name: 'Groq GPT-OSS 120B',
-    model: 'openai/gpt-oss-120b',
+    id: 'groq-llama-70b',
+    name: 'Groq LLaMA 3.3 70B',
+    model: 'llama-3.3-70b-versatile',
     priority: 1,
     weight: 5,
   },
   {
-    id: 'groq-oss-20b',
-    name: 'Groq GPT-OSS 20B',
-    model: 'openai/gpt-oss-20b',
+    id: 'groq-llama-8b',
+    name: 'Groq LLaMA 3.1 8B',
+    model: 'llama-3.1-8b-instant',
     priority: 1,
     weight: 4,
   },
   {
-    id: 'groq-qwen',
-    name: 'Groq Qwen 3.8 27B',
-    model: 'qwen/qwen3.8-27b',
+    id: 'groq-deepseek',
+    name: 'Groq DeepSeek R1 70B',
+    model: 'deepseek-r1-distill-llama-70b',
     priority: 2,
     weight: 3,
   },
