@@ -150,117 +150,15 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       return;
     }
 
-    // Web Browser Mode (Vercel):
+    // Web Browser Mode (Vercel / Production / Localhost):
     const origin = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file'))
       ? window.location.origin
       : 'https://bedrock-steel.vercel.app';
     const callbackUrl = `${origin}/sso-callback`;
     const targetUrl = targetPath;
 
-    // 1. Open popup immediately in synchronous user-action context
-    const width = 600;
-    const height = 750;
-    const left = window.screenX + Math.max(0, (window.outerWidth - width) / 2);
-    const top = window.screenY + Math.max(0, (window.outerHeight - height) / 2);
-
-    let popup: Window | null = null;
     try {
-      popup = window.open(
-        'about:blank',
-        'BedrockOAuthPopup',
-        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
-      );
-      if (popup && popup.document) {
-        popup.document.title = `Connecting to ${strategy === 'oauth_github' ? 'GitHub' : 'Google'}...`;
-        popup.document.body.style.backgroundColor = '#050505';
-        popup.document.body.style.color = '#e4e4e7';
-        popup.document.body.style.display = 'flex';
-        popup.document.body.style.alignItems = 'center';
-        popup.document.body.style.justifyContent = 'center';
-        popup.document.body.style.height = '100vh';
-        popup.document.body.style.margin = '0';
-        popup.document.body.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        popup.document.body.innerHTML = `
-          <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-            <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.1);border-top-color:#10b981;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-            <p style="font-size:14px;color:#a1a1aa;margin:0;">Opening ${strategy === 'oauth_github' ? 'GitHub' : 'Google'} Authorization...</p>
-          </div>
-          <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
-        `;
-      }
-    } catch {
-      popup = null;
-    }
-
-    let authDone = false;
-    let cleanup = () => {};
-
-    const handleSuccess = async () => {
-      if (authDone) return;
-      authDone = true;
-      cleanup();
-
-      try {
-        const clerkUser = (clerk as any)?.user || (window as any).Clerk?.user;
-        const userEmail = clerkUser?.primaryEmailAddress?.emailAddress || clerkUser?.emailAddresses?.[0]?.emailAddress || 'developer@bedrock.app';
-        const userName = clerkUser?.fullName || clerkUser?.firstName || userEmail.split('@')[0];
-        await login(userEmail, undefined, userName, mode === 'register' ? 'register' : 'login');
-        notifyAuthSuccess({ email: userEmail, name: userName, type: mode === 'register' ? 'signup' : 'signin' });
-        await updateProfile({
-          name: userName,
-          email: userEmail,
-          avatarUrl: clerkUser?.imageUrl || '',
-        });
-      } catch (e) {
-        console.warn('Post-auth profile sync warning:', e);
-      }
-
-      setIsLoading(false);
-      navigate(targetPath);
-    };
-
-    const handleAuthMessage = (event: MessageEvent) => {
-      if (event.data === 'clerk-auth-complete') {
-        handleSuccess();
-      }
-    };
-    window.addEventListener('message', handleAuthMessage);
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === 'bedrock_auth_event' || event.key === 'bedrock_auth_session') {
-        handleSuccess();
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-
-    const popupCheckTimer = setInterval(() => {
-      if (popup && popup.closed) {
-        clearInterval(popupCheckTimer);
-        setTimeout(() => {
-          const finalSessionCheck = Boolean(
-            (clerk as any)?.session ||
-            (clerk as any)?.user ||
-            (window as any).Clerk?.session ||
-            (window as any).Clerk?.user ||
-            localStorage.getItem('bedrock_auth_session')
-          );
-          if (finalSessionCheck) {
-            handleSuccess();
-          } else {
-            cleanup();
-            setIsLoading(false);
-          }
-        }, 600);
-      }
-    }, 400);
-
-    cleanup = () => {
-      window.removeEventListener('message', handleAuthMessage);
-      window.removeEventListener('storage', handleStorage);
-      clearInterval(popupCheckTimer);
-    };
-
-    try {
+      // 1. Ensure Clerk is fully loaded before initiating redirect
       const clerkInstance: any = clerk || (window as any).Clerk;
       if (!clerkInstance?.loaded) {
         await new Promise<void>((resolve) => {
@@ -276,20 +174,8 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
           setTimeout(() => {
             clearInterval(timer);
             resolve();
-          }, 2500);
+          }, 2000);
         });
-      }
-
-      if (clerk && ((clerk as any).session || (clerk as any).user || (window as any).Clerk?.session)) {
-        try {
-          if (typeof clerk.signOut === 'function') {
-            await clerk.signOut();
-          } else if (typeof (window as any).Clerk?.signOut === 'function') {
-            await (window as any).Clerk.signOut();
-          }
-        } catch (signOutErr) {
-          console.warn('Pre-OAuth signOut warning:', signOutErr);
-        }
       }
 
       const activeClerk = clerk || (window as any).Clerk;
@@ -297,70 +183,41 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       const targetSignIn = activeClient?.signIn || (window as any).Clerk?.client?.signIn || signIn;
       const targetSignUp = activeClient?.signUp || (window as any).Clerk?.client?.signUp || signUp;
 
-      // Always pass consent verification prompt so Google & GitHub display account chooser & consent
+      // Always pass consent verification prompt so Google & GitHub display account chooser & consent screen every time
       const oidcPrompt = 'select_account consent';
 
       const primaryResource = mode === 'register' ? (targetSignUp || targetSignIn) : (targetSignIn || targetSignUp);
       const fallbackResource = primaryResource === targetSignIn ? targetSignUp : targetSignIn;
 
-      if (popup && !popup.closed) {
-        let popupStarted = false;
-        if (typeof primaryResource?.authenticateWithPopup === 'function') {
-          try {
-            await primaryResource.authenticateWithPopup({
-              strategy,
-              popup,
-              redirectUrl: callbackUrl,
-              redirectUrlComplete: targetUrl,
-              oidcPrompt,
-            });
-            popupStarted = true;
-            return;
-          } catch (popupErr: any) {
-            console.warn('Primary authenticateWithPopup error, trying secondary:', popupErr);
-          }
-        }
-
-        if (!popupStarted && typeof fallbackResource?.authenticateWithPopup === 'function' && !popup.closed) {
-          try {
-            await fallbackResource.authenticateWithPopup({
-              strategy,
-              popup,
-              redirectUrl: callbackUrl,
-              redirectUrlComplete: targetUrl,
-              oidcPrompt,
-            });
-            popupStarted = true;
-            return;
-          } catch (fallbackErr: any) {
-            console.warn('Fallback authenticateWithPopup error:', fallbackErr);
-          }
-        }
-      }
-
-      // If popup was blocked or failed, proceed with redirect
+      // Direct standard OAuth redirect - immediately navigates to Google / GitHub consent screen
       if (typeof primaryResource?.authenticateWithRedirect === 'function') {
-        if (popup && !popup.closed) {
-          popup.close();
-        }
         await primaryResource.authenticateWithRedirect({
           strategy,
           redirectUrl: callbackUrl,
           redirectUrlComplete: targetUrl,
+          continueSignUp: true,
+          continueSignIn: true,
           oidcPrompt,
         });
         return;
       }
 
       if (typeof fallbackResource?.authenticateWithRedirect === 'function') {
-        if (popup && !popup.closed) {
-          popup.close();
-        }
         await fallbackResource.authenticateWithRedirect({
           strategy,
           redirectUrl: callbackUrl,
           redirectUrlComplete: targetUrl,
+          continueSignUp: true,
+          continueSignIn: true,
           oidcPrompt,
+        });
+        return;
+      }
+
+      if (typeof activeClerk?.redirectToSignIn === 'function') {
+        await activeClerk.redirectToSignIn({
+          signInFallbackRedirectUrl: targetUrl,
+          signInForceRedirectUrl: targetUrl,
         });
         return;
       }
@@ -368,10 +225,6 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
       throw new Error('Authentication service is still initializing. Please try again.');
     } catch (err: any) {
       console.error(`Failed to initiate ${strategy} OAuth:`, err);
-      if (popup && !popup.closed) {
-        popup.close();
-      }
-      cleanup();
       setAuthError(err?.message || 'Authentication failed. Please try again.');
       setIsLoading(false);
     }
