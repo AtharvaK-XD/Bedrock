@@ -2,10 +2,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { RefinementInput } from '../components/ui/RefinementInput';
-import { ArrowLeftRight, Code2, Download, Copy, Check } from 'lucide-react';
+import { ArrowLeftRight, Code2, Download, Copy, Check, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import ReactMarkdown from 'react-markdown';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PixelCard from '../components/ui/PixelCard';
 import { EncryptedText } from '../components/ui/encrypted-text';
 import { refinePrompt } from '../lib/api';
@@ -13,10 +13,11 @@ import { sanitizeRenderedPrompt } from '../lib/aiPrompts';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
-import { addPromptToHistory } from '../lib/generatorHistory';
+import { addPromptToHistory, getStoredGeneratorHistory, type HistoryPromptItem } from '../lib/generatorHistory';
 import { recordExecutionTrace } from '../lib/telemetry';
 import { isDesktopApp } from '../lib/platform';
 import { ExportModal } from '../components/ui/ExportModal';
+import { GeneratorHistorySidebar } from '../components/generator/GeneratorHistorySidebar';
 
 const TypewriterText = ({ text }: { text: string }) => {
   const words = text.split(' ');
@@ -47,14 +48,99 @@ export default function Result() {
   const isDesktop = isDesktopApp();
   const location = useLocation();
   const navigate = useNavigate();
-  const [promptText, setPromptText] = useState<string>(() => sanitizeRenderedPrompt(location.state?.promptText || ''));
-  const idea = location.state?.idea as string | undefined;
-  const historyId = location.state?.historyId as string | undefined;
 
-  const [chatHistory, setChatHistory] = useState<Array<{ role: string; content: string }>>([
-    { role: 'user', content: idea || 'Initial Project Request' },
-    { role: 'ai', content: "Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist." }
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(() => {
+    if (location.state?.historyId) return location.state.historyId;
+    const history = getStoredGeneratorHistory();
+    const latest = history.find(h => Boolean(h.promptText));
+    return latest?.id || null;
+  });
+
+  const [currentIdea, setCurrentIdea] = useState<string>(() => {
+    if (location.state?.idea) return location.state.idea;
+    const history = getStoredGeneratorHistory();
+    const latest = history.find(h => Boolean(h.promptText));
+    return latest?.ideaText || latest?.title || 'Initial Project Request';
+  });
+
+  const [promptText, setPromptText] = useState<string>(() => {
+    if (location.state?.promptText) {
+      return sanitizeRenderedPrompt(location.state.promptText);
+    }
+    const history = getStoredGeneratorHistory();
+    const latestWithPrompt = history.find(h => Boolean(h.promptText));
+    if (latestWithPrompt?.promptText) {
+      return sanitizeRenderedPrompt(latestWithPrompt.promptText);
+    }
+    return '';
+  });
+
+  const [chatHistory, setChatHistory] = useState<Array<{ role: string; content: string }>>(() => [
+    {
+      role: 'user',
+      content: location.state?.idea || (getStoredGeneratorHistory().find(h => Boolean(h.promptText))?.ideaText) || 'Initial Project Request',
+    },
+    {
+      role: 'ai',
+      content: "Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist.",
+    },
   ]);
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('bedrock_generator_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('bedrock_generator_sidebar_collapsed', String(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
+  // Sync state when location.state updates (e.g. navigating from Wizard)
+  useEffect(() => {
+    if (location.state?.promptText) {
+      setPromptText(sanitizeRenderedPrompt(location.state.promptText));
+      const incomingIdea = location.state.idea || 'Initial Project Request';
+      setCurrentIdea(incomingIdea);
+      setActiveHistoryId(location.state.historyId || null);
+      setChatHistory([
+        { role: 'user', content: incomingIdea },
+        { role: 'ai', content: "Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist." },
+      ]);
+    }
+  }, [location.state]);
+
+  const handleSelectPrompt = (prompt: HistoryPromptItem) => {
+    if (prompt.promptText) {
+      setPromptText(sanitizeRenderedPrompt(prompt.promptText));
+      const ideaTitle = prompt.ideaText || prompt.title;
+      setCurrentIdea(ideaTitle);
+      setActiveHistoryId(prompt.id);
+      setChatHistory([
+        { role: 'user', content: ideaTitle },
+        { role: 'ai', content: "Here is the standalone prompt covering your requirements. You can hand this to an AI coding agent without it trying to rebuild things that already exist." },
+      ]);
+    } else {
+      navigate('/app/generator', {
+        state: { idea: prompt.ideaText, targetType: prompt.targetType, id: prompt.id },
+      });
+    }
+  };
+
+  const handleNewPrompt = () => {
+    navigate('/app/generator');
+  };
+
   const [isRefining, setIsRefining] = useState(false);
   const [isSwapped, setIsSwapped] = useState(false);
 
@@ -93,6 +179,18 @@ export default function Result() {
       {/* Header */}
       <div className="flex-none p-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer mr-0.5"
+            title={isSidebarCollapsed ? "Show previous prompts" : "Hide history sidebar"}
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4 text-copper-400" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4 text-neutral-400" />
+            )}
+          </button>
           <span>Interactive prompt refinement</span>
         </div>
         <button
@@ -165,11 +263,11 @@ export default function Result() {
               const cleanMarkdown = sanitizeRenderedPrompt(updatedMarkdown);
               setPromptText(cleanMarkdown);
               setChatHistory(prev => [...prev, { role: 'ai', content: summary }]);
-              if (idea || historyId) {
+              if (currentIdea || activeHistoryId) {
                 addPromptToHistory({
-                  id: historyId,
-                  title: (idea && idea.length > 36 ? idea.slice(0, 36) + '...' : idea) || 'Refined Prompt',
-                  ideaText: idea || 'Refined Prompt',
+                  id: activeHistoryId || undefined,
+                  title: (currentIdea && currentIdea.length > 36 ? currentIdea.slice(0, 36) + '...' : currentIdea) || 'Refined Prompt',
+                  ideaText: currentIdea || 'Refined Prompt',
                   promptText: cleanMarkdown,
                   isPinned: false,
                 });
@@ -271,12 +369,49 @@ export default function Result() {
 
   return (
     <PageTransition className={cn(
-      "flex flex-col text-white font-sans selection:bg-copper-500/30 overflow-hidden",
+      "relative flex flex-col text-white font-sans selection:bg-copper-500/30 overflow-hidden",
       isDesktop ? "h-full" : "h-[calc(100vh-80px)]"
     )}>
-      
-      {/* Split Pane Workspace */}
-      <PanelGroup orientation="horizontal" className="w-full h-full">
+      {/* Generator History Sidebar (Allows browsing all previously generated prompts) */}
+      <GeneratorHistorySidebar
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={toggleSidebar}
+        activeId={activeHistoryId}
+        onSelectPrompt={handleSelectPrompt}
+        onNewPrompt={handleNewPrompt}
+      />
+
+      {/* Mobile backdrop overlay */}
+      {!isSidebarCollapsed && (
+        <div
+          onClick={toggleSidebar}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
+        />
+      )}
+
+      {/* Floating Expand Trigger when minimized */}
+      {isSidebarCollapsed && (
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className={cn(
+            "fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d10]/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200",
+            isDesktop ? "top-4 left-68" : "top-22 left-4"
+          )}
+          title="Show previous prompts"
+        >
+          <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
+          <span className="text-xs font-mono">History</span>
+        </button>
+      )}
+
+      {/* Main Split Pane Workspace */}
+      <div className={cn(
+        "w-full h-full flex flex-col transition-all duration-300",
+        !isSidebarCollapsed ? (isDesktop ? "pl-72 md:pl-76" : "md:pl-72 lg:pl-76") : ""
+      )}>
+        {/* Split Pane Workspace */}
+        <PanelGroup orientation="horizontal" className="w-full h-full">
         
         {/* LEFT PANE */}
         <Panel 
@@ -328,6 +463,7 @@ export default function Result() {
         </Panel>
 
       </PanelGroup>
+      </div>
 
       {/* Full Screen PixelCard Loading Overlay for Refinements / Follow-ups */}
       {typeof document !== 'undefined' && createPortal(
@@ -377,7 +513,7 @@ export default function Result() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         promptText={promptText}
-        title={idea || 'Bedrock Prompt'}
+        title={currentIdea || 'Bedrock Prompt'}
       />
     </PageTransition>
   );
