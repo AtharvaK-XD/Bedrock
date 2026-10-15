@@ -100,6 +100,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "scan:secrets": "node scripts/scan-secrets.js",
+    "test:eval": "npx tsx scripts/run-eval-harness.ts",
     "test:injection": "cd server && npx tsx tests/prompt-injection-runner.ts",
     "test:attacks": "cd server && npx tsx tests/security-attack-suite.ts",
     "test:k6:ratelimit": "node scripts/run-k6.js run tests/k6-rate-limit-test.js",

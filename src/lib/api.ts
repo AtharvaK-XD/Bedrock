@@ -4,10 +4,83 @@ import {
   extractRefineResult,
   sanitizeRenderedPrompt,
 } from './aiPrompts';
+import {
+  getUseCaseProfile,
+  classifyUseCase,
+  validatePromptAgainstForbiddenTerms,
+  USE_CASE_PROFILES,
+  type UseCaseProfileId,
+} from './useCaseProfiles';
+import {
+  callLLM,
+  callLLMWithMeta,
+  getModelTuning,
+  MODEL_TUNING_TABLE,
+  buildTunedPrompt,
+  classifyModelTier,
+  TIER_DEFAULTS,
+  type LLMPurpose,
+  type FewShotExample,
+} from './callLLM';
+import {
+  validateSynthesisOutput,
+  validateQuestionsOutput,
+  buildRepairMessage,
+  sanitizePromptOutput,
+  detectForbiddenTerms,
+  isIdeaRequestingCode,
+  type ValidationResult,
+  type ValidationIssue,
+} from './validation';
+export type {
+  ModelTuningConfig,
+  ModelTier,
+  LLMPurpose,
+  FewShotExample,
+  CallLLMOptions,
+  CallLLMResult,
+} from './callLLM';
+export type { ValidationResult, ValidationIssue };
+export {
+  callLLM,
+  callLLMWithMeta,
+  getModelTuning,
+  MODEL_TUNING_TABLE,
+  buildTunedPrompt,
+  classifyModelTier,
+  TIER_DEFAULTS,
+  getUseCaseProfile,
+  classifyUseCase,
+  validatePromptAgainstForbiddenTerms,
+  USE_CASE_PROFILES,
+  validateSynthesisOutput,
+  validateQuestionsOutput,
+  buildRepairMessage,
+  sanitizePromptOutput,
+  detectForbiddenTerms,
+  isIdeaRequestingCode,
+};
+export type { UseCaseProfileId };
+
+export type TargetTypeOption =
+  | 'coding_agent'
+  | 'coding-agent'
+  | 'image_generation'
+  | 'image-prompt'
+  | 'writing'
+  | 'freelancer_brief'
+  | 'freelance-brief'
+  | 'hackathon_pitch'
+  | 'pitch'
+  | 'no_code'
+  | 'no-code'
+  | 'video_generation'
+  | 'video-generation'
+  | string;
 
 export interface IdeaPayload {
   ideaText: string;
-  targetType: 'coding_agent' | 'freelancer_brief' | 'hackathon_pitch' | 'no_code' | 'image_generation' | 'video_generation';
+  targetType: TargetTypeOption;
 }
 
 export interface Question {
@@ -119,7 +192,7 @@ export function getActiveApiKeys() {
 }
 
 // Resilient Gemini Direct Client with Streaming Support
-async function callGemini(
+export async function callGemini(
   prompt: string,
   systemInstruction?: string,
   apiKey?: string,
@@ -214,7 +287,7 @@ async function callGemini(
 }
 
 // Resilient Groq Direct Client with Streaming Support & Official Model Targets
-async function callGroq(
+export async function callGroq(
   prompt: string,
   systemPrompt?: string,
   apiKey?: string,
@@ -311,7 +384,7 @@ async function callGroq(
 }
 
 // Resilient OpenAI Direct Client with Streaming Support
-async function callOpenAi(
+export async function callOpenAi(
   prompt: string,
   systemPrompt?: string,
   apiKey?: string,
@@ -400,7 +473,7 @@ async function callOpenAi(
 }
 
 // Resilient OpenRouter Direct Client
-async function callOpenRouter(
+export async function callOpenRouter(
   prompt: string,
   systemPrompt?: string,
   apiKey?: string,
@@ -439,7 +512,7 @@ async function callOpenRouter(
   return data.choices?.[0]?.message?.content || '';
 }
 
-// Universal Client AI Dispatcher with Streaming Support
+// Universal Client AI Dispatcher with Per-Model Tuning & Streaming Support
 export async function callClientAi(
   userPrompt: string,
   systemPrompt?: string,
@@ -448,262 +521,31 @@ export async function callClientAi(
     preferredModel?: string;
     temperature?: number;
     onToken?: (token: string) => void;
+    purpose?: LLMPurpose;
+    fewShotExamples?: FewShotExample[];
+    extraWordingOverride?: string;
+    targetType?: string;
+    userIdea?: string;
+    validateAndRetry?: boolean;
   }
 ): Promise<string> {
-  const keys = getActiveApiKeys();
-
-  // Try preferred provider first
-  if (options?.preferredProvider === 'gemini' && keys.geminiKey) {
-    return await callGemini(userPrompt, systemPrompt, keys.geminiKey, options.preferredModel, options.temperature, options.onToken);
-  }
-  if (options?.preferredProvider === 'groq' && keys.groqKey) {
-    return await callGroq(userPrompt, systemPrompt, keys.groqKey, options.preferredModel, options.temperature, options.onToken);
-  }
-  if (options?.preferredProvider === 'openai' && keys.openAiKey) {
-    return await callOpenAi(userPrompt, systemPrompt, keys.openAiKey, options.preferredModel, options.temperature, options.onToken);
-  }
-  if (options?.preferredProvider === 'openrouter' && keys.openRouterKey) {
-    return await callOpenRouter(userPrompt, systemPrompt, keys.openRouterKey, options.preferredModel, options.temperature);
-  }
-
-  // Fallback in order of availability: Gemini -> Groq -> OpenAI -> OpenRouter
-  if (keys.geminiKey) {
-    return await callGemini(userPrompt, systemPrompt, keys.geminiKey, options?.preferredModel, options?.temperature, options?.onToken);
-  }
-  if (keys.groqKey) {
-    return await callGroq(userPrompt, systemPrompt, keys.groqKey, options?.preferredModel, options?.temperature, options?.onToken);
-  }
-  if (keys.openAiKey) {
-    return await callOpenAi(userPrompt, systemPrompt, keys.openAiKey, options?.preferredModel, options?.temperature, options?.onToken);
-  }
-  if (keys.openRouterKey) {
-    return await callOpenRouter(userPrompt, systemPrompt, keys.openRouterKey, options?.preferredModel, options?.temperature);
-  }
-
-  throw new ApiError(
-    'Please enter your Google Gemini or Groq API key in the app to start generating prompts.',
-    true,
-    'Bedrock Workspace',
-    401
-  );
+  const model = options?.preferredModel || 'auto';
+  return await callLLM(userPrompt, model, options?.purpose || 'general', {
+    systemPrompt,
+    temperature: options?.temperature,
+    onToken: options?.onToken,
+    preferredProvider: options?.preferredProvider,
+    fewShotExamples: options?.fewShotExamples,
+    extraWordingOverride: options?.extraWordingOverride,
+    targetType: options?.targetType,
+    userIdea: options?.userIdea,
+    validateAndRetry: options?.validateAndRetry,
+  });
 }
 
 function getFallbackQuestions(targetType: IdeaPayload['targetType']): Question[] {
-  if (targetType === 'hackathon_pitch') {
-    return [
-      {
-        id: 'hackathon_track',
-        questionText: 'Which prize track or evaluation criteria is this hackathon pitch prioritizing?',
-        questionType: 'single_select',
-        options: ['Grand Prize / Overall Innovation', 'Best AI / LLM Implementation', 'Best UI / UX Experience', 'Enterprise / B2B Utility', 'Open Source Impact'],
-      },
-      {
-        id: 'demo_focus',
-        questionText: 'What is the "wow factor" moment in the live 2-minute demo?',
-        questionType: 'free_text',
-      },
-      {
-        id: 'tech_stack',
-        questionText: 'What stack will allow your team to ship the MVP fastest?',
-        questionType: 'single_select',
-        options: ['React + Vite + FastAPI', 'Next.js + Supabase', 'Mobile (React Native / Expo)', 'Browser Extension + Cloud Functions'],
-      },
-    ];
-  }
-
-  if (targetType === 'freelancer_brief') {
-    return [
-      {
-        id: 'deliverables',
-        questionText: 'What is the primary deliverable for this freelance contract?',
-        questionType: 'single_select',
-        options: ['Production-ready Fullstack App', 'Frontend UI / Figma Implementation', 'API / Backend Architecture', 'Prototype / MVP for Investors'],
-      },
-      {
-        id: 'timeline_budget',
-        questionText: 'What is the target delivery timeline and milestone structure?',
-        questionType: 'free_text',
-      },
-      {
-        id: 'tech_stack',
-        questionText: 'Are there mandatory client technologies or hosting providers?',
-        questionType: 'multi_select',
-        options: ['AWS / Cloudflare', 'Vercel / Next.js', 'PostgreSQL / Supabase', 'Docker / Kubernetes', 'Stripe / Payment Gateways'],
-      },
-    ];
-  }
-
-  if (targetType === 'image_generation') {
-    return [
-      {
-        id: 'visual_style',
-        questionText: 'What artistic medium, photographic aesthetic, or visual style do you want?',
-        questionType: 'single_select',
-        options: [
-          'Ultra-Realistic Photography (85mm lens, 35mm film grain, 8K)',
-          'Cinematic Concept Art & Sci-Fi / Dark Fantasy',
-          'Stylized 3D Animation / Pixar & Unreal Engine 5 Render',
-          'Anime & Manga / Studio Ghibli Aesthetic',
-          'High-Fashion Editorial & Studio Portraiture',
-          'Vintage Oil Painting / Cyberpunk Neon Noir',
-        ],
-      },
-      {
-        id: 'lighting_atmosphere',
-        questionText: 'What lighting setup, atmosphere, and environmental mood do you envision?',
-        questionType: 'single_select',
-        options: [
-          'Golden Hour Sunlight with Warm Volumetric Rays',
-          'Moody Neon Lighting with Wet Ground Reflections',
-          'Dramatic Studio Chiaroscuro & Strong Rim Light',
-          'Soft Ethereal Diffused Light with Morning Mist',
-          'Dark Moody Atmospheric Shadows with Candlelight / Fire',
-        ],
-      },
-      {
-        id: 'aspect_ratio_model',
-        questionText: 'Which target AI image generator and aspect ratio will you use?',
-        questionType: 'single_select',
-        options: [
-          'Midjourney v6.1 (16:9 Widescreen Landscape)',
-          'Midjourney v6.1 (9:16 Vertical Portrait / Mobile)',
-          'FLUX.1 [dev / pro] (1:1 Square)',
-          'DALL-E 3 (Ultra-Detailed Descriptive Framing)',
-          'Stable Diffusion XL / ComfyUI (Photorealistic)',
-        ],
-      },
-      {
-        id: 'negative_elements',
-        questionText: 'What specific subjects, details, or textures must be emphasized or excluded?',
-        questionType: 'free_text',
-      },
-    ];
-  }
-
-  if (targetType === 'video_generation') {
-    return [
-      {
-        id: 'camera_motion',
-        questionText: 'What cinematic camera movement and framing should anchor the shot?',
-        questionType: 'single_select',
-        options: [
-          'Dynamic FPV Drone Sweeping Fly-Through',
-          'Smooth Steadicam Tracking Shot (Forward Push-In)',
-          'Cinematic Slow Orbital Pan Around Subject (360°)',
-          'Dramatic Dolly Zoom / Hitchcock Vertigo Effect',
-          'Macro Extreme Close-Up with Racked Focus',
-          'Locked-Off Static Master Shot with Intense Subject Action',
-        ],
-      },
-      {
-        id: 'temporal_pacing',
-        questionText: 'What motion dynamics, physical speed, and pacing should the scene exhibit?',
-        questionType: 'single_select',
-        options: [
-          'Hypnotic Slow-Motion (120 FPS High-Speed Shutter)',
-          'Kinetic Fast-Paced Action with High Motion Energy',
-          'Subtle Atmospheric Ambient Motion (Wind, Smoke, Rain)',
-          'Speed-Ramped Transition (Fast to Ultra Slow-Mo)',
-        ],
-      },
-      {
-        id: 'video_model_target',
-        questionText: 'Which AI video generator model and format are you targeting?',
-        questionType: 'single_select',
-        options: [
-          'Runway Gen-3 Alpha (16:9 Cinematic Widescreen)',
-          'OpenAI Sora (Ultra High-Fidelity 4K Motion)',
-          'Luma Dream Machine (Photorealistic Physics)',
-          'Kling AI 1.5 (High Dynamic Motion Range)',
-          'Pika 2.0 / Hailuo (Expressive Cinematic FX)',
-        ],
-      },
-      {
-        id: 'scene_narrative',
-        questionText: 'Describe the core action sequence, subject behavior, and emotional arc:',
-        questionType: 'free_text',
-      },
-    ];
-  }
-
-  if (targetType === 'no_code') {
-    return [
-      {
-        id: 'nocode_platform',
-        questionText: 'What is your primary visual builder platform?',
-        questionType: 'single_select',
-        options: [
-          'Bubble.io (Fullstack Web App)',
-          'FlutterFlow (Native iOS & Android)',
-          'Webflow + Wized / Xano',
-          'Airtable + Softr / Glide',
-          'Retool / Appsmith (Internal Tool)',
-        ],
-      },
-      {
-        id: 'nocode_database',
-        questionText: 'How will user data, collections, and records be stored and queried?',
-        questionType: 'single_select',
-        options: [
-          'Platform Native DB (Bubble / FlutterFlow Firebase)',
-          'Airtable Collections & Linked Records',
-          'Supabase / PostgreSQL with RLS',
-          'Xano Scalable No-Code Backend',
-        ],
-      },
-      {
-        id: 'nocode_automations',
-        questionText: 'What automated workflows or webhook pipelines are required?',
-        questionType: 'multi_select',
-        options: [
-          'Make.com (Integromat) Multi-step Scenarios',
-          'Zapier Instant Webhook Triggers',
-          'Payment Webhooks (Stripe / LemonSqueezy)',
-          'Automated Email & SMS (SendGrid / Twilio / Resend)',
-          'AI / OpenAI API Visual Action Nodes',
-        ],
-      },
-    ];
-  }
-
-  // coding_agent (default)
-  return [
-    {
-      id: 'tech_stack',
-      questionText: 'What exact runtime & framework constraints must the coding agent follow?',
-      questionType: 'single_select',
-      options: [
-        'React / TypeScript / Vite (Strict Mode)',
-        'Next.js 15 App Router + Server Actions',
-        'Node.js / Express / TypeScript backend',
-        'Python / FastAPI / Pydantic AI Agents',
-        'Mobile (React Native Expo + TypeScript)',
-      ],
-    },
-    {
-      id: 'schema_contracts',
-      questionText: 'What database, ORM, or API validation schema should the agent implement?',
-      questionType: 'single_select',
-      options: [
-        'Prisma ORM + PostgreSQL + Zod',
-        'Drizzle ORM + SQLite/Turso + Zod',
-        'Supabase JS Client + Database Types',
-        'REST API with JSON Schema validation',
-      ],
-    },
-    {
-      id: 'negative_rules',
-      questionText: 'What strict negative constraints must the AI agent NEVER break?',
-      questionType: 'multi_select',
-      options: [
-        'NEVER use "any" types or loose assertions',
-        'NEVER leave "// TODO" placeholder comments',
-        'NEVER swallow errors without structured logging',
-        'NEVER install unverified third-party libraries',
-        'NEVER mutate state or props directly',
-      ],
-    },
-  ];
+  const profile = getUseCaseProfile(targetType);
+  return (profile.fallbackQuestions as Question[]) || [];
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -747,67 +589,16 @@ export const generateQuestions = async (payload: IdeaPayload): Promise<Question[
   );
 
   if (hasClientKey) {
-    const systemPrompt = `You are an elite product manager and technical architect.
-Your task is to analyze the user's idea and generate exactly 3 to 4 clarifying questions to scope the project.
+    const profile = getUseCaseProfile(payload.targetType);
+    const systemPrompt = profile.questionPrompt;
 
-${BEDROCK_CORE_GUARDRAILS}
+    const fewShotSection = profile.fewShotExamples.length > 0
+      ? `\n\nFEW-SHOT EXAMPLES:\n` + profile.fewShotExamples.map((ex, idx) => `Example ${idx + 1}: ${ex.title}\nUser Input: ${ex.inputIdea}\nClarifying Questions:\n${JSON.stringify((ex.clarifyingQuestions || []).map((q: { id: string; questionText: string; questionType: string; options?: string[] }) => ({ id: q.id, questionText: q.questionText, questionType: q.questionType, options: q.options })), null, 2)}`).join('\n\n')
+      : '';
 
-Output MUST be strictly valid JSON array of objects without markdown fences, comments, or backticks.
-Each object in the array must strictly have:
-- "id": string (e.g. "q1", "q2", "q3")
-- "questionText": string
-- "questionType": "single_select" | "multi_select" | "free_text"
-- "options": string[] (required for "single_select" and "multi_select", omit for "free_text")`;
-
-    const targetGuidanceMap: Record<string, string> = {
-      coding_agent: `TARGET FORMAT: CODING AGENT (DEV)
-PURPOSE: The user is creating an AI coding prompt for autonomous agents (Cursor, Windsurf, Claude Code, GitHub Copilot).
-YOUR QUESTIONS MUST FOCUS ON:
-1. Exact runtime and framework constraints (e.g. Next.js 15 App Router vs Vite SPA, strict TypeScript mode).
-2. Database, ORM & API contract layer (e.g. Prisma / Drizzle, PostgreSQL, tRPC or REST).
-3. Testing harness (Vitest, Playwright) and strict agent negative constraints (what the AI agent must NEVER do, e.g. no 'any', no placeholder comments).`,
-
-      freelancer_brief: `TARGET FORMAT: FREELANCER (BRIEF)
-PURPOSE: The user is preparing a professional client Scope of Work (SOW), Upwork proposal, or agency deliverable.
-YOUR QUESTIONS MUST FOCUS ON:
-1. Primary client deliverables and project milestones (e.g. fullstack production app vs MVP vs Figma implementation).
-2. Milestone schedule, delivery phases, and payment release triggers.
-3. Design system requirements (Figma tokens, responsive breakpoints) and client handoff/hosting expectations.`,
-
-      hackathon_pitch: `TARGET FORMAT: HACKATHON (PITCH)
-PURPOSE: The user is preparing for a 24-48 hour hackathon, demo day, or investor pitch competition.
-YOUR QUESTIONS MUST FOCUS ON:
-1. Target prize category, judging track, or sponsor API bounty.
-2. The 2-minute live demo "wow factor" moment that will make judges lean in and give high scores.
-3. High-velocity rapid prototyping shortcuts and P0 must-have core flow vs P1 cut-list features.`,
-
-      image_generation: `TARGET FORMAT: IMAGE GENERATION (IMG)
-PURPOSE: The user is creating an expert visual prompt for frontier AI image generators (Midjourney v6.1, FLUX.1 [dev/pro], DALL-E 3, Stable Diffusion XL).
-CRITICAL RULE (STRICT): ABSOLUTELY ZERO CODING, ZERO PROGRAMMING LANGUAGES, ZERO FRAMEWORKS, ZERO DATABASES, AND ZERO SOFTWARE TECH STACKS.
-YOUR QUESTIONS MUST FOCUS ONLY ON VISUALS:
-1. Visual art medium and aesthetic genre (e.g. 35mm film photography, cinematic concept art, Unreal Engine 5 render, anime, oil painting).
-2. Lighting setup, color grading, atmosphere, and environmental mood (e.g. golden hour, volumetric rays, neon noir reflections, dramatic chiaroscuro).
-3. Camera optics, lens focal length, composition framing, and target aspect ratio (e.g. 85mm f/1.4 lens, wide angle, 16:9 widescreen vs 9:16 vertical).`,
-
-      video_generation: `TARGET FORMAT: VIDEO GENERATION (VIDEO)
-PURPOSE: The user is creating a cinematic prompt for frontier AI video generators (Runway Gen-3 Alpha, OpenAI Sora, Luma Dream Machine, Kling AI, Pika).
-CRITICAL RULE (STRICT): ABSOLUTELY ZERO CODING, ZERO PROGRAMMING LANGUAGES, ZERO FRAMEWORKS, ZERO DATABASES, AND ZERO SOFTWARE TECH STACKS.
-YOUR QUESTIONS MUST FOCUS ONLY ON CINEMATOGRAPHY:
-1. Cinematic camera movement and framing (e.g. FPV drone fly-through, steadycam tracking shot, orbital 360 pan, dolly zoom).
-2. Temporal pacing, physical motion dynamics, and speed (e.g. 120 FPS slow motion, kinetic action, fluid smoke/water physics).
-3. Scene lighting, atmosphere, environmental transformation, and target video model/aspect ratio.`,
-
-      no_code: `TARGET FORMAT: NO-CODE (NOCODE)
-PURPOSE: The user is building a visual application using visual app builders and automation pipelines (Bubble, FlutterFlow, Webflow, Make, Airtable).
-YOUR QUESTIONS MUST FOCUS ON:
-1. Primary visual builder platform (Bubble.io, FlutterFlow, Webflow + Wized, Softr, Glide, Retool).
-2. Database structure and data persistence (Bubble DB, Airtable linked records, Supabase with RLS, Xano).
-3. Automated workflows and webhook pipelines (Make.com multi-step scenarios, Zapier instant triggers, Stripe billing).`,
-    };
-
-    const targetGuidance = targetGuidanceMap[payload.targetType] || targetGuidanceMap.coding_agent;
-
-    const userPrompt = `${targetGuidance}
+    const userPrompt = `TARGET USE CASE: ${profile.name} (${profile.tag})
+DESCRIPTION: ${profile.description}
+${fewShotSection}
 
 Initial User Project Idea:
 ${payload.ideaText}
@@ -815,7 +606,19 @@ ${payload.ideaText}
 Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored specifically to this mode's purpose.`;
 
     try {
-      const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.5 });
+      const raw = await callClientAi(userPrompt, systemPrompt, {
+        temperature: profile.temperature,
+        purpose: 'questions',
+        targetType: payload.targetType,
+        userIdea: payload.ideaText,
+        validateAndRetry: true,
+      });
+
+      const qVal = validateQuestionsOutput(raw, payload.targetType, payload.ideaText);
+      if (qVal.isValid && qVal.data && qVal.data.length > 0) {
+        return qVal.data;
+      }
+
       const cleaned = raw
         .replace(/^```json\s*/i, '')
         .replace(/^```\s*/i, '')
@@ -946,13 +749,22 @@ CRITICAL ARCHITECTURAL & FORMATTING DIRECTIVES:
 4. ACTIONABILITY:
    - The document must be immediately actionable by an autonomous AI coding agent or senior engineer to build the full system without ambiguities.`;
 
+  const profile = getUseCaseProfile(idea.targetType);
+
   const targetLabelMap: Record<string, string> = {
     coding_agent: 'Coding Agent (DEV)',
+    'coding-agent': 'Coding Agent (DEV)',
     image_generation: 'Image Generation (IMG)',
+    'image-prompt': 'Image Generation (IMG)',
+    writing: 'Writing & Editorial (TEXT)',
     video_generation: 'Video Generation (VIDEO)',
+    'video-generation': 'Video Generation (VIDEO)',
     freelancer_brief: 'Freelancer (BRIEF)',
+    'freelance-brief': 'Freelancer (BRIEF)',
     hackathon_pitch: 'Hackathon (PITCH)',
+    pitch: 'Hackathon (PITCH)',
     no_code: 'No-Code (NOCODE)',
+    'no-code': 'No-Code (NOCODE)',
   };
 
   const targetDirectiveMap: Record<string, string> = {
@@ -964,6 +776,14 @@ The user explicitly selected "Coding Agent (DEV)". You MUST structure the entire
 4. Strict Negative Constraints: "NEVER use any", "NEVER use placeholder comments like // TODO", "NEVER swallow errors", "NEVER mutate state directly".
 5. Concrete Schema Contracts: Syntactically valid TypeScript interfaces, Zod schemas, and Prisma/Drizzle models.
 6. Phased Implementation Sequence with Verification Checklist: Step-by-step order of operations with automated terminal verification commands (e.g. npm test, vitest, tsc --noEmit).`,
+
+    writing: `MANDATORY BLUEPRINT FORMAT: EDITORIAL & LONG-FORM ESSAY BLUEPRINT
+The user explicitly selected "Writing & Editorial (TEXT)". You MUST structure the entire document as an elite, publication-ready editorial guide:
+1. Working Titles & Contrarian Lead Hooks (The Provocative Question, The Anecdotal Scene, The Contrarian Statement).
+2. Core Thesis Statement & Central Narrative Spine.
+3. Section-by-Section Structural Outline with Concrete Anecdotes, Empirical Arguments, and Evidence.
+4. Voice, Tone & Cadence Guide with strict ban on AI clichés ("delve", "tapestry", "testament", "in conclusion", "beacon", "unleash", "furthermore").
+5. Resonant Climax & Closing Realization.`,
 
     image_generation: `MANDATORY BLUEPRINT FORMAT: PRODUCTION AI IMAGE GENERATION MASTER PROMPT SYSTEM
 The user explicitly selected "Image Generation (IMG)". You MUST structure the entire document as an expert visual art and photo prompt guide tailored for frontier models like Midjourney v6.1, FLUX.1 [dev/pro], DALL-E 3, and Stable Diffusion XL.
@@ -1030,8 +850,16 @@ The user explicitly selected "No-Code (NOCODE)". You MUST structure the entire d
 5. No-Code Limits, Workarounds & Security Guardrails: Securing sensitive API keys through backend proxies, pagination workarounds, webhook error retry handlers, and client data protection.`,
   };
 
-  const selectedFormatName = targetLabelMap[idea.targetType] || idea.targetType;
-  const selectedFormatDirective = targetDirectiveMap[idea.targetType] || targetDirectiveMap.coding_agent;
+  // Add alias mappings
+  targetDirectiveMap['coding-agent'] = targetDirectiveMap.coding_agent;
+  targetDirectiveMap['image-prompt'] = targetDirectiveMap.image_generation;
+  targetDirectiveMap['freelance-brief'] = targetDirectiveMap.freelancer_brief;
+  targetDirectiveMap['pitch'] = targetDirectiveMap.hackathon_pitch;
+  targetDirectiveMap['video-generation'] = targetDirectiveMap.video_generation;
+  targetDirectiveMap['no-code'] = targetDirectiveMap.no_code;
+
+  const selectedFormatName = targetLabelMap[idea.targetType] || profile.name;
+  const selectedFormatDirective = targetDirectiveMap[idea.targetType] || targetDirectiveMap[profile.id] || targetDirectiveMap.coding_agent;
 
   const userPrompt = `Selected Target Format: ${selectedFormatName}
 Initial Project Concept: ${idea.ideaText}
@@ -1088,12 +916,24 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
             }
           }
         }
-        if (accumulated) return accumulated;
+        if (accumulated) {
+          const sVal = validateSynthesisOutput(accumulated, idea.targetType, idea.ideaText);
+          if (!sVal.isValid) {
+            console.warn(`[Bedrock Validation] Server streaming output validation issues:`, sVal.issues.map((i: ValidationIssue) => i.message));
+          }
+          return sanitizePromptOutput(accumulated);
+        }
       }
 
       const data = await response.json();
       const text = data.promptText || data.content || '';
-      if (text) return text;
+      if (text) {
+        const sVal = validateSynthesisOutput(text, idea.targetType, idea.ideaText);
+        if (!sVal.isValid) {
+          console.warn(`[Bedrock Validation] Server response validation issues:`, sVal.issues.map((i: ValidationIssue) => i.message));
+        }
+        return sanitizePromptOutput(text);
+      }
     }
 
     if (response.status === 429) {
@@ -1116,7 +956,19 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
 
   // 2. Client fallback if client keys configured
   if (hasClientKey) {
-    return await callClientAi(userPrompt, systemPrompt, { temperature: 0.7, onToken });
+    const raw = await callClientAi(userPrompt, systemPrompt, {
+      temperature: profile.temperature,
+      onToken,
+      purpose: 'synthesize',
+      targetType: idea.targetType,
+      userIdea: idea.ideaText,
+      validateAndRetry: true,
+    });
+    const sVal = validateSynthesisOutput(raw, idea.targetType, idea.ideaText);
+    if (!sVal.isValid) {
+      console.warn(`[Bedrock Validation] Client output post-retry validation warnings for ${idea.targetType}:`, sVal.issues.map((i: ValidationIssue) => i.message));
+    }
+    return sanitizePromptOutput(raw);
   }
 
   throw new ApiError(
@@ -1151,7 +1003,7 @@ export const refinePrompt = async (
     const userPrompt = `Current Prompt Document:\n${currentPrompt}${recentHistoryText}\n\nLatest User Feedback / Refinement Request:\n${followUp}`;
 
     try {
-      const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.4 });
+      const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.4, purpose: 'refine' });
       const extracted = extractRefineResult(raw, currentPrompt, followUp);
       if (extracted.updatedMarkdown) {
         return {
@@ -1163,7 +1015,7 @@ export const refinePrompt = async (
       if (err.isApiKeyError) throw err;
       console.warn('[Bedrock] Direct refinement error, attempting retry...', err);
       try {
-        const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.3 });
+        const raw = await callClientAi(userPrompt, systemPrompt, { temperature: 0.3, purpose: 'refine' });
         const extracted = extractRefineResult(raw, currentPrompt, followUp);
         return {
           updatedMarkdown: sanitizeRenderedPrompt(extracted.updatedMarkdown),
@@ -1207,153 +1059,19 @@ export const refinePrompt = async (
   );
 };
 
+/**
+ * Tests prompts against frontier and open-source models using callLLM with per-model tuning merged inside.
+ */
 export const testPrompt = async (
   modelId: string,
   systemPrompt: string,
   userPrompt: string,
   onToken?: (token: string) => void
 ): Promise<string> => {
-  const keys = getActiveApiKeys();
-  const lowerModel = modelId.toLowerCase();
-
-  const effectiveSystemPrompt = systemPrompt
-    ? `${systemPrompt}\n\n${BEDROCK_CORE_GUARDRAILS}`
-    : BEDROCK_CORE_GUARDRAILS;
-
-  // 1. Gemini
-  if (lowerModel.includes('gemini') && keys.geminiKey) {
-    const targetModel =
-      modelId === 'gemini-2.5-flash' || modelId === 'gemini'
-        ? 'gemini-3.5-flash-lite'
-        : modelId;
-    return await callGemini(userPrompt, effectiveSystemPrompt, keys.geminiKey, targetModel, 0.7, onToken);
-  }
-
-  // 2. Groq (Production models: llama-3.3-70b-versatile, llama-3.1-8b-instant, deepseek-r1-distill-llama-70b)
-  if (
-    (lowerModel.includes('llama') ||
-      lowerModel.includes('oss') ||
-      lowerModel.includes('qwen') ||
-      lowerModel.includes('groq')) &&
-    keys.groqKey
-  ) {
-    const targetModel =
-      modelId === 'llama' || modelId === 'groq' || modelId.includes('gpt-oss') || modelId.includes('qwen3.8')
-        ? 'llama-3.3-70b-versatile'
-        : modelId;
-    return await callGroq(userPrompt, effectiveSystemPrompt, keys.groqKey, targetModel, 0.7, onToken);
-  }
-
-  // 3. OpenAI
-  if ((lowerModel.includes('gpt') || lowerModel.includes('openai')) && keys.openAiKey) {
-    return await callOpenAi(userPrompt, effectiveSystemPrompt, keys.openAiKey, modelId, 0.7, onToken);
-  }
-
-  // 4. Hugging Face
-  if (modelId.startsWith('hf/') && keys.huggingFaceKey) {
-    const realModel = modelId.replace('hf/', '');
-    const res = await fetch(
-      `https://api-inference.huggingface.co/models/${realModel}/v1/chat/completions`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${keys.huggingFaceKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: realModel,
-          messages: [
-            ...(effectiveSystemPrompt ? [{ role: 'system', content: effectiveSystemPrompt }] : []),
-            { role: 'user', content: userPrompt },
-          ],
-          max_tokens: 1024,
-        }),
-      }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      return data.choices?.[0]?.message?.content || '';
-    }
-  }
-
-  // 5. OpenRouter
-  if (modelId.includes('/') && keys.openRouterKey) {
-    return await callOpenRouter(userPrompt, effectiveSystemPrompt, keys.openRouterKey, modelId);
-  }
-
-  // 6. Generic client AI fallback using whichever key IS configured
-  const hasAnyKey = Boolean(
-    keys.geminiKey || keys.groqKey || keys.openAiKey || keys.openRouterKey || keys.huggingFaceKey
-  );
-  if (hasAnyKey) {
-    return await callClientAi(userPrompt, effectiveSystemPrompt, { onToken });
-  }
-
-  // 7. Backend proxy fallback
-  try {
-    const authHeaders = await getAuthHeaders();
-    const isStreaming = typeof onToken === 'function';
-    const response = await fetch('/api/ai/test', {
-      method: 'POST',
-      headers: {
-        ...authHeaders,
-        ...(isStreaming ? { Accept: 'text/event-stream' } : {}),
-      },
-      body: JSON.stringify({
-        targetModel: modelId,
-        systemPrompt: effectiveSystemPrompt,
-        prompt: userPrompt,
-        stream: isStreaming,
-      }),
-    });
-
-    if (response.ok) {
-      const contentType = response.headers.get('content-type') || '';
-      if (isStreaming && contentType.includes('text/event-stream') && response.body) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let accumulated = '';
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data: ')) continue;
-            const dataStr = trimmed.slice(6);
-            if (dataStr === '[DONE]') continue;
-            try {
-              const json = JSON.parse(dataStr);
-              if (json.token) {
-                accumulated += json.token;
-                onToken(json.token);
-              }
-            } catch {
-              // ignore
-            }
-          }
-        }
-        if (accumulated) return accumulated;
-      }
-
-      const data = await response.json();
-      return data.text || data.content || '';
-    }
-  } catch (err) {
-    console.warn('[Bedrock] Backend test not available:', err);
-  }
-
-  throw new ApiError(
-    'Please set your API key (Gemini, Groq, OpenAI) to test prompts in the arena.',
-    true,
-    'Bedrock Workspace',
-    401
-  );
+  return await callLLM(userPrompt, modelId, 'test', {
+    systemPrompt,
+    onToken,
+  });
 };
 
 // Workflows API with localStorage fallback for offline / desktop support

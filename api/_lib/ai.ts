@@ -27,6 +27,8 @@ export interface RefineParams {
   instruction: string;
 }
 
+import { getModelTuning } from './modelTuning.js';
+
 function getApiKey(provider: 'groq' | 'gemini' | 'openrouter'): string {
   if (provider === 'groq') {
     return process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
@@ -44,7 +46,8 @@ async function callGroq(
   prompt: string,
   systemPrompt?: string,
   model = 'llama-3.3-70b-versatile',
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void,
+  temperature = 0.5
 ): Promise<string> {
   const key = getApiKey('groq');
   if (!key) throw new Error('GROQ_API_KEY is not configured on the server.');
@@ -66,7 +69,7 @@ async function callGroq(
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.3,
+      temperature,
       max_tokens: 3500,
       stream: isStreaming,
     }),
@@ -121,7 +124,8 @@ async function callGemini(
   prompt: string,
   systemPrompt?: string,
   model = 'gemini-flash-lite-latest',
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void,
+  temperature = 0.55
 ): Promise<string> {
   const key = getApiKey('gemini');
   if (!key) throw new Error('GEMINI_API_KEY is not configured on the server.');
@@ -139,6 +143,7 @@ async function callGemini(
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:${endpoint}${key}`;
       const body: any = {
         contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature },
       };
       if (systemPrompt) {
         body.systemInstruction = { parts: [{ text: systemPrompt }] };
@@ -207,7 +212,8 @@ async function callOpenRouter(
   prompt: string,
   systemPrompt?: string,
   model = 'openai/gpt-4o-mini',
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void,
+  temperature = 0.5
 ): Promise<string> {
   const key = getApiKey('openrouter');
   if (!key) throw new Error('OPENROUTER_API_KEY is not configured on the server.');
@@ -231,7 +237,7 @@ async function callOpenRouter(
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.3,
+      temperature,
       max_tokens: 3000,
       stream: isStreaming,
     }),
@@ -296,7 +302,8 @@ export async function executeAiCompletion(
   prompt: string,
   systemPrompt?: string,
   userId?: string,
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void,
+  temperatureOverride?: number
 ): Promise<{ text: string; model: string }> {
   const startTime = new Date();
 
@@ -318,31 +325,37 @@ export async function executeAiCompletion(
     );
   }
 
-  // Helper to execute a single provider
+  // Helper to execute a single provider with model-specific tuning or use-case temperature override
   const dispatchToProvider = async (target: ProviderTarget): Promise<string> => {
+    const tuning = getModelTuning(target.model || target.id);
+    const tunedSystem = systemPrompt
+      ? `${systemPrompt}\n\n${tuning.extraWording}`
+      : tuning.extraWording;
+    const temp = temperatureOverride !== undefined ? temperatureOverride : tuning.temperature;
+
     if (target.id === 'groq-llama-70b') {
-      return await callGroq(prompt, systemPrompt, 'llama-3.3-70b-versatile', onToken);
+      return await callGroq(prompt, tunedSystem, 'llama-3.3-70b-versatile', onToken, temp);
     }
     if (target.id === 'groq-llama-8b') {
-      return await callGroq(prompt, systemPrompt, 'llama-3.1-8b-instant', onToken);
+      return await callGroq(prompt, tunedSystem, 'llama-3.1-8b-instant', onToken, temp);
     }
     if (target.id === 'groq-deepseek') {
-      return await callGroq(prompt, systemPrompt, 'deepseek-r1-distill-llama-70b', onToken);
+      return await callGroq(prompt, tunedSystem, 'deepseek-r1-distill-llama-70b', onToken, temp);
     }
     if (target.id === 'gemini-flash') {
-      return await callGemini(prompt, systemPrompt, 'gemini-flash-latest', onToken);
+      return await callGemini(prompt, tunedSystem, 'gemini-flash-latest', onToken, temp);
     }
     if (target.id === 'openrouter-gpt4o') {
-      return await callOpenRouter(prompt, systemPrompt, 'openai/gpt-4o-mini', onToken);
+      return await callOpenRouter(prompt, tunedSystem, 'openai/gpt-4o-mini', onToken, temp);
     }
     // Fallback dynamic routing by model identifier
     if (target.model.includes('llama') || target.id.startsWith('groq')) {
-      return await callGroq(prompt, systemPrompt, target.model, onToken);
+      return await callGroq(prompt, tunedSystem, target.model, onToken, temp);
     }
     if (target.model.includes('gemini') || target.id.startsWith('gemini')) {
-      return await callGemini(prompt, systemPrompt, target.model, onToken);
+      return await callGemini(prompt, tunedSystem, target.model, onToken, temp);
     }
-    return await callOpenRouter(prompt, systemPrompt, target.model, onToken);
+    return await callOpenRouter(prompt, tunedSystem, target.model, onToken, temp);
   };
 
   // 2. Select optimal provider via distributed round-robin / circuit health
