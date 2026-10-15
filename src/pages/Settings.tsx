@@ -1456,7 +1456,7 @@ export default function Settings() {
                               {isMacOS() && <AppleLogo className="w-5 h-5 shrink-0" />}
                               <span className="text-lg font-bold text-white">Bedrock Desktop</span>
                               <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-copper-500/10 text-copper-400 border border-copper-500/20">
-                                v1.2.4
+                                v1.2.5
                               </span>
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                 {isMacOS() ? 'macOS Universal' : 'Release'}

@@ -63,7 +63,7 @@ Bedrock maintains complete feature parity between the desktop client and web app
 
 | Platform | Installer | Architecture | Details |
 | :--- | :--- | :--- | :--- |
-| **Windows** | [Bedrock-Setup-1.2.4.exe](https://github.com/Bedrockxai/Bedrock/releases/latest) | `x64` | NSIS installer, Win32 PE icon, auto-updater |
+| **Windows** | [Bedrock-Setup-1.2.5.exe](https://github.com/Bedrockxai/Bedrock/releases/latest) | `x64` | NSIS installer, Win32 PE icon, auto-updater |
 | **macOS** | [Bedrock-Mac.dmg](https://github.com/Bedrockxai/Bedrock/releases/latest) / [ZIP](https://github.com/Bedrockxai/Bedrock/releases/latest) | Universal (`arm64` + `x64`) | Apple Silicon and Intel universal package |
 | **Web** | Self-hosted or Cloud | Modern Browsers | Edge-ready serverless deployment |
 

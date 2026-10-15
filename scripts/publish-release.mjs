@@ -30,27 +30,28 @@ async function githubFetch(url, options = {}) {
   return res;
 }
 
-const winReleaseNotes = `# Bedrock v1.2.4 Desktop Workstation
+const winReleaseNotes = `# Bedrock v1.2.5 - AI Model Tuning, Sub-Millisecond RAG & Desktop Workstation
 
-This release restores the dedicated Desktop Workstation Sidebar navigation layout with instant ⌘1–⌘6 workspace switching, introduces strict Zero-Coding / Zero-Tech-Stack Image & Video Generation synthesis directives, and refreshes the unified Landing Page.
+This major engineering release decouples Bedrock's domain guardrails, introduces per-model tuning tables to drastically curb randomness and hallucination, embeds a sub-millisecond RAG factual verification engine, and brings full backend API proxying to the native Desktop Workstation.
 
 ## Highlights
-- **Dedicated Desktop Sidebar Layout**: Restored native desktop \`Sidebar\` navigation for the Electron workstation app with instant ⌘1–⌘6 global shortcuts, live API key status indicator, and full-height viewports, while preserving the floating Aceternity \`Topbar\` for the web application.
-- **Image & Video Generation Archetypes**: Added Image Generation (\`IMG\`) and Video Generation (\`VIDEO\`) targets to the Prompt Wizard with strict anti-hallucination guardrails and zero-coding directives for Midjourney v6.1, FLUX.1, DALL-E 3, SDXL, Runway Gen-3 Alpha, Sora, and Luma Dream Machine.
-- **Landing Page Refresh**: Updated copy highlighting all 10 AI frontier providers, visual DAG branching canvas, tactile physics deck with 5% to 300% zoom, and 15 multi-target code & config exporters.
-- **10 Frontier AI Providers**: Full multi-model support across Claude 3.7 Sonnet, OpenAI GPT-4o, Gemini 2.5 Flash, DeepSeek-R1, Meta LLaMA 3.3, Mistral Large, Cohere Command R+, Microsoft Copilot, Nvidia, and Hugging Face with authentic transparent brand assets.
-- **Auto-Updater Synchronization**: Native \`latest.yml\` manifests and SHA-512 blockmaps for background update verification and one-click upgrades.
+- **Decoupled Domain Guardrails**: Completely segregated Universal, Coding, Visual Media, Writing, Freelance, and Hackathon synthesis profiles. Visual prompts (Midjourney, FLUX.1, Sora, Runway) are strictly purged of all coding, tech stack, and database contamination.
+- **Calibrated Per-Model Tuning Table**: Fine-tuned temperature thresholds (Coding: 0.15–0.20, Freelance: 0.25–0.30, Writing: 0.40–0.45, Visual: 0.65–0.70) with tailored top_p, token budgets, and model-specific system directives across Llama 3.1 8B, Llama 3.3 70B, DeepSeek-R1, Gemini 2.5 Flash, and GPT-4o-mini.
+- **Sub-Millisecond RAG Verification Engine**: Integrated low-token (<80 tokens) factual grounding blocks (\`<verified_external_facts>\`) backed by standalone Python semantic verification and dual Node/TypeScript runtime modules. Zero hallucination of deprecated APIs, fake packages, or invalid parameters.
+- **Output Quality Validation & Single-Shot Repair Retry**: Automated post-generation AST and lexical analysis catching forbidden terms and invoking a single-shot penalization repair loop before output delivery.
+- **Desktop Workstation Backend Proxy & Offline Fallback**: Desktop Electron runtime transparently proxies API generation and telemetry to production serverless infrastructure while seamlessly falling back to client-side tuned LLM dispatch when operating offline.
+- **Dual-Account Auto-Updater Sync**: Real-time update discovery, blockmap verification, and background updates synchronized across \`Bedrockxai/Bedrock\` and \`AtharvaK-XD/Bedrock\`.
 
 ---
 
 ### Downloads
-- **Windows Installer**: \`Bedrock-Setup.exe\` (or \`Bedrock-Setup-1.2.4.exe\`)
+- **Windows Installer**: \`Bedrock-Setup.exe\` (or \`Bedrock-Setup-1.2.5.exe\`)
 `;
 
-const macReleaseNotes = `# Bedrock v1.2.4 - macOS Desktop Workstation
+const macReleaseNotes = `# Bedrock v1.2.5 - macOS Desktop Workstation
 
 Dedicated macOS release for Bedrock Prompt Engineering Workstation.
-Native build supporting both Apple Silicon (M1/M2/M3/M4) and Intel Macs with Multi-Target Blueprint Exporters, Interactive Physics Deck, and Zero-Coding Media Generation.
+Native build supporting both Apple Silicon (M1/M2/M3/M4) and Intel Macs with Multi-Target Blueprint Exporters, Interactive Physics Deck, Sub-Millisecond RAG Verification, and Zero-Coding Media Generation.
 
 ### Downloads
 - **macOS Disk Image (Installer)**: \`Bedrock-Mac.dmg\`
@@ -119,21 +120,21 @@ async function run() {
     console.log(`==> Processing releases for repository: ${repo}`);
     console.log(`========================================================`);
 
-    // 1. Windows Release (v1.2.4)
+    // 1. Windows Release (v1.2.5)
     let winRelease;
-    const winGetRes = await githubFetch(`https://api.github.com/repos/${repo}/releases/tags/v1.2.4`);
+    const winGetRes = await githubFetch(`https://api.github.com/repos/${repo}/releases/tags/v1.2.5`);
     if (winGetRes.ok) {
       winRelease = await winGetRes.json();
-      console.log(`Windows Release v1.2.4 exists (ID: ${winRelease.id}).`);
+      console.log(`Windows Release v1.2.5 exists (ID: ${winRelease.id}).`);
     } else {
-      console.log(`Creating Windows release v1.2.4...`);
+      console.log(`Creating Windows release v1.2.5...`);
       const createRes = await githubFetch(`https://api.github.com/repos/${repo}/releases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tag_name: 'v1.2.4',
+          tag_name: 'v1.2.5',
           target_commitish: 'main',
-          name: 'Bedrock v1.2.4 - Desktop Workstation',
+          name: 'Bedrock v1.2.5 - Desktop Workstation & AI Model Tuning',
           body: winReleaseNotes,
           draft: false,
           prerelease: false,
@@ -146,35 +147,35 @@ async function run() {
         throw new Error(`Failed to create Windows release: ${createRes.status} ${err}`);
       }
       winRelease = await createRes.json();
-      console.log(`Windows release v1.2.4 created successfully (ID: ${winRelease.id}).`);
+      console.log(`Windows release v1.2.5 created successfully (ID: ${winRelease.id}).`);
     }
 
     const winAssets = [
       { name: 'Bedrock-Setup.exe', path: 'release/Bedrock-Setup.exe', type: 'application/octet-stream' },
-      { name: 'Bedrock-Setup-1.2.4.exe', path: 'release/Bedrock-Setup-1.2.4.exe', type: 'application/octet-stream' },
+      { name: 'Bedrock-Setup-1.2.5.exe', path: 'release/Bedrock-Setup-1.2.5.exe', type: 'application/octet-stream' },
       { name: 'latest.yml', path: 'release/latest.yml', type: 'text/yaml' },
-      { name: 'Bedrock-Setup-1.2.4.exe.blockmap', path: 'release/Bedrock-Setup-1.2.4.exe.blockmap', type: 'application/octet-stream' },
+      { name: 'Bedrock-Setup-1.2.5.exe.blockmap', path: 'release/Bedrock-Setup-1.2.5.exe.blockmap', type: 'application/octet-stream' },
     ];
 
     for (const item of winAssets) {
       await uploadAsset(repo, winRelease.id, item.path, item.name, item.type);
     }
 
-    // 2. macOS Dedicated Release (v1.2.4-mac)
+    // 2. macOS Dedicated Release (v1.2.5-mac)
     let macRelease;
-    const macGetRes = await githubFetch(`https://api.github.com/repos/${repo}/releases/tags/v1.2.4-mac`);
+    const macGetRes = await githubFetch(`https://api.github.com/repos/${repo}/releases/tags/v1.2.5-mac`);
     if (macGetRes.ok) {
       macRelease = await macGetRes.json();
-      console.log(`macOS Release v1.2.4-mac exists (ID: ${macRelease.id}).`);
+      console.log(`macOS Release v1.2.5-mac exists (ID: ${macRelease.id}).`);
     } else {
-      console.log(`Creating dedicated macOS release v1.2.4-mac...`);
+      console.log(`Creating dedicated macOS release v1.2.5-mac...`);
       const createMacRes = await githubFetch(`https://api.github.com/repos/${repo}/releases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tag_name: 'v1.2.4-mac',
+          tag_name: 'v1.2.5-mac',
           target_commitish: 'main',
-          name: 'Bedrock v1.2.4 - macOS Desktop Workstation',
+          name: 'Bedrock v1.2.5 - macOS Desktop Workstation',
           body: macReleaseNotes,
           draft: false,
           prerelease: false,
@@ -187,7 +188,7 @@ async function run() {
         throw new Error(`Failed to create macOS release: ${createMacRes.status} ${err}`);
       }
       macRelease = await createMacRes.json();
-      console.log(`macOS release v1.2.4-mac created successfully (ID: ${macRelease.id}).`);
+      console.log(`macOS release v1.2.5-mac created successfully (ID: ${macRelease.id}).`);
     }
 
     const macAssets = [
@@ -200,7 +201,7 @@ async function run() {
     }
 
     // 3. Backfill latest.yml to earlier releases for seamless auto-updater
-    for (const prevTag of ['v1.2.3', 'v1.2.2', 'v1.2.1']) {
+    for (const prevTag of ['v1.2.4', 'v1.2.3', 'v1.2.2', 'v1.2.1']) {
       try {
         const prevRes = await githubFetch(`https://api.github.com/repos/${repo}/releases/tags/${prevTag}`);
         if (prevRes.ok) {
@@ -224,7 +225,7 @@ async function run() {
     }
   }
 
-  console.log(`\n==> Finished publishing release v1.2.4 to both accounts!`);
+  console.log(`\n==> Finished publishing release v1.2.5 to both accounts!`);
 }
 
 run().catch((err) => {

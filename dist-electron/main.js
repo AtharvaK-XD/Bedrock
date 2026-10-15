@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
 import http from "node:http";
+import https from "node:https";
 
 // Ensure Windows taskbar groups windows correctly under Bedrock and displays the branded icon
 if (process.platform === "win32") {
@@ -28,8 +29,8 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 // User agent identifying the Bedrock desktop environment
 app.userAgentFallback = process.platform === "darwin"
-	? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.2.2 Electron/43.3.0"
-	: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.2.2 Electron/43.3.0";
+	? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.2.5 Electron/43.3.0"
+	: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.2.5 Electron/43.3.0";
 
 const MIME_TYPES = {
 	".html": "text/html",
@@ -163,6 +164,47 @@ function startLocalServer() {
 						"Access-Control-Allow-Origin": "*"
 					});
 					return res.end(JSON.stringify({ authenticated: false }));
+				}
+
+				// Handle Backend API Proxying for Desktop Workstation (Synthesize, RAG Grounding, Telemetry, Profiles)
+				if (parsedUrl.pathname.startsWith("/api/")) {
+					const backendHost = process.env.BEDROCK_BACKEND_HOST || "bedrock-steel.vercel.app";
+					const isHttps = !backendHost.includes("localhost") && !backendHost.includes("127.0.0.1");
+					const transport = isHttps ? https : http;
+					const port = isHttps ? 443 : (process.env.BEDROCK_BACKEND_PORT ? parseInt(process.env.BEDROCK_BACKEND_PORT, 10) : 3001);
+
+					const cleanHeaders = { ...req.headers };
+					delete cleanHeaders.host;
+					delete cleanHeaders.connection;
+
+					const proxyReq = transport.request(
+						{
+							hostname: backendHost,
+							port,
+							path: parsedUrl.pathname + parsedUrl.search,
+							method: req.method,
+							headers: {
+								...cleanHeaders,
+								host: backendHost,
+							},
+						},
+						(proxyRes) => {
+							res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
+							proxyRes.pipe(res, { end: true });
+						}
+					);
+
+					proxyReq.on("error", (err) => {
+						console.warn("[LocalServer API Proxy] Remote proxy unreachable:", err.message);
+						res.writeHead(502, {
+							"Content-Type": "application/json",
+							"Access-Control-Allow-Origin": "*",
+						});
+						res.end(JSON.stringify({ error: "Backend proxy unreachable", message: err.message, offline: true }));
+					});
+
+					req.pipe(proxyReq, { end: true });
+					return;
 				}
 
 				let filePath = path.join(RENDERER_DIST, decodeURIComponent(parsedUrl.pathname));
