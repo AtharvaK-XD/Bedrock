@@ -4,6 +4,9 @@ import { sanitizeAndDelimitPrompt, checkPromptInjection, enforceServerQuota, rec
 import { executeAiCompletion } from '../_lib/ai.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
 import { buildSynthesisSystemPrompt } from '../_lib/aiPrompts.js';
+import { getUseCaseProfile, validatePromptAgainstForbiddenTerms } from '../_lib/useCaseProfiles.js';
+import { validateSynthesisOutput, buildRepairMessage, sanitizePromptOutput } from '../_lib/validation.js';
+import { getGroundedFacts } from '../_lib/ragGrounding.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -36,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = req.body || {};
   const idea = body.idea || {};
   const rawIdea = (idea.rawText || body.rawText || '').trim();
-  const targetType = idea.targetType || body.targetType || 'Production Prompt';
+  const targetType = idea.targetType || body.targetType || 'coding-agent';
   const answers: Array<{ questionId: string; value: string | string[] }> = body.answers || [];
   const questions: Array<{ id: string; questionText: string }> = body.questions || [];
 
@@ -46,6 +49,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Security: Check for prompt injection
   checkPromptInjection(rawIdea, user?.id, ip);
+
+  // Retrieve active use case profile
+  const profile = getUseCaseProfile(targetType);
 
   // Construct structured clarification summary
   let clarificationContext = '';
@@ -57,9 +63,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }).join('\n');
   }
 
-  const systemPrompt = buildSynthesisSystemPrompt(targetType);
+  const ragFacts = getGroundedFacts(rawIdea, targetType);
+  const ragSection = ragFacts.groundedFactsBlock ? `\n\n${ragFacts.groundedFactsBlock}` : '';
+  const systemPrompt = `${buildSynthesisSystemPrompt(targetType)}\n\n### USE CASE DIRECTIVE: ${profile.name.toUpperCase()}\n${profile.synthesisPrompt}${ragSection}\n\nForbidden terms to avoid:\n${profile.forbiddenTerms.map(t => `- "${t}"`).join('\n')}`;
 
-  const userContent = sanitizeAndDelimitPrompt(`Concept: ${rawIdea}\nTarget Type: ${targetType}${clarificationContext}`);
+  const userContent = sanitizeAndDelimitPrompt(`Concept: ${rawIdea}\nTarget Type: ${profile.name} (${profile.id})${clarificationContext}`);
 
   const wantsStream = Boolean(body.stream || req.query.stream === 'true' || req.headers.accept?.includes('text/event-stream'));
 
@@ -81,8 +89,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (typeof (res as any).flush === 'function') {
             (res as any).flush();
           }
-        }
+        },
+        profile.temperature
       );
+
+      const validation = validatePromptAgainstForbiddenTerms(text, profile.id);
+      if (!validation.valid) {
+        console.warn(`[Synthesize] Forbidden terms detected for profile "${profile.id}":`, validation.foundTerms);
+      }
 
       if (user?.id) {
         await recordExecutionTrace({
@@ -95,29 +109,85 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      res.write(`data: ${JSON.stringify({ done: true, modelTarget: model, latencyMs: Date.now() - startTime })}\n\n`);
+      res.write(`data: ${JSON.stringify({
+        done: true,
+        modelTarget: model,
+        latencyMs: Date.now() - startTime,
+        profileId: profile.id,
+        validation: validation.valid ? 'passed' : 'warning',
+        flaggedTerms: validation.foundTerms,
+      })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
       return;
     }
 
-    const { text, model } = await executeAiCompletion(userContent, systemPrompt, user?.id);
+    const { text, model } = await executeAiCompletion(
+      userContent,
+      systemPrompt,
+      user?.id,
+      undefined,
+      profile.temperature
+    );
+
+    let finalText = text;
+    let effectiveModel = model;
+    const sVal = validateSynthesisOutput(finalText, targetType, rawIdea);
+
+    if (!sVal.isValid) {
+      console.warn(`[Synthesize] Output failed schema or forbidden-term validation (${sVal.issues.map(i => i.message).join('; ')}). Initiating single repair retry...`);
+      const repair = buildRepairMessage({
+        previousOutput: finalText,
+        validation: sVal,
+        targetType,
+        userIdea: rawIdea,
+        mode: 'synthesis',
+      });
+      try {
+        const retried = await executeAiCompletion(
+          repair.repairUserPrompt,
+          repair.repairSystemPrompt,
+          user?.id,
+          undefined,
+          Math.min(0.2, profile.temperature)
+        );
+        const retryVal = validateSynthesisOutput(retried.text, targetType, rawIdea);
+        if (retryVal.isValid || retryVal.issues.length < sVal.issues.length) {
+          finalText = retried.text;
+          effectiveModel = retried.model;
+          console.log(`[Synthesize] Serverless synthesis repair retry succeeded for "${targetType}"!`);
+        }
+      } catch (retryErr: any) {
+        console.error(`[Synthesize] Repair retry failed: ${retryErr.message}`);
+      }
+    }
+
+    finalText = sanitizePromptOutput(finalText);
+    const finalValidation = validateSynthesisOutput(finalText, targetType, rawIdea);
 
     if (user?.id) {
       await recordExecutionTrace({
         userId: user.id,
         nodeOrigin: 'Wizard.synthesize',
-        modelTarget: model,
-        tokensUsed: Math.max(500, Math.round(text.length / 3.5)),
+        modelTarget: effectiveModel,
+        tokensUsed: Math.max(500, Math.round(finalText.length / 3.5)),
         latencyMs: Date.now() - startTime,
         status: 'success',
       });
     }
 
     return res.status(200).json({
-      promptText: text.trim(),
-      modelTarget: model,
+      promptText: finalText.trim(),
+      modelTarget: effectiveModel,
       latencyMs: Date.now() - startTime,
+      useCaseProfile: {
+        id: profile.id,
+        name: profile.name,
+        temperature: profile.temperature,
+        validation: finalValidation.isValid ? 'passed' : 'warning',
+        flaggedTerms: finalValidation.forbiddenTermsFound,
+        missingSections: finalValidation.missingSections,
+      },
     });
   } catch (err: any) {
     console.error('[Synthesize] Error:', err);

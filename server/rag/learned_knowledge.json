@@ -1,0 +1,14 @@
+{
+  "real-time": {
+    "domain": "coding",
+    "key_facts": [
+      "Verified specification for real-time: RealTime, also known as RealTime Arts, was a free Australian arts magazine, published by Open City in print from 1994 until 2015 and online from 1996 to December 2017.."
+    ]
+  },
+  "postgres": {
+    "domain": "coding",
+    "key_facts": [
+      "Verified specification for postgres: PostgreSQL, also known as Postgres, is a free and open-source relational database management system emphasizing extensibility and SQL compliance."
+    ]
+  }
+}

@@ -3,7 +3,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion, QuestionOutput } from '../_lib/ai.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { buildQuestionsSystemPrompt } from '../_lib/aiPrompts.js';
+import { getUseCaseProfile, classifyUseCase } from '../_lib/useCaseProfiles.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const body = req.body || {};
   const ideaText = (body.ideaText || body.rawText || '').trim();
-  const targetType = body.targetType || 'General Prompt';
+  const targetType = body.targetType || 'coding-agent';
 
   if (!ideaText) {
     return res.status(400).json({ error: 'ideaText is required' });
@@ -29,9 +29,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Security: Check for prompt injection
   checkPromptInjection(ideaText, user?.id, ip);
 
-  const systemPrompt = buildQuestionsSystemPrompt(targetType);
+  const profile = getUseCaseProfile(targetType);
+  const classification = classifyUseCase(ideaText, targetType);
+  const systemPrompt = profile.questionPrompt;
 
-  const safePrompt = sanitizeAndDelimitPrompt(ideaText);
+  const safePrompt = sanitizeAndDelimitPrompt(
+    `Selected Profile: ${profile.name} (${profile.tag})\nConfirmed: ${classification.isConfirmed}\n\nProject Idea: ${ideaText}`
+  );
 
   try {
     const { text, model } = await executeAiCompletion(safePrompt, systemPrompt);
@@ -55,28 +59,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json(questions);
   } catch (err: any) {
     console.error('[GenerateQuestions] Error:', err);
-
-    // Safe fallback questions if parsing fails
-    const fallbackQuestions: QuestionOutput[] = [
-      {
-        id: 'fallback_1',
-        questionText: 'What is the primary target audience or recipient for this prompt?',
-        questionType: 'single_select',
-        options: ['Technical / Developers', 'Business / Leadership', 'General Public', 'Academic / Research'],
-      },
-      {
-        id: 'fallback_2',
-        questionText: 'What tone of voice should the generated output adopt?',
-        questionType: 'single_select',
-        options: ['Authoritative & Technical', 'Concise & Actionable', 'Inspirational & Creative', 'Analytical & Formal'],
-      },
-      {
-        id: 'fallback_3',
-        questionText: 'Are there any strict constraints or formats required?',
-        questionType: 'free_text',
-      },
-    ];
-
-    return res.status(200).json(fallbackQuestions);
+    return res.status(200).json(profile.fallbackQuestions);
   }
 }
