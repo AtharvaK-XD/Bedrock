@@ -597,7 +597,7 @@ export default function Settings() {
                                 )}
                               >
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <AgentIcon model={currentModel.id} className="w-4 h-4 shrink-0" badgeClassName="w-6 h-6 bg-white/5 border border-white/10" />
+                                  <AgentIcon model={currentModel.id} className="w-5 h-5 shrink-0" badgeClassName="w-5 h-5" />
                                   <span className="font-semibold text-white truncate text-sm">
                                     {currentModel.name}
                                   </span>
@@ -648,7 +648,7 @@ export default function Settings() {
                                                 )}
                                               >
                                                 <div className="flex items-center gap-2.5 min-w-0">
-                                                  <AgentIcon model={model.id} className="w-3.5 h-3.5 shrink-0" badgeClassName="w-5 h-5 bg-white/5 border border-white/10" />
+                                                  <AgentIcon model={model.id} className="w-4 h-4 shrink-0" badgeClassName="w-4 h-4" />
                                                   <span className={cn("truncate font-medium", isSelected && "font-bold text-copper-300")}>
                                                     {model.name}
                                                   </span>
@@ -680,7 +680,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'gemini' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'gemini' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Google Gemini API Key
                               </label>
@@ -729,7 +729,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'groq' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'groq' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Groq Cloud API Key
                               </label>
@@ -778,7 +778,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'chatgpt' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'chatgpt' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 OpenAI API Key
                               </label>
@@ -827,7 +827,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'claude' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'claude' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Anthropic API Key
                               </label>
@@ -876,7 +876,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'openrouter' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'openrouter' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 OpenRouter API Key
                               </label>
@@ -925,7 +925,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'mistral' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'mistral' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Mistral AI API Key
                               </label>
@@ -974,7 +974,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'cohere' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'cohere' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Cohere API Key
                               </label>
@@ -1023,7 +1023,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'copilot' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'copilot' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Microsoft Copilot / Azure AI Key
                               </label>
@@ -1072,7 +1072,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'huggingface' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'huggingface' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Hugging Face User Access Token
                               </label>
@@ -1121,7 +1121,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'deepseek' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'deepseek' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 DeepSeek API Key
                               </label>
@@ -1170,7 +1170,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'nvidia' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'nvidia' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 Nvidia NIM API Key
                               </label>
@@ -1219,7 +1219,7 @@ export default function Settings() {
                         <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'grok' }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+                              <AgentIcon agent={{ id: 'grok' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
                                 xAI (Grok) API Key
                               </label>

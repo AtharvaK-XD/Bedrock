@@ -421,7 +421,7 @@ export default function Dashboard() {
                                 ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/35 shadow-[0_0_8px_rgba(6,182,212,0.15)]'
                                 : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/35 shadow-[0_0_8px_rgba(16,185,129,0.15)]'
                             }`}>
-                              <AgentIcon model={exec.model} className="w-3 h-3" badgeClassName="w-3.5 h-3.5 bg-transparent border-0 shadow-none p-0" />
+                              <AgentIcon model={exec.model} className="w-3.5 h-3.5" badgeClassName="w-3.5 h-3.5" />
                               {exec.model}
                             </span>
                           </td>

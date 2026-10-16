@@ -376,7 +376,7 @@ export function RichInput({
               onClick={() => setActiveDropdown(activeDropdown === 'agent' ? null : 'agent')}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-black/60 hover:bg-black/90 border border-white/[0.08] hover:border-white/[0.16] shadow-sm transition-all duration-200 backdrop-blur-md"
             >
-              <AgentIcon agent={selectedAgent} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+              <AgentIcon agent={selectedAgent} className="w-4 h-4" badgeClassName="w-4 h-4" />
               <span className="text-zinc-500 text-xs">Provider:</span>
               <span>{selectedAgent.name}</span>
               <span className="text-[10px] text-zinc-500">▾</span>
@@ -406,7 +406,7 @@ export function RichInput({
                         selectedAgentId === agent.id ? "bg-white/10" : "hover:bg-white/5"
                       )}
                     >
-                      <AgentIcon agent={agent} className="w-4 h-4" badgeClassName="w-6 h-6 mt-0.5" />
+                      <AgentIcon agent={agent} className="w-5 h-5" badgeClassName="w-5 h-5 mt-0.5" />
                       <div>
                         <div className={cn("text-xs sm:text-sm font-medium", selectedAgentId === agent.id ? "text-white" : "text-zinc-300")}>{agent.name}</div>
                         <div className="text-[11px] text-zinc-400 mt-0.5">{agent.description}</div>
@@ -427,7 +427,7 @@ export function RichInput({
               onClick={() => setActiveDropdown(activeDropdown === 'model' ? null : 'model')}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white bg-black/60 hover:bg-black/90 border border-white/[0.08] hover:border-white/[0.16] shadow-sm transition-all duration-200 backdrop-blur-md"
             >
-              <AgentIcon agent={selectedAgent} model={selectedModel.id} className="w-3.5 h-3.5" badgeClassName="w-5 h-5" />
+              <AgentIcon agent={selectedAgent} model={selectedModel.id} className="w-4 h-4" badgeClassName="w-4 h-4" />
               <span className="text-zinc-500 text-xs">Model:</span>
               <span className="font-mono text-xs">{selectedModel.name}</span>
               <span className="text-[10px] text-zinc-500">▾</span>
@@ -439,7 +439,7 @@ export function RichInput({
                 data-lenis-prevent="true"
               >
                 <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1 flex items-center gap-1.5">
-                  <AgentIcon agent={selectedAgent} className="w-3 h-3" badgeClassName="w-4 h-4" />
+                  <AgentIcon agent={selectedAgent} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                   <span>{selectedAgent.name} Models</span>
                 </div>
                 <div 
@@ -461,7 +461,7 @@ export function RichInput({
                       )}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <AgentIcon agent={selectedAgent} model={model.id} className="w-3 h-3" badgeClassName="w-4 h-4" />
+                        <AgentIcon agent={selectedAgent} model={model.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                         <span className="truncate">{model.name}</span>
                       </div>
                       {selectedModelId === model.id && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}

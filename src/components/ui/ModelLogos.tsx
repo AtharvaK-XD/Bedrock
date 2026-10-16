@@ -401,12 +401,13 @@ export function ModelLogo({
 }
 
 /**
- * High-res, dark-mode badge with the model's authentic brand logo.
+ * High-res, authentic brand logo for model and agent icons.
+ * Clean, borderless presentation so all model icons render crisp, unboxed, and clearly visible.
  */
 export function AgentIcon({
   agent,
   model,
-  className = "w-3.5 h-3.5",
+  className = "w-4 h-4",
   badgeClassName,
 }: {
   agent?: any;
@@ -426,12 +427,12 @@ export function AgentIcon({
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center shrink-0 w-5 h-5 rounded-md bg-white/[0.08] border border-white/10 shadow-sm overflow-hidden select-none p-0.5",
+        "inline-flex items-center justify-center shrink-0 select-none",
         badgeClassName
       )}
       title={titleText}
     >
-      <Logo className={cn("shrink-0", className)} />
+      <Logo className={cn("shrink-0 object-contain", className)} />
     </span>
   );
 }

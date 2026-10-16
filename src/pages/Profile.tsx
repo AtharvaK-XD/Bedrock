@@ -739,7 +739,7 @@ export default function Profile() {
                               </div>
                               <div className="flex items-center gap-3 text-xs text-gray-500 font-mono">
                                 <span className="flex items-center gap-1.5 text-gray-400">
-                                  <AgentIcon model="gemini-2.5-flash" className="w-3 h-3" badgeClassName="w-4 h-4 bg-white/5 border-white/10" />
+                                  <AgentIcon model="gemini-2.5-flash" className="w-3.5 h-3.5" badgeClassName="w-3.5 h-3.5" />
                                   <span>Bedrock Engine</span>
                                 </span>
                                 <span>•</span>
@@ -1372,7 +1372,7 @@ export default function Profile() {
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
-                          <AgentIcon agent={{ id: m.id }} className="w-3.5 h-3.5" badgeClassName="w-5 h-5 bg-white/5 border border-white/10" />
+                          <AgentIcon agent={{ id: m.id }} className="w-4 h-4" badgeClassName="w-4 h-4" />
                           <span className="font-semibold text-white text-sm">{m.name}</span>
                         </div>
                         {idx === 0 && (

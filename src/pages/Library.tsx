@@ -833,8 +833,8 @@ export default function Library() {
                               <AgentIcon
                                 key={m}
                                 model={m}
-                                className="w-3.5 h-3.5"
-                                badgeClassName="w-6 h-6 bg-white/5 border border-white/15 hover:border-white/30 transition-colors"
+                                className="w-4 h-4"
+                                badgeClassName="w-4 h-4"
                               />
                             ))}
                           </div>
@@ -987,7 +987,7 @@ export default function Library() {
                     <span className="text-xs font-mono text-neutral-500">{prompt.date}</span>
                     <div className="flex items-center gap-1">
                       {(prompt.models || ['claude', 'mistral', 'meta', 'copilot']).slice(0, 4).map((m) => (
-                        <AgentIcon key={m} model={m} className="w-2.5 h-2.5" badgeClassName="w-4 h-4 bg-white/5 border-white/10" />
+                        <AgentIcon key={m} model={m} className="w-3.5 h-3.5" badgeClassName="w-3.5 h-3.5" />
                       ))}
                     </div>
                   </div>
