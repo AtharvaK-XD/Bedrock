@@ -258,8 +258,8 @@ export function NetworkTopology2D() {
                   {mode !== 'ALL' && (
                     <AgentIcon
                       model={mode === 'LLAMA-3.1' ? 'llama' : 'gemini'}
-                      className="w-3 h-3"
-                      badgeClassName="w-3.5 h-3.5 p-0 bg-transparent border-0 shadow-none"
+                      className="w-3.5 h-3.5"
+                      badgeClassName="w-3.5 h-3.5"
                     />
                   )}
                   <span>{mode === 'ALL' ? 'All Routes' : mode === 'LLAMA-3.1' ? 'Llama 3.1' : 'Gemini 2.5'}</span>

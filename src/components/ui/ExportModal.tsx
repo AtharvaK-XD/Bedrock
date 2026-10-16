@@ -232,7 +232,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                           : 'bg-black/40 border border-white/5 text-neutral-400 hover:text-white hover:bg-white/5'
                       )}
                     >
-                      <AgentIcon model={target.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4 bg-transparent border-0 shadow-none p-0" />
+                      <AgentIcon model={target.id} className="w-4 h-4" badgeClassName="w-4 h-4" />
                       <span>{target.name}</span>
                       <span className="text-[10px] font-mono opacity-70">({target.extension})</span>
                     </button>
@@ -244,7 +244,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             {/* Target Settings Bar & Variable Indicators */}
             <div className="px-6 py-3 bg-[#13161c]/80 border-b border-white/5 flex flex-wrap items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2">
-                <AgentIcon model={currentTarget.id} className="w-3.5 h-3.5" badgeClassName="w-5 h-5 bg-white/5 border-white/10 p-0.5" />
+                <AgentIcon model={currentTarget.id} className="w-4 h-4" badgeClassName="w-4 h-4" />
                 <span className="text-xs font-semibold text-white">{currentTarget.filename}</span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-white/5 border border-white/10 text-neutral-300">
                   {currentTarget.badge}
@@ -262,7 +262,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 border border-white/10 hover:border-white/20 text-xs font-medium text-neutral-200 cursor-pointer"
                   >
-                    <AgentIcon model={selectedModel} className="w-3.5 h-3.5" badgeClassName="w-4 h-4 bg-transparent border-0 shadow-none p-0" />
+                    <AgentIcon model={selectedModel} className="w-4 h-4" badgeClassName="w-4 h-4" />
                     <span>Model: {EXPORT_MODELS.find((m) => m.id === selectedModel)?.name || selectedModel}</span>
                     <ChevronDown className="w-3 h-3 text-neutral-400" />
                   </button>
@@ -292,7 +292,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                             )}
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <AgentIcon model={m.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4 bg-transparent border-0 shadow-none p-0" />
+                              <AgentIcon model={m.id} className="w-4 h-4" badgeClassName="w-4 h-4" />
                               <span className="truncate">{m.name}</span>
                             </div>
                             <span className="text-[10px] font-mono opacity-60 ml-2 shrink-0">{m.provider}</span>
