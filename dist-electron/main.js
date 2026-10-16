@@ -273,6 +273,7 @@ var win;
 function createWindow() {
 	const appIcon = getAppIcon();
 	win = new BrowserWindow({
+		title: "Bedrock",
 		width: 1200,
 		height: 800,
 		minWidth: 900,
