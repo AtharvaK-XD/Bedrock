@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Mic, Check } from 'lucide-react';
+import { Plus, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { IdeaPayload } from '../../lib/mockApi';
 import { usePromptQuota } from '../../lib/usePromptQuota';
@@ -514,14 +514,6 @@ export function RichInput({
               aria-label="Attach files"
             >
               <Plus className="w-5 h-5" />
-            </button>
-            <button 
-              type="button" 
-              className="p-2 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl transition-colors"
-              title="Voice Dictate"
-              aria-label="Voice Dictate"
-            >
-              <Mic className="w-5 h-5" />
             </button>
           </div>
           
