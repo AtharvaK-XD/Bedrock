@@ -15,6 +15,8 @@ import nvidiaLogoImg from '../../assets/logos/nvidia.png';
 import geminiLogoImg from '../../assets/logos/gemini.png';
 import grokLogoImg from '../../assets/logos/grok.png';
 import cursorLogoImg from '../../assets/logos/cursor.png';
+import windsurfLogoImg from '../../assets/logos/windsurf.png';
+import pythonLogoImg from '../../assets/logos/python.png';
 import universalLogoImg from '../../assets/logos/universal.png';
 import appleLogoImg from '../../assets/logos/apple.png';
 
@@ -61,6 +63,28 @@ export function CursorLogo({ className = "w-4 h-4" }: { className?: string }) {
     <img
       src={cursorLogoImg}
       alt="Cursor"
+      draggable={false}
+      className={cn("object-contain shrink-0 select-none", className)}
+    />
+  );
+}
+
+export function WindsurfLogo({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <img
+      src={windsurfLogoImg}
+      alt="Windsurf"
+      draggable={false}
+      className={cn("object-contain shrink-0 select-none", className)}
+    />
+  );
+}
+
+export function PythonLogo({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <img
+      src={pythonLogoImg}
+      alt="Python"
       draggable={false}
       className={cn("object-contain shrink-0 select-none", className)}
     />
@@ -368,6 +392,20 @@ export function getLogoComponent(idOrName?: string, fallbackName?: string): Reac
 
   // 14. Cursor IDE / Cursorrules
   if (key.includes('cursor') || key.includes('cursorrules')) return CursorLogo;
+
+  // 15. Windsurf Cascade / Codeium
+  if (key.includes('windsurf') || key.includes('cascade')) return WindsurfLogo;
+
+  // 16. Python / LangChain
+  if (
+    key.includes('langchain') ||
+    key.includes('python') ||
+    key === 'py' ||
+    key.endsWith('-py') ||
+    key.endsWith('.py')
+  ) {
+    return PythonLogo;
+  }
 
   // 14. Groq
   if (key.includes('groq')) return GroqLogo;
