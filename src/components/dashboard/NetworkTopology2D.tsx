@@ -231,13 +231,6 @@ export function NetworkTopology2D() {
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/10 shadow-sm backdrop-blur-md">
             <span className="text-[11px] font-semibold tracking-wider text-white font-display uppercase">2D Topology Flow</span>
           </div>
-          <span className="hidden sm:inline-block text-white/20">|</span>
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-white/60">
-            {isPaused ? 'Paused' : 'Realtime Routing'}
-          </span>
-          <span className="hidden md:inline-flex items-center text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/25 shadow-sm backdrop-blur-sm">
-            60 FPS SVG
-          </span>
         </div>
 
         {/* Right: Route Filtering & Playback Controls */}
