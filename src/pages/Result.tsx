@@ -179,18 +179,21 @@ export default function Result() {
       {/* Header */}
       <div className="flex-none p-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer mr-0.5"
-            title={isSidebarCollapsed ? "Show previous prompts" : "Hide history sidebar"}
-          >
-            {isSidebarCollapsed ? (
-              <PanelLeftOpen className="w-4 h-4 text-copper-400" />
-            ) : (
-              <PanelLeftClose className="w-4 h-4 text-neutral-400" />
-            )}
-          </button>
+          {!isSwapped && (
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-neutral-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 transition-colors cursor-pointer mr-1 group shadow-sm"
+              title={isSidebarCollapsed ? "Show previous prompts (History)" : "Hide history sidebar"}
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4 text-neutral-400 group-hover:scale-110 transition-transform" />
+              )}
+              <span className="text-xs font-mono text-neutral-300">History</span>
+            </button>
+          )}
           <span>Interactive prompt refinement</span>
         </div>
         <button
@@ -308,7 +311,22 @@ export default function Result() {
     <div className="relative w-full h-full flex flex-col overflow-hidden">
       {/* Document Header */}
       <div className="flex-none p-4 border-b border-white/5 bg-transparent flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          {isSwapped && (
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-neutral-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 transition-colors cursor-pointer mr-1 group shadow-sm"
+              title={isSidebarCollapsed ? "Show previous prompts (History)" : "Hide history sidebar"}
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4 text-neutral-400 group-hover:scale-110 transition-transform" />
+              )}
+              <span className="text-xs font-mono text-neutral-300">History</span>
+            </button>
+          )}
           <div className="font-display font-medium text-white text-[15px]">
             Bedrock App Prompt <span className="font-mono text-xs text-gray-500 ml-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">MD</span>
           </div>
@@ -387,22 +405,6 @@ export default function Result() {
           onClick={toggleSidebar}
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
         />
-      )}
-
-      {/* Floating Expand Trigger when minimized */}
-      {isSidebarCollapsed && (
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          className={cn(
-            "fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d10]/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200",
-            isDesktop ? "top-4 left-68" : "top-22 left-4"
-          )}
-          title="Show previous prompts"
-        >
-          <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
-          <span className="text-xs font-mono">History</span>
-        </button>
       )}
 
       {/* Main Split Pane Workspace */}
