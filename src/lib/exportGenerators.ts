@@ -28,6 +28,7 @@ export const EXPORT_MODELS = [
   { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', provider: 'DeepSeek' },
   { id: 'openrouter/auto', name: 'Auto Route', provider: 'OpenRouter' },
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google' },
+  { id: 'sonar-pro', name: 'Sonar Pro', provider: 'Perplexity' },
 ];
 
 export const EXPORT_TARGETS: ExportTarget[] = [
