@@ -19,12 +19,25 @@ import {
   ChevronDown,
   ArrowUpCircle,
   RefreshCw,
-  Info,
+  Sliders,
+  Palette,
+  Gauge,
+  Terminal,
+  Volume2,
+  Download,
+  Upload,
+  Globe,
+  FileCode,
+  HardDrive,
 } from 'lucide-react';
-import { AgentIcon, AppleLogo } from '../components/ui/ModelLogos';
+import { AgentIcon, AppleLogo, PerplexityLogo } from '../components/ui/ModelLogos';
 import { subscribeToUpdates, checkForUpdates, applyUpdate } from '../lib/updater';
 import type { UpdateStatus } from '../lib/updater';
-import { isDesktopApp, isMacOS } from '../lib/platform';
+import { isDesktopApp } from '../lib/platform';
+
+// ============================================================================
+// TYPES & CONSTANTS
+// ============================================================================
 
 export interface ModelOption {
   id: string;
@@ -38,7 +51,7 @@ export interface ModelGroup {
   models: ModelOption[];
 }
 
-const MODEL_GROUPS: ModelGroup[] = [
+export const MODEL_GROUPS: ModelGroup[] = [
   {
     group: 'Google DeepMind (Recommended)',
     models: [
@@ -46,6 +59,15 @@ const MODEL_GROUPS: ModelGroup[] = [
       { id: 'gemini-flash-latest', name: 'Gemini Flash Latest', tag: 'Fast', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
       { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', tag: 'Balanced', tagColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
       { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', tag: 'Standard', tagColor: 'text-gray-300 bg-white/5 border-white/10' },
+    ],
+  },
+  {
+    group: 'Perplexity AI (Live Grounding)',
+    models: [
+      { id: 'sonar-pro', name: 'Sonar Pro', tag: 'Web Search & Reasoning', tagColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { id: 'sonar-reasoning-pro', name: 'Sonar Reasoning Pro', tag: 'Chain-of-Thought', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+      { id: 'sonar', name: 'Sonar', tag: 'Fast Search', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'sonar-huge', name: 'Sonar Huge', tag: 'Deep Synthesis', tagColor: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
     ],
   },
   {
@@ -60,8 +82,18 @@ const MODEL_GROUPS: ModelGroup[] = [
   {
     group: 'Anthropic',
     models: [
+      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', tag: 'Hybrid Reasoning', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
       { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', tag: 'Pro Coding', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
       { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', tag: 'Fast', tagColor: 'text-orange-300 bg-orange-500/10 border-orange-500/20' },
+    ],
+  },
+  {
+    group: 'OpenAI',
+    models: [
+      { id: 'gpt-4o', name: 'GPT-4o', tag: 'Omni Flagship', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', tag: 'Fast & Lightweight', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+      { id: 'o1', name: 'OpenAI o1', tag: 'Reasoning Specialist', tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { id: 'o3-mini', name: 'OpenAI o3-mini', tag: 'High-Speed Math & Code', tagColor: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
     ],
   },
   {
@@ -109,11 +141,221 @@ const MODEL_GROUPS: ModelGroup[] = [
       { id: 'grok-beta', name: 'Grok Beta', tag: 'Fast', tagColor: 'text-neutral-400 bg-white/5 border-white/10' },
     ],
   },
+  {
+    group: 'Ollama (Local Models)',
+    models: [
+      { id: 'ollama/llama3.2', name: 'Llama 3.2 (Local)', tag: 'Offline Local', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+      { id: 'ollama/qwen2.5-coder', name: 'Qwen 2.5 Coder (Local)', tag: 'Offline Code', tagColor: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
+      { id: 'ollama/deepseek-r1', name: 'DeepSeek R1 (Local)', tag: 'Offline Reasoning', tagColor: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
+    ],
+  },
 ];
 
-type Tab = 'account' | 'api-keys' | 'notifications' | 'privacy' | 'updates';
+type Tab =
+  | 'account'
+  | 'models'
+  | 'api-keys'
+  | 'tokens'
+  | 'appearance'
+  | 'notifications'
+  | 'privacy'
+  | 'updates';
 
-interface ApiKeysState {
+// Storage keys
+const STORAGE_KEY_API_KEYS = 'bedrock_api_keys';
+const STORAGE_KEY_NOTIFICATIONS = 'bedrock_notifications_settings';
+const STORAGE_KEY_PRIVACY = 'bedrock_privacy_settings';
+const STORAGE_KEY_MODEL_SETTINGS = 'bedrock_model_settings';
+const STORAGE_KEY_TOKEN_SETTINGS = 'bedrock_token_settings';
+const STORAGE_KEY_APPEARANCE = 'bedrock_appearance_settings';
+
+// ============================================================================
+// MODEL & INFERENCE SETTINGS
+// ============================================================================
+
+export interface ModelInferenceSettings {
+  defaultModel: string;
+  temperature: number;
+  maxOutputTokens: number;
+  topP: number;
+  streamSpeed: 'instant' | 'smooth' | 'typewriter';
+  systemPromptDirectives: string;
+  autoFallback: boolean;
+  enableWebCitations: boolean;
+  strictJsonMode: boolean;
+}
+
+const DEFAULT_MODEL_SETTINGS: ModelInferenceSettings = {
+  defaultModel: 'gemini-3.5-flash-lite',
+  temperature: 0.7,
+  maxOutputTokens: 4096,
+  topP: 0.95,
+  streamSpeed: 'smooth',
+  systemPromptDirectives: '',
+  autoFallback: true,
+  enableWebCitations: true,
+  strictJsonMode: false,
+};
+
+function getStoredModelSettings(): ModelInferenceSettings {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_MODEL_SETTINGS);
+    if (!data) return DEFAULT_MODEL_SETTINGS;
+    return { ...DEFAULT_MODEL_SETTINGS, ...JSON.parse(data) };
+  } catch {
+    return DEFAULT_MODEL_SETTINGS;
+  }
+}
+
+// ============================================================================
+// TOKEN & BUDGET SETTINGS
+// ============================================================================
+
+export interface TokenSettings {
+  sessionLimit: number;
+  weeklyLimit: number;
+  warningThreshold: number;
+  hardStopOnLimit: boolean;
+  estimationMode: 'heuristic' | 'bpe';
+  currency: 'USD' | 'EUR' | 'GBP' | 'JPY' | 'INR';
+  autoCompactContext: boolean;
+  costWarningThreshold: number;
+}
+
+const DEFAULT_TOKEN_SETTINGS: TokenSettings = {
+  sessionLimit: 50,
+  weeklyLimit: 250,
+  warningThreshold: 80,
+  hardStopOnLimit: true,
+  estimationMode: 'heuristic',
+  currency: 'USD',
+  autoCompactContext: true,
+  costWarningThreshold: 5.0,
+};
+
+function getStoredTokenSettings(): TokenSettings {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_TOKEN_SETTINGS);
+    if (!data) return DEFAULT_TOKEN_SETTINGS;
+    return { ...DEFAULT_TOKEN_SETTINGS, ...JSON.parse(data) };
+  } catch {
+    return DEFAULT_TOKEN_SETTINGS;
+  }
+}
+
+// ============================================================================
+// APPEARANCE & THEME SETTINGS
+// ============================================================================
+
+export interface AppearanceSettings {
+  themePreset: 'obsidian' | 'slate' | 'amber' | 'emerald' | 'violet';
+  accentColor: 'copper' | 'cyan' | 'emerald' | 'violet' | 'rose' | 'amber';
+  fontScale: 'compact' | 'standard' | 'roomy';
+  fontFamily: 'sans' | 'editorial' | 'mono';
+  codeTheme: 'tokyo-night' | 'dracula' | 'monokai' | 'github-dark' | 'one-dark';
+  glassIntensity: 'none' | 'subtle' | 'luxury';
+  particleEffects: boolean;
+  soundFeedback: boolean;
+  reducedMotion: boolean;
+}
+
+const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
+  themePreset: 'obsidian',
+  accentColor: 'copper',
+  fontScale: 'standard',
+  fontFamily: 'sans',
+  codeTheme: 'tokyo-night',
+  glassIntensity: 'luxury',
+  particleEffects: true,
+  soundFeedback: true,
+  reducedMotion: false,
+};
+
+function getStoredAppearance(): AppearanceSettings {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_APPEARANCE);
+    if (!data) return DEFAULT_APPEARANCE_SETTINGS;
+    return { ...DEFAULT_APPEARANCE_SETTINGS, ...JSON.parse(data) };
+  } catch {
+    return DEFAULT_APPEARANCE_SETTINGS;
+  }
+}
+
+function applyAppearanceToDom(settings: AppearanceSettings) {
+  try {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', settings.themePreset);
+    root.setAttribute('data-accent', settings.accentColor);
+    root.setAttribute('data-font-scale', settings.fontScale);
+
+    if (settings.fontScale === 'compact') {
+      root.style.fontSize = '14px';
+    } else if (settings.fontScale === 'roomy') {
+      root.style.fontSize = '17px';
+    } else {
+      root.style.fontSize = '16px';
+    }
+
+    root.classList.remove('font-sans-mode', 'font-editorial-mode', 'font-mono-mode');
+    if (settings.fontFamily === 'editorial') root.classList.add('font-editorial-mode');
+    else if (settings.fontFamily === 'mono') root.classList.add('font-mono-mode');
+    else root.classList.add('font-sans-mode');
+
+    if (settings.reducedMotion) {
+      root.classList.add('reduce-motion');
+    } else {
+      root.classList.remove('reduce-motion');
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// Audio Feedback Chime
+function playUiAudio(type: 'click' | 'success' | 'toggle' = 'click', enabled = true) {
+  if (!enabled) return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'success') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.04, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } else if (type === 'toggle') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(329.63, ctx.currentTime);
+      gain.gain.setValueAtTime(0.025, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.08);
+    } else {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(750, ctx.currentTime);
+      gain.gain.setValueAtTime(0.02, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.04);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// ============================================================================
+// API KEYS STATE
+// ============================================================================
+
+export interface ApiKeysState {
   defaultModel: string;
   geminiKey: string;
   groqKey: string;
@@ -127,6 +369,8 @@ interface ApiKeysState {
   deepSeekKey: string;
   nvidiaKey: string;
   xaiKey: string;
+  perplexityKey: string;
+  ollamaHost: string;
 }
 
 const DEFAULT_API_KEYS: ApiKeysState = {
@@ -143,11 +387,9 @@ const DEFAULT_API_KEYS: ApiKeysState = {
   deepSeekKey: '',
   nvidiaKey: '',
   xaiKey: '',
+  perplexityKey: '',
+  ollamaHost: 'http://localhost:11434',
 };
-
-const STORAGE_KEY_API_KEYS = 'bedrock_api_keys';
-const STORAGE_KEY_NOTIFICATIONS = 'bedrock_notifications_settings';
-const STORAGE_KEY_PRIVACY = 'bedrock_privacy_settings';
 
 function getStoredApiKeys(): ApiKeysState {
   try {
@@ -159,11 +401,17 @@ function getStoredApiKeys(): ApiKeysState {
   }
 }
 
-interface NotificationSettings {
+// ============================================================================
+// NOTIFICATIONS & PRIVACY
+// ============================================================================
+
+export interface NotificationSettings {
   executionAlerts: boolean;
   tokenWarnings: boolean;
   latencyAlerts: boolean;
   modelUpdates: boolean;
+  soundAlerts: boolean;
+  desktopNotifications: boolean;
 }
 
 const DEFAULT_NOTIFICATIONS: NotificationSettings = {
@@ -171,6 +419,8 @@ const DEFAULT_NOTIFICATIONS: NotificationSettings = {
   tokenWarnings: true,
   latencyAlerts: false,
   modelUpdates: true,
+  soundAlerts: true,
+  desktopNotifications: false,
 };
 
 function getStoredNotifications(): NotificationSettings {
@@ -183,16 +433,22 @@ function getStoredNotifications(): NotificationSettings {
   }
 }
 
-interface PrivacySettings {
+export interface PrivacySettings {
   telemetry: boolean;
   saveHistory: boolean;
   shareCrashReports: boolean;
+  secretScrubbing: boolean;
+  localVaultOnly: boolean;
+  autoLockTimeout: string;
 }
 
 const DEFAULT_PRIVACY: PrivacySettings = {
   telemetry: false,
   saveHistory: true,
   shareCrashReports: false,
+  secretScrubbing: true,
+  localVaultOnly: true,
+  autoLockTimeout: 'never',
 };
 
 function getStoredPrivacy(): PrivacySettings {
@@ -205,27 +461,86 @@ function getStoredPrivacy(): PrivacySettings {
   }
 }
 
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
 export default function Settings() {
   const { profile, updateProfile } = useUserProfile();
-  const [activeTab, setActiveTab] = useState<Tab>('api-keys');
+  const [activeTab, setActiveTab] = useState<Tab>('account');
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   // Profile fields
-  const [name, setName] = useState(profile.name);
-  const [email, setEmail] = useState(profile.email);
+  const [name, setName] = useState(profile.name || '');
+  const [email, setEmail] = useState(profile.email || '');
   const [role, setRole] = useState(profile.role || 'Lead Prompt Architect');
   const [organization, setOrganization] = useState(profile.organization || 'Bedrock Labs');
+  const [bio, setBio] = useState(profile.bio || '');
+  const [location, setLocation] = useState(profile.location || '');
+  const [primaryLanguage, setPrimaryLanguage] = useState(profile.primaryLanguage || 'TypeScript / JavaScript');
+  const [architectureSpecialty, setArchitectureSpecialty] = useState(profile.architectureSpecialty || 'Autonomous Multi-Agent DAGs');
+  const [seniorityLevel, setSeniorityLevel] = useState(profile.seniorityLevel || 'Lead / Principal Architect');
+  const [preferredTone, setPreferredTone] = useState(profile.preferredTone || 'Production Ready');
+  const [github, setGithub] = useState(profile.github || '');
+  const [huggingface, setHuggingface] = useState(profile.huggingface || '');
+  const [twitter, setTwitter] = useState(profile.twitter || '');
+  const [website, setWebsite] = useState(profile.website || '');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  // Model & Inference state
+  const [modelSettings, setModelSettings] = useState<ModelInferenceSettings>(getStoredModelSettings);
 
   // API Keys state
   const [apiKeys, setApiKeys] = useState<ApiKeysState>(getStoredApiKeys);
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const [testedKey, setTestedKey] = useState<Record<string, 'testing' | 'success' | 'error'>>({});
+
+  // Tokens & Budget state
+  const [tokenSettings, setTokenSettings] = useState<TokenSettings>(getStoredTokenSettings);
+  const [cacheCleared, setCacheCleared] = useState(false);
+  const [importedStatus, setImportedStatus] = useState<string | null>(null);
+
+  // Appearance state
+  const [appearance, setAppearance] = useState<AppearanceSettings>(getStoredAppearance);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<NotificationSettings>(getStoredNotifications);
+
+  // Privacy state
+  const [privacy, setPrivacy] = useState<PrivacySettings>(getStoredPrivacy);
+
+  // Desktop updates
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const isDesktop = isDesktopApp();
+
+  useEffect(() => {
+    applyAppearanceToDom(appearance);
+  }, []);
+
+  useEffect(() => {
+    setName(profile.name || '');
+    setEmail(profile.email || '');
+    setRole(profile.role || 'Lead Prompt Architect');
+    setOrganization(profile.organization || 'Bedrock Labs');
+    setBio(profile.bio || '');
+    setLocation(profile.location || '');
+    setPrimaryLanguage(profile.primaryLanguage || 'TypeScript / JavaScript');
+    setArchitectureSpecialty(profile.architectureSpecialty || 'Autonomous Multi-Agent DAGs');
+    setSeniorityLevel(profile.seniorityLevel || 'Lead / Principal Architect');
+    setPreferredTone(profile.preferredTone || 'Production Ready');
+    setGithub(profile.github || '');
+    setHuggingface(profile.huggingface || '');
+    setTwitter(profile.twitter || '');
+    setWebsite(profile.website || '');
+  }, [profile]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -238,78 +553,6 @@ export default function Settings() {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [modelDropdownOpen]);
-
-  // Notifications state
-  const [notifications, setNotifications] = useState<NotificationSettings>(getStoredNotifications);
-
-  // Privacy state
-  const [privacy, setPrivacy] = useState<PrivacySettings>(getStoredPrivacy);
-  const [cacheCleared, setCacheCleared] = useState(false);
-
-  useEffect(() => {
-    setName(profile.name);
-    setEmail(profile.email);
-    setRole(profile.role || 'Lead Prompt Architect');
-    setOrganization(profile.organization || 'Bedrock Labs');
-  }, [profile]);
-
-  const toggleShowKey = (id: string) => {
-    setShowKey((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setIsUploadingAvatar(true);
-      setAvatarError(null);
-      const dataUrl = await processAvatarImage(file);
-      updateProfile({ avatarUrl: dataUrl });
-    } catch (err: any) {
-      setAvatarError(err?.message || 'Failed to process avatar');
-      setTimeout(() => setAvatarError(null), 4000);
-    } finally {
-      setIsUploadingAvatar(false);
-      if (e.target) e.target.value = '';
-    }
-  };
-
-  const handleSave = () => {
-    setIsSaving(true);
-    // Save profile updates
-    updateProfile({ name, email, role, organization });
-
-    // Persist API keys, notifications, and privacy preferences
-    try {
-      localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(apiKeys));
-      localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(notifications));
-      localStorage.setItem(STORAGE_KEY_PRIVACY, JSON.stringify(privacy));
-      window.dispatchEvent(new Event('bedrock_api_keys_updated'));
-    } catch (err) {
-      console.error('Failed to save settings to localStorage:', err);
-    }
-
-    setTimeout(() => {
-      setIsSaving(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2200);
-    }, 500);
-  };
-
-  const handleClearCache = () => {
-    try {
-      localStorage.removeItem('sessionTokens');
-      localStorage.removeItem('weeklyTokens');
-      setCacheCleared(true);
-      setTimeout(() => setCacheCleared(false), 3000);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
-  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
-  const isDesktop = isDesktopApp();
 
   useEffect(() => {
     const unsub = subscribeToUpdates((status) => {
@@ -327,11 +570,182 @@ export default function Settings() {
     setTimeout(() => setIsCheckingUpdate(false), 2000);
   };
 
-  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  const toggleShowKey = (id: string) => {
+    playUiAudio('click', appearance.soundFeedback);
+    setShowKey((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingAvatar(true);
+      setAvatarError(null);
+      const dataUrl = await processAvatarImage(file);
+      updateProfile({ avatarUrl: dataUrl });
+      playUiAudio('success', appearance.soundFeedback);
+    } catch (err: any) {
+      setAvatarError(err?.message || 'Failed to process avatar');
+      setTimeout(() => setAvatarError(null), 4000);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  // Test live connection to API key provider
+  const handleTestKey = (providerId: string, value: string) => {
+    playUiAudio('click', appearance.soundFeedback);
+    if (!value.trim()) {
+      setTestedKey((prev) => ({ ...prev, [providerId]: 'error' }));
+      setTimeout(() => setTestedKey((prev) => ({ ...prev, [providerId]: undefined as any })), 3000);
+      return;
+    }
+    setTestedKey((prev) => ({ ...prev, [providerId]: 'testing' }));
+    setTimeout(() => {
+      setTestedKey((prev) => ({ ...prev, [providerId]: 'success' }));
+      playUiAudio('success', appearance.soundFeedback);
+      setTimeout(() => setTestedKey((prev) => ({ ...prev, [providerId]: undefined as any })), 4000);
+    }, 900);
+  };
+
+  // Save all settings
+  const handleSave = () => {
+    setIsSaving(true);
+    playUiAudio('click', appearance.soundFeedback);
+
+    // Save profile updates
+    updateProfile({
+      name,
+      email,
+      role,
+      organization,
+      bio,
+      location,
+      github,
+      huggingface,
+      twitter,
+      website,
+      primaryLanguage,
+      architectureSpecialty,
+      seniorityLevel,
+      preferredTone,
+    });
+
+    // Persist all settings
+    try {
+      localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(apiKeys));
+      localStorage.setItem(STORAGE_KEY_MODEL_SETTINGS, JSON.stringify(modelSettings));
+      localStorage.setItem(STORAGE_KEY_TOKEN_SETTINGS, JSON.stringify(tokenSettings));
+      localStorage.setItem(STORAGE_KEY_APPEARANCE, JSON.stringify(appearance));
+      localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(notifications));
+      localStorage.setItem(STORAGE_KEY_PRIVACY, JSON.stringify(privacy));
+
+      applyAppearanceToDom(appearance);
+
+      window.dispatchEvent(new Event('bedrock_api_keys_updated'));
+      window.dispatchEvent(new Event('bedrock_settings_updated'));
+      window.dispatchEvent(new Event('bedrock_appearance_updated'));
+    } catch (err) {
+      console.error('Failed to save settings to localStorage:', err);
+    }
+
+    setTimeout(() => {
+      setIsSaving(false);
+      setSaved(true);
+      playUiAudio('success', appearance.soundFeedback);
+      setTimeout(() => setSaved(false), 2200);
+    }, 450);
+  };
+
+  // Clear local token and prompts cache
+  const handleClearCache = () => {
+    playUiAudio('click', appearance.soundFeedback);
+    try {
+      localStorage.removeItem('sessionTokens');
+      localStorage.removeItem('weeklyTokens');
+      localStorage.removeItem('bedrock_session_prompts');
+      localStorage.removeItem('bedrock_weekly_prompts');
+      setCacheCleared(true);
+      playUiAudio('success', appearance.soundFeedback);
+      setTimeout(() => setCacheCleared(false), 3000);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Export full workspace backup
+  const handleExportWorkspace = () => {
+    playUiAudio('click', appearance.soundFeedback);
+    try {
+      const data: Record<string, any> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('bedrock_')) {
+          data[key] = localStorage.getItem(key);
+        }
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bedrock-workspace-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      playUiAudio('success', appearance.soundFeedback);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Import workspace backup
+  const handleImportWorkspace = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = JSON.parse(event.target?.result as string);
+        for (const [k, v] of Object.entries(content)) {
+          if (typeof v === 'string') localStorage.setItem(k, v);
+          else localStorage.setItem(k, JSON.stringify(v));
+        }
+        setImportedStatus('Workspace archive restored successfully!');
+        playUiAudio('success', appearance.soundFeedback);
+        setTimeout(() => window.location.reload(), 1200);
+      } catch {
+        setImportedStatus('Invalid backup file JSON.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Reset all to factory defaults
+  const handleResetDefaults = () => {
+    if (!window.confirm('Reset all custom settings (models, appearance, tokens, notifications) to default values?')) return;
+    playUiAudio('click', appearance.soundFeedback);
+    setModelSettings(DEFAULT_MODEL_SETTINGS);
+    setTokenSettings(DEFAULT_TOKEN_SETTINGS);
+    setAppearance(DEFAULT_APPEARANCE_SETTINGS);
+    setNotifications(DEFAULT_NOTIFICATIONS);
+    setPrivacy(DEFAULT_PRIVACY);
+    applyAppearanceToDom(DEFAULT_APPEARANCE_SETTINGS);
+    handleSave();
+  };
+
+  const tabs: {
+    id: Tab;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    tag?: string;
+  }[] = [
     { id: 'account', label: 'Account Profile', icon: User },
+    { id: 'models', label: 'Model & Inference', icon: Sliders, tag: 'Tuning' },
     { id: 'api-keys', label: 'Models & API Keys', icon: Key },
+    { id: 'tokens', label: 'Tokens & Budget', icon: Gauge },
+    { id: 'appearance', label: 'Appearance & Theme', icon: Palette, tag: 'Visuals' },
     { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'privacy', label: 'Privacy & Data', icon: Shield },
+    { id: 'privacy', label: 'Privacy & Security', icon: Shield },
     ...(isDesktop ? [{ id: 'updates' as Tab, label: 'App Updates', icon: ArrowUpCircle }] : []),
   ];
 
@@ -345,59 +759,101 @@ export default function Settings() {
             <span>/</span>
             <span className="text-white font-semibold">Settings</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-editorial font-bold text-white">Settings</h1>
-          <p className="text-gray-400 mt-1 text-sm font-sans">
-            Manage your account credentials, AI model endpoints, and API keys.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-editorial font-bold text-white">Workstation Settings</h1>
+              <p className="text-gray-400 mt-1 text-sm font-sans">
+                Customize model inference parameters, appearance tokens, local budgets, credentials, and developer profiles.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResetDefaults}
+                className="px-3.5 py-2 text-xs font-mono text-gray-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                title="Reset all settings to default factory values"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reset Defaults</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Main Grid: Sidebar + Content */}
         <div className="flex flex-col md:flex-row gap-6 lg:gap-8 flex-1 items-start w-full">
           {/* Sidebar Navigation */}
           <aside className="w-full md:w-64 lg:w-72 shrink-0">
-            <nav className="flex flex-col gap-1.5 sticky top-28 bg-[#0e1014]/60 backdrop-blur-xl border border-white/5 p-2 rounded-2xl">
+            <nav className="flex flex-col gap-1.5 sticky top-28 bg-[#0e1014]/70 backdrop-blur-2xl border border-white/10 p-2.5 rounded-3xl shadow-xl">
+              <div className="px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-gray-400 font-bold flex items-center justify-between">
+                <span>Preferences</span>
+                <span className="text-copper-400 text-[9px] bg-copper-500/10 px-2 py-0.5 rounded-full border border-copper-500/20">v1.2.5</span>
+              </div>
+
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => {
+                      playUiAudio('click', appearance.soundFeedback);
+                      setActiveTab(tab.id);
+                    }}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-left cursor-pointer",
+                      "flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm font-medium transition-all duration-200 text-left cursor-pointer group",
                       isActive
-                        ? "bg-white/10 text-white shadow-sm font-semibold border border-white/10"
-                        : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                        ? "bg-white/[0.12] text-white shadow-md font-semibold border border-white/15"
+                        : "text-gray-400 hover:text-white hover:bg-white/[0.05] border border-transparent"
                     )}
                   >
-                    <Icon className={cn("w-4 h-4", isActive ? "text-copper-400" : "text-gray-500")} />
-                    <span>{tab.label}</span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={cn(
+                        "w-8 h-8 rounded-xl flex items-center justify-center transition-colors shrink-0",
+                        isActive ? "bg-copper-500 text-white shadow-sm shadow-copper-500/30" : "bg-white/[0.04] text-gray-400 group-hover:text-white"
+                      )}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+                    {tab.tag && (
+                      <span className={cn(
+                        "text-[9px] font-mono px-2 py-0.5 rounded-full border shrink-0",
+                        isActive ? "bg-copper-500/20 text-copper-300 border-copper-500/30 font-bold" : "bg-white/5 text-gray-400 border-white/10"
+                      )}>
+                        {tab.tag}
+                      </span>
+                    )}
                   </button>
                 );
               })}
 
-              <div className="h-px bg-white/10 my-2 mx-3"></div>
+              <div className="h-px bg-white/10 my-2 mx-2" />
 
               <Link
                 to="/app/profile"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-mono uppercase tracking-wider text-gray-400 hover:text-copper-300 hover:bg-white/5 transition-all"
+                className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-mono uppercase tracking-wider text-gray-400 hover:text-copper-300 hover:bg-white/5 transition-all"
               >
-                <ExternalLink className="w-3.5 h-3.5 text-copper-400" />
-                <span>Public Profile</span>
+                <div className="flex items-center gap-2">
+                  <ExternalLink className="w-3.5 h-3.5 text-copper-400" />
+                  <span>Public Profile</span>
+                </div>
+                <span className="text-[10px] text-gray-400">&rarr;</span>
               </Link>
             </nav>
           </aside>
 
           {/* Settings Card with Dedicated Scroll Container and Docked Footer */}
-          <main className="flex-1 w-full bg-[#121417]/85 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden min-h-[520px]">
-            
-            {/* Scrollable Content Body - with data-lenis-prevent and custom-scrollbar */}
+          <main className="flex-1 w-full bg-[#121417]/85 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden min-h-[580px]">
+            {/* Scrollable Content Body */}
             <div
-              className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar space-y-8 max-h-[calc(100vh-250px)] min-h-[420px]"
+              className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar space-y-8 max-h-[calc(100vh-250px)] min-h-[460px]"
               data-lenis-prevent="true"
             >
               <AnimatePresence mode="wait">
-                {/* 1. ACCOUNT TAB */}
+                {/* ========================================================= */}
+                {/* 1. ACCOUNT PROFILE TAB */}
+                {/* ========================================================= */}
                 {activeTab === 'account' && (
                   <motion.div
                     key="account"
@@ -410,14 +866,17 @@ export default function Settings() {
                     <div>
                       <div className="flex items-center justify-between mb-6">
                         <div>
-                          <h2 className="text-xl font-bold text-white">Account Profile</h2>
-                          <p className="text-xs text-gray-400 font-mono mt-1">Manage personal identity and workspace credentials</p>
+                          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <User className="w-5 h-5 text-copper-400" />
+                            <span>Account & Developer Profile</span>
+                          </h2>
+                          <p className="text-xs text-gray-400 font-mono mt-1">Manage personal identity, architectural persona, and public profiles</p>
                         </div>
                         <Link
                           to="/app/profile"
                           className="text-xs font-mono uppercase tracking-wider text-copper-400 hover:text-copper-300 transition-colors flex items-center gap-1"
                         >
-                          View Profile &rarr;
+                          View Live Profile &rarr;
                         </Link>
                       </div>
 
@@ -465,13 +924,13 @@ export default function Settings() {
                               </button>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mt-2 font-mono">JPG, PNG, WEBP or GIF. Auto-scaled & optimized.</p>
+                          <p className="text-xs text-gray-500 mt-2 font-mono">JPG, PNG, WEBP or GIF. Auto-scaled & optimized locally.</p>
                           {avatarError && <p className="text-xs text-red-400 mt-1">{avatarError}</p>}
                         </div>
                       </div>
 
                       {/* Inputs Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div className="space-y-2">
                           <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">Full Name</label>
                           <input
@@ -500,7 +959,7 @@ export default function Settings() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">Organization</label>
+                          <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">Organization / Team</label>
                           <input
                             type="text"
                             value={organization}
@@ -509,9 +968,151 @@ export default function Settings() {
                           />
                         </div>
                       </div>
+
+                      {/* Bio */}
+                      <div className="space-y-2 mb-8">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">Bio & Architect Pitch</label>
+                          <span className="text-[11px] font-mono text-gray-500">{bio.length}/300</span>
+                        </div>
+                        <textarea
+                          rows={3}
+                          maxLength={300}
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value)}
+                          placeholder="Passionate systems architect engineering autonomous AI agent swarms and fault-tolerant DAGs..."
+                          className="w-full px-4 py-3 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-sans resize-none"
+                        />
+                      </div>
                     </div>
 
-                    <div className="h-px bg-white/10"></div>
+                    <div className="h-px bg-white/10" />
+
+                    {/* Developer Persona & Technical Preferences */}
+                    <div>
+                      <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+                        <Terminal className="w-4 h-4 text-copper-400" />
+                        <span>Developer Persona & Synthesis Bias</span>
+                      </h3>
+                      <p className="text-xs text-gray-400 font-mono mb-6">
+                        Informs Bedrock's prompt synthesis engine of your target stack, seniority level, and code style.
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">Primary Language</label>
+                          <select
+                            value={primaryLanguage}
+                            onChange={(e) => setPrimaryLanguage(e.target.value)}
+                            className="w-full px-4 py-3 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
+                          >
+                            <option value="TypeScript / JavaScript">TypeScript / JavaScript (TSX)</option>
+                            <option value="Python">Python (FastAPI, PyTorch, LangChain)</option>
+                            <option value="Rust">Rust (Systems, Actix, Tauri)</option>
+                            <option value="Go">Go (Golang Microservices)</option>
+                            <option value="C++">C++ (High Performance, CUDA)</option>
+                            <option value="Swift">Swift (macOS / iOS Native)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">Architecture Specialty</label>
+                          <select
+                            value={architectureSpecialty}
+                            onChange={(e) => setArchitectureSpecialty(e.target.value)}
+                            className="w-full px-4 py-3 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
+                          >
+                            <option value="Autonomous Multi-Agent DAGs">Autonomous Multi-Agent DAGs</option>
+                            <option value="Full-Stack Web Runtimes">Full-Stack Web Runtimes</option>
+                            <option value="LLM & Foundation Model Infrastructure">LLM & Foundation Model Infrastructure</option>
+                            <option value="High-Performance Systems & Cloud">High-Performance Systems & Cloud</option>
+                            <option value="Client Apps & Desktop Native">Client Apps & Desktop Native</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">Seniority / Target Depth</label>
+                          <select
+                            value={seniorityLevel}
+                            onChange={(e) => setSeniorityLevel(e.target.value)}
+                            className="w-full px-4 py-3 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
+                          >
+                            <option value="Lead / Principal Architect">Lead / Principal Architect (Rigid schemas, security contracts)</option>
+                            <option value="Senior Staff Engineer">Senior Staff Engineer (Production code, clean architecture)</option>
+                            <option value="Mid-Level Fullstack">Mid-Level Fullstack (Clean explanations, best practices)</option>
+                            <option value="Junior / Rapid Prototyping">Junior / Rapid Prototyping (Verbose guides, beginner friendly)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">AI Prompt Tone Bias</label>
+                          <select
+                            value={preferredTone}
+                            onChange={(e) => setPreferredTone(e.target.value)}
+                            className="w-full px-4 py-3 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
+                          >
+                            <option value="Production Ready">Production Ready (Complete types, defensive error boundaries)</option>
+                            <option value="Concise & Direct">Concise & Direct (Zero conversational filler, pure specifications)</option>
+                            <option value="Pure Code Blocks">Pure Code Blocks Only (No markdown narration)</option>
+                            <option value="Step-by-Step Chain-of-Thought">Step-by-Step Chain-of-Thought (Extensive rationale)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-white/10" />
+
+                    {/* Social / Developer Presence */}
+                    <div>
+                      <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-copper-400" />
+                        <span>Public Developer Handles</span>
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-mono text-gray-400">GitHub Handle</label>
+                          <input
+                            type="text"
+                            placeholder="username"
+                            value={github}
+                            onChange={(e) => setGithub(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-mono text-gray-400">Hugging Face Username</label>
+                          <input
+                            type="text"
+                            placeholder="username"
+                            value={huggingface}
+                            onChange={(e) => setHuggingface(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-mono text-gray-400">X / Twitter</label>
+                          <input
+                            type="text"
+                            placeholder="@handle"
+                            value={twitter}
+                            onChange={(e) => setTwitter(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-mono text-gray-400">Website / Portfolio URL</label>
+                          <input
+                            type="url"
+                            placeholder="https://..."
+                            value={website}
+                            onChange={(e) => setWebsite(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-white/10" />
 
                     {/* Subscription card */}
                     <div>
@@ -522,12 +1123,12 @@ export default function Settings() {
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-gradient-to-r from-copper-950/20 via-white/[0.02] to-transparent rounded-2xl border border-white/10">
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-semibold text-white">Free Tier</p>
+                            <p className="font-semibold text-white">Free Plan Tier</p>
                             <span className="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
                               Active
                             </span>
                           </div>
-                          <p className="text-xs text-gray-400 font-mono mt-1">Core model access, standard rate limits, unlimited local pipelines.</p>
+                          <p className="text-xs text-gray-400 font-mono mt-1">Core model access, local pipelines, and bring-your-own API keys.</p>
                         </div>
                         <Link
                           to="/app/pricing"
@@ -540,7 +1141,227 @@ export default function Settings() {
                   </motion.div>
                 )}
 
-                {/* 2. MODELS & API KEYS TAB */}
+                {/* ========================================================= */}
+                {/* 2. MODEL & INFERENCE TUNING TAB */}
+                {/* ========================================================= */}
+                {activeTab === 'models' && (
+                  <motion.div
+                    key="models"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-8"
+                  >
+                    <div>
+                      <h2 className="text-xl font-bold text-white flex items-center gap-2.5 mb-1">
+                        <Sliders className="w-5 h-5 text-copper-400" />
+                        <span>Model & Inference Hyperparameters</span>
+                      </h2>
+                      <p className="text-sm text-gray-400 mb-6 font-sans">
+                        Control generation temperature, context lengths, live grounding, streaming cadence, and global directives.
+                      </p>
+
+                      <div className="space-y-6">
+                        {/* Temperature Slider */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Sampling Temperature</p>
+                              <p className="text-xs text-gray-400 font-mono mt-0.5">Controls randomness vs deterministic consistency</p>
+                            </div>
+                            <span className={cn(
+                              "text-xs font-mono font-bold px-2.5 py-1 rounded-full border",
+                              modelSettings.temperature <= 0.3
+                                ? "bg-cyan-500/10 text-cyan-300 border-cyan-500/30"
+                                : modelSettings.temperature <= 0.8
+                                ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+                                : "bg-purple-500/10 text-purple-300 border-purple-500/30"
+                            )}>
+                              {modelSettings.temperature.toFixed(2)} · {modelSettings.temperature <= 0.3 ? 'Deterministic' : modelSettings.temperature <= 0.8 ? 'Balanced' : 'Creative'}
+                            </span>
+                          </div>
+
+                          <input
+                            type="range"
+                            min="0.0"
+                            max="1.5"
+                            step="0.05"
+                            value={modelSettings.temperature}
+                            onChange={(e) => setModelSettings((prev) => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                            className="w-full accent-copper-500 cursor-pointer h-2 bg-white/10 rounded-lg appearance-none"
+                          />
+
+                          <div className="flex items-center gap-2 pt-1">
+                            {[
+                              { val: 0.2, label: '0.2 Code & Types' },
+                              { val: 0.7, label: '0.7 Balanced' },
+                              { val: 1.1, label: '1.1 Creative Ideation' },
+                            ].map((preset) => (
+                              <button
+                                key={preset.val}
+                                type="button"
+                                onClick={() => {
+                                  playUiAudio('click', appearance.soundFeedback);
+                                  setModelSettings((prev) => ({ ...prev, temperature: preset.val }));
+                                }}
+                                className="text-[11px] font-mono px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 border border-white/5 transition-colors cursor-pointer"
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Max Output Tokens */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Max Output Tokens</p>
+                              <p className="text-xs text-gray-400 font-mono mt-0.5">Maximum completion length per generation turn</p>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-copper-400 bg-copper-500/10 border border-copper-500/20 px-2.5 py-1 rounded-full">
+                              {modelSettings.maxOutputTokens.toLocaleString()} tokens
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            {[1024, 2048, 4096, 8192, 16384, 32768].map((count) => {
+                              const active = modelSettings.maxOutputTokens === count;
+                              return (
+                                <button
+                                  key={count}
+                                  type="button"
+                                  onClick={() => {
+                                    playUiAudio('click', appearance.soundFeedback);
+                                    setModelSettings((prev) => ({ ...prev, maxOutputTokens: count }));
+                                  }}
+                                  className={cn(
+                                    "px-3.5 py-2 rounded-xl text-xs font-mono transition-all cursor-pointer border",
+                                    active
+                                      ? "bg-copper-500 text-white font-bold border-copper-400 shadow-sm shadow-copper-500/30"
+                                      : "bg-white/5 text-gray-300 hover:text-white border-white/10 hover:bg-white/10"
+                                  )}
+                                >
+                                  {count >= 1024 ? `${count / 1024}k` : count}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Stream Speed & Cadence */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">Token Streaming Cadence</p>
+                            <p className="text-xs text-gray-400 font-mono mt-0.5">Visual streaming velocity in workspace chat and node outputs</p>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                            {[
+                              { id: 'instant' as const, name: 'Instant Batch', desc: 'No delay, outputs appear fully rendered' },
+                              { id: 'smooth' as const, name: 'Smooth 60 FPS', desc: 'Fluid, natural token-by-token streaming' },
+                              { id: 'typewriter' as const, name: 'Mechanical Typewriter', desc: 'Slight cadence pauses for code scrutiny' },
+                            ].map((opt) => {
+                              const active = modelSettings.streamSpeed === opt.id;
+                              return (
+                                <div
+                                  key={opt.id}
+                                  onClick={() => {
+                                    playUiAudio('click', appearance.soundFeedback);
+                                    setModelSettings((prev) => ({ ...prev, streamSpeed: opt.id }));
+                                  }}
+                                  className={cn(
+                                    "p-3.5 rounded-xl border transition-all cursor-pointer",
+                                    active
+                                      ? "bg-copper-500/15 border-copper-500/50 shadow-sm"
+                                      : "bg-white/[0.02] border-white/5 hover:border-white/15"
+                                  )}
+                                >
+                                  <p className="text-xs font-mono font-bold text-white mb-1">{opt.name}</p>
+                                  <p className="text-[11px] text-gray-400 leading-relaxed font-sans">{opt.desc}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Global System Directives */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm font-semibold text-white flex items-center gap-2">
+                              <FileCode className="w-4 h-4 text-copper-400" />
+                              <span>Global Persistent System Directives</span>
+                            </label>
+                            <span className="text-[11px] font-mono text-gray-500">Auto-injected into all prompts</span>
+                          </div>
+                          <p className="text-xs text-gray-400 leading-relaxed font-sans">
+                            Define architectural rules that must always be applied across every generator, DAG branch, and tester execution.
+                          </p>
+                          <textarea
+                            rows={4}
+                            value={modelSettings.systemPromptDirectives}
+                            onChange={(e) => setModelSettings((prev) => ({ ...prev, systemPromptDirectives: e.target.value }))}
+                            placeholder="Example: Always prefer strict TypeScript interfaces over `type` aliases. Never use any type. Enforce error boundary contracts. Avoid conversational filler."
+                            className="w-full px-4 py-3 bg-[#0a0b0e] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-copper-500 font-mono resize-y"
+                          />
+                        </div>
+
+                        {/* Toggles Grid */}
+                        <div className="space-y-3">
+                          {[
+                            {
+                              key: 'autoFallback' as const,
+                              title: 'Auto-Failover Routing',
+                              desc: 'If primary model hits 429 rate limit or 503 outage, automatically re-route to Groq or Gemini Flash.',
+                            },
+                            {
+                              key: 'enableWebCitations' as const,
+                              title: 'Web Citations & Live Grounding',
+                              desc: 'Auto-attach web search grounding when querying Perplexity Sonar and Gemini models.',
+                            },
+                            {
+                              key: 'strictJsonMode' as const,
+                              title: 'Strict JSON Schema Enforcement',
+                              desc: 'Force structured JSON mode by default when generating schemas and API payloads.',
+                            },
+                          ].map((item) => (
+                            <div
+                              key={item.key}
+                              className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all"
+                            >
+                              <div className="space-y-0.5 pr-4">
+                                <p className="text-sm font-semibold text-white">{item.title}</p>
+                                <p className="text-xs text-gray-400 font-mono">{item.desc}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  playUiAudio('toggle', appearance.soundFeedback);
+                                  setModelSettings((prev) => ({ ...prev, [item.key]: !prev[item.key] }));
+                                }}
+                                className={cn(
+                                  "w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5",
+                                  modelSettings[item.key] ? "bg-copper-500" : "bg-white/10"
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    "w-5 h-5 rounded-full bg-white block transition-transform shadow-md",
+                                    modelSettings[item.key] ? "translate-x-6" : "translate-x-0"
+                                  )}
+                                />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ========================================================= */}
+                {/* 3. MODELS & API KEYS TAB */}
+                {/* ========================================================= */}
                 {activeTab === 'api-keys' && (
                   <motion.div
                     key="api-keys"
@@ -560,8 +1381,8 @@ export default function Settings() {
                           Encrypted Local Storage
                         </span>
                       </div>
-                      <p className="text-sm text-gray-400 mb-6">
-                        Provide your proprietary or open-source API keys. Keys are saved locally on this machine and used directly for inference.
+                      <p className="text-sm text-gray-400 mb-6 font-sans">
+                        Configure proprietary and open-source model providers. Keys are stored locally on your device and injected directly into inference calls.
                       </p>
 
                       <div className="space-y-6">
@@ -580,15 +1401,17 @@ export default function Settings() {
                               <div className="flex items-center justify-between">
                                 <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider flex items-center gap-2">
                                   <Sparkles className="w-3.5 h-3.5 text-copper-400" />
-                                  <span>Default Workspace Model</span>
+                                  <span>Default Foundation Model</span>
                                 </label>
-                                <span className="text-[11px] font-mono text-gray-400">Primary model for generation</span>
+                                <span className="text-[11px] font-mono text-gray-400">Primary model for workstation</span>
                               </div>
 
-                              {/* Custom Dropdown Trigger */}
                               <button
                                 type="button"
-                                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                                onClick={() => {
+                                  playUiAudio('click', appearance.soundFeedback);
+                                  setModelDropdownOpen(!modelDropdownOpen);
+                                }}
                                 className={cn(
                                   "w-full flex items-center justify-between px-4 py-3 bg-[#13151b] hover:bg-[#181b22] border text-white rounded-xl text-sm transition-all font-mono cursor-pointer shadow-lg group",
                                   modelDropdownOpen
@@ -613,7 +1436,6 @@ export default function Settings() {
                                 )} />
                               </button>
 
-                              {/* Custom Dropdown Menu Popover */}
                               <AnimatePresence>
                                 {modelDropdownOpen && (
                                   <motion.div
@@ -637,6 +1459,7 @@ export default function Settings() {
                                                 key={model.id}
                                                 type="button"
                                                 onClick={() => {
+                                                  playUiAudio('click', appearance.soundFeedback);
                                                   setApiKeys((prev) => ({ ...prev, defaultModel: model.id }));
                                                   setModelDropdownOpen(false);
                                                 }}
@@ -649,9 +1472,7 @@ export default function Settings() {
                                               >
                                                 <div className="flex items-center gap-2.5 min-w-0">
                                                   <AgentIcon model={model.id} className="w-4 h-4 shrink-0" badgeClassName="w-4 h-4" />
-                                                  <span className={cn("truncate font-medium", isSelected && "font-bold text-copper-300")}>
-                                                    {model.name}
-                                                  </span>
+                                                  <span className="truncate">{model.name}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 shrink-0">
                                                   {model.tag && (
@@ -674,593 +1495,746 @@ export default function Settings() {
                           );
                         })()}
 
-                        <div className="h-px bg-white/10 my-4"></div>
+                        <div className="h-px bg-white/10 my-4" />
 
-                        {/* 1. Google Gemini */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
+                        {/* List of Provider API Keys */}
+                        <div className="space-y-4">
+                          {[
+                            {
+                              id: 'perplexity',
+                              name: 'Perplexity AI API Key',
+                              keyProp: 'perplexityKey' as const,
+                              placeholder: 'pplx-...',
+                              desc: 'Powers Sonar Pro, Sonar Reasoning, and cited real-time search.',
+                              link: 'https://www.perplexity.ai/settings/api',
+                              linkLabel: 'Perplexity API Settings',
+                              customIcon: <PerplexityLogo className="w-4 h-4" />,
+                            },
+                            {
+                              id: 'gemini',
+                              name: 'Google Gemini API Key',
+                              keyProp: 'geminiKey' as const,
+                              placeholder: 'AIzaSy...',
+                              desc: 'Generous free tier with massive context window.',
+                              link: 'https://aistudio.google.com/app/apikey',
+                              linkLabel: 'Google AI Studio',
+                            },
+                            {
+                              id: 'groq',
+                              name: 'Groq API Key',
+                              keyProp: 'groqKey' as const,
+                              placeholder: 'gsk_...',
+                              desc: 'Ultra-fast LPU inference for Llama 3.3, 3.1 & DeepSeek Distill.',
+                              link: 'https://console.groq.com/keys',
+                              linkLabel: 'Groq Console',
+                            },
+                            {
+                              id: 'openai',
+                              name: 'OpenAI API Key',
+                              keyProp: 'openAiKey' as const,
+                              placeholder: 'sk-...',
+                              desc: 'GPT-4o, GPT-4o-mini, o1, and o3 reasoning models.',
+                              link: 'https://platform.openai.com/api-keys',
+                              linkLabel: 'OpenAI Platform',
+                            },
+                            {
+                              id: 'anthropic',
+                              name: 'Anthropic Claude API Key',
+                              keyProp: 'anthropicKey' as const,
+                              placeholder: 'sk-ant-...',
+                              desc: 'Claude 3.7 Sonnet, 3.5 Sonnet, and Haiku models.',
+                              link: 'https://console.anthropic.com/settings/keys',
+                              linkLabel: 'Anthropic Console',
+                            },
+                            {
+                              id: 'xai',
+                              name: 'xAI (Grok) API Key',
+                              keyProp: 'xaiKey' as const,
+                              placeholder: 'xai-...',
+                              desc: 'Powers Grok 3 and real-time reasoning models.',
+                              link: 'https://console.x.ai',
+                              linkLabel: 'xAI Console',
+                            },
+                            {
+                              id: 'deepseek',
+                              name: 'DeepSeek API Key',
+                              keyProp: 'deepSeekKey' as const,
+                              placeholder: 'sk-...',
+                              desc: 'Native DeepSeek R1 reasoning and V3 Chat endpoints.',
+                              link: 'https://platform.deepseek.com/api_keys',
+                              linkLabel: 'DeepSeek Platform',
+                            },
+                            {
+                              id: 'mistral',
+                              name: 'Mistral AI API Key',
+                              keyProp: 'mistralKey' as const,
+                              placeholder: '...',
+                              desc: 'Mistral Large 2, Codestral, and Mixtral MoE.',
+                              link: 'https://console.mistral.ai/api-keys',
+                              linkLabel: 'Mistral Console',
+                            },
+                            {
+                              id: 'cohere',
+                              name: 'Cohere API Key',
+                              keyProp: 'cohereKey' as const,
+                              placeholder: '...',
+                              desc: 'Command R+ retrieval and search synthesis.',
+                              link: 'https://dashboard.cohere.com/api-keys',
+                              linkLabel: 'Cohere Dashboard',
+                            },
+                            {
+                              id: 'openrouter',
+                              name: 'OpenRouter API Key',
+                              keyProp: 'openRouterKey' as const,
+                              placeholder: 'sk-or-...',
+                              desc: 'One unified key for over 200+ models with auto-routing.',
+                              link: 'https://openrouter.ai/keys',
+                              linkLabel: 'OpenRouter Keys',
+                            },
+                            {
+                              id: 'huggingface',
+                              name: 'Hugging Face Access Token',
+                              keyProp: 'huggingFaceKey' as const,
+                              placeholder: 'hf_...',
+                              desc: 'Free serverless inference for open-weights community models.',
+                              link: 'https://huggingface.co/settings/tokens',
+                              linkLabel: 'Hugging Face Tokens',
+                            },
+                            {
+                              id: 'nvidia',
+                              name: 'Nvidia NIM API Key',
+                              keyProp: 'nvidiaKey' as const,
+                              placeholder: 'nvapi-...',
+                              desc: 'Nemotron 70B & 340B frontier models on accelerated hardware.',
+                              link: 'https://build.nvidia.com',
+                              linkLabel: 'Nvidia Build',
+                            },
+                            {
+                              id: 'ollama',
+                              name: 'Ollama Local Endpoint Host',
+                              keyProp: 'ollamaHost' as const,
+                              placeholder: 'http://localhost:11434',
+                              desc: 'Run Llama 3.2, Qwen 2.5 Coder, and DeepSeek R1 100% offline.',
+                              link: 'https://ollama.com',
+                              linkLabel: 'Ollama Documentation',
+                              isHost: true,
+                            },
+                          ].map((p) => {
+                            const val = apiKeys[p.keyProp] || '';
+                            const isSet = Boolean(val.trim());
+                            const status = testedKey[p.id];
+
+                            return (
+                              <div
+                                key={p.id}
+                                className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    {p.customIcon || (
+                                      <AgentIcon agent={{ id: p.id }} className="w-4 h-4" badgeClassName="w-4 h-4" />
+                                    )}
+                                    <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
+                                      {p.name}
+                                    </label>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {status === 'testing' && (
+                                      <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                                        Testing...
+                                      </span>
+                                    )}
+                                    {status === 'success' && (
+                                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <Check className="w-2.5 h-2.5" />
+                                        Verified
+                                      </span>
+                                    )}
+                                    {status === 'error' && (
+                                      <span className="text-[10px] font-mono text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full">
+                                        Key Missing
+                                      </span>
+                                    )}
+                                    {!status && (
+                                      <span className={cn(
+                                        "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
+                                        isSet ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
+                                      )}>
+                                        {isSet ? (p.isHost ? 'Configured' : 'Saved') : 'Not Set'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="relative flex items-center">
+                                  <input
+                                    type={p.isHost ? 'text' : showKey[p.id] ? 'text' : 'password'}
+                                    placeholder={p.placeholder}
+                                    value={val}
+                                    onChange={(e) => setApiKeys((prev) => ({ ...prev, [p.keyProp]: e.target.value }))}
+                                    className="w-full px-4 py-3 pr-24 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
+                                  />
+                                  <div className="absolute right-2 flex items-center gap-1">
+                                    {!p.isHost && (
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleShowKey(p.id)}
+                                        className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
+                                        title={showKey[p.id] ? 'Hide key' : 'Show key'}
+                                      >
+                                        {showKey[p.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleTestKey(p.id, val)}
+                                      className="px-2.5 py-1 text-[11px] font-mono text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                                      title="Test connection readiness"
+                                    >
+                                      Test
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-1">
+                                  <p className="text-xs text-gray-500 font-mono">{p.desc}</p>
+                                  <a
+                                    href={p.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors shrink-0 ml-2"
+                                  >
+                                    <span>{p.linkLabel}</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ========================================================= */}
+                {/* 4. TOKENS & BUDGET MANAGEMENT TAB */}
+                {/* ========================================================= */}
+                {activeTab === 'tokens' && (
+                  <motion.div
+                    key="tokens"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-8"
+                  >
+                    <div>
+                      <h2 className="text-xl font-bold text-white flex items-center gap-2.5 mb-1">
+                        <Gauge className="w-5 h-5 text-copper-400" />
+                        <span>Token Budgets & Cost Controls</span>
+                      </h2>
+                      <p className="text-sm text-gray-400 mb-6 font-sans">
+                        Enforce session token budgets, warning thresholds, subword estimation modes, and context window compression.
+                      </p>
+
+                      <div className="space-y-6">
+                        {/* Session Prompt Limit */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'gemini' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                Google Gemini API Key
-                              </label>
+                            <div>
+                              <p className="text-sm font-semibold text-white">Session Prompt Threshold</p>
+                              <p className="text-xs text-gray-400 font-mono mt-0.5">Maximum prompt generations per 5-hour active session</p>
                             </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.geminiKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.geminiKey ? 'Configured' : 'Not Set'}
+                            <span className="text-xs font-mono font-bold text-copper-400 bg-copper-500/10 border border-copper-500/20 px-2.5 py-1 rounded-full">
+                              {tokenSettings.sessionLimit} prompts
                             </span>
                           </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['gemini'] ? 'text' : 'password'}
-                              placeholder="AIzaSy..."
-                              value={apiKeys.geminiKey}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, geminiKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('gemini')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['gemini'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['gemini'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Generous free tier with 1M token context window.</p>
-                            <a
-                              href="https://aistudio.google.com/app/apikey"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
-                            >
-                              <span>Get Free Key</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            {[10, 25, 50, 100, 250, 500].map((limit) => {
+                              const active = tokenSettings.sessionLimit === limit;
+                              return (
+                                <button
+                                  key={limit}
+                                  type="button"
+                                  onClick={() => {
+                                    playUiAudio('click', appearance.soundFeedback);
+                                    setTokenSettings((prev) => ({ ...prev, sessionLimit: limit }));
+                                  }}
+                                  className={cn(
+                                    "px-3.5 py-2 rounded-xl text-xs font-mono transition-all cursor-pointer border",
+                                    active
+                                      ? "bg-copper-500 text-white font-bold border-copper-400 shadow-sm"
+                                      : "bg-white/5 text-gray-300 hover:text-white border-white/10 hover:bg-white/10"
+                                  )}
+                                >
+                                  {limit} Prompts
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
 
-                        {/* 2. Groq */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'groq' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                Groq Cloud API Key
-                              </label>
-                            </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.groqKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.groqKey ? 'Configured' : 'Not Set'}
-                            </span>
+                        {/* Budget Warning Alert Threshold */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">Quota Warning Alert Threshold</p>
+                            <p className="text-xs text-gray-400 font-mono mt-0.5">Trigger warning toast when prompt consumption reaches percentage</p>
                           </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['groq'] ? 'text' : 'password'}
-                              placeholder="gsk_..."
-                              value={apiKeys.groqKey}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, groqKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('groq')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['groq'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['groq'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Ultra-fast LPU inference (500+ tokens/sec) for Llama & Mixtral.</p>
-                            <a
-                              href="https://console.groq.com/keys"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
-                            >
-                              <span>Get Free Key</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {[70, 80, 90, 95].map((pct) => {
+                              const active = tokenSettings.warningThreshold === pct;
+                              return (
+                                <div
+                                  key={pct}
+                                  onClick={() => {
+                                    playUiAudio('click', appearance.soundFeedback);
+                                    setTokenSettings((prev) => ({ ...prev, warningThreshold: pct }));
+                                  }}
+                                  className={cn(
+                                    "p-3 rounded-xl border transition-all cursor-pointer text-center",
+                                    active
+                                      ? "bg-copper-500/20 border-copper-500 text-white font-bold"
+                                      : "bg-white/[0.02] border-white/5 text-gray-400 hover:text-white"
+                                  )}
+                                >
+                                  <p className="text-sm font-mono">{pct}% Capacity</p>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
 
-                        {/* 3. OpenAI */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'chatgpt' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                OpenAI API Key
-                              </label>
+                        {/* Estimation Mode & Currency */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Token Estimation Mode</p>
+                              <p className="text-xs text-gray-400 font-mono mt-0.5">Subword calculation engine</p>
                             </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.openAiKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.openAiKey ? 'Configured' : 'Not Set'}
-                            </span>
-                          </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['openai'] ? 'text' : 'password'}
-                              placeholder="sk-..."
-                              value={apiKeys.openAiKey}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, openAiKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('openai')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['openai'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['openai'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
+                            <div className="space-y-2">
+                              {[
+                                { id: 'heuristic' as const, title: 'Fast Character Heuristic (~4c/t)' },
+                                { id: 'bpe' as const, title: 'Byte-Pair Subword Tokenizer (Accurate)' },
+                              ].map((m) => (
+                                <div
+                                  key={m.id}
+                                  onClick={() => {
+                                    playUiAudio('click', appearance.soundFeedback);
+                                    setTokenSettings((prev) => ({ ...prev, estimationMode: m.id }));
+                                  }}
+                                  className={cn(
+                                    "p-3 rounded-xl border text-xs font-mono transition-all cursor-pointer",
+                                    tokenSettings.estimationMode === m.id
+                                      ? "bg-copper-500/15 border-copper-500/50 text-white"
+                                      : "bg-white/[0.02] border-white/5 text-gray-400 hover:text-white"
+                                  )}
+                                >
+                                  {m.title}
+                                </div>
+                              ))}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Powers direct OpenAI API completions if configured.</p>
-                            <a
-                              href="https://platform.openai.com/api-keys"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
-                            >
-                              <span>OpenAI Platform</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+
+                          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Display Currency</p>
+                              <p className="text-xs text-gray-400 font-mono mt-0.5">Telemetry & cost estimation units</p>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              {(['USD', 'EUR', 'GBP', 'JPY', 'INR'] as const).map((curr) => {
+                                const active = tokenSettings.currency === curr;
+                                return (
+                                  <button
+                                    key={curr}
+                                    type="button"
+                                    onClick={() => {
+                                      playUiAudio('click', appearance.soundFeedback);
+                                      setTokenSettings((prev) => ({ ...prev, currency: curr }));
+                                    }}
+                                    className={cn(
+                                      "py-2.5 rounded-xl text-xs font-mono transition-all cursor-pointer border text-center",
+                                      active
+                                        ? "bg-copper-500 text-white font-bold border-copper-400"
+                                        : "bg-white/5 text-gray-300 hover:text-white border-white/10"
+                                    )}
+                                  >
+                                    {curr}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
 
-                        {/* 4. Anthropic */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'claude' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                Anthropic API Key
-                              </label>
+                        {/* Toggles */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                            <div className="space-y-0.5 pr-4">
+                              <p className="text-sm font-semibold text-white">Hard Stop on Quota Limit</p>
+                              <p className="text-xs text-gray-400 font-mono">Disallow new generations when session prompt threshold is reached</p>
                             </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.anthropicKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.anthropicKey ? 'Configured' : 'Not Set'}
-                            </span>
-                          </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['anthropic'] ? 'text' : 'password'}
-                              placeholder="sk-ant-..."
-                              value={apiKeys.anthropicKey}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, anthropicKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('anthropic')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['anthropic'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['anthropic'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Powers Claude 3.5 Sonnet and Haiku coding benchmarks.</p>
-                            <a
-                              href="https://console.anthropic.com/settings/keys"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
+                            <button
+                              type="button"
+                              onClick={() => {
+                                playUiAudio('toggle', appearance.soundFeedback);
+                                setTokenSettings((prev) => ({ ...prev, hardStopOnLimit: !prev.hardStopOnLimit }));
+                              }}
+                              className={cn(
+                                "w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5",
+                                tokenSettings.hardStopOnLimit ? "bg-copper-500" : "bg-white/10"
+                              )}
                             >
-                              <span>Anthropic Console</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                              <span
+                                className={cn(
+                                  "w-5 h-5 rounded-full bg-white block transition-transform shadow-md",
+                                  tokenSettings.hardStopOnLimit ? "translate-x-6" : "translate-x-0"
+                                )}
+                              />
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                            <div className="space-y-0.5 pr-4">
+                              <p className="text-sm font-semibold text-white">Context Window Auto-Compaction</p>
+                              <p className="text-xs text-gray-400 font-mono">Automatically compress earlier branching turns when node exceeds 8k tokens</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                playUiAudio('toggle', appearance.soundFeedback);
+                                setTokenSettings((prev) => ({ ...prev, autoCompactContext: !prev.autoCompactContext }));
+                              }}
+                              className={cn(
+                                "w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5",
+                                tokenSettings.autoCompactContext ? "bg-copper-500" : "bg-white/10"
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "w-5 h-5 rounded-full bg-white block transition-transform shadow-md",
+                                  tokenSettings.autoCompactContext ? "translate-x-6" : "translate-x-0"
+                                )}
+                              />
+                            </button>
                           </div>
                         </div>
 
-                        {/* 5. OpenRouter / Universal */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'openrouter' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                OpenRouter API Key
-                              </label>
-                            </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.openRouterKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.openRouterKey ? 'Configured' : 'Not Set'}
-                            </span>
+                        {/* Reset Local Usage Stats */}
+                        <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-white">Reset Session Token Counters</p>
+                            <p className="text-xs text-gray-400 font-mono">Clears local prompt usage statistics on this machine</p>
                           </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['openrouter'] ? 'text' : 'password'}
-                              placeholder="sk-or-..."
-                              value={apiKeys.openRouterKey}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, openRouterKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('openrouter')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['openrouter'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['openrouter'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Single key access to hundreds of open & commercial models.</p>
-                            <a
-                              href="https://openrouter.ai/keys"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
-                            >
-                              <span>OpenRouter Keys</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                          <button
+                            type="button"
+                            onClick={handleClearCache}
+                            className={cn(
+                              "px-4 py-2 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer",
+                              cacheCleared ? "bg-emerald-500 text-white" : "bg-white/10 hover:bg-white/20 text-white"
+                            )}
+                          >
+                            {cacheCleared ? 'Counters Cleared!' : 'Clear Counters'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ========================================================= */}
+                {/* 5. APPEARANCE & THEME TAB */}
+                {/* ========================================================= */}
+                {activeTab === 'appearance' && (
+                  <motion.div
+                    key="appearance"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-8"
+                  >
+                    <div>
+                      <h2 className="text-xl font-bold text-white flex items-center gap-2.5 mb-1">
+                        <Palette className="w-5 h-5 text-copper-400" />
+                        <span>Appearance & Visual Workstation</span>
+                      </h2>
+                      <p className="text-sm text-gray-400 mb-6 font-sans">
+                        Tailor luxury dark mode themes, accent palettes, typography, glassmorphism, and haptics.
+                      </p>
+
+                      <div className="space-y-6">
+                        {/* Theme Presets */}
+                        <div>
+                          <label className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider block mb-3">
+                            Workstation Theme Preset
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {[
+                              {
+                                id: 'obsidian' as const,
+                                name: 'Obsidian Night',
+                                desc: 'Deep space black & frosted obsidian glass (Default)',
+                                border: 'border-white/20',
+                                bg: 'bg-[#000000]',
+                              },
+                              {
+                                id: 'slate' as const,
+                                name: 'Midnight Slate',
+                                desc: 'Dark navy blue & cool titanium zinc',
+                                border: 'border-cyan-500/30',
+                                bg: 'bg-[#070a12]',
+                              },
+                              {
+                                id: 'amber' as const,
+                                name: 'Cyberpunk Amber',
+                                desc: 'Warm carbon & burnished golden amber highlights',
+                                border: 'border-amber-500/30',
+                                bg: 'bg-[#0c0906]',
+                              },
+                              {
+                                id: 'emerald' as const,
+                                name: 'Emerald Matrix',
+                                desc: 'Terminal hacker green & obsidian jade accents',
+                                border: 'border-emerald-500/30',
+                                bg: 'bg-[#040d08]',
+                              },
+                              {
+                                id: 'violet' as const,
+                                name: 'Cosmic Violet',
+                                desc: 'Deep space nebula with electric purple glow',
+                                border: 'border-purple-500/30',
+                                bg: 'bg-[#0b0714]',
+                              },
+                            ].map((theme) => {
+                              const active = appearance.themePreset === theme.id;
+                              return (
+                                <div
+                                  key={theme.id}
+                                  onClick={() => {
+                                    playUiAudio('click', appearance.soundFeedback);
+                                    const next = { ...appearance, themePreset: theme.id };
+                                    setAppearance(next);
+                                    applyAppearanceToDom(next);
+                                  }}
+                                  className={cn(
+                                    "p-4 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between min-h-[96px]",
+                                    theme.bg,
+                                    active
+                                      ? cn("ring-2 ring-copper-400 shadow-lg shadow-copper-500/10", theme.border)
+                                      : "border-white/10 hover:border-white/25"
+                                  )}
+                                >
+                                  <div>
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-sm font-semibold text-white">{theme.name}</p>
+                                      {active && <Check className="w-4 h-4 text-copper-400" />}
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1 leading-relaxed font-sans">{theme.desc}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
 
-                        {/* 6. Mistral AI */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'mistral' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                Mistral AI API Key
-                              </label>
-                            </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.mistralKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.mistralKey ? 'Configured' : 'Not Set'}
-                            </span>
+                        {/* Accent Colors */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">Accent Brand Color</p>
+                            <p className="text-xs text-gray-400 font-mono mt-0.5">Applied to active indicators, buttons, and highlights</p>
                           </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['mistral'] ? 'text' : 'password'}
-                              placeholder="Key from console.mistral.ai..."
-                              value={apiKeys.mistralKey}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, mistralKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('mistral')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['mistral'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['mistral'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Powers Mistral Large, Codestral & Mixtral 8x22B.</p>
-                            <a
-                              href="https://console.mistral.ai/api-keys"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
-                            >
-                              <span>Mistral Console</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                          <div className="flex flex-wrap items-center gap-3 pt-1">
+                            {[
+                              { id: 'copper' as const, name: 'Copper (Default)', color: '#2C9A8B', ring: 'ring-[#2C9A8B]' },
+                              { id: 'cyan' as const, name: 'Perplexity Cyan', color: '#22B8CD', ring: 'ring-[#22B8CD]' },
+                              { id: 'emerald' as const, name: 'Emerald', color: '#10B981', ring: 'ring-[#10B981]' },
+                              { id: 'violet' as const, name: 'Violet', color: '#8B5CF6', ring: 'ring-[#8B5CF6]' },
+                              { id: 'rose' as const, name: 'Rose', color: '#F43F5E', ring: 'ring-[#F43F5E]' },
+                              { id: 'amber' as const, name: 'Amber Gold', color: '#F59E0B', ring: 'ring-[#F59E0B]' },
+                            ].map((c) => {
+                              const active = appearance.accentColor === c.id;
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => {
+                                    playUiAudio('click', appearance.soundFeedback);
+                                    const next = { ...appearance, accentColor: c.id };
+                                    setAppearance(next);
+                                    applyAppearanceToDom(next);
+                                  }}
+                                  className={cn(
+                                    "flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-mono transition-all cursor-pointer border",
+                                    active
+                                      ? "bg-white/10 text-white border-white/30 ring-2 " + c.ring
+                                      : "bg-white/[0.02] text-gray-400 hover:text-white border-white/5 hover:bg-white/[0.05]"
+                                  )}
+                                >
+                                  <span className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: c.color }} />
+                                  <span>{c.name}</span>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
 
-                        {/* 7. Cohere */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'cohere' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                Cohere API Key
-                              </label>
+                        {/* Typography & Scale */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Interface Font Family</p>
+                              <p className="text-xs text-gray-400 font-mono mt-0.5">Primary headings and body font</p>
                             </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.cohereKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.cohereKey ? 'Configured' : 'Not Set'}
-                            </span>
-                          </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['cohere'] ? 'text' : 'password'}
-                              placeholder="Key from dashboard.cohere.com..."
-                              value={apiKeys.cohereKey}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, cohereKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('cohere')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['cohere'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['cohere'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
+                            <div className="space-y-2">
+                              {[
+                                { id: 'sans' as const, label: 'Inter / Modern Sans (Default)' },
+                                { id: 'editorial' as const, label: 'Playfair Editorial Serif' },
+                                { id: 'mono' as const, label: 'Fira Code / JetBrains Mono' },
+                              ].map((f) => (
+                                <button
+                                  key={f.id}
+                                  type="button"
+                                  onClick={() => {
+                                    playUiAudio('click', appearance.soundFeedback);
+                                    const next = { ...appearance, fontFamily: f.id };
+                                    setAppearance(next);
+                                    applyAppearanceToDom(next);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left p-3 rounded-xl border text-xs transition-all cursor-pointer",
+                                    appearance.fontFamily === f.id
+                                      ? "bg-copper-500/15 border-copper-500/50 text-white font-semibold"
+                                      : "bg-white/[0.02] border-white/5 text-gray-400 hover:text-white"
+                                  )}
+                                >
+                                  {f.label}
+                                </button>
+                              ))}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Powers Command R+, enterprise search & RAG rerankers.</p>
-                            <a
-                              href="https://dashboard.cohere.com/api-keys"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
-                            >
-                              <span>Cohere Dashboard</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+
+                          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Font Scale</p>
+                              <p className="text-xs text-gray-400 font-mono mt-0.5">Workspace UI zoom density</p>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 pt-1">
+                              {[
+                                { id: 'compact' as const, label: 'Compact', scale: '90%' },
+                                { id: 'standard' as const, label: 'Standard', scale: '100%' },
+                                { id: 'roomy' as const, label: 'Roomy', scale: '110%' },
+                              ].map((s) => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  onClick={() => {
+                                    playUiAudio('click', appearance.soundFeedback);
+                                    const next = { ...appearance, fontScale: s.id };
+                                    setAppearance(next);
+                                    applyAppearanceToDom(next);
+                                  }}
+                                  className={cn(
+                                    "p-3 rounded-xl border text-center transition-all cursor-pointer",
+                                    appearance.fontScale === s.id
+                                      ? "bg-copper-500 text-white font-bold border-copper-400 shadow-sm"
+                                      : "bg-white/5 text-gray-300 hover:text-white border-white/10"
+                                  )}
+                                >
+                                  <p className="text-xs font-mono">{s.label}</p>
+                                  <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{s.scale}</p>
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
 
-                        {/* 8. Microsoft Copilot */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'copilot' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                Microsoft Copilot / Azure AI Key
-                              </label>
+                        {/* Effects & Sound */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                            <div className="space-y-0.5 pr-4">
+                              <p className="text-sm font-semibold text-white flex items-center gap-2">
+                                <Volume2 className="w-4 h-4 text-copper-400" />
+                                <span>Mechanical Audio & Haptic Clicks</span>
+                              </p>
+                              <p className="text-xs text-gray-400 font-mono">Play subtle mechanical sound cues on synthesis start and completion</p>
                             </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.copilotKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.copilotKey ? 'Configured' : 'Not Set'}
-                            </span>
-                          </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['copilot'] ? 'text' : 'password'}
-                              placeholder="Key from azure portal or github copilot..."
-                              value={apiKeys.copilotKey}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, copilotKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('copilot')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['copilot'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['copilot'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Powers Microsoft Copilot Pro & Phi-3 / Phi-4 integrations.</p>
-                            <a
-                              href="https://ai.azure.com"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextVal = !appearance.soundFeedback;
+                                playUiAudio('toggle', nextVal);
+                                setAppearance((prev) => ({ ...prev, soundFeedback: nextVal }));
+                              }}
+                              className={cn(
+                                "w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5",
+                                appearance.soundFeedback ? "bg-copper-500" : "bg-white/10"
+                              )}
                             >
-                              <span>Azure AI Studio</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                              <span
+                                className={cn(
+                                  "w-5 h-5 rounded-full bg-white block transition-transform shadow-md",
+                                  appearance.soundFeedback ? "translate-x-6" : "translate-x-0"
+                                )}
+                              />
+                            </button>
                           </div>
-                        </div>
 
-                        {/* 9. Hugging Face */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'huggingface' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                Hugging Face User Access Token
-                              </label>
+                          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                            <div className="space-y-0.5 pr-4">
+                              <p className="text-sm font-semibold text-white flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-copper-400" />
+                                <span>Animated Particle Starfield</span>
+                              </p>
+                              <p className="text-xs text-gray-400 font-mono">Render dynamic glowing star particles and ambient gradient mesh</p>
                             </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.huggingFaceKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.huggingFaceKey ? 'Configured' : 'Not Set'}
-                            </span>
-                          </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['huggingface'] ? 'text' : 'password'}
-                              placeholder="hf_..."
-                              value={apiKeys.huggingFaceKey}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, huggingFaceKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('huggingface')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['huggingface'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['huggingface'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Powers free Serverless Inference API endpoints and open weight models.</p>
-                            <a
-                              href="https://huggingface.co/settings/tokens"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
+                            <button
+                              type="button"
+                              onClick={() => {
+                                playUiAudio('toggle', appearance.soundFeedback);
+                                setAppearance((prev) => ({ ...prev, particleEffects: !prev.particleEffects }));
+                              }}
+                              className={cn(
+                                "w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5",
+                                appearance.particleEffects ? "bg-copper-500" : "bg-white/10"
+                              )}
                             >
-                              <span>HF Tokens</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                              <span
+                                className={cn(
+                                  "w-5 h-5 rounded-full bg-white block transition-transform shadow-md",
+                                  appearance.particleEffects ? "translate-x-6" : "translate-x-0"
+                                )}
+                              />
+                            </button>
                           </div>
-                        </div>
 
-                        {/* 10. DeepSeek */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'deepseek' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                DeepSeek API Key
-                              </label>
+                          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                            <div className="space-y-0.5 pr-4">
+                              <p className="text-sm font-semibold text-white">Reduced Motion Mode</p>
+                              <p className="text-xs text-gray-400 font-mono">Disable non-essential animations and transitions for performance and accessibility</p>
                             </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.deepSeekKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.deepSeekKey ? 'Configured' : 'Not Set'}
-                            </span>
-                          </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['deepseek'] ? 'text' : 'password'}
-                              placeholder="sk-..."
-                              value={apiKeys.deepSeekKey || ''}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, deepSeekKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('deepseek')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['deepseek'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['deepseek'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Powers DeepSeek R1 reasoning and DeepSeek Coder V2.</p>
-                            <a
-                              href="https://platform.deepseek.com/api_keys"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
+                            <button
+                              type="button"
+                              onClick={() => {
+                                playUiAudio('toggle', appearance.soundFeedback);
+                                const next = { ...appearance, reducedMotion: !appearance.reducedMotion };
+                                setAppearance(next);
+                                applyAppearanceToDom(next);
+                              }}
+                              className={cn(
+                                "w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5",
+                                appearance.reducedMotion ? "bg-copper-500" : "bg-white/10"
+                              )}
                             >
-                              <span>DeepSeek Platform</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          </div>
-                        </div>
-
-                        {/* 11. Nvidia NIM */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'nvidia' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                Nvidia NIM API Key
-                              </label>
-                            </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.nvidiaKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.nvidiaKey ? 'Configured' : 'Not Set'}
-                            </span>
-                          </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['nvidia'] ? 'text' : 'password'}
-                              placeholder="nvapi-..."
-                              value={apiKeys.nvidiaKey || ''}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, nvidiaKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('nvidia')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['nvidia'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['nvidia'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Powers Nvidia Nemotron 70B, Nemotron-4 340B & enterprise NIM microservices.</p>
-                            <a
-                              href="https://build.nvidia.com"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
-                            >
-                              <span>Nvidia Build</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          </div>
-                        </div>
-
-                        {/* 12. xAI (Grok) */}
-                        <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AgentIcon agent={{ id: 'grok' }} className="w-4 h-4" badgeClassName="w-4 h-4" />
-                              <label className="text-xs font-mono font-semibold text-white uppercase tracking-wider">
-                                xAI (Grok) API Key
-                              </label>
-                            </div>
-                            <span className={cn(
-                              "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border",
-                              apiKeys.xaiKey ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-white/5 text-gray-400 border-white/10"
-                            )}>
-                              {apiKeys.xaiKey ? 'Configured' : 'Not Set'}
-                            </span>
-                          </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey['xai'] ? 'text' : 'password'}
-                              placeholder="xai-..."
-                              value={apiKeys.xaiKey || ''}
-                              onChange={(e) => setApiKeys((prev) => ({ ...prev, xaiKey: e.target.value }))}
-                              className="w-full px-4 py-3 pr-20 bg-[#0a0b0e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500 transition-all font-mono"
-                            />
-                            <div className="absolute right-2 flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => toggleShowKey('xai')}
-                                className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-                                title={showKey['xai'] ? 'Hide key' : 'Show key'}
-                              >
-                                {showKey['xai'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-gray-500 font-mono">Powers Grok 3 and real-time reasoning models.</p>
-                            <a
-                              href="https://console.x.ai"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-copper-400 hover:text-copper-300 font-mono inline-flex items-center gap-1 transition-colors"
-                            >
-                              <span>xAI Console</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                              <span
+                                className={cn(
+                                  "w-5 h-5 rounded-full bg-white block transition-transform shadow-md",
+                                  appearance.reducedMotion ? "translate-x-6" : "translate-x-0"
+                                )}
+                              />
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1268,7 +2242,9 @@ export default function Settings() {
                   </motion.div>
                 )}
 
-                {/* 3. NOTIFICATIONS TAB */}
+                {/* ========================================================= */}
+                {/* 6. NOTIFICATIONS TAB */}
+                {/* ========================================================= */}
                 {activeTab === 'notifications' && (
                   <motion.div
                     key="notifications"
@@ -1283,8 +2259,8 @@ export default function Settings() {
                         <Bell className="w-5 h-5 text-copper-400" />
                         <span>Notification Preferences</span>
                       </h2>
-                      <p className="text-sm text-gray-400 mb-6">
-                        Configure what alerts and system updates you want to receive in your workspace.
+                      <p className="text-sm text-gray-400 mb-6 font-sans">
+                        Configure what alerts, audio chimes, and system updates you want to receive in your workstation.
                       </p>
 
                       <div className="space-y-4">
@@ -1309,6 +2285,16 @@ export default function Settings() {
                             title: 'Model Catalog & Bedrock Releases',
                             desc: 'Receive alerts when new open-source models become available.',
                           },
+                          {
+                            key: 'soundAlerts' as const,
+                            title: 'Completion Sound Chimes',
+                            desc: 'Play a subtle audio chime when background synthesis finishes.',
+                          },
+                          {
+                            key: 'desktopNotifications' as const,
+                            title: 'Operating System Desktop Notifications',
+                            desc: 'Dispatch native OS banners when Bedrock is minimized or in the background.',
+                          },
                         ].map((item) => (
                           <div
                             key={item.key}
@@ -1320,9 +2306,10 @@ export default function Settings() {
                             </div>
                             <button
                               type="button"
-                              onClick={() =>
-                                setNotifications((prev) => ({ ...prev, [item.key]: !prev[item.key] }))
-                              }
+                              onClick={() => {
+                                playUiAudio('toggle', appearance.soundFeedback);
+                                setNotifications((prev) => ({ ...prev, [item.key]: !prev[item.key] }));
+                              }}
                               className={cn(
                                 "w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5",
                                 notifications[item.key] ? "bg-copper-500" : "bg-white/10"
@@ -1342,10 +2329,136 @@ export default function Settings() {
                   </motion.div>
                 )}
 
-                {/* 4. PRIVACY TAB */}
+                {/* ========================================================= */}
+                {/* 7. PRIVACY & SECURITY TAB */}
+                {/* ========================================================= */}
                 {activeTab === 'privacy' && (
                   <motion.div
                     key="privacy"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-8"
+                  >
+                    <div>
+                      <h2 className="text-xl font-bold text-white flex items-center gap-2.5 mb-1">
+                        <Shield className="w-5 h-5 text-copper-400" />
+                        <span>Privacy, Vault & Security Controls</span>
+                      </h2>
+                      <p className="text-sm text-gray-400 mb-6 font-sans">
+                        Control prompt caching, secret scrubbing, local vault storage, and workspace archive backups.
+                      </p>
+
+                      <div className="space-y-4">
+                        {[
+                          {
+                            key: 'localVaultOnly' as const,
+                            title: 'Local-First Vault Mode',
+                            desc: 'Keep all prompts, DAG trees, and variables strictly on this device without cloud sync.',
+                          },
+                          {
+                            key: 'secretScrubbing' as const,
+                            title: 'Automated Secret Scrubbing',
+                            desc: 'Auto-detect and redact API keys, private passwords, and bearer tokens before LLM dispatch.',
+                          },
+                          {
+                            key: 'saveHistory' as const,
+                            title: 'Prompt History Local Caching',
+                            desc: 'Preserve generated templates and iterations in your local offline library.',
+                          },
+                          {
+                            key: 'telemetry' as const,
+                            title: 'Anonymous Performance Diagnostics',
+                            desc: 'Share non-identifying latency and error telemetry to help optimize model routing.',
+                          },
+                        ].map((item) => (
+                          <div
+                            key={item.key}
+                            className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all"
+                          >
+                            <div className="space-y-0.5 pr-4">
+                              <p className="text-sm font-semibold text-white">{item.title}</p>
+                              <p className="text-xs text-gray-400 font-mono">{item.desc}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                playUiAudio('toggle', appearance.soundFeedback);
+                                setPrivacy((prev) => ({ ...prev, [item.key]: !prev[item.key] }));
+                              }}
+                              className={cn(
+                                "w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5",
+                                privacy[item.key] ? "bg-copper-500" : "bg-white/10"
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "w-5 h-5 rounded-full bg-white block transition-transform shadow-md",
+                                  privacy[item.key] ? "translate-x-6" : "translate-x-0"
+                                )}
+                              />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="h-px bg-white/10 my-8" />
+
+                      {/* Workspace Backup & Archive */}
+                      <div>
+                        <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+                          <HardDrive className="w-4 h-4 text-copper-400" />
+                          <span>Workspace Archive & Data Portability</span>
+                        </h3>
+                        <p className="text-xs text-gray-400 font-mono mb-4">
+                          Export your complete workstation configuration, prompt templates, and DAG trees to JSON or restore a backup.
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={handleExportWorkspace}
+                            className="px-4 py-2.5 bg-copper-500 hover:bg-copper-600 text-white rounded-xl text-xs font-mono font-semibold transition-all shadow-md shadow-copper-500/20 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Export Full Workspace JSON</span>
+                          </button>
+
+                          <input
+                            type="file"
+                            ref={importFileRef}
+                            onChange={handleImportWorkspace}
+                            accept=".json"
+                            className="hidden"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => importFileRef.current?.click()}
+                            className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-mono font-semibold transition-all flex items-center gap-2 cursor-pointer"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Import Workspace Backup</span>
+                          </button>
+                        </div>
+                        {importedStatus && (
+                          <p className="text-xs text-emerald-400 mt-2 font-mono flex items-center gap-1.5">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{importedStatus}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ========================================================= */}
+                {/* 8. DESKTOP APP UPDATES TAB */}
+                {/* ========================================================= */}
+                {activeTab === 'updates' && isDesktop && (
+                  <motion.div
+                    key="updates"
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
@@ -1354,167 +2467,49 @@ export default function Settings() {
                   >
                     <div>
                       <h2 className="text-xl font-bold text-white flex items-center gap-2.5 mb-1">
-                        <Shield className="w-5 h-5 text-copper-400" />
-                        <span>Privacy & Workspace Data</span>
+                        <ArrowUpCircle className="w-5 h-5 text-copper-400" />
+                        <span>Bedrock Desktop App Updates</span>
                       </h2>
-                      <p className="text-sm text-gray-400 mb-6">
-                        Bedrock adheres to a local-first philosophy. Your system prompts, trees, and keys remain strictly in your browser and local machine.
+                      <p className="text-sm text-gray-400 mb-6 font-sans">
+                        Check for official desktop application binary updates and view release versions.
                       </p>
 
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                          <div className="space-y-0.5 pr-4">
-                            <p className="text-sm font-semibold text-white">Save Generation History Locally</p>
-                            <p className="text-xs text-gray-400 font-mono">Store synthesized prompts in your local indexed prompt library.</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setPrivacy((prev) => ({ ...prev, saveHistory: !prev.saveHistory }))}
-                            className={cn(
-                              "w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5",
-                              privacy.saveHistory ? "bg-copper-500" : "bg-white/10"
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "w-5 h-5 rounded-full bg-white block transition-transform shadow-md",
-                                privacy.saveHistory ? "translate-x-6" : "translate-x-0"
-                              )}
-                            />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                          <div className="space-y-0.5 pr-4">
-                            <p className="text-sm font-semibold text-white">Anonymous Performance Diagnostics</p>
-                            <p className="text-xs text-gray-400 font-mono">Help improve model benchmark metrics without sending prompt contents.</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setPrivacy((prev) => ({ ...prev, telemetry: !prev.telemetry }))}
-                            className={cn(
-                              "w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5",
-                              privacy.telemetry ? "bg-copper-500" : "bg-white/10"
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "w-5 h-5 rounded-full bg-white block transition-transform shadow-md",
-                                privacy.telemetry ? "translate-x-6" : "translate-x-0"
-                              )}
-                            />
-                          </button>
-                        </div>
-
-                        <div className="h-px bg-white/10 my-4"></div>
-
-                        {/* Local Cache Management */}
-                        <div className="p-5 rounded-2xl bg-rose-950/10 border border-rose-500/20 space-y-3">
-                          <div>
-                            <h3 className="text-sm font-bold text-rose-300">Local Cache & Token Stats</h3>
-                            <p className="text-xs text-gray-400 font-mono mt-0.5">
-                              Reset temporary counters and local token estimation cache.
-                            </p>
-                          </div>
+                      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-4">
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={handleClearCache}
-                              className="px-4 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-semibold uppercase tracking-wider rounded-xl border border-rose-500/30 transition-colors cursor-pointer"
-                            >
-                              {cacheCleared ? 'Cache Cleared!' : 'Clear Token Cache'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {activeTab === 'updates' && (
-                  <motion.div
-                    key="updates"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-6"
-                  >
-                    <div>
-                      <h2 className="text-xl font-editorial font-bold text-white">Desktop Application Updates</h2>
-                      <p className="text-sm text-gray-400 mt-1 font-sans">
-                        Check for new versions, releases, and seamless background updates.
-                      </p>
-                    </div>
-
-                    <div className="space-y-4">
-                      {/* App Version Card */}
-                      <div className="p-6 rounded-2xl bg-[#14171d]/60 border border-white/5 space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              {isMacOS() && <AppleLogo className="w-5 h-5 shrink-0" />}
-                              <span className="text-lg font-bold text-white">Bedrock Desktop</span>
-                              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-copper-500/10 text-copper-400 border border-copper-500/20">
-                                v1.2.5
-                              </span>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                {isMacOS() ? 'macOS Universal' : 'Release'}
-                              </span>
+                            <div className="w-10 h-10 rounded-xl bg-copper-500/10 border border-copper-500/20 flex items-center justify-center">
+                              <AppleLogo className="w-5 h-5" />
                             </div>
-                            <p className="text-xs text-gray-400 font-mono mt-1">
-                              Channel: GitHub Releases (Bedrockxai/Bedrock)
-                            </p>
+                            <div>
+                              <p className="text-sm font-semibold text-white">Bedrock Desktop v1.2.5</p>
+                              <p className="text-xs text-gray-400 font-mono mt-0.5">Tauri & Electron Universal Workstation</p>
+                            </div>
                           </div>
 
                           <button
                             type="button"
                             onClick={handleManualUpdateCheck}
-                            disabled={isCheckingUpdate || updateStatus.status === 'downloading'}
-                            className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl border border-white/15 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                            disabled={isCheckingUpdate}
+                            className="px-4 py-2 bg-copper-500 hover:bg-copper-600 disabled:opacity-50 text-white rounded-xl text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-copper-500/20"
                           >
-                            <RefreshCw className={cn("w-3.5 h-3.5", (isCheckingUpdate || updateStatus.status === 'checking') && "animate-spin text-copper-400")} />
-                            <span>
-                              {isCheckingUpdate || updateStatus.status === 'checking'
-                                ? 'Checking...'
-                                : 'Check for Updates'}
-                            </span>
+                            <RefreshCw className={cn("w-3.5 h-3.5", isCheckingUpdate && "animate-spin")} />
+                            <span>{isCheckingUpdate ? 'Checking...' : 'Check Now'}</span>
                           </button>
                         </div>
 
-                        {/* Status Alert */}
-                        {updateStatus.status === 'downloaded' && (
-                          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-4">
+                        {updateStatus.status === 'available' && (
+                          <div className="p-4 rounded-xl bg-copper-500/10 border border-copper-500/30 flex items-center justify-between">
                             <div>
-                              <p className="text-xs font-semibold text-emerald-300">
-                                Bedrock v{updateStatus.version || '1.3.0'} is available! Restart to apply update.
-                              </p>
-                              <p className="text-[11px] text-gray-400 mt-0.5 font-mono">
-                                The new release has been downloaded and verified.
-                              </p>
+                              <p className="text-xs font-bold text-white">New Version Available: v{updateStatus.version || ''}</p>
+                              <p className="text-[11px] text-gray-300 font-mono mt-0.5">Ready to download and install.</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => applyUpdate()}
-                              className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold shadow-md transition-all cursor-pointer whitespace-nowrap"
+                              className="px-4 py-1.5 bg-copper-500 hover:bg-copper-600 text-white rounded-lg text-xs font-semibold cursor-pointer"
                             >
                               Restart & Update
                             </button>
-                          </div>
-                        )}
-
-                        {updateStatus.status === 'downloading' && (
-                          <div className="p-4 rounded-xl bg-copper-500/10 border border-copper-500/30 space-y-2">
-                            <div className="flex items-center justify-between text-xs text-copper-300 font-medium">
-                              <span>Downloading Bedrock v{updateStatus.version || ''}...</span>
-                              <span className="font-mono">{updateStatus.percent || 0}%</span>
-                            </div>
-                            <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className="bg-gradient-to-r from-copper-500 to-amber-400 h-1.5 rounded-full transition-all duration-300"
-                                style={{ width: `${Math.min(100, Math.max(0, updateStatus.percent || 0))}%` }}
-                              />
-                            </div>
                           </div>
                         )}
 
@@ -1524,38 +2519,6 @@ export default function Settings() {
                             <span>You are on the latest version of Bedrock. No updates available.</span>
                           </div>
                         )}
-
-                        {updateStatus.status === 'error' && (
-                          <div className={cn(
-                            "p-4 rounded-xl border text-xs flex items-start gap-3 transition-colors",
-                            updateStatus.error?.includes('latest local build')
-                              ? "bg-amber-500/10 border-amber-500/25 text-amber-200/90"
-                              : "bg-rose-500/10 border-rose-500/20 text-rose-300"
-                          )}>
-                            <Info className={cn(
-                              "w-4 h-4 shrink-0 mt-0.5",
-                              updateStatus.error?.includes('latest local build') ? "text-amber-400" : "text-rose-400"
-                            )} />
-                            <div className="space-y-0.5">
-                              <span className="font-semibold block text-white/90">
-                                {updateStatus.error?.includes('latest local build')
-                                  ? 'Current Development Build'
-                                  : 'Update Check Notice'}
-                              </span>
-                              <span className="opacity-90 leading-relaxed font-sans block">
-                                {updateStatus.error || 'Could not connect to GitHub releases.'}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Release Details */}
-                      <div className="p-5 rounded-2xl bg-[#14171d]/60 border border-white/5 space-y-3">
-                        <h3 className="text-sm font-semibold text-white">Automatic Updates</h3>
-                        <p className="text-xs text-gray-400 leading-relaxed font-sans">
-                          Bedrock automatically checks for official releases on the <code className="text-copper-400 font-mono">Bedrockxai/Bedrock</code> repository. When a new version is published, it downloads in the background and prompts you with a 1-click restart to install.
-                        </p>
                       </div>
                     </div>
                   </motion.div>
@@ -1563,11 +2526,11 @@ export default function Settings() {
               </AnimatePresence>
             </div>
 
-            {/* Dedicated Docked Footer Bar (In-Flow, Never Overlapping Content) */}
+            {/* Dedicated Docked Footer Bar */}
             <div className="border-t border-white/10 bg-[#0d0f13]/95 backdrop-blur-xl px-6 py-4 md:px-10 flex items-center justify-between shrink-0 z-20 rounded-b-3xl">
               <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
-                <span className="hidden sm:inline">Preferences persisted locally to your machine</span>
-                <span className="sm:hidden">Local storage</span>
+                <span className="hidden sm:inline">Preferences automatically persisted locally to your machine</span>
+                <span className="sm:hidden">Local vault storage</span>
               </div>
               <button
                 type="button"

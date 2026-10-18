@@ -14,8 +14,13 @@ export interface UserProfile {
   avatarUrl?: string;
   github: string;
   huggingface: string;
+  twitter?: string;
   website: string;
   joinedDate: string;
+  primaryLanguage?: string;
+  architectureSpecialty?: string;
+  seniorityLevel?: string;
+  preferredTone?: string;
 }
 
 const STORAGE_KEY = 'bedrock_user_profile';
@@ -101,8 +106,13 @@ export function getBlankProfile(userOrName?: any, email = '', joinedDate = ''): 
     avatarUrl: '',
     github: '',
     huggingface: '',
+    twitter: '',
     website: '',
     joinedDate: joinedDate || new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    primaryLanguage: 'TypeScript / JavaScript',
+    architectureSpecialty: 'Autonomous Multi-Agent DAGs',
+    seniorityLevel: 'Lead / Principal Architect',
+    preferredTone: 'Production Ready',
   };
 }
 
