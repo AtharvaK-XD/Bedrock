@@ -199,3 +199,34 @@
 [data-beam] {
   overflow: visible !important;
 }
+
+/* Custom Appearance Themes */
+[data-theme="slate"] body {
+  background-color: #070a12 !important;
+}
+[data-theme="amber"] body {
+  background-color: #0c0906 !important;
+}
+[data-theme="emerald"] body {
+  background-color: #040d08 !important;
+}
+[data-theme="violet"] body {
+  background-color: #0b0714 !important;
+}
+
+/* Custom Font Family Modes */
+.font-editorial-mode {
+  font-family: 'Playfair Display', Georgia, serif !important;
+}
+.font-mono-mode {
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace !important;
+}
+
+/* Reduced Motion Mode */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
