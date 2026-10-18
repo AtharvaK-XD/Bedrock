@@ -106,6 +106,9 @@ export const AI_AGENTS = [
     name: 'Perplexity',
     description: 'Web search with cited answers',
     models: [
+      { id: 'sonar-pro', name: 'Sonar Pro' },
+      { id: 'sonar-reasoning-pro', name: 'Sonar Reasoning Pro' },
+      { id: 'sonar', name: 'Sonar' },
       { id: 'sonar-huge', name: 'Sonar Huge' },
       { id: 'sonar-large', name: 'Sonar Large' }
     ]
