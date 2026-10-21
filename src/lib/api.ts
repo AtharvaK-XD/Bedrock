@@ -164,28 +164,51 @@ export function parseApiErrorResponse(provider: string, status: number, rawText:
 
 const STORAGE_KEY_API_KEYS = 'bedrock_api_keys';
 
+function getEnvVar(key: string): string {
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.[key]) {
+      return (import.meta as any).env[key];
+    }
+  } catch {}
+  try {
+    const proc = (globalThis as any)?.process;
+    if (proc?.env?.[key]) {
+      return proc.env[key] as string;
+    }
+  } catch {}
+  return '';
+}
+
 export function getActiveApiKeys() {
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_API_KEYS) : null;
     const parsed = raw ? JSON.parse(raw) : {};
 
     return {
-      geminiKey: (parsed.geminiKey || import.meta.env.VITE_GEMINI_API_KEY || '').trim(),
-      groqKey: (parsed.groqKey || import.meta.env.VITE_GROQ_API_KEY || '').trim(),
-      openAiKey: (parsed.openAiKey || import.meta.env.VITE_OPENAI_API_KEY || '').trim(),
-      anthropicKey: (parsed.anthropicKey || import.meta.env.VITE_ANTHROPIC_API_KEY || '').trim(),
-      openRouterKey: (parsed.openRouterKey || import.meta.env.VITE_OPENROUTER_API_KEY || '').trim(),
-      huggingFaceKey: (parsed.huggingFaceKey || import.meta.env.VITE_HUGGINGFACE_API_KEY || '').trim(),
+      geminiKey: (parsed.geminiKey || getEnvVar('VITE_GEMINI_API_KEY')).trim(),
+      groqKey: (parsed.groqKey || getEnvVar('VITE_GROQ_API_KEY')).trim(),
+      openAiKey: (parsed.openAiKey || getEnvVar('VITE_OPENAI_API_KEY')).trim(),
+      anthropicKey: (parsed.anthropicKey || getEnvVar('VITE_ANTHROPIC_API_KEY')).trim(),
+      openRouterKey: (parsed.openRouterKey || getEnvVar('VITE_OPENROUTER_API_KEY')).trim(),
+      huggingFaceKey: (parsed.huggingFaceKey || getEnvVar('VITE_HUGGINGFACE_API_KEY')).trim(),
+      perplexityKey: (parsed.perplexityKey || getEnvVar('VITE_PERPLEXITY_API_KEY')).trim(),
+      mistralKey: (parsed.mistralKey || getEnvVar('VITE_MISTRAL_API_KEY')).trim(),
+      cohereKey: (parsed.cohereKey || getEnvVar('VITE_COHERE_API_KEY')).trim(),
+      xaiKey: (parsed.xaiKey || getEnvVar('VITE_XAI_API_KEY')).trim(),
       ollamaEndpoint: (parsed.ollamaEndpoint || 'http://localhost:11434').trim(),
     };
   } catch {
     return {
-      geminiKey: (import.meta.env.VITE_GEMINI_API_KEY || '').trim(),
-      groqKey: (import.meta.env.VITE_GROQ_API_KEY || '').trim(),
-      openAiKey: (import.meta.env.VITE_OPENAI_API_KEY || '').trim(),
-      anthropicKey: (import.meta.env.VITE_ANTHROPIC_API_KEY || '').trim(),
-      openRouterKey: (import.meta.env.VITE_OPENROUTER_API_KEY || '').trim(),
-      huggingFaceKey: (import.meta.env.VITE_HUGGINGFACE_API_KEY || '').trim(),
+      geminiKey: getEnvVar('VITE_GEMINI_API_KEY').trim(),
+      groqKey: getEnvVar('VITE_GROQ_API_KEY').trim(),
+      openAiKey: getEnvVar('VITE_OPENAI_API_KEY').trim(),
+      anthropicKey: getEnvVar('VITE_ANTHROPIC_API_KEY').trim(),
+      openRouterKey: getEnvVar('VITE_OPENROUTER_API_KEY').trim(),
+      huggingFaceKey: getEnvVar('VITE_HUGGINGFACE_API_KEY').trim(),
+      perplexityKey: getEnvVar('VITE_PERPLEXITY_API_KEY').trim(),
+      mistralKey: getEnvVar('VITE_MISTRAL_API_KEY').trim(),
+      cohereKey: getEnvVar('VITE_COHERE_API_KEY').trim(),
+      xaiKey: getEnvVar('VITE_XAI_API_KEY').trim(),
       ollamaEndpoint: 'http://localhost:11434',
     };
   }
@@ -1059,6 +1082,13 @@ export const refinePrompt = async (
   );
 };
 
+export interface ArenaBenchmarkMetrics {
+  latencyMs: number;
+  ttftMs: number;
+  tokenCount: number;
+  tokensPerSec: number;
+}
+
 /**
  * Tests prompts against frontier and open-source models using callLLM with per-model tuning merged inside.
  */
@@ -1072,6 +1102,48 @@ export const testPrompt = async (
     systemPrompt,
     onToken,
   });
+};
+
+/**
+ * Tests prompts and captures high-resolution Arena metrics (TTFT, total latency, token throughput).
+ */
+export const testPromptWithMetrics = async (
+  modelId: string,
+  systemPrompt: string,
+  userPrompt: string,
+  onToken?: (token: string) => void
+): Promise<{ text: string; metrics: ArenaBenchmarkMetrics }> => {
+  const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  let firstTokenTime: number | null = null;
+
+  const text = await callLLM(userPrompt, modelId, 'test', {
+    systemPrompt,
+    onToken: (token: string) => {
+      if (firstTokenTime === null) {
+        firstTokenTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      }
+      if (onToken) onToken(token);
+    },
+  });
+
+  const endTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const latencyMs = Math.max(1, Math.round(endTime - startTime));
+  const ttftMs = firstTokenTime ? Math.max(1, Math.round(firstTokenTime - startTime)) : latencyMs;
+
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const tokenCount = Math.max(1, Math.round(words * 1.35));
+  const latencySec = Math.max(0.05, latencyMs / 1000);
+  const tokensPerSec = Math.round((tokenCount / latencySec) * 10) / 10;
+
+  return {
+    text,
+    metrics: {
+      latencyMs,
+      ttftMs,
+      tokenCount,
+      tokensPerSec,
+    },
+  };
 };
 
 // Workflows API with localStorage fallback for offline / desktop support

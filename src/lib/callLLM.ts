@@ -881,8 +881,35 @@ async function dispatchProviderCall(
   let text = '';
   let providerUsed = tuning.provider || 'unknown';
 
-  // A. Google Gemini
-  if (
+  // A. Local Ollama Runtime (Air-gapped private inference)
+  if (lowerModel.startsWith('ollama/') || lowerModel.includes('ollama')) {
+    providerUsed = 'Ollama Local';
+    text = await callOllamaDirect(
+      effectiveUserPrompt,
+      effectiveSystemPrompt,
+      keys.ollamaEndpoint || 'http://localhost:11434',
+      effectiveModelId,
+      temperature,
+      onToken
+    );
+  }
+  // B. Perplexity AI (Sonar Live Grounding)
+  else if (
+    (lowerModel.startsWith('sonar') || lowerModel.includes('perplexity')) &&
+    keys.perplexityKey
+  ) {
+    providerUsed = 'Perplexity AI';
+    text = await callPerplexityDirect(
+      effectiveUserPrompt,
+      effectiveSystemPrompt,
+      keys.perplexityKey,
+      effectiveModelId,
+      temperature,
+      onToken
+    );
+  }
+  // C. Google Gemini
+  else if (
     (options?.preferredProvider === 'gemini' ||
       tuning.provider === 'gemini' ||
       lowerModel.includes('gemini')) &&
@@ -903,7 +930,7 @@ async function dispatchProviderCall(
       onToken
     );
   }
-  // B. Groq (Llama, DeepSeek, Mixtral)
+  // D. Groq (Llama, Qwen, GPT-OSS, DeepSeek, Mixtral)
   else if (
     (options?.preferredProvider === 'groq' ||
       tuning.provider === 'groq' ||
@@ -911,13 +938,14 @@ async function dispatchProviderCall(
       lowerModel.includes('groq') ||
       lowerModel.includes('mixtral') ||
       lowerModel.includes('qwen') ||
+      lowerModel.includes('gpt-oss') ||
       lowerModel.includes('deepseek-r1-distill')) &&
     keys.groqKey
   ) {
     providerUsed = 'Groq';
     const targetGroq =
       effectiveModelId === 'llama' || effectiveModelId === 'groq'
-        ? 'llama-3.3-70b-versatile'
+        ? 'qwen/qwen3.8-27b'
         : effectiveModelId;
 
     text = await callGroqDirect(
@@ -1027,15 +1055,163 @@ async function dispatchProviderCall(
 // DIRECT CLIENT TRANSPORT ADAPTERS
 // ============================================================================
 
+async function callOllamaDirect(
+  prompt: string,
+  systemPrompt?: string,
+  endpoint = 'http://localhost:11434',
+  targetModel = 'llama3.2',
+  temperature = 0.7,
+  onToken?: (token: string) => void
+): Promise<string> {
+  const cleanModel = targetModel.replace(/^ollama\//, '');
+  const url = `${endpoint.replace(/\/$/, '')}/v1/chat/completions`;
+  const isStreaming = typeof onToken === 'function';
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: cleanModel,
+        messages: [
+          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+          { role: 'user', content: prompt },
+        ],
+        temperature,
+        stream: isStreaming,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new ApiError(`Ollama local error (${response.status}): ${errText}`, false, 'Ollama Local');
+    }
+
+    if (isStreaming && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const dataStr = trimmed.slice(6);
+          if (dataStr === '[DONE]') continue;
+          try {
+            const json = JSON.parse(dataStr);
+            const chunk = json.choices?.[0]?.delta?.content || '';
+            if (chunk) {
+              accumulated += chunk;
+              onToken(chunk);
+            }
+          } catch {}
+        }
+      }
+      if (accumulated) return accumulated;
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
+  } catch (err: any) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError(
+      `Cannot connect to Ollama at ${endpoint}. Please ensure Ollama is installed and running ('ollama serve').`,
+      false,
+      'Ollama Local'
+    );
+  }
+}
+
+async function callPerplexityDirect(
+  prompt: string,
+  systemPrompt?: string,
+  apiKey?: string,
+  targetModel = 'sonar-pro',
+  temperature = 0.7,
+  onToken?: (token: string) => void
+): Promise<string> {
+  const isStreaming = typeof onToken === 'function';
+  const response = await fetch('https://api.perplexity.ai/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: targetModel,
+      messages: [
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+        { role: 'user', content: prompt },
+      ],
+      temperature,
+      stream: isStreaming,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    const parsed = parseApiErrorResponse('Perplexity', response.status, errText);
+    throw parsed;
+  }
+
+  if (isStreaming && response.body) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulated = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const dataStr = trimmed.slice(6);
+        if (dataStr === '[DONE]') continue;
+        try {
+          const json = JSON.parse(dataStr);
+          const chunk = json.choices?.[0]?.delta?.content || '';
+          if (chunk) {
+            accumulated += chunk;
+            onToken(chunk);
+          }
+        } catch {}
+      }
+    }
+    if (accumulated) return accumulated;
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
 async function callGeminiDirect(
   prompt: string,
   systemInstruction?: string,
   apiKey?: string,
-  targetModel = 'gemini-flash-latest',
+  targetModel = 'gemini-3.5-flash-lite',
   temperature = 0.7,
   onToken?: (token: string) => void
 ): Promise<string> {
-  const modelsToTry = [targetModel, 'gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+  const modelsToTry = [
+    targetModel === 'gemini-flash-latest' ? 'gemini-3.5-flash-lite' : targetModel,
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-flash-latest',
+    'gemini-3.8-flash',
+  ];
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
   const isStreaming = typeof onToken === 'function';
@@ -1114,11 +1290,18 @@ async function callGroqDirect(
   prompt: string,
   systemPrompt?: string,
   apiKey?: string,
-  targetModel = 'llama-3.3-70b-versatile',
+  targetModel = 'qwen/qwen3.8-27b',
   temperature = 0.5,
   onToken?: (token: string) => void
 ): Promise<string> {
-  const modelsToTry = [targetModel, 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'deepseek-r1-distill-llama-70b'];
+  const modelsToTry = [
+    targetModel,
+    'qwen/qwen3.8-27b',
+    'openai/gpt-oss-120b',
+    'openai/gpt-oss-20b',
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+  ];
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
   const isStreaming = typeof onToken === 'function';
@@ -1330,7 +1513,11 @@ async function callOpenRouterDirect(
         if (dataStr === '[DONE]') continue;
         try {
           const json = JSON.parse(dataStr);
-          const chunk = json.choices?.[0]?.delta?.content || '';
+          const chunk =
+            json.choices?.[0]?.delta?.content ||
+            json.choices?.[0]?.delta?.reasoning ||
+            json.choices?.[0]?.delta?.text ||
+            '';
           if (chunk) {
             accumulated += chunk;
             onToken(chunk);
@@ -1344,7 +1531,8 @@ async function callOpenRouterDirect(
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  const choice = data.choices?.[0];
+  return choice?.message?.content || choice?.message?.reasoning || choice?.text || '';
 }
 
 async function callHuggingFaceDirect(
