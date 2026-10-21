@@ -6,6 +6,7 @@ import { requireAuth, requireVerifiedEmail, AuthRequest } from '../middleware/au
 import { billingLimiter } from '../middleware/rateLimiter.js';
 import { idempotencyMiddleware } from '../middleware/idempotency.js';
 import { CreateOrderSchema, VerifyPaymentSchema } from '../types.js';
+import { sendPaymentConfirmationEmail } from '../services/emailService.js';
 
 const router = Router();
 
@@ -169,6 +170,21 @@ router.post(
               endpoint: '/api/billing/webhook',
               message: `User upgraded to ${planName} via verified webhook`,
             });
+
+            // Dispatch luxury tax invoice and plan activation email
+            const user = await prisma.user.findUnique({ where: { id: record.user_id } });
+            if (user?.email) {
+              const formattedAmount = record.tier === 'ultimate' ? '₹999.00' : '₹399.00';
+              sendPaymentConfirmationEmail({
+                to: user.email,
+                name: user.name,
+                planName,
+                tier: record.tier,
+                amount: formattedAmount,
+                orderId,
+                paymentId: paymentId || orderId,
+              }).catch((e: any) => console.error('[Webhook] Failed to send payment confirmation email:', e));
+            }
           }
         }
       }
@@ -246,10 +262,29 @@ router.post(
         },
       });
 
+      // Dispatch luxury tax invoice and plan activation email
+      const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+      const recipientEmail = user?.email || (req.user as any)?.email;
+      const formattedAmount = validated.tier === 'ultimate' ? '₹999.00' : '₹399.00';
+
+      if (recipientEmail) {
+        sendPaymentConfirmationEmail({
+          to: recipientEmail,
+          name: user?.name,
+          planName,
+          tier: validated.tier,
+          amount: formattedAmount,
+          orderId: validated.orderId,
+          paymentId: validated.paymentId,
+        }).catch((e: any) => console.error('[Billing] Failed to send payment confirmation email:', e));
+      }
+
       res.json({
         success: true,
         plan: planName,
         tier: validated.tier,
+        orderId: validated.orderId,
+        paymentId: validated.paymentId,
       });
     } catch (err) {
       next(err);

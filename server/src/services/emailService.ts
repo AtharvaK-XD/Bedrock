@@ -48,7 +48,7 @@ async function dispatchEmail(options: {
   subject: string;
   html: string;
   displayName: string;
-  type: 'signup' | 'signin';
+  type: 'signup' | 'signin' | 'payment';
 }): Promise<EmailSendResult> {
   const { to, subject, html, displayName, type } = options;
   const gmail = getGmailTransporter();
@@ -419,12 +419,233 @@ export async function sendSignInAlertEmail(
 }
 
 /**
+ * Sends a luxury dark-copper themed Payment Confirmation & Invoice email upon successful subscription upgrade
+ */
+export async function sendPaymentConfirmationEmail(options: {
+  to: string;
+  name?: string;
+  planName: string;
+  tier: string;
+  amount: string;
+  orderId: string;
+  paymentId: string;
+}): Promise<EmailSendResult> {
+  const { to, name, planName, tier, amount, orderId, paymentId } = options;
+  const displayName = (name && name.trim()) || to.split('@')[0];
+  const dateStr = new Date().toUTCString();
+  const isUltimate = tier.toLowerCase().includes('ultimate');
+
+  const unlockedFeatures = isUltimate
+    ? [
+        'Claude 3.5 Sonnet & OpenAI GPT-4o Flagship',
+        'OpenAI o3-mini Reasoning & Perplexity Sonar Pro',
+        'Unlimited Nodes in Branching DAG visual canvas',
+        'Automated Model Assertion Evals & Benchmarking',
+        'Dedicated Priority LPU Execution Queue',
+        'Lifetime Telemetry Trace Retention in Neon Postgres',
+      ]
+    : [
+        'GPT-4o Mini, Claude 3.5 Haiku & Llama 3.3 70B',
+        'Unlimited Daily Prompt Generations (No Quota Limits)',
+        'Up to 15 Nodes in Branching DAG visual canvas',
+        'One-Click Export to .cursorrules & .windsurfrules',
+        'Save up to 100 Prompts in Private Library',
+        'High-Speed LPU Execution Queue',
+      ];
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Confirmed: Welcome to Bedrock ${planName}</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #08090c; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #08090c; color: #ededed;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #08090c; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <!-- Main Card Container -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 540px; background-color: #111318; border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 16px; overflow: hidden; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);">
+          
+          <!-- Top Accent Glow Line -->
+          <tr>
+            <td style="height: 3px; background: linear-gradient(90deg, #c8a86b 0%, #dfc38a 50%, #9c7b41 100%); font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+
+          <!-- Header with Logo and Status Pill -->
+          <tr>
+            <td style="padding: 26px 32px 18px 32px;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="left" style="vertical-align: middle;">
+                    <table border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="vertical-align: middle;">
+                          <img src="https://bedrock-steel.vercel.app/logo-tight.png" width="30" height="30" alt="Bedrock" style="display: block; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);" />
+                        </td>
+                        <td style="padding-left: 12px; vertical-align: middle;">
+                          <div style="font-size: 14px; font-weight: 700; color: #ffffff; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.1;">BEDROCK</div>
+                          <div style="font-size: 10px; font-family: monospace; color: #6b7280; letter-spacing: 0.05em; text-transform: uppercase;">SUBSCRIPTION RECEIPT</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <span style="display: inline-block; padding: 5px 12px; background-color: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 20px; font-family: -apple-system, monospace; font-size: 11px; font-weight: 600; color: #4ade80; letter-spacing: 0.04em;">
+                      ● PAYMENT CONFIRMED
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Separator Line -->
+          <tr>
+            <td style="height: 1px; background-color: rgba(255, 255, 255, 0.06); font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+
+          <!-- Main Content Area -->
+          <tr>
+            <td style="padding: 32px 32px 24px 32px;">
+              
+              <!-- Celebration Icon Badge -->
+              <table border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
+                <tr>
+                  <td style="width: 44px; height: 44px; background: rgba(200, 168, 107, 0.12); border: 1px solid rgba(200, 168, 107, 0.28); border-radius: 12px; text-align: center; vertical-align: middle; font-size: 20px;">
+                    💎
+                  </td>
+                </tr>
+              </table>
+
+              <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; line-height: 1.3;">
+                Your ${planName} is Active!
+              </h1>
+              
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #9ca3af;">
+                Hello <strong style="color: #f3f4f6;">${displayName}</strong>, we have verified your payment. All elevated capabilities and models are now unlocked in your Bedrock Workstation.
+              </p>
+
+              <!-- Invoice Details Box -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #171a22; border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 12px; margin-bottom: 24px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: #6b7280; font-family: monospace; text-transform: uppercase; width: 35%;">
+                    Plan
+                  </td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; color: #dfc38a; font-weight: 600;">
+                    ${planName}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: #6b7280; font-family: monospace; text-transform: uppercase;">
+                    Amount Paid
+                  </td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; color: #ffffff; font-weight: 600;">
+                    ${amount}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: #6b7280; font-family: monospace; text-transform: uppercase;">
+                    Order Reference
+                  </td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: #9ca3af; font-family: monospace;">
+                    ${orderId}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: #6b7280; font-family: monospace; text-transform: uppercase;">
+                    Payment ID
+                  </td>
+                  <td style="padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: #9ca3af; font-family: monospace;">
+                    ${paymentId}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 18px; font-size: 12px; color: #6b7280; font-family: monospace; text-transform: uppercase;">
+                    Timestamp
+                  </td>
+                  <td style="padding: 12px 18px; font-size: 12px; color: #9ca3af;">
+                    ${dateStr}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Unlocked Features Section -->
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff; margin-bottom: 12px; text-transform: uppercase; font-family: monospace; letter-spacing: 0.05em;">
+                ⚡ Unlocked Capabilities:
+              </div>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                ${unlockedFeatures
+                  .map(
+                    (f) => `
+                <tr>
+                  <td style="padding: 4px 0; font-size: 13px; color: #d1d5db;">
+                    <span style="color: #4ade80; margin-right: 8px;">✓</span> ${f}
+                  </td>
+                </tr>`
+                  )
+                  .join('')}
+              </table>
+
+              <!-- Primary CTA Button -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td align="center">
+                    <a href="https://bedrock-steel.vercel.app/app" style="display: block; width: 100%; box-sizing: border-box; text-align: center; background: linear-gradient(180deg, #dfc38a 0%, #c8a86b 100%); color: #090a0d; font-weight: 600; font-size: 14px; padding: 13px 20px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(200, 168, 107, 0.25); letter-spacing: 0.01em;">
+                      Launch Unlocked Workstation &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0; font-size: 12px; color: #6b7280; font-family: monospace;">
+                Billed to: <span style="color: #9ca3af;">${to}</span>
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer Area -->
+          <tr>
+            <td style="padding: 22px 32px 28px 32px; background-color: #0d0e13; border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center;">
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280; line-height: 1.5;">
+                Bedrock Prompt Engineering Workstation &bull; Official Tax Invoice
+              </p>
+              <p style="margin: 0; font-size: 11.5px; color: #4b5563;">
+                Dispatched by <span style="color: #6b7280;">bedrockofficialpage@gmail.com</span> &bull; <a href="https://bedrock-steel.vercel.app" style="color: #9ca3af; text-decoration: underline;">bedrock.app</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  return dispatchEmail({
+    to,
+    subject: `Payment Confirmed: Your Bedrock ${planName} is Active 💎`,
+    html,
+    displayName,
+    type: 'payment',
+  });
+}
+
+/**
  * Gracefully handles Resend free-tier sandbox restrictions
  */
 async function handleResendError(
   error: any,
   intendedRecipient: string,
-  type: 'signup' | 'signin',
+  type: 'signup' | 'signin' | 'payment',
   displayName: string
 ): Promise<EmailSendResult> {
   const errMsg = error?.message || String(error);

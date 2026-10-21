@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, Zap, ShieldCheck, Cpu, ArrowUpRight, Sparkles } from 'lucide-react';
+import { Activity, Zap, ShieldCheck, Cpu, ArrowUpRight, Sparkles, Lock, Crown } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { EncryptedText } from '../components/ui/encrypted-text';
 import { NetworkTopology2D } from '../components/dashboard/NetworkTopology2D';
 import { AgentIcon } from '../components/ui/ModelLogos';
+import { cn } from '../lib/utils';
 import { getUserTelemetry, clearUserTraces, TELEMETRY_UPDATE_EVENT, type UserTelemetrySummary } from '../lib/telemetry';
+import { useUserProfile } from '../lib/useUserProfile';
+import { usePromptQuota } from '../lib/usePromptQuota';
+import { normalizeTier } from '../lib/subscriptionTiers';
 
 const QUICK_ACTIONS = [
   { 
@@ -63,6 +67,11 @@ export default function Dashboard() {
   });
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'OK' | 'ERR'>('ALL');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const { profile } = useUserProfile();
+  const currentTier = normalizeTier(profile?.plan);
+  const isFree = currentTier === 'free';
+  const { sessionPrompts, sessionLimit, sessionPercent, timeUntilSession } = usePromptQuota();
 
   const showNotification = (msg: string) => {
     setToastMessage(msg);
@@ -156,6 +165,87 @@ export default function Dashboard() {
                 100% NOMINAL
               </span>
             </div>
+          </div>
+
+          {/* SUBSCRIPTION & QUOTA GLASS BANNER */}
+          <div className="relative rounded-3xl p-5 sm:p-6 bg-[#0e1117]/80 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border",
+                  isFree 
+                    ? "bg-amber-500/10 border-amber-500/25 text-amber-400" 
+                    : "bg-copper-500/15 border-copper-500/30 text-copper-300"
+                )}>
+                  {isFree ? <Lock className="w-6 h-6" /> : <Crown className="w-6 h-6" />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="text-lg sm:text-xl font-bold font-editorial text-white">
+                      {isFree ? 'Free Tier Workspace' : `${profile?.plan || 'Advanced Plan'} Active`}
+                    </h2>
+                    <span className={cn(
+                      "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider border",
+                      isFree 
+                        ? "bg-amber-500/15 text-amber-300 border-amber-500/30" 
+                        : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                    )}>
+                      {isFree ? '10 Prompts / Day Quota' : 'Unlimited Generations'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-1 font-sans">
+                    {isFree ? (
+                      <span>Session: <strong className="text-white font-mono">{sessionPrompts}/{sessionLimit}</strong> prompts used ({sessionPercent}%). Resets in <strong className="text-copper-300 font-mono">{timeUntilSession}</strong>.</span>
+                    ) : (
+                      <span>All frontier models, automated evals, and unlimited DAG pipeline nodes unlocked.</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                {isFree ? (
+                  <Link
+                    to="/app/pricing"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-copper-500 to-amber-500 hover:from-copper-400 hover:to-amber-400 text-black font-mono text-xs uppercase tracking-wider font-bold transition-all shadow-lg shadow-copper-500/25 active:scale-[0.98]"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Upgrade Plan (₹399)</span>
+                  </Link>
+                ) : (
+                  <Link
+                    to="/app/billing"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-mono text-xs uppercase tracking-wider border border-white/15 transition-all shadow-sm"
+                  >
+                    <span>Manage Subscription</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {/* Quota bar for Free users */}
+            {isFree && (
+              <div className="mt-4 pt-3 border-t border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] font-mono text-zinc-400">
+                <div className="flex items-center gap-2.5 flex-1">
+                  <span className="shrink-0 text-zinc-400">Daily Quota Meter:</span>
+                  <div className="h-1.5 flex-1 bg-black/60 rounded-full overflow-hidden border border-white/10">
+                    <div 
+                      className={cn(
+                        "h-full rounded-full transition-all duration-500",
+                        sessionPercent >= 100 ? "bg-red-500" : sessionPercent >= 80 ? "bg-amber-500" : "bg-copper-400"
+                      )}
+                      style={{ width: `${Math.min(100, sessionPercent)}%` }}
+                    />
+                  </div>
+                  <span className="shrink-0 text-white font-medium">{sessionPercent}%</span>
+                </div>
+                <div className="flex items-center gap-2 text-zinc-500 text-[10px]">
+                  <span>🔒 Pro & Ultimate models require an active subscription</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* EXECUTIVE TELEMETRY KPI GLASS CARDS */}
