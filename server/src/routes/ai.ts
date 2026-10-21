@@ -80,6 +80,76 @@ async function enforcePromptQuota(req: AuthRequest, res: any): Promise<boolean> 
   return true;
 }
 
+// Helper: Enforce model tier authorization based on verified user subscription
+function getModelRequiredTier(modelId: string): 'free' | 'pro' | 'ultimate' {
+  if (!modelId) return 'free';
+  const m = modelId.toLowerCase().trim();
+
+  // Ultimate Tier Models (Frontier reasoning and flagship intelligence)
+  if (
+    m.includes('claude-3-5-sonnet') ||
+    m.includes('claude-sonnet') ||
+    m.includes('claude-opus') ||
+    (m.includes('gpt-4o') && !m.includes('mini')) ||
+    m.includes('gpt-4-turbo') ||
+    m.includes('o3-mini') ||
+    m.includes('o1-mini') ||
+    m.includes('o1') ||
+    m.includes('sonar-pro') ||
+    m.includes('sonar-reasoning-pro') ||
+    m.includes('grok-3') ||
+    m.includes('command-r-plus') ||
+    m.includes('copilot-pro')
+  ) {
+    return 'ultimate';
+  }
+
+  // Pro Tier Models (Fast frontier compact models & large open weights)
+  if (
+    m.includes('gpt-4o-mini') ||
+    m.includes('claude-3-5-haiku') ||
+    m.includes('claude-haiku') ||
+    m.includes('llama-3.3') ||
+    m.includes('llama-3.1-8b') ||
+    m.includes('mistral-large') ||
+    m.includes('mixtral-8x22b') ||
+    m.includes('sonar') ||
+    m.includes('grok-2') ||
+    m.includes('deepseek-coder-v2')
+  ) {
+    return 'pro';
+  }
+
+  return 'free';
+}
+
+function enforceModelTierAccess(req: AuthRequest, res: any, modelId: string): boolean {
+  const userTier = (req.user?.subscriptionTier || 'free').toLowerCase();
+  const required = getModelRequiredTier(modelId);
+
+  if (required === 'ultimate' && !userTier.includes('ultimate')) {
+    res.status(403).json({
+      error: 'Model Requires Ultimate Plan',
+      code: 'TIER_UPGRADE_REQUIRED',
+      requiredTier: 'ultimate',
+      message: `${modelId} requires an active Ultimate Plan subscription.`,
+    });
+    return false;
+  }
+
+  if (required === 'pro' && userTier === 'free') {
+    res.status(403).json({
+      error: 'Model Requires Pro Plan',
+      code: 'TIER_UPGRADE_REQUIRED',
+      requiredTier: 'pro',
+      message: `${modelId} requires a Pro or Ultimate Plan subscription.`,
+    });
+    return false;
+  }
+
+  return true;
+}
+
 // Synthesize Master Prompt & Project Brief (per-endpoint rate limited)
 router.post('/synthesize', synthesizeLimiter, requireAuth, async (req: AuthRequest, res, next) => {
   const startTime = Date.now();
@@ -153,6 +223,8 @@ router.post('/test', testPromptLimiter, requireAuth, async (req: AuthRequest, re
     if (!(await enforcePromptQuota(req, res))) return;
 
     const validated = TestPromptSchema.parse(req.body);
+    if (!enforceModelTierAccess(req, res, validated.modelId)) return;
+
     const content = await AiService.testPrompt(
       validated.modelId,
       validated.systemPrompt,
