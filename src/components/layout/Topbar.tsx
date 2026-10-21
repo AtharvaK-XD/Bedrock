@@ -265,13 +265,13 @@ export function Topbar() {
                 "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all border shadow-sm cursor-pointer",
                 hasKeys
                   ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
-                  : "bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+                  : "bg-copper-500/10 text-copper-300 border-copper-500/30 hover:bg-copper-500/20"
               )}
               title={hasKeys ? "API Keys Connected (Click to manage)" : "No API Keys Connected (Click to setup)"}
             >
               <span className={cn(
                 "w-1.5 h-1.5 rounded-full",
-                hasKeys ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                hasKeys ? "bg-emerald-400 animate-pulse" : "bg-copper-400"
               )} />
               <span className="font-mono text-[11px]">{hasKeys ? 'Keys Active' : 'Configure Keys'}</span>
             </button>

@@ -654,7 +654,7 @@ export default function HistoryPage() {
                           <button
                             type="button"
                             onClick={() => setExportingHistoryItem(activeItem)}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-copper-500/20 via-amber-500/15 to-emerald-500/15 border border-copper-500/40 hover:border-copper-500/70 text-copper-300 hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-[0.98]"
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-copper-500/15 border border-copper-500/40 hover:border-copper-500/70 text-copper-300 hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-[0.98]"
                             title="Export to .cursorrules, CLAUDE.md, Vercel AI SDK, Python, or API payload"
                           >
                             <Code2 className="w-3 h-3 text-copper-400" />
@@ -685,11 +685,11 @@ export default function HistoryPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4 rounded-xl bg-amber-500/[0.05] border border-amber-500/20 text-xs text-amber-200/80 flex items-start gap-3">
-                      <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="p-4 rounded-xl bg-copper-500/[0.05] border border-copper-500/20 text-xs text-copper-200/80 flex items-start gap-3">
+                      <Sparkles className="w-4 h-4 text-copper-400 shrink-0 mt-0.5" />
                       <div>
-                        <p className="font-semibold text-amber-300 mb-0.5">Prompt Draft in Progress</p>
-                        <p className="text-[11px] text-amber-200/70">
+                        <p className="font-semibold text-copper-300 mb-0.5">Prompt Draft in Progress</p>
+                        <p className="text-[11px] text-copper-200/70">
                           This session contains requirements and clarification questions. Resume in the Generator workspace to synthesize the final production prompt.
                         </p>
                       </div>

@@ -167,7 +167,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
                 "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border text-left cursor-pointer",
                 hasKeys
                   ? "bg-emerald-500/[0.06] text-emerald-300 border-emerald-500/20 hover:bg-emerald-500/10"
-                  : "bg-amber-500/[0.08] text-amber-300 border-amber-500/25 hover:bg-amber-500/15"
+                  : "bg-copper-500/[0.08] text-copper-300 border-copper-500/25 hover:bg-copper-500/15"
               )}
             >
               <div className="flex items-center gap-3">

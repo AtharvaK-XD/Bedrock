@@ -184,7 +184,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
           {/* Modal Header */}
           <div className="relative z-10 flex items-start justify-between gap-4 mb-6">
             <div className="flex items-start gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-copper-500/20 to-amber-500/20 border border-copper-400/30 flex items-center justify-center text-copper-300 shadow-[0_0_16px_rgba(200,168,107,0.25)] shrink-0 mt-0.5">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-copper-500/20 to-copper-400/20 border border-copper-400/30 flex items-center justify-center text-copper-300 shadow-[0_0_16px_rgba(44,154,139,0.25)] shrink-0 mt-0.5">
                 <Key className="w-5 h-5" />
               </div>
               <div>

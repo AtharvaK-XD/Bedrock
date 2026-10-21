@@ -68,7 +68,7 @@ export function UpdateBanner() {
             {isDownloading && typeof updateStatus.percent === 'number' && (
               <div className="w-full bg-white/10 rounded-full h-1.5 mt-2.5 overflow-hidden">
                 <div
-                  className="bg-gradient-to-r from-copper-500 to-amber-400 h-1.5 rounded-full transition-all duration-300"
+                  className="bg-gradient-to-r from-copper-500 to-copper-400 h-1.5 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(100, Math.max(0, updateStatus.percent))}%` }}
                 />
               </div>

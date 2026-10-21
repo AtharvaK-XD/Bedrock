@@ -287,7 +287,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
             <div 
               className={cn(
                 "h-full rounded-full transition-all duration-500",
-                sessionPercent >= 100 ? "bg-red-500 shadow-sm shadow-red-500/50" : sessionPercent >= 80 ? "bg-amber-500" : "bg-blue-500/80"
+                sessionPercent >= 100 ? "bg-red-500 shadow-sm shadow-red-500/50" : sessionPercent >= 80 ? "bg-copper-300" : "bg-copper-500/80"
               )} 
               style={{ width: `${Math.min(100, sessionPercent)}%` }} 
             />
@@ -302,7 +302,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
             <div 
               className={cn(
                 "h-full rounded-full transition-all duration-500",
-                weeklyPercent >= 100 ? "bg-red-500 shadow-sm shadow-red-500/50" : weeklyPercent >= 80 ? "bg-amber-500" : "bg-blue-500/80"
+                weeklyPercent >= 100 ? "bg-red-500 shadow-sm shadow-red-500/50" : weeklyPercent >= 80 ? "bg-copper-300" : "bg-copper-500/80"
               )} 
               style={{ width: `${Math.min(100, weeklyPercent)}%` }} 
             />

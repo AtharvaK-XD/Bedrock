@@ -370,7 +370,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     'px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-[0.98]',
                     copied
                       ? 'bg-emerald-500 text-black shadow-emerald-500/20'
-                      : 'bg-gradient-to-r from-copper-500 to-amber-400 hover:from-copper-400 hover:to-amber-300 text-black shadow-copper-500/20'
+                      : 'bg-copper-500 hover:bg-copper-600 text-white shadow-copper-500/20'
                   )}
                 >
                   {copied ? (

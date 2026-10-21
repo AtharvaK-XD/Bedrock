@@ -1181,7 +1181,7 @@ export default function Library() {
                     <button
                       type="button"
                       onClick={() => setExportingPrompt(selectedPromptForView)}
-                      className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-copper-500/20 via-amber-500/15 to-emerald-500/15 border border-copper-500/40 hover:border-copper-500/70 text-copper-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
+                      className="px-3.5 py-1.5 rounded-lg bg-copper-500/15 border border-copper-500/30 hover:border-copper-500/60 text-copper-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
                     >
                       <Code2 className="w-3.5 h-3.5 text-copper-400" />
                       <span>Export Blueprint</span>

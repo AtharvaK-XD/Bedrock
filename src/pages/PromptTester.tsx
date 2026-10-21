@@ -325,8 +325,8 @@ export default function PromptTester() {
                       <AgentIcon agent={currentAgent} model={m.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                       <span className="truncate">{m.name}</span>
                       {!isAllowed && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/25 shrink-0 uppercase ml-1">
-                          <Lock className="w-2.5 h-2.5 text-amber-400" />
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase ml-1">
+                          <Lock className="w-2.5 h-2.5 text-copper-400" />
                           <span>{required}</span>
                         </span>
                       )}

@@ -54,7 +54,7 @@ export function QuotaLimitModal({
             data-lenis-prevent="true"
           >
             {/* Top specular hairline */}
-            <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-copper-500/40 to-transparent pointer-events-none" />
             
             {/* Close button */}
             <button
@@ -67,11 +67,11 @@ export function QuotaLimitModal({
 
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-copper-500/10 border border-copper-500/20 flex items-center justify-center text-copper-400 shrink-0">
                 {isWeeklyLimitReached ? <ShieldAlert className="w-6 h-6" /> : <Hourglass className="w-6 h-6 animate-pulse" />}
               </div>
               <div>
-                <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold">
+                <span className="text-[11px] font-mono uppercase tracking-wider text-copper-400 font-semibold">
                   Free Tier Quota
                 </span>
                 <h3 className="text-xl font-bold font-editorial text-white tracking-tight">
@@ -92,7 +92,7 @@ export function QuotaLimitModal({
             <div className="bg-black/40 border border-white/10 rounded-2xl p-4 mb-6 space-y-3 font-mono text-xs">
               <div className="flex items-center justify-between text-gray-300">
                 <span className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="w-2 h-2 rounded-full bg-copper-400" />
                   5-Hour Session Quota:
                 </span>
                 <span className="font-semibold text-white">
@@ -101,7 +101,7 @@ export function QuotaLimitModal({
               </div>
               <div className="flex items-center justify-between text-gray-400 text-[11px]">
                 <span>Session Resets In:</span>
-                <span className="text-amber-300 font-medium">{timeUntilSession}</span>
+                <span className="text-copper-300 font-medium">{timeUntilSession}</span>
               </div>
 
               <div className="pt-2 border-t border-white/5 flex items-center justify-between text-gray-300">
@@ -127,7 +127,7 @@ export function QuotaLimitModal({
                   onClose();
                   navigate('/app/pricing');
                 }}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-copper-500 to-amber-600 hover:from-copper-600 hover:to-amber-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-copper-500/20 transition-all active:scale-[0.98]"
+                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-copper-500 hover:bg-copper-600 text-white rounded-xl font-semibold text-sm shadow-lg shadow-copper-500/20 transition-all active:scale-[0.98]"
               >
                 <Sparkles className="w-4 h-4" />
                 Upgrade for Unlimited

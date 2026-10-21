@@ -101,10 +101,10 @@ export default function Billing() {
 
           {/* Hero Confirmation Banner */}
           {isFree ? (
-            <div className="relative rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-[#121417] to-black p-6 sm:p-8 overflow-hidden shadow-2xl">
+            <div className="relative rounded-3xl border border-copper-500/30 bg-gradient-to-r from-copper-500/10 via-[#121417] to-black p-6 sm:p-8 overflow-hidden shadow-2xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-start sm:items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                  <div className="w-12 h-12 rounded-2xl bg-copper-500/15 border border-copper-500/30 flex items-center justify-center text-copper-400 shrink-0">
                     <Lock className="w-6 h-6" />
                   </div>
                   <div>
@@ -112,7 +112,7 @@ export default function Billing() {
                       <h1 className="text-2xl sm:text-3xl font-bold font-editorial text-white tracking-tight">
                         Free Workspace Tier
                       </h1>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-copper-500/15 text-copper-300 border border-copper-500/30 uppercase tracking-wider">
                         Active Free Plan
                       </span>
                     </div>
@@ -125,7 +125,7 @@ export default function Billing() {
                 <div className="flex items-center gap-3">
                   <Link
                     to="/app/pricing"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-copper-500 to-amber-500 hover:from-copper-400 hover:to-amber-400 text-black font-mono text-xs uppercase tracking-wider font-bold transition-all shadow-lg shadow-copper-500/25 active:scale-[0.98]"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-mono text-xs uppercase tracking-wider font-bold transition-all shadow-lg shadow-copper-500/25 active:scale-[0.98]"
                   >
                     <Zap className="w-4 h-4" />
                     <span>Upgrade to Pro (₹399)</span>
@@ -188,7 +188,7 @@ export default function Billing() {
                   <span className={cn(
                     "text-xs font-mono font-semibold px-3 py-1 rounded-full border",
                     isFree 
-                      ? "text-amber-400 bg-amber-500/10 border-amber-500/25" 
+                      ? "text-zinc-300 bg-white/5 border-white/10" 
                       : "text-copper-400 bg-copper-500/10 border-copper-500/25"
                   )}>
                     {tierConfig.name}
@@ -221,7 +221,7 @@ export default function Billing() {
                       <div key={idx} className="flex items-center gap-2.5">
                         <div className={cn(
                           "w-4 h-4 rounded-full border flex items-center justify-center shrink-0",
-                          isFree ? "bg-amber-500/15 border-amber-500/30 text-amber-400" : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                          isFree ? "bg-copper-500/15 border-copper-500/30 text-copper-400" : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
                         )}>
                           <Check className="w-2.5 h-2.5" />
                         </div>
@@ -334,7 +334,7 @@ export default function Billing() {
                   </div>
                   <div className="flex justify-between text-neutral-400">
                     <span>Tier Status</span>
-                    <span className={cn("font-medium", isFree ? "text-amber-400" : "text-emerald-400")}>
+                    <span className={cn("font-medium", isFree ? "text-copper-400" : "text-emerald-400")}>
                       {isFree ? 'Free Tier' : 'Paid & Active'}
                     </span>
                   </div>
@@ -364,7 +364,7 @@ export default function Billing() {
                   {isFree ? (
                     <Link
                       to="/app/pricing"
-                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-copper-500 to-amber-500 hover:from-copper-400 hover:to-amber-400 text-black font-semibold text-xs font-mono uppercase tracking-wider transition-colors shadow-md flex items-center justify-center gap-1.5"
+                      className="w-full py-2.5 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-semibold text-xs font-mono uppercase tracking-wider transition-colors shadow-md shadow-copper-500/20 flex items-center justify-center gap-1.5 active:scale-[0.98]"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>Upgrade Plan</span>
