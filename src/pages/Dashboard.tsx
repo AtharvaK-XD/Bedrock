@@ -34,7 +34,7 @@ const QUICK_ACTIONS = [
     path: '/app/tester', 
     shortcut: '⌘T',
     tag: 'ARENA',
-    borderHover: 'group-hover:border-amber-500/40'
+    borderHover: 'group-hover:border-copper-500/40'
   },
   { 
     title: 'Prompt Library', 
@@ -175,7 +175,7 @@ export default function Dashboard() {
                 <div className={cn(
                   "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border",
                   isFree 
-                    ? "bg-amber-500/10 border-amber-500/25 text-amber-400" 
+                    ? "bg-copper-500/10 border-copper-500/25 text-copper-400" 
                     : "bg-copper-500/15 border-copper-500/30 text-copper-300"
                 )}>
                   {isFree ? <Lock className="w-6 h-6" /> : <Crown className="w-6 h-6" />}
@@ -188,7 +188,7 @@ export default function Dashboard() {
                     <span className={cn(
                       "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider border",
                       isFree 
-                        ? "bg-amber-500/15 text-amber-300 border-amber-500/30" 
+                        ? "bg-copper-500/15 text-copper-300 border-copper-500/30" 
                         : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
                     )}>
                       {isFree ? '10 Prompts / Day Quota' : 'Unlimited Generations'}
@@ -208,7 +208,7 @@ export default function Dashboard() {
                 {isFree ? (
                   <Link
                     to="/app/pricing"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-copper-500 to-amber-500 hover:from-copper-400 hover:to-amber-400 text-black font-mono text-xs uppercase tracking-wider font-bold transition-all shadow-lg shadow-copper-500/25 active:scale-[0.98]"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-mono text-xs uppercase tracking-wider font-bold transition-all shadow-lg shadow-copper-500/25 active:scale-[0.98]"
                   >
                     <Zap className="w-3.5 h-3.5" />
                     <span>Upgrade Plan (₹399)</span>
@@ -234,7 +234,7 @@ export default function Dashboard() {
                     <div 
                       className={cn(
                         "h-full rounded-full transition-all duration-500",
-                        sessionPercent >= 100 ? "bg-red-500" : sessionPercent >= 80 ? "bg-amber-500" : "bg-copper-400"
+                        sessionPercent >= 100 ? "bg-red-500" : sessionPercent >= 80 ? "bg-copper-300" : "bg-copper-500"
                       )}
                       style={{ width: `${Math.min(100, sessionPercent)}%` }}
                     />
@@ -277,7 +277,7 @@ export default function Dashboard() {
               <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Cluster P99 Latency</span>
-                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+                <div className="w-8 h-8 rounded-xl bg-copper-500/10 border border-copper-500/25 flex items-center justify-center text-copper-400 shadow-[0_0_12px_rgba(44,154,139,0.2)]">
                   <Zap className="w-4 h-4" />
                 </div>
               </div>

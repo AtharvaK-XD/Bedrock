@@ -72,7 +72,7 @@ export function UpgradeModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.2 }}
-          className="relative w-full max-w-lg rounded-3xl bg-[#0c0e14]/95 border border-white/10 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.95),0_0_40px_rgba(200,168,107,0.15)] overflow-hidden z-10 p-6 sm:p-8"
+          className="relative w-full max-w-lg rounded-3xl bg-[#0c0e14]/95 border border-white/10 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.95),0_0_40px_rgba(44,154,139,0.2)] overflow-hidden z-10 p-6 sm:p-8"
         >
           {/* Ambient Glows */}
           <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-copper-400/50 to-transparent pointer-events-none" />
@@ -89,8 +89,8 @@ export function UpgradeModal({
 
           {/* Header Badge */}
           <div className="flex items-center gap-2 mb-4">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold bg-amber-500/10 border border-amber-500/25 text-amber-300 uppercase tracking-wider">
-              {isUltimate ? <Crown className="w-3.5 h-3.5 text-amber-400" /> : <Lock className="w-3.5 h-3.5 text-amber-400" />}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold bg-copper-500/15 border border-copper-500/30 text-copper-300 uppercase tracking-wider">
+              {isUltimate ? <Crown className="w-3.5 h-3.5 text-copper-400" /> : <Lock className="w-3.5 h-3.5 text-copper-400" />}
               <span>{isUltimate ? 'Ultimate Feature' : 'Pro Feature'}</span>
             </span>
           </div>
@@ -139,7 +139,7 @@ export function UpgradeModal({
             <button
               type="button"
               onClick={handleUpgradeClick}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-copper-500 via-copper-400 to-amber-500 text-black font-semibold text-xs sm:text-sm uppercase tracking-wider font-mono hover:brightness-110 transition-all shadow-[0_4px_20px_rgba(200,168,107,0.3)] cursor-pointer"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-copper-500 hover:bg-copper-600 text-white font-semibold text-xs sm:text-sm uppercase tracking-wider font-mono transition-all shadow-lg shadow-copper-500/25 hover:shadow-copper-500/40 cursor-pointer active:scale-[0.98]"
             >
               <span>Upgrade to {planTitle}</span>
               <ArrowRight className="w-4 h-4" />

@@ -422,11 +422,11 @@ export default function Pricing() {
                     type="button"
                     disabled={isProcessing}
                     onClick={handleConfirmPayment}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-copper-500 to-amber-500 hover:from-copper-400 hover:to-amber-400 text-black font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-copper-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="w-full py-3.5 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-copper-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.98]"
                   >
                     {isProcessing ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>Verifying Cryptographic Payment...</span>
                       </>
                     ) : (

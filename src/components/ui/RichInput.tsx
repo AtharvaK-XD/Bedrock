@@ -443,8 +443,8 @@ export function RichInput({
                             <div className={cn("text-xs sm:text-sm font-medium flex items-center gap-1.5", selectedAgentId === agent.id ? "text-white" : "text-zinc-300")}>
                               <span className="truncate">{agent.name}</span>
                               {!hasAccessibleModel && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-amber-500/10 text-amber-300 border border-amber-500/25 shrink-0 uppercase">
-                                  <Lock className="w-2.5 h-2.5 text-amber-400" />
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase">
+                                  <Lock className="w-2.5 h-2.5 text-copper-400" />
                                   <span>{agentRequiredTier}</span>
                                 </span>
                               )}
@@ -520,8 +520,8 @@ export function RichInput({
                           <AgentIcon agent={selectedAgent} model={model.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                           <span className="truncate">{model.name}</span>
                           {!isAllowed && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/25 shrink-0 uppercase ml-1">
-                              <Lock className="w-2.5 h-2.5 text-amber-400" />
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase ml-1">
+                              <Lock className="w-2.5 h-2.5 text-copper-400" />
                               <span>{required}</span>
                             </span>
                           )}
@@ -610,7 +610,7 @@ export function RichInput({
               <div 
                 className={cn(
                   "h-full rounded-full transition-all duration-500",
-                  sessionPercent >= 100 ? "bg-red-500 shadow-sm shadow-red-500/50" : sessionPercent >= 80 ? "bg-amber-500" : "bg-blue-500/80"
+                  sessionPercent >= 100 ? "bg-red-500 shadow-sm shadow-red-500/50" : sessionPercent >= 80 ? "bg-copper-300" : "bg-copper-500/80"
                 )} 
                 style={{ width: `${Math.min(100, sessionPercent)}%` }} 
               />
@@ -625,7 +625,7 @@ export function RichInput({
               <div 
                 className={cn(
                   "h-full rounded-full transition-all duration-500",
-                  weeklyPercent >= 100 ? "bg-red-500 shadow-sm shadow-red-500/50" : weeklyPercent >= 80 ? "bg-amber-500" : "bg-blue-500/80"
+                  weeklyPercent >= 100 ? "bg-red-500 shadow-sm shadow-red-500/50" : weeklyPercent >= 80 ? "bg-copper-300" : "bg-copper-500/80"
                 )} 
                 style={{ width: `${Math.min(100, weeklyPercent)}%` }} 
               />

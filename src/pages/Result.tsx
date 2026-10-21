@@ -336,7 +336,7 @@ export default function Result() {
           <button 
             type="button"
             onClick={() => setIsExportModalOpen(true)}
-            className="px-3.5 py-1.5 bg-gradient-to-r from-copper-500/20 via-amber-500/15 to-emerald-500/15 border border-copper-500/40 hover:border-copper-500/70 text-copper-300 hover:text-white transition-all rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-[0.98]"
+            className="px-3.5 py-1.5 bg-copper-500/15 border border-copper-500/30 hover:border-copper-500/60 text-copper-300 hover:text-white transition-all rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-[0.98]"
             title="Export as .cursorrules, CLAUDE.md, Vercel AI SDK, Python, or API payload"
           >
             <Code2 className="w-3.5 h-3.5 text-copper-400" />

@@ -360,14 +360,14 @@ export default function Wizard() {
                     <div className={cn(
                       "relative rounded-2xl p-4 sm:p-5 border backdrop-blur-xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4",
                       errorBanner.type === 'api_key'
-                        ? "bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-500/15 border-amber-500/35 shadow-[0_8px_32px_rgba(245,158,11,0.18)]"
+                        ? "bg-gradient-to-r from-copper-500/15 via-emerald-500/10 to-copper-500/15 border-copper-500/35 shadow-[0_8px_32px_rgba(44,154,139,0.18)]"
                         : "bg-rose-500/15 border-rose-500/30 shadow-[0_8px_32px_rgba(244,63,94,0.15)]"
                     )}>
                       <div className="flex items-start gap-3.5">
                         <div className={cn(
                           "w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 mt-0.5 shadow-sm",
                           errorBanner.type === 'api_key'
-                            ? "bg-amber-500/20 border-amber-400/40 text-amber-300 shadow-amber-500/20"
+                            ? "bg-copper-500/20 border-copper-400/40 text-copper-300 shadow-copper-500/20"
                             : "bg-rose-500/20 border-rose-400/40 text-rose-300 shadow-rose-500/20"
                         )}>
                           <KeyRound className="w-5 h-5" />
@@ -378,7 +378,7 @@ export default function Wizard() {
                             <span className={cn(
                               "font-mono text-[10px] px-2 py-0.5 rounded-full uppercase border font-semibold",
                               errorBanner.type === 'api_key'
-                                ? "text-amber-300 bg-amber-500/20 border-amber-500/35"
+                                ? "text-copper-300 bg-copper-500/20 border-copper-500/35"
                                 : "text-rose-300 bg-rose-500/20 border-rose-500/35"
                             )}>
                               {errorBanner.type === 'api_key' ? 'Action Required' : 'Notice'}
@@ -395,7 +395,7 @@ export default function Wizard() {
                           <button
                             type="button"
                             onClick={() => openApiKeyModal(errorBanner.message)}
-                            className="px-4 py-2 rounded-xl text-xs font-semibold font-display bg-gradient-to-r from-amber-500 to-copper-500 hover:from-amber-400 hover:to-copper-400 text-white shadow-md shadow-amber-500/25 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                            className="px-4 py-2 rounded-xl text-xs font-semibold font-display bg-copper-500 hover:bg-copper-600 text-white shadow-md shadow-copper-500/25 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
                           >
                             <KeyRound className="w-3.5 h-3.5" />
                             <span>Enter API Keys</span>

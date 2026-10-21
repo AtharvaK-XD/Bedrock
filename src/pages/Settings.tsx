@@ -73,7 +73,7 @@ export const MODEL_GROUPS: ModelGroup[] = [
   {
     group: 'Groq (Lightning Fast Open Source)',
     models: [
-      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', tag: 'Versatile Flagship', tagColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', tag: 'Versatile Flagship', tagColor: 'text-copper-400 bg-copper-500/10 border-copper-500/20' },
       { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', tag: 'Ultra-Fast Instant', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
       { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B', tag: 'Deep Reasoning', tagColor: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
       { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B (Groq)', tag: '32k Context MoE', tagColor: 'text-copper-400 bg-copper-500/10 border-copper-500/20' },
@@ -100,7 +100,7 @@ export const MODEL_GROUPS: ModelGroup[] = [
     group: 'OpenRouter & Hugging Face',
     models: [
       { id: 'openrouter/auto', name: 'OpenRouter Auto', tag: 'Free Tier', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
-      { id: 'hf/Qwen/Qwen2.5-72B-Instruct', name: 'Qwen 2.5 72B (HuggingFace)', tag: '72B Weights', tagColor: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
+      { id: 'hf/Qwen/Qwen2.5-72B-Instruct', name: 'Qwen 2.5 72B (HuggingFace)', tag: '72B Weights', tagColor: 'text-copper-300 bg-copper-500/10 border-copper-500/20' },
     ],
   },
   {
@@ -122,8 +122,8 @@ export const MODEL_GROUPS: ModelGroup[] = [
     group: 'Mistral AI',
     models: [
       { id: 'mistral-large', name: 'Mistral Large 2', tag: 'Flagship', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
-      { id: 'codestral-latest', name: 'Codestral', tag: 'Code Spec', tagColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-      { id: 'mixtral-8x22b', name: 'Mixtral 8x22B', tag: 'MoE', tagColor: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
+      { id: 'codestral-latest', name: 'Codestral', tag: 'Code Spec', tagColor: 'text-copper-400 bg-copper-500/10 border-copper-500/20' },
+      { id: 'mixtral-8x22b', name: 'Mixtral 8x22B', tag: 'MoE', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
     ],
   },
   {
