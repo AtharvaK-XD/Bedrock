@@ -45,13 +45,12 @@ export const AI_AGENTS = [
   },
   {
     id: 'huggingface',
-    name: 'Hugging Face',
-    description: 'Serverless Inference API (Free)',
+    name: 'Open Models / HF',
+    description: 'Open-weight foundation models ($0.00)',
     models: [
-      { id: 'hf/mistralai/Mistral-7B-Instruct-v0.3', name: 'Mistral 7B v0.3' },
-      { id: 'hf/Qwen/Qwen2.5-72B-Instruct', name: 'Qwen 2.5 72B' },
-      { id: 'hf/meta-llama/Meta-Llama-3-8B-Instruct', name: 'Llama 3 8B' },
-      { id: 'hf/HuggingFaceH4/zephyr-7b-beta', name: 'Zephyr 7B Beta' }
+      { id: 'openrouter/free', name: 'Open Foundation Models Router' },
+      { id: 'poolside/laguna-s-2.1:free', name: 'Laguna S 2.1 (Free)' },
+      { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra (Free)' },
     ]
   },
   {
@@ -65,26 +64,24 @@ export const AI_AGENTS = [
   },
   {
     id: 'gemini',
-    name: 'Gemini',
-    description: 'Multimodal and tight Google integration',
+    name: 'Gemini (100% Free)',
+    description: 'Multimodal Google AI Studio models ($0.00)',
     models: [
-      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite' },
-      { id: 'gemini-flash-latest', name: 'Gemini Flash Latest' },
-      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
-      { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash' },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite (Free)' },
+      { id: 'gemini-flash-lite-latest', name: 'Gemini Flash-Lite Latest (Free)' },
+      { id: 'gemma-4-26b-a4b-it', name: 'Gemma 4 26B (Free)' },
     ]
   },
   {
     id: 'llama',
     name: 'Groq / LLaMA & OSS',
-    description: 'Ultra-low latency open models via Groq',
+    description: 'Ultra-low latency open models via Groq LPU',
     models: [
       { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (Groq LPU)' },
       { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Groq LPU)' },
-      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile' },
-      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant' },
-      { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B' },
-      { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B (Groq)' },
+      { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B (Groq LPU)' },
+      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct' },
+      { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B Instruct' },
     ]
   },
   {
