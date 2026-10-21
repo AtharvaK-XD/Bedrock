@@ -949,21 +949,21 @@ async function dispatchProviderCall(
       onToken
     );
   }
-  // D. Groq (Llama, Qwen, GPT-OSS, DeepSeek, Mixtral)
+  // D. Groq (Qwen, GPT-OSS, DeepSeek, Mixtral)
   else if (
     (options?.preferredProvider === 'groq' ||
       tuning.provider === 'groq' ||
-      lowerModel.includes('llama') ||
       lowerModel.includes('groq') ||
       lowerModel.includes('mixtral') ||
       lowerModel.includes('qwen') ||
       lowerModel.includes('gpt-oss') ||
-      lowerModel.includes('deepseek-r1-distill')) &&
+      lowerModel.includes('deepseek-r1-distill') ||
+      (lowerModel.includes('llama') && !keys.openRouterKey)) &&
     keys.groqKey
   ) {
     providerUsed = 'Groq';
     const targetGroq =
-      effectiveModelId === 'llama' || effectiveModelId === 'groq'
+      effectiveModelId === 'llama' || effectiveModelId === 'groq' || lowerModel.includes('llama')
         ? 'qwen/qwen3.8-27b'
         : effectiveModelId;
 
@@ -993,19 +993,47 @@ async function dispatchProviderCall(
       onToken
     );
   }
-  // D. Hugging Face
+  // D. Hugging Face with resilient zero-cost fallback
   else if (
     (effectiveModelId.startsWith('hf/') || tuning.provider === 'huggingface') &&
     keys.huggingFaceKey
   ) {
     providerUsed = 'Hugging Face';
-    text = await callHuggingFaceDirect(
-      effectiveUserPrompt,
-      effectiveSystemPrompt,
-      keys.huggingFaceKey,
-      effectiveModelId.replace(/^hf\//, ''),
-      temperature
-    );
+    try {
+      text = await callHuggingFaceDirect(
+        effectiveUserPrompt,
+        effectiveSystemPrompt,
+        keys.huggingFaceKey,
+        effectiveModelId.replace(/^hf\//, ''),
+        temperature
+      );
+    } catch (hfErr) {
+      console.warn('[Bedrock] Hugging Face serverless unavailable, routing to OpenRouter free:', hfErr);
+      if (keys.openRouterKey) {
+        providerUsed = 'OpenRouter (HF Free Fallback)';
+        const fallbackTarget = resolveOpenRouterModelId(effectiveModelId);
+        text = await callOpenRouterDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.openRouterKey,
+          fallbackTarget,
+          temperature,
+          onToken
+        );
+      } else if (keys.groqKey) {
+        providerUsed = 'Groq (HF Fallback)';
+        text = await callGroqDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.groqKey,
+          'qwen/qwen3.8-27b',
+          temperature,
+          onToken
+        );
+      } else {
+        throw hfErr;
+      }
+    }
   }
   // E. OpenRouter (Frontier Multi-Model Router for Claude, GPT, Grok, etc.)
   else if (keys.openRouterKey) {
@@ -1222,12 +1250,19 @@ async function callGeminiDirect(
   temperature = 0.7,
   onToken?: (token: string) => void
 ): Promise<string> {
+  const normalized =
+    targetModel === 'gemini-flash-latest' ||
+    targetModel.includes('2.5') ||
+    targetModel.includes('1.5') ||
+    targetModel.includes('3.8')
+      ? 'gemini-3.5-flash-lite'
+      : targetModel;
+
   const modelsToTry = [
-    targetModel === 'gemini-flash-latest' ? 'gemini-3.5-flash-lite' : targetModel,
+    normalized,
     'gemini-3.5-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-flash-latest',
-    'gemini-3.8-flash',
+    'gemini-flash-lite-latest',
+    'gemma-4-26b-a4b-it',
   ];
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
@@ -1312,12 +1347,10 @@ async function callGroqDirect(
   onToken?: (token: string) => void
 ): Promise<string> {
   const modelsToTry = [
-    targetModel,
+    targetModel.includes('llama') ? 'qwen/qwen3.8-27b' : targetModel,
     'qwen/qwen3.8-27b',
     'openai/gpt-oss-120b',
     'openai/gpt-oss-20b',
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
   ];
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
@@ -1363,7 +1396,10 @@ async function callGroqDirect(
               if (dataStr === '[DONE]') continue;
               try {
                 const json = JSON.parse(dataStr);
-                const chunk = json.choices?.[0]?.delta?.content || '';
+                const chunk =
+                  json.choices?.[0]?.delta?.content ||
+                  json.choices?.[0]?.delta?.reasoning ||
+                  '';
                 if (chunk) {
                   accumulated += chunk;
                   onToken(chunk);
@@ -1377,7 +1413,7 @@ async function callGroqDirect(
         }
 
         const data = await response.json();
-        const text = data.choices?.[0]?.message?.content;
+        const text = data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning;
         if (text) return text;
       }
 
