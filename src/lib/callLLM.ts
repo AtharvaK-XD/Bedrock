@@ -865,6 +865,25 @@ export async function callLLMWithMeta(
 }
 
 /**
+ * Intelligently maps friendly model names and legacy identifiers to valid active OpenRouter models.
+ */
+function resolveOpenRouterModelId(modelId: string): string {
+  if (modelId.includes('/')) return modelId;
+  const lower = modelId.toLowerCase();
+  if (lower.includes('claude-3-5-haiku') || lower.includes('claude-haiku')) return 'anthropic/claude-haiku-5.5';
+  if (lower.startsWith('claude')) return 'anthropic/claude-sonnet-5.5';
+  if (lower.includes('gpt-4o-mini') || lower.includes('gpt-3.5')) return 'openai/gpt-4o-mini';
+  if (lower.includes('gpt-4o') || lower.includes('gpt-4')) return 'openai/gpt-4o';
+  if (lower.includes('mistral') || lower.includes('mixtral')) return 'mistralai/mistral-large';
+  if (lower.includes('llama')) return 'meta-llama/llama-3.3-70b-instruct';
+  if (lower.includes('sonar') || lower.includes('perplexity')) return 'perplexity/sonar';
+  if (lower.includes('grok')) return 'x-ai/grok-2';
+  if (lower.includes('nemotron')) return 'nvidia/nemotron-3-ultra-550b-a55b:free';
+  if (lower.includes('poolside')) return 'poolside/laguna-s-2.1:free';
+  return `openai/${modelId}`;
+}
+
+/**
  * Dispatches an inference request to the resolved provider adapter.
  */
 async function dispatchProviderCall(
@@ -991,9 +1010,7 @@ async function dispatchProviderCall(
   // E. OpenRouter (Frontier Multi-Model Router for Claude, GPT, Grok, etc.)
   else if (keys.openRouterKey) {
     providerUsed = 'OpenRouter';
-    const targetOpenRouter = effectiveModelId.includes('/')
-      ? effectiveModelId
-      : `openai/${effectiveModelId}`;
+    const targetOpenRouter = resolveOpenRouterModelId(effectiveModelId);
 
     text = await callOpenRouterDirect(
       effectiveUserPrompt,
