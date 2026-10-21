@@ -33,12 +33,14 @@ export const AI_AGENTS = [
   },
   {
     id: 'openrouter',
-    name: 'OpenRouter',
-    description: 'Frontier and open-source models via OpenRouter',
+    name: 'OpenRouter (100% Free)',
+    description: 'Zero-cost frontier and open models via OpenRouter',
     models: [
+      { id: 'openrouter/free', name: 'Free Models Auto-Router ($0)' },
+      { id: 'poolside/laguna-s-2.1:free', name: 'Poolside Laguna S 2.1 (Free)' },
       { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
       { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B' },
-      { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1' },
+      { id: 'mistralai/mistral-large', name: 'Mistral Large' },
     ]
   },
   {
@@ -54,11 +56,11 @@ export const AI_AGENTS = [
   },
   {
     id: 'nvidia',
-    name: 'Nvidia',
-    description: 'High-performance reasoning and instruction following',
+    name: 'Nvidia (100% Free)',
+    description: 'High-parameter frontier reasoning models ($0.00)',
     models: [
-      { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Nemotron 70B (Free)' },
-      { id: 'nvidia/nemotron-4-340b-instruct', name: 'Nemotron-4 340B' }
+      { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra 550B (Free)' },
+      { id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', name: 'Nemotron 3 Nano Omni (Free Reasoning)' },
     ]
   },
   {
@@ -66,8 +68,8 @@ export const AI_AGENTS = [
     name: 'Gemini',
     description: 'Multimodal and tight Google integration',
     models: [
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite' },
       { id: 'gemini-flash-latest', name: 'Gemini Flash Latest' },
-      { id: 'gemini-flash-lite-latest', name: 'Gemini Flash Lite' },
       { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
       { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash' },
     ]
@@ -77,6 +79,8 @@ export const AI_AGENTS = [
     name: 'Groq / LLaMA & OSS',
     description: 'Ultra-low latency open models via Groq',
     models: [
+      { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (Groq LPU)' },
+      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Groq LPU)' },
       { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile' },
       { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant' },
       { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B' },
