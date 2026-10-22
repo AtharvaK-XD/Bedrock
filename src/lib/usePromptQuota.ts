@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useUserProfile } from './useUserProfile';
+import { isDesktopApp } from './platform';
 
 export const FREE_TIER_SESSION_LIMIT = 10;
 export const FREE_TIER_WEEKLY_LIMIT = 50;
@@ -84,21 +86,36 @@ function getStoredQuota(): QuotaState {
 }
 
 export function usePromptQuota() {
+  const { profile } = useUserProfile();
   const [quota, setQuota] = useState<QuotaState>(getStoredQuota);
   const [timeUntilSession, setTimeUntilSession] = useState('');
   const [timeUntilWeekly, setTimeUntilWeekly] = useState('');
 
-  // Under BYOK Workstation mode, quota limits are completely uncapped
-  const isFreeTier = false;
-  const sessionLimit = Infinity;
-  const weeklyLimit = Infinity;
+  const isDesktop = isDesktopApp();
+
+  // Check whether user is on the Free tier (Desktop has zero subscription limits)
+  const isFreeTier = isDesktop ? false : (!profile?.plan || profile.plan.toLowerCase().includes('free'));
+
+  const sessionLimit = isDesktop ? Infinity : (isFreeTier ? FREE_TIER_SESSION_LIMIT : PRO_TIER_SESSION_LIMIT);
+  const weeklyLimit = isDesktop ? Infinity : (isFreeTier ? FREE_TIER_WEEKLY_LIMIT : PRO_TIER_WEEKLY_LIMIT);
 
   const refreshQuota = useCallback(() => {
     const current = getStoredQuota();
     setQuota(current);
-    setTimeUntilSession('Unlimited');
-    setTimeUntilWeekly('Unlimited');
-  }, []);
+
+    if (isDesktop) {
+      setTimeUntilSession('Unlimited');
+      setTimeUntilWeekly('Unlimited');
+      return;
+    }
+
+    const now = Date.now();
+    const sessionDiff = Math.max(0, current.sessionResetTime - now);
+    const weeklyDiff = Math.max(0, current.weeklyResetTime - now);
+
+    setTimeUntilSession(formatTimeRemaining(sessionDiff));
+    setTimeUntilWeekly(formatTimeRemaining(weeklyDiff));
+  }, [isDesktop]);
 
   useEffect(() => {
     refreshQuota();
@@ -107,16 +124,27 @@ export function usePromptQuota() {
     window.addEventListener(QUOTA_EVENT, handleUpdate);
     window.addEventListener('storage', handleUpdate);
 
+    // Update countdown timers every 30 seconds
+    const interval = setInterval(refreshQuota, 30000);
+
     return () => {
       window.removeEventListener(QUOTA_EVENT, handleUpdate);
       window.removeEventListener('storage', handleUpdate);
+      clearInterval(interval);
     };
   }, [refreshQuota]);
 
   const recordPromptUsage = useCallback((count = 1): boolean => {
+    if (isDesktop) return true;
+
     const current = getStoredQuota();
-    const newSession = current.sessionPrompts + count;
-    const newWeekly = current.weeklyPrompts + count;
+
+    if (isFreeTier && (current.sessionPrompts >= sessionLimit || current.weeklyPrompts >= weeklyLimit)) {
+      return false;
+    }
+
+    const newSession = Math.min(current.sessionPrompts + count, sessionLimit);
+    const newWeekly = Math.min(current.weeklyPrompts + count, weeklyLimit);
 
     localStorage.setItem(STORAGE_KEYS.SESSION_PROMPTS, newSession.toString());
     localStorage.setItem(STORAGE_KEYS.WEEKLY_PROMPTS, newWeekly.toString());
@@ -129,7 +157,7 @@ export function usePromptQuota() {
 
     window.dispatchEvent(new CustomEvent(QUOTA_EVENT));
     return true;
-  }, []);
+  }, [isDesktop, isFreeTier, sessionLimit, weeklyLimit]);
 
   const resetQuota = useCallback(() => {
     const now = Date.now();
@@ -151,12 +179,12 @@ export function usePromptQuota() {
     window.dispatchEvent(new CustomEvent(QUOTA_EVENT));
   }, []);
 
-  const isSessionLimitReached = false;
-  const isWeeklyLimitReached = false;
-  const isLimitReached = false;
+  const isSessionLimitReached = !isDesktop && isFreeTier && quota.sessionPrompts >= sessionLimit;
+  const isWeeklyLimitReached = !isDesktop && isFreeTier && quota.weeklyPrompts >= weeklyLimit;
+  const isLimitReached = isSessionLimitReached || isWeeklyLimitReached;
 
-  const sessionPercent = 0;
-  const weeklyPercent = 0;
+  const sessionPercent = isDesktop ? 0 : Math.min(100, Math.round((quota.sessionPrompts / sessionLimit) * 100));
+  const weeklyPercent = isDesktop ? 0 : Math.min(100, Math.round((quota.weeklyPrompts / weeklyLimit) * 100));
 
   return {
     sessionPrompts: quota.sessionPrompts,

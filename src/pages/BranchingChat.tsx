@@ -54,7 +54,11 @@ import {
   LayoutGrid,
   List,
   RefreshCw,
+  Lock,
 } from 'lucide-react';
+import { useUserProfile } from '../lib/useUserProfile';
+import { TIER_LIMITS, normalizeTier, isModelAllowedForTier, getModelRequiredTier } from '../lib/subscriptionTiers';
+import { UpgradeModal } from '../components/ui/UpgradeModal';
 
 const NODE_CONFIG = {
   system: { 
@@ -1495,6 +1499,14 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
+  const { profile } = useUserProfile();
+  const [upgradeModal, setUpgradeModal] = useState<{
+    isOpen: boolean;
+    featureName?: string;
+    requiredTier?: 'pro' | 'ultimate';
+    reason?: string;
+  }>({ isOpen: false });
+
   useEffect(() => {
     loadWorkflows().then(data => setSavedWorkflows(data)).catch(console.error);
   }, []);
@@ -1594,6 +1606,18 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
   }, []);
 
   const addNode = (type: keyof typeof NODE_CONFIG = 'prompt') => {
+    const currentTier = normalizeTier(profile?.plan);
+    const maxNodes = TIER_LIMITS[currentTier].dagNodeLimit;
+    if (nodes.length >= maxNodes) {
+      setUpgradeModal({
+        isOpen: true,
+        featureName: 'Workflow Node Limit',
+        requiredTier: currentTier === 'free' ? 'pro' : 'ultimate',
+        reason: `The ${currentTier.toUpperCase()} plan is limited to ${maxNodes} pipeline nodes. Upgrade to ${currentTier === 'free' ? 'Pro (15 nodes)' : 'Ultimate (Unlimited nodes)'} to expand your neural workflow.`,
+      });
+      return;
+    }
+
     const config = NODE_CONFIG[type];
     
     let extraInitial: Partial<PromptNodeData> = {};
@@ -2157,6 +2181,16 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                         value={activeNode.data.modelId}
                         options={(AI_AGENTS.find(a => a.id === activeNode.data.agentId) || AI_AGENTS[0]).models}
                         onChange={(modelId) => {
+                          if (!isModelAllowedForTier(modelId, profile?.plan)) {
+                            const req = getModelRequiredTier(modelId);
+                            setUpgradeModal({
+                              isOpen: true,
+                              featureName: `Model ${modelId}`,
+                              requiredTier: req === 'ultimate' ? 'ultimate' : 'pro',
+                              reason: `This model requires an active ${req.toUpperCase()} subscription. Upgrade your plan to use it in pipelines.`,
+                            });
+                            return;
+                          }
                           onNodeDataChange(activeNode.id, { modelId });
                         }}
                         renderValue={(model) => {
@@ -2170,12 +2204,20 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                         }}
                         renderOption={(model) => {
                           const currentAgent = AI_AGENTS.find(a => a.id === activeNode.data.agentId) || AI_AGENTS[0];
+                          const isAllowed = isModelAllowedForTier(model.id, profile?.plan);
+                          const reqTier = getModelRequiredTier(model.id);
                           return (
                             <div className="flex items-center justify-between w-full">
                               <div className="flex items-center gap-1.5 min-w-0">
                                 <AgentIcon agent={currentAgent} model={model.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                                 <span className="font-mono text-xs truncate">{model.name}</span>
                               </div>
+                              {!isAllowed && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase ml-1">
+                                  <Lock className="w-2.5 h-2.5 text-copper-400" />
+                                  <span>{reqTier}</span>
+                                </span>
+                              )}
                             </div>
                           );
                         }}
@@ -2203,6 +2245,17 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                 
                 <button 
                   onClick={async () => {
+                    const isAllowed = isModelAllowedForTier(activeNode.data.modelId, profile?.plan);
+                    if (!isAllowed) {
+                      const req = getModelRequiredTier(activeNode.data.modelId);
+                      setUpgradeModal({
+                        isOpen: true,
+                        featureName: `Model ${activeNode.data.modelId}`,
+                        requiredTier: req === 'ultimate' ? 'ultimate' : 'pro',
+                        reason: `Model ${activeNode.data.modelId} requires an active ${req.toUpperCase()} subscription. Upgrade your plan to execute this node.`,
+                      });
+                      return;
+                    }
                     onNodeDataChange(activeNode.id, { status: 'running', output: undefined });
                     try {
                       let streamAcc = '';
@@ -2229,6 +2282,14 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <UpgradeModal
+        isOpen={upgradeModal.isOpen}
+        onClose={() => setUpgradeModal({ isOpen: false })}
+        featureName={upgradeModal.featureName}
+        requiredTier={upgradeModal.requiredTier}
+        reason={upgradeModal.reason}
+      />
     </div>
   );
 }

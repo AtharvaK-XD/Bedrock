@@ -132,6 +132,7 @@ export function Topbar() {
                       />
                     </div>
                     <div className="border-t border-white/10 pt-2.5 flex flex-col space-y-1 px-1">
+                      {!isDesktop && <HoveredLink to="/app/pricing">Plans & Token Quotas</HoveredLink>}
                       <HoveredLink to="/app/settings">API Integrations & Keys</HoveredLink>
                     </div>
                   </div>
@@ -249,23 +250,32 @@ export function Topbar() {
 
         {/* Right User Actions - Floating Air Island */}
         <div className="pointer-events-auto flex items-center gap-2.5 sm:gap-3 bg-black/45 p-1.5 px-3 rounded-2xl border border-white/10 shadow-lg shadow-black/30 backdrop-blur-xl">
-          {/* Universal API Key Status Pill */}
-          <button 
-            onClick={() => openApiKeyModal()}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all border shadow-sm cursor-pointer",
-              hasKeys
-                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
-                : "bg-copper-500/10 text-copper-300 border-copper-500/30 hover:bg-copper-500/20"
-            )}
-            title={hasKeys ? "API Keys Connected (Click to manage)" : "No API Keys Connected (Click to setup)"}
-          >
-            <span className={cn(
-              "w-1.5 h-1.5 rounded-full",
-              hasKeys ? "bg-emerald-400 animate-pulse" : "bg-copper-400"
-            )} />
-            <span className="font-mono text-[11px]">{hasKeys ? 'Keys Active' : 'Configure Keys'}</span>
-          </button>
+          {/* Website only: Upgrade to Pro button */}
+          {!isDesktop && (
+            <Link to="/app/pricing" className="hidden md:flex items-center justify-center px-3.5 py-1.5 bg-gradient-to-r from-copper-500 to-copper-600 hover:from-copper-400 hover:to-copper-500 text-white text-xs font-semibold uppercase tracking-wider rounded-full shadow-md shadow-copper-500/25 transition-all border border-copper-400/30">
+              Upgrade
+            </Link>
+          )}
+
+          {/* Desktop only: API Key Status Pill */}
+          {isDesktop && (
+            <button 
+              onClick={() => openApiKeyModal()}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all border shadow-sm cursor-pointer",
+                hasKeys
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                  : "bg-copper-500/10 text-copper-300 border-copper-500/30 hover:bg-copper-500/20"
+              )}
+              title={hasKeys ? "API Keys Connected (Click to manage)" : "No API Keys Connected (Click to setup)"}
+            >
+              <span className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                hasKeys ? "bg-emerald-400 animate-pulse" : "bg-copper-400"
+              )} />
+              <span className="font-mono text-[11px]">{hasKeys ? 'Keys Active' : 'Configure Keys'}</span>
+            </button>
+          )}
 
           <Link 
             to="/app/settings" 
