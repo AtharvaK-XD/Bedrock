@@ -5,7 +5,6 @@ import {
   Zap, 
   Gauge, 
   RotateCcw, 
-  Sparkles, 
   Columns2, 
   SlidersHorizontal,
   ChevronDown,
@@ -353,10 +352,6 @@ export default function PromptTester() {
         
         {/* Arena Header */}
         <div className="text-center mb-8 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-copper-300 mb-3 backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 text-copper-400" />
-            <span>Parallel Benchmark Arena</span>
-          </div>
           <h1 className="text-4xl md:text-5xl font-editorial font-bold text-white mb-3 tracking-tight leading-[1.1]">
             The Arena.
           </h1>
