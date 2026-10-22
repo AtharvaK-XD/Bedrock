@@ -89,7 +89,7 @@ export const EncryptedText: React.FC<EncryptedTextProps> = ({
         Math.floor(elapsedMs / Math.max(1, revealDelayMs)),
       );
 
-      setRevealCount(currentRevealCount);
+      setRevealCount((prev) => (prev !== currentRevealCount ? currentRevealCount : prev));
 
       if (currentRevealCount >= totalLength) {
         return;
