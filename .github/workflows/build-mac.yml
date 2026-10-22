@@ -62,15 +62,21 @@ jobs:
           name: bedrock-macos-installer
           path: release-mac-artifacts/*
 
+      - name: Extract package version
+        id: pkg_info
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Attach macOS Assets to Dedicated macOS GitHub Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.2.0-mac
-          name: "Bedrock v1.2.0 - macOS Desktop Workstation"
+          tag_name: v${{ steps.pkg_info.outputs.version }}-mac
+          name: "Bedrock v${{ steps.pkg_info.outputs.version }} - macOS Desktop Workstation"
           make_latest: false
           body: |
-            # Bedrock v1.2.0 - macOS Desktop Workstation
+            # Bedrock v${{ steps.pkg_info.outputs.version }} - macOS Desktop Workstation
 
             Dedicated macOS release for Bedrock Prompt Engineering Workstation.
             Native build supporting both Apple Silicon (M1/M2/M3/M4) and Intel Macs.
