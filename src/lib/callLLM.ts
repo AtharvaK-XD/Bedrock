@@ -18,7 +18,6 @@ import {
   type ValidationIssue,
 } from './validation';
 import { getGroundedFacts } from './ragGrounding';
-import { isModelAllowedForTier, getModelRequiredTier } from './subscriptionTiers';
 
 export type ModelTier = 'frontier' | 'mid' | 'compact';
 
@@ -727,26 +726,6 @@ export async function callLLMWithMeta(
   }
 
   // 1.5 Security & Subscription Guard: Verify user's plan permits target model
-  let userPlan = 'free';
-  try {
-    const rawProfile = typeof localStorage !== 'undefined' ? localStorage.getItem('bedrock_user_profile') : null;
-    if (rawProfile) {
-      const parsed = JSON.parse(rawProfile);
-      userPlan = parsed.plan || 'free';
-    }
-  } catch {
-    // fallback
-  }
-
-  if (effectiveModelId && effectiveModelId !== 'auto' && !isModelAllowedForTier(effectiveModelId, userPlan)) {
-    const required = getModelRequiredTier(effectiveModelId);
-    throw new ApiError(
-      `Access Denied: ${effectiveModelId} requires an active ${required.toUpperCase()} Plan. Please upgrade to unlock.`,
-      false,
-      'SubscriptionGuard'
-    );
-  }
-
   const tuning = getModelTuning(effectiveModelId);
 
   // 2. Build Tuned Prompt & Merge All Parameters

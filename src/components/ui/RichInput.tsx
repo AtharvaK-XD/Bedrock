@@ -1,12 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Check, Lock } from 'lucide-react';
+import { Plus, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { IdeaPayload } from '../../lib/mockApi';
 import { usePromptQuota } from '../../lib/usePromptQuota';
-import { useUserProfile } from '../../lib/useUserProfile';
-import { isModelAllowedForTier, getModelRequiredTier } from '../../lib/subscriptionTiers';
 import { QuotaLimitModal } from './QuotaLimitModal';
-import { UpgradeModal } from './UpgradeModal';
 import { Button as StatefulButton } from './stateful-button';
 
 interface RichInputProps {
@@ -245,13 +242,6 @@ export function RichInput({
   const [activeDropdown, setActiveDropdown] = useState<'target' | 'agent' | 'model' | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState(AI_AGENTS[0].id);
   const [selectedModelId, setSelectedModelId] = useState(AI_AGENTS[0].models[0].id);
-  const { profile } = useUserProfile();
-  const [upgradeModal, setUpgradeModal] = useState<{
-    isOpen: boolean;
-    featureName?: string;
-    requiredTier?: 'pro' | 'ultimate';
-    reason?: string;
-  }>({ isOpen: false });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -407,33 +397,17 @@ export function RichInput({
                   onWheel={(e) => e.stopPropagation()}
                 >
                   {AI_AGENTS.map((agent) => {
-                    const hasAccessibleModel = agent.models.some((m) => isModelAllowedForTier(m.id, profile?.plan));
-                    const agentRequiredTier = agent.models.some((m) => getModelRequiredTier(m.id) === 'ultimate')
-                      ? 'ultimate'
-                      : 'pro';
-
                     return (
                       <button
                         key={agent.id}
                         type="button"
                         onClick={() => {
-                          if (!hasAccessibleModel) {
-                            setUpgradeModal({
-                              isOpen: true,
-                              featureName: `${agent.name} Models`,
-                              requiredTier: agentRequiredTier,
-                              reason: `${agent.name} frontier models require an active ${agentRequiredTier.toUpperCase()} Plan. Upgrade your plan to get immediate access.`,
-                            });
-                            setActiveDropdown(null);
-                            return;
-                          }
                           setSelectedAgentId(agent.id);
-                          const firstAllowed = agent.models.find((m) => isModelAllowedForTier(m.id, profile?.plan)) || agent.models[0];
-                          setSelectedModelId(firstAllowed.id);
+                          setSelectedModelId(agent.models[0].id);
                           setActiveDropdown(null);
                         }}
                         className={cn(
-                          "w-full flex items-start justify-between gap-3 px-3 py-2.5 text-left rounded-xl transition-colors",
+                          "w-full flex items-start justify-between gap-3 px-3 py-2.5 text-left rounded-xl transition-colors cursor-pointer",
                           selectedAgentId === agent.id ? "bg-white/10" : "hover:bg-white/5"
                         )}
                       >
@@ -442,12 +416,6 @@ export function RichInput({
                           <div className="min-w-0">
                             <div className={cn("text-xs sm:text-sm font-medium flex items-center gap-1.5", selectedAgentId === agent.id ? "text-white" : "text-zinc-300")}>
                               <span className="truncate">{agent.name}</span>
-                              {!hasAccessibleModel && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase">
-                                  <Lock className="w-2.5 h-2.5 text-copper-400" />
-                                  <span>{agentRequiredTier}</span>
-                                </span>
-                              )}
                             </div>
                             <div className="text-[11px] text-zinc-400 mt-0.5 truncate">{agent.description}</div>
                           </div>
@@ -490,43 +458,24 @@ export function RichInput({
                   onWheel={(e) => e.stopPropagation()}
                 >
                   {selectedAgent.models.map((model) => {
-                    const isAllowed = isModelAllowedForTier(model.id, profile?.plan);
-                    const required = getModelRequiredTier(model.id);
-
                     return (
                       <button
                         key={model.id}
                         type="button"
                         onClick={() => {
-                          if (!isAllowed) {
-                            setUpgradeModal({
-                              isOpen: true,
-                              featureName: model.name,
-                              requiredTier: required === 'ultimate' ? 'ultimate' : 'pro',
-                              reason: `${model.name} is a high-capability model requiring an active ${required.toUpperCase()} Plan. Upgrade to unlock full access.`,
-                            });
-                            setActiveDropdown(null);
-                            return;
-                          }
                           setSelectedModelId(model.id);
                           setActiveDropdown(null);
                         }}
                         className={cn(
-                          "w-full flex items-center justify-between px-3 py-2 text-xs sm:text-sm text-left rounded-xl transition-colors font-mono",
+                          "w-full flex items-center justify-between px-3 py-2 text-xs sm:text-sm text-left rounded-xl transition-colors font-mono cursor-pointer",
                           selectedModelId === model.id ? "bg-white/10 text-white font-medium" : "text-zinc-300 hover:bg-white/5 hover:text-white"
                         )}
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <AgentIcon agent={selectedAgent} model={model.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                           <span className="truncate">{model.name}</span>
-                          {!isAllowed && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase ml-1">
-                              <Lock className="w-2.5 h-2.5 text-copper-400" />
-                              <span>{required}</span>
-                            </span>
-                          )}
                         </div>
-                        {selectedModelId === model.id && isAllowed && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
+                        {selectedModelId === model.id && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
                       </button>
                     );
                   })}
@@ -647,14 +596,6 @@ export function RichInput({
         timeUntilSession={timeUntilSession}
         timeUntilWeekly={timeUntilWeekly}
         isWeeklyLimitReached={isWeeklyLimitReached}
-      />
-
-      <UpgradeModal
-        isOpen={upgradeModal.isOpen}
-        onClose={() => setUpgradeModal({ isOpen: false })}
-        featureName={upgradeModal.featureName}
-        requiredTier={upgradeModal.requiredTier}
-        reason={upgradeModal.reason}
       />
     </div>
   );

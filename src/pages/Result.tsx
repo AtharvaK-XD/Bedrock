@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { RefinementInput } from '../components/ui/RefinementInput';
-import { ArrowLeftRight, Code2, Download, Copy, Check, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
+import { ArrowLeftRight, Code2, Download, Copy, Check, PanelLeftOpen, PanelLeftClose, HardDrive } from 'lucide-react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import ReactMarkdown from 'react-markdown';
 import { useState, useEffect } from 'react';
@@ -18,6 +18,8 @@ import { recordExecutionTrace } from '../lib/telemetry';
 import { isDesktopApp } from '../lib/platform';
 import { ExportModal } from '../components/ui/ExportModal';
 import { GeneratorHistorySidebar } from '../components/generator/GeneratorHistorySidebar';
+import { saveRuleFileDirectly } from '../lib/fileExport';
+import { EXPORT_TARGETS } from '../lib/exportGenerators';
 
 const TypewriterText = ({ text }: { text: string }) => {
   const words = text.split(' ');
@@ -146,6 +148,21 @@ export default function Result() {
 
   const [copied, setCopied] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [directSaveToast, setDirectSaveToast] = useState<string | null>(null);
+  const [isSavingDirect, setIsSavingDirect] = useState(false);
+
+  const handleQuickSaveCursorRules = async () => {
+    if (!promptText) return;
+    setIsSavingDirect(true);
+    const target = EXPORT_TARGETS.find((t) => t.id === 'cursorrules') || EXPORT_TARGETS[0];
+    const code = target.generate(promptText, currentIdea);
+    const res = await saveRuleFileDirectly(target.filename, code);
+    setIsSavingDirect(false);
+    if (res.success) {
+      setDirectSaveToast(`Saved ${target.filename}!`);
+      setTimeout(() => setDirectSaveToast(null), 3500);
+    }
+  };
 
   if (!promptText) {
     return (
@@ -333,6 +350,23 @@ export default function Result() {
         </div>
         
         <div className="flex items-center gap-2">
+          {/* 1-Click Save to Project Folder */}
+          <button 
+            type="button"
+            onClick={handleQuickSaveCursorRules}
+            disabled={isSavingDirect}
+            className={cn(
+              "px-3.5 py-1.5 border transition-all rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-[0.98]",
+              directSaveToast
+                ? "bg-emerald-500 text-black border-emerald-400 font-bold"
+                : "bg-emerald-500/15 border-emerald-500/30 hover:border-emerald-500/60 text-emerald-300 hover:text-white"
+            )}
+            title="1-Click direct file saving of .cursorrules to your project folder"
+          >
+            <HardDrive className={cn("w-3.5 h-3.5", directSaveToast ? "text-black" : "text-emerald-400")} />
+            <span>{isSavingDirect ? 'Writing...' : directSaveToast || 'Save .cursorrules'}</span>
+          </button>
+
           <button 
             type="button"
             onClick={() => setIsExportModalOpen(true)}

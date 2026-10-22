@@ -25,9 +25,6 @@ import {
 } from 'lucide-react';
 import { ExportModal } from '../components/ui/ExportModal';
 import { AgentIcon } from '../components/ui/ModelLogos';
-import { useUserProfile } from '../lib/useUserProfile';
-import { normalizeTier, TIER_LIMITS } from '../lib/subscriptionTiers';
-import { UpgradeModal } from '../components/ui/UpgradeModal';
 
 export interface PromptItem {
   id: string;
@@ -402,16 +399,6 @@ export default function Library() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [exportingPrompt, setExportingPrompt] = useState<PromptItem | null>(null);
 
-  const { profile } = useUserProfile();
-  const currentTier = normalizeTier(profile?.plan);
-  const tierConfig = TIER_LIMITS[currentTier];
-  const [upgradeModal, setUpgradeModal] = useState<{
-    isOpen: boolean;
-    featureName?: string;
-    requiredTier?: 'pro' | 'ultimate';
-    reason?: string;
-  }>({ isOpen: false });
-
   // Form State for Create/Edit Modal
   const [formData, setFormData] = useState({
     title: '',
@@ -506,17 +493,6 @@ export default function Library() {
   };
 
   const handleOpenCreate = () => {
-    const customCount = prompts.filter(p => p.isCustom).length;
-    if (customCount >= tierConfig.libraryPromptLimit) {
-      setUpgradeModal({
-        isOpen: true,
-        featureName: 'Prompt Library Slot Limit',
-        requiredTier: currentTier === 'free' ? 'pro' : 'ultimate',
-        reason: `The ${currentTier.toUpperCase()} plan is limited to ${tierConfig.libraryPromptLimit} custom library prompts. Upgrade to ${currentTier === 'free' ? 'Pro (100 templates)' : 'Ultimate (Unlimited templates)'} to store more prompt architectures.`,
-      });
-      return;
-    }
-
     setEditingPrompt(null);
     setIsCreatingNew(true);
     setFormData({
@@ -588,16 +564,6 @@ export default function Library() {
 
   const handleDuplicate = (prompt: PromptItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    const customCount = prompts.filter(p => p.isCustom).length;
-    if (customCount >= tierConfig.libraryPromptLimit) {
-      setUpgradeModal({
-        isOpen: true,
-        featureName: 'Prompt Library Slot Limit',
-        requiredTier: currentTier === 'free' ? 'pro' : 'ultimate',
-        reason: `The ${currentTier.toUpperCase()} plan is limited to ${tierConfig.libraryPromptLimit} custom library prompts. Upgrade your plan to clone more templates.`,
-      });
-      return;
-    }
 
     const duplicated: PromptItem = {
       ...prompt,
@@ -1354,15 +1320,6 @@ export default function Library() {
           onClose={() => setExportingPrompt(null)}
           promptText={exportingPrompt?.content || ''}
           title={exportingPrompt?.title || 'Bedrock Prompt'}
-        />
-
-        {/* Upgrade Modal for Tier Limits */}
-        <UpgradeModal
-          isOpen={upgradeModal.isOpen}
-          onClose={() => setUpgradeModal({ isOpen: false })}
-          featureName={upgradeModal.featureName}
-          requiredTier={upgradeModal.requiredTier}
-          reason={upgradeModal.reason}
         />
       </div>
     </PageTransition>

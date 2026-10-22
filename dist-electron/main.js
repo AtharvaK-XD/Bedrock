@@ -29,8 +29,8 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 // User agent identifying the Bedrock desktop environment
 app.userAgentFallback = process.platform === "darwin"
-	? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.2.5 Electron/43.3.0"
-	: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.2.5 Electron/43.3.0";
+	? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.3.0 Electron/43.3.0"
+	: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.3.0 Electron/43.3.0";
 
 const MIME_TYPES = {
 	".html": "text/html",
@@ -500,6 +500,63 @@ ipcMain.handle("auth:start-external", async (_event, { strategy, mode, nonce }) 
 	const authUrl = `http://127.0.0.1:${port}/#/browser-auth?strategy=${encodeURIComponent(strategy || "oauth_google")}&mode=${encodeURIComponent(mode || "register")}&nonce=${encodeURIComponent(nonce || "")}&port=${port}`;
 	shell.openExternal(authUrl);
 	return { success: true, url: authUrl };
+});
+
+// Native filesystem 1-click export IPC handlers
+ipcMain.handle("file:select-folder", async () => {
+	try {
+		const targetWin = win || BrowserWindow.getFocusedWindow();
+		const result = await dialog.showOpenDialog(targetWin, {
+			title: "Select Project Root Folder for Bedrock Rules",
+			properties: ["openDirectory", "createDirectory"],
+			buttonLabel: "Select Folder"
+		});
+		if (result.canceled || !result.filePaths.length) {
+			return { canceled: true };
+		}
+		return { canceled: false, folderPath: result.filePaths[0] };
+	} catch (err) {
+		return { canceled: true, error: err?.message || String(err) };
+	}
+});
+
+ipcMain.handle("file:save-to-folder", async (_event, { folderPath, fileName, content }) => {
+	try {
+		if (!folderPath || !fileName) {
+			return { success: false, error: "Missing destination folder path or file name." };
+		}
+		if (!fs.existsSync(folderPath)) {
+			fs.mkdirSync(folderPath, { recursive: true });
+		}
+		const fullPath = path.join(folderPath, fileName);
+		fs.writeFileSync(fullPath, content, "utf-8");
+		return { success: true, filePath: fullPath, fileName };
+	} catch (err) {
+		return { success: false, error: err?.message || String(err) };
+	}
+});
+
+ipcMain.handle("file:save-with-dialog", async (_event, { defaultFileName, content, title }) => {
+	try {
+		const targetWin = win || BrowserWindow.getFocusedWindow();
+		const safeFileName = defaultFileName || "system-prompt.md";
+		const ext = path.extname(safeFileName).replace(".", "") || "md";
+		const result = await dialog.showSaveDialog(targetWin, {
+			title: title || `Save ${safeFileName}`,
+			defaultPath: safeFileName,
+			filters: [
+				{ name: "Rule / Config Files", extensions: [ext, "cursorrules", "md", "windsurfrules", "json", "txt", "ts", "py"] },
+				{ name: "All Files", extensions: ["*"] }
+			]
+		});
+		if (result.canceled || !result.filePath) {
+			return { canceled: true };
+		}
+		fs.writeFileSync(result.filePath, content, "utf-8");
+		return { success: true, filePath: result.filePath };
+	} catch (err) {
+		return { success: false, error: err?.message || String(err) };
+	}
 });
 
 // Enforce single instance lock (prevents duplicate malicious sidecar injection)
