@@ -30,11 +30,13 @@ import { checkForUpdates } from './lib/updater';
 import { useAuth } from './lib/useAuth';
 import { isDesktopApp } from './lib/platform';
 import { UpdateBanner } from './components/layout/UpdateBanner';
+import { applyAppearanceToDom, BEDROCK_APPEARANCE_UPDATED_EVENT } from './lib/appSettings';
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!PUBLISHABLE_KEY) {
   console.warn("Missing VITE_CLERK_PUBLISHABLE_KEY in .env.local");
 }
+
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -201,9 +203,23 @@ function App() {
   useEffect(() => {
     // Check for Tauri updates
     checkForUpdates();
-    
+
+    // Initialize and synchronize appearance settings across the DOM
+    applyAppearanceToDom();
+    const handleAppearanceChange = () => applyAppearanceToDom();
+    window.addEventListener(BEDROCK_APPEARANCE_UPDATED_EVENT, handleAppearanceChange);
+    window.addEventListener('storage', handleAppearanceChange);
+
+    return () => {
+      window.removeEventListener(BEDROCK_APPEARANCE_UPDATED_EVENT, handleAppearanceChange);
+      window.removeEventListener('storage', handleAppearanceChange);
+    };
+  }, []);
+
+  useEffect(() => {
     // Only initialize smooth scroll on the web landing page; desktop app uses native scroll
     if (isDesktop) return;
+
 
     const lenis = new Lenis({
       duration: 1.2,

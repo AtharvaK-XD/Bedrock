@@ -1,4 +1,5 @@
 import type { HistoryPromptItem } from './generatorHistory';
+import { getActivePrivacySettings, scrubSecrets, getSessionTokensCount } from './appSettings';
 
 export interface UserTraceItem {
   id: string;
@@ -43,7 +44,7 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 }
 
 /**
- * Record a real execution trace in Neon DB
+ * Record a real execution trace in Neon DB (respects user's privacy telemetry toggle)
  */
 export async function recordExecutionTrace(params: {
   node?: string;
@@ -52,6 +53,12 @@ export async function recordExecutionTrace(params: {
   latency?: number;
   status?: 'OK' | 'ERR';
 }): Promise<void> {
+  const privacy = getActivePrivacySettings();
+  if (!privacy.telemetry) {
+    // User disabled telemetry in Settings > Privacy & Data Controls
+    return;
+  }
+
   try {
     const headers = await getAuthHeader();
     const res = await fetch('/api/traces', {
@@ -65,6 +72,7 @@ export async function recordExecutionTrace(params: {
         status: params.status || 'OK',
       }),
     });
+
 
     if (res.ok) {
       window.dispatchEvent(new CustomEvent(TELEMETRY_UPDATE_EVENT));
@@ -93,13 +101,14 @@ export async function getUserTelemetry(): Promise<UserTelemetrySummary> {
     console.warn('[Telemetry] Failed to fetch telemetry:', err);
   }
 
+  const localTokens = getSessionTokensCount();
   return {
-    totalInferences: 0,
-    totalTokens: 0,
+    totalInferences: localTokens > 0 ? 1 : 0,
+    totalTokens: localTokens,
     avgLatency: 0,
     p99Latency: 0,
     reliability: 100,
-    activeModelsCount: 0,
+    activeModelsCount: localTokens > 0 ? 1 : 0,
     activeModels: [],
     traces: [],
   };
@@ -132,6 +141,16 @@ export async function savePromptToDb(prompt: {
   targetType?: string;
   tags?: string[];
 }): Promise<void> {
+  const privacy = getActivePrivacySettings();
+  if (!privacy.saveHistory) {
+    // User disabled prompt history persistence
+    return;
+  }
+
+  const cleanTitle = scrubSecrets(prompt.title);
+  const cleanIdea = scrubSecrets(prompt.ideaText);
+  const cleanPrompt = prompt.promptText ? scrubSecrets(prompt.promptText) : undefined;
+
   try {
     const headers = await getAuthHeader();
     await fetch('/api/prompts', {
@@ -139,9 +158,9 @@ export async function savePromptToDb(prompt: {
       headers,
       body: JSON.stringify({
         id: prompt.id,
-        title: prompt.title,
-        content: prompt.promptText || prompt.ideaText,
-        snippet: (prompt.ideaText || prompt.title).slice(0, 160),
+        title: cleanTitle,
+        content: cleanPrompt || cleanIdea,
+        snippet: (cleanIdea || cleanTitle).slice(0, 160),
         targetType: prompt.targetType || 'General',
         tags: prompt.tags || [prompt.targetType || 'Custom'],
       }),
@@ -150,6 +169,7 @@ export async function savePromptToDb(prompt: {
     console.warn('[Prompts] Failed to save prompt to DB:', err);
   }
 }
+
 
 /**
  * Fetch user's saved prompts from Neon DB

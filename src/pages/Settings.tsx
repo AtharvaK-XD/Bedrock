@@ -161,217 +161,47 @@ type Tab =
   | 'privacy'
   | 'updates';
 
-// Storage keys
-const STORAGE_KEY_API_KEYS = 'bedrock_api_keys';
-const STORAGE_KEY_NOTIFICATIONS = 'bedrock_notifications_settings';
-const STORAGE_KEY_PRIVACY = 'bedrock_privacy_settings';
-const STORAGE_KEY_MODEL_SETTINGS = 'bedrock_model_settings';
-const STORAGE_KEY_TOKEN_SETTINGS = 'bedrock_token_settings';
-const STORAGE_KEY_APPEARANCE = 'bedrock_appearance_settings';
+// Centralized Application Settings & State
+import {
+  STORAGE_KEY_API_KEYS,
+  STORAGE_KEY_NOTIFICATIONS,
+  STORAGE_KEY_PRIVACY,
+  STORAGE_KEY_MODEL_SETTINGS,
+  STORAGE_KEY_TOKEN_SETTINGS,
+  STORAGE_KEY_APPEARANCE,
+  STORAGE_KEY_SESSION_TOKENS,
+  STORAGE_KEY_WEEKLY_TOKENS,
+  BEDROCK_TOKENS_UPDATED_EVENT,
+  DEFAULT_MODEL_SETTINGS,
+  DEFAULT_TOKEN_SETTINGS,
+  DEFAULT_APPEARANCE_SETTINGS,
+  DEFAULT_NOTIFICATIONS,
+  DEFAULT_PRIVACY,
+  getActiveModelSettings as getStoredModelSettings,
+  getActiveTokenSettings as getStoredTokenSettings,
+  getActiveAppearanceSettings as getStoredAppearance,
+  getActiveNotificationSettings as getStoredNotifications,
+  getActivePrivacySettings as getStoredPrivacy,
+  applyAppearanceToDom,
+  playUiAudio,
+} from '../lib/appSettings';
+import type {
+  ModelInferenceSettings,
+  TokenSettings,
+  AppearanceSettings,
+  NotificationSettings,
+  PrivacySettings,
+  ApiKeysState,
+} from '../lib/appSettings';
 
-// ============================================================================
-// MODEL & INFERENCE SETTINGS
-// ============================================================================
-
-export interface ModelInferenceSettings {
-  defaultModel: string;
-  temperature: number;
-  maxOutputTokens: number;
-  topP: number;
-  streamSpeed: 'instant' | 'smooth' | 'typewriter';
-  systemPromptDirectives: string;
-  autoFallback: boolean;
-  enableWebCitations: boolean;
-  strictJsonMode: boolean;
-}
-
-const DEFAULT_MODEL_SETTINGS: ModelInferenceSettings = {
-  defaultModel: 'gemini-3.5-flash-lite',
-  temperature: 0.7,
-  maxOutputTokens: 4096,
-  topP: 0.95,
-  streamSpeed: 'smooth',
-  systemPromptDirectives: '',
-  autoFallback: true,
-  enableWebCitations: true,
-  strictJsonMode: false,
+export type {
+  ModelInferenceSettings,
+  TokenSettings,
+  AppearanceSettings,
+  NotificationSettings,
+  PrivacySettings,
+  ApiKeysState,
 };
-
-function getStoredModelSettings(): ModelInferenceSettings {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_MODEL_SETTINGS);
-    if (!data) return DEFAULT_MODEL_SETTINGS;
-    return { ...DEFAULT_MODEL_SETTINGS, ...JSON.parse(data) };
-  } catch {
-    return DEFAULT_MODEL_SETTINGS;
-  }
-}
-
-// ============================================================================
-// TOKEN & BUDGET SETTINGS
-// ============================================================================
-
-export interface TokenSettings {
-  sessionLimit: number;
-  weeklyLimit: number;
-  warningThreshold: number;
-  hardStopOnLimit: boolean;
-  estimationMode: 'heuristic' | 'bpe';
-  currency: 'USD' | 'EUR' | 'GBP' | 'JPY' | 'INR';
-  autoCompactContext: boolean;
-  costWarningThreshold: number;
-}
-
-const DEFAULT_TOKEN_SETTINGS: TokenSettings = {
-  sessionLimit: 50,
-  weeklyLimit: 250,
-  warningThreshold: 80,
-  hardStopOnLimit: true,
-  estimationMode: 'heuristic',
-  currency: 'USD',
-  autoCompactContext: true,
-  costWarningThreshold: 5.0,
-};
-
-function getStoredTokenSettings(): TokenSettings {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_TOKEN_SETTINGS);
-    if (!data) return DEFAULT_TOKEN_SETTINGS;
-    return { ...DEFAULT_TOKEN_SETTINGS, ...JSON.parse(data) };
-  } catch {
-    return DEFAULT_TOKEN_SETTINGS;
-  }
-}
-
-// ============================================================================
-// APPEARANCE & THEME SETTINGS
-// ============================================================================
-
-export interface AppearanceSettings {
-  themePreset: 'obsidian' | 'slate' | 'amber' | 'emerald' | 'violet';
-  accentColor: 'copper' | 'cyan' | 'emerald' | 'violet' | 'rose' | 'amber';
-  fontScale: 'compact' | 'standard' | 'roomy';
-  fontFamily: 'sans' | 'editorial' | 'mono';
-  codeTheme: 'tokyo-night' | 'dracula' | 'monokai' | 'github-dark' | 'one-dark';
-  glassIntensity: 'none' | 'subtle' | 'luxury';
-  particleEffects: boolean;
-  soundFeedback: boolean;
-  reducedMotion: boolean;
-}
-
-const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
-  themePreset: 'obsidian',
-  accentColor: 'copper',
-  fontScale: 'standard',
-  fontFamily: 'sans',
-  codeTheme: 'tokyo-night',
-  glassIntensity: 'luxury',
-  particleEffects: true,
-  soundFeedback: true,
-  reducedMotion: false,
-};
-
-function getStoredAppearance(): AppearanceSettings {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_APPEARANCE);
-    if (!data) return DEFAULT_APPEARANCE_SETTINGS;
-    return { ...DEFAULT_APPEARANCE_SETTINGS, ...JSON.parse(data) };
-  } catch {
-    return DEFAULT_APPEARANCE_SETTINGS;
-  }
-}
-
-function applyAppearanceToDom(settings: AppearanceSettings) {
-  try {
-    const root = document.documentElement;
-    root.setAttribute('data-theme', settings.themePreset);
-    root.setAttribute('data-accent', settings.accentColor);
-    root.setAttribute('data-font-scale', settings.fontScale);
-
-    if (settings.fontScale === 'compact') {
-      root.style.fontSize = '14px';
-    } else if (settings.fontScale === 'roomy') {
-      root.style.fontSize = '17px';
-    } else {
-      root.style.fontSize = '16px';
-    }
-
-    root.classList.remove('font-sans-mode', 'font-editorial-mode', 'font-mono-mode');
-    if (settings.fontFamily === 'editorial') root.classList.add('font-editorial-mode');
-    else if (settings.fontFamily === 'mono') root.classList.add('font-mono-mode');
-    else root.classList.add('font-sans-mode');
-
-    if (settings.reducedMotion) {
-      root.classList.add('reduce-motion');
-    } else {
-      root.classList.remove('reduce-motion');
-    }
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-// Audio Feedback Chime
-function playUiAudio(type: 'click' | 'success' | 'toggle' = 'click', enabled = true) {
-  if (!enabled) return;
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    if (type === 'success') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.04, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.2);
-    } else if (type === 'toggle') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(329.63, ctx.currentTime);
-      gain.gain.setValueAtTime(0.025, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.08);
-    } else {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(750, ctx.currentTime);
-      gain.gain.setValueAtTime(0.02, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.04);
-    }
-  } catch {
-    // ignore
-  }
-}
-
-// ============================================================================
-// API KEYS STATE
-// ============================================================================
-
-export interface ApiKeysState {
-  defaultModel: string;
-  geminiKey: string;
-  groqKey: string;
-  openAiKey: string;
-  anthropicKey: string;
-  openRouterKey: string;
-  huggingFaceKey: string;
-  mistralKey: string;
-  cohereKey: string;
-  copilotKey: string;
-  deepSeekKey: string;
-  nvidiaKey: string;
-  xaiKey: string;
-  perplexityKey: string;
-  ollamaHost: string;
-}
 
 const DEFAULT_API_KEYS: ApiKeysState = {
   defaultModel: 'gemini-3.5-flash-lite',
@@ -401,65 +231,6 @@ function getStoredApiKeys(): ApiKeysState {
   }
 }
 
-// ============================================================================
-// NOTIFICATIONS & PRIVACY
-// ============================================================================
-
-export interface NotificationSettings {
-  executionAlerts: boolean;
-  tokenWarnings: boolean;
-  latencyAlerts: boolean;
-  modelUpdates: boolean;
-  soundAlerts: boolean;
-  desktopNotifications: boolean;
-}
-
-const DEFAULT_NOTIFICATIONS: NotificationSettings = {
-  executionAlerts: true,
-  tokenWarnings: true,
-  latencyAlerts: false,
-  modelUpdates: true,
-  soundAlerts: true,
-  desktopNotifications: false,
-};
-
-function getStoredNotifications(): NotificationSettings {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
-    if (!data) return DEFAULT_NOTIFICATIONS;
-    return { ...DEFAULT_NOTIFICATIONS, ...JSON.parse(data) };
-  } catch {
-    return DEFAULT_NOTIFICATIONS;
-  }
-}
-
-export interface PrivacySettings {
-  telemetry: boolean;
-  saveHistory: boolean;
-  shareCrashReports: boolean;
-  secretScrubbing: boolean;
-  localVaultOnly: boolean;
-  autoLockTimeout: string;
-}
-
-const DEFAULT_PRIVACY: PrivacySettings = {
-  telemetry: false,
-  saveHistory: true,
-  shareCrashReports: false,
-  secretScrubbing: true,
-  localVaultOnly: true,
-  autoLockTimeout: 'never',
-};
-
-function getStoredPrivacy(): PrivacySettings {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_PRIVACY);
-    if (!data) return DEFAULT_PRIVACY;
-    return { ...DEFAULT_PRIVACY, ...JSON.parse(data) };
-  } catch {
-    return DEFAULT_PRIVACY;
-  }
-}
 
 // ============================================================================
 // MAIN COMPONENT
@@ -662,10 +433,13 @@ export default function Settings() {
   const handleClearCache = () => {
     playUiAudio('click', appearance.soundFeedback);
     try {
+      localStorage.removeItem(STORAGE_KEY_SESSION_TOKENS);
+      localStorage.removeItem(STORAGE_KEY_WEEKLY_TOKENS);
       localStorage.removeItem('sessionTokens');
       localStorage.removeItem('weeklyTokens');
       localStorage.removeItem('bedrock_session_prompts');
       localStorage.removeItem('bedrock_weekly_prompts');
+      window.dispatchEvent(new Event(BEDROCK_TOKENS_UPDATED_EVENT));
       setCacheCleared(true);
       playUiAudio('success', appearance.soundFeedback);
       setTimeout(() => setCacheCleared(false), 3000);
@@ -2173,6 +1947,41 @@ export default function Settings() {
                                 </button>
                               ))}
                             </div>
+                          </div>
+                        </div>
+
+                        {/* Glassmorphism Intensity */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">Frosted Glass Intensity</p>
+                            <p className="text-xs text-gray-400 font-mono mt-0.5">Backdrop blur and translucency filtering</p>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 pt-1">
+                            {[
+                              { id: 'none' as const, label: 'Opaque Solid', desc: 'No blur (Max perf)' },
+                              { id: 'subtle' as const, label: 'Subtle Frost', desc: '12px standard blur' },
+                              { id: 'luxury' as const, label: 'Luxury Obsidian', desc: '36px specular glass' },
+                            ].map((g) => (
+                              <button
+                                key={g.id}
+                                type="button"
+                                onClick={() => {
+                                  playUiAudio('click', appearance.soundFeedback);
+                                  const next = { ...appearance, glassIntensity: g.id };
+                                  setAppearance(next);
+                                  applyAppearanceToDom(next);
+                                }}
+                                className={cn(
+                                  "p-3 rounded-xl border text-center transition-all cursor-pointer",
+                                  appearance.glassIntensity === g.id
+                                    ? "bg-copper-500 text-white font-bold border-copper-400 shadow-sm"
+                                    : "bg-white/5 text-gray-300 hover:text-white border-white/10"
+                                )}
+                              >
+                                <p className="text-xs font-mono">{g.label}</p>
+                                <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{g.desc}</p>
+                              </button>
+                            ))}
                           </div>
                         </div>
 
