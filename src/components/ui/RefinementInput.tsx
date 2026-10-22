@@ -167,13 +167,13 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         minHeight: expanded ? 144 : 58,
       }}
       transition={{
-        type: "spring",
-        stiffness: 280,
-        damping: 26,
-        mass: 0.8,
+        duration: 0.44,
+        ease: [0.22, 1, 0.36, 1],
       }}
+      style={{ zIndex: isModelDropdownOpen ? 90 : 30 }}
       className={cn(
-        "glass-card relative flex flex-col w-full mx-auto border border-white/[0.09] rounded-3xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 cursor-pointer overflow-hidden transition-colors duration-300",
+        "glass-card relative flex flex-col w-full mx-auto border border-white/[0.09] rounded-3xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.95)] focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 cursor-pointer transition-colors duration-300",
+        expanded ? "overflow-visible" : "overflow-hidden",
         className
       )}
     >
@@ -230,11 +230,11 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
             initial={{ opacity: 0, y: 10, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: 8, height: 0 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full overflow-hidden flex flex-col"
+            transition={{ duration: 0.32, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full flex flex-col overflow-visible"
           >
             {/* Bottom tools row */}
-            <div className="flex items-center justify-between px-3 pb-3 mt-auto">
+            <div className="flex items-center justify-between px-3 pb-3 mt-auto relative z-30">
               {/* Left tools (Attach) */}
               <div className="flex items-center">
                 <input 
@@ -266,7 +266,8 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setIsModelDropdownOpen(!isModelDropdownOpen);
+                      setIsModelDropdownOpen((prev) => !prev);
+                      playUiAudio('click');
                     }}
                     className="flex items-center gap-2 bg-white/10 hover:bg-white/20 transition-colors rounded-xl px-3 py-1.5 border border-white/5 whitespace-nowrap text-xs font-mono cursor-pointer"
                   >
@@ -277,7 +278,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
 
                   {isModelDropdownOpen && (
                     <div 
-                      className="absolute bottom-full right-0 mb-2 w-64 max-h-[300px] overflow-y-auto custom-scrollbar bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl z-50 py-2"
+                      className="absolute bottom-full right-0 mb-3 w-64 max-h-[320px] overflow-y-auto custom-scrollbar bg-[#11141c]/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-[999] py-2"
                       data-lenis-prevent="true"
                     >
                       {AI_AGENTS.map((agent) => (
