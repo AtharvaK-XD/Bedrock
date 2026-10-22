@@ -99,7 +99,7 @@ export function getBlankProfile(userOrName?: any, email = '', joinedDate = ''): 
     username,
     role: 'Lead Prompt Architect',
     bio: '',
-    plan: 'Free Plan',
+    plan: 'Workstation Edition (BYOK)',
     location: '',
     organization: '',
     avatarInitials: resolveInitials(cleanName),
@@ -129,6 +129,7 @@ function getStoredProfile(): UserProfile {
     return {
       ...getBlankProfile(),
       ...parsed,
+      plan: 'Workstation Edition (BYOK)',
       name: cleanName,
       avatarInitials: (parsed.avatarInitials === 'US' || !parsed.avatarInitials) ? cleanInitials : parsed.avatarInitials,
     };

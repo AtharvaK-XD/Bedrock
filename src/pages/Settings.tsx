@@ -1117,25 +1117,22 @@ export default function Settings() {
                     {/* Subscription card */}
                     <div>
                       <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-copper-400" />
-                        <span>Subscription Plan</span>
+                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                        <span>Workstation License & Architecture</span>
                       </h3>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-gradient-to-r from-copper-950/20 via-white/[0.02] to-transparent rounded-2xl border border-white/10">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-gradient-to-r from-emerald-950/20 via-white/[0.02] to-transparent rounded-2xl border border-white/10">
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-semibold text-white">Free Plan Tier</p>
-                            <span className="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
-                              Active
+                            <p className="font-semibold text-white">Workstation Edition (BYOK)</p>
+                            <span className="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full font-bold">
+                              100% Unlocked
                             </span>
                           </div>
-                          <p className="text-xs text-gray-400 font-mono mt-1">Core model access, local pipelines, and bring-your-own API keys.</p>
+                          <p className="text-xs text-gray-400 font-mono mt-1">Full frontier model access, unlimited DAG canvas branches, and direct 1-click rule file exports with your own API keys.</p>
                         </div>
-                        <Link
-                          to="/app/pricing"
-                          className="px-5 py-2.5 bg-copper-500 hover:bg-copper-600 text-white text-xs font-semibold uppercase tracking-wider rounded-xl shadow-md shadow-copper-500/20 transition-all shrink-0"
-                        >
-                          Upgrade Plan
-                        </Link>
+                        <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-emerald-300 text-xs font-mono font-semibold shrink-0">
+                          Zero Paywalls Active
+                        </div>
                       </div>
                     </div>
                   </motion.div>

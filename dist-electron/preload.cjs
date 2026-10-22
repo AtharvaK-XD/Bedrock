@@ -53,3 +53,14 @@ contextBridge.exposeInMainWorld(
     },
   })
 );
+
+// Expose safe, direct filesystem operations for 1-click rule file saving
+contextBridge.exposeInMainWorld(
+  "electronFile",
+  Object.freeze({
+    isAvailable: true,
+    selectFolder: () => ipcRenderer.invoke("file:select-folder"),
+    saveToFolder: (options) => ipcRenderer.invoke("file:save-to-folder", options),
+    saveWithDialog: (options) => ipcRenderer.invoke("file:save-with-dialog", options),
+  })
+);
