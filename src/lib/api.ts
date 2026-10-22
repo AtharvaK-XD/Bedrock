@@ -4,6 +4,7 @@ import {
   extractRefineResult,
   sanitizeRenderedPrompt,
 } from './aiPrompts';
+import { getMasterRolePrompt } from './masterRolePrompts';
 import {
   getUseCaseProfile,
   classifyUseCase,
@@ -790,99 +791,8 @@ CRITICAL ARCHITECTURAL & FORMATTING DIRECTIVES:
     'no-code': 'No-Code (NOCODE)',
   };
 
-  const targetDirectiveMap: Record<string, string> = {
-    coding_agent: `MANDATORY BLUEPRINT FORMAT: ELITE CODING AGENT RULEBOOK (.cursorrules / AGENT.md)
-The user explicitly selected "Coding Agent (DEV)". You MUST structure the entire document as a production-grade Agent Rulebook:
-1. Role Definition & Architectural Philosophy (concise principal engineer persona).
-2. Master System Prompt Block: Enclosed in a copy-pasteable markdown code block with strict XML directives (<directives>, <constraints>, <workflow>, <rules>, <verification_protocol>).
-3. File Tree Topology & Module Architecture: Detailed file/directory map with exact file paths and specific responsibilities.
-4. Strict Negative Constraints: "NEVER use any", "NEVER use placeholder comments like // TODO", "NEVER swallow errors", "NEVER mutate state directly".
-5. Concrete Schema Contracts: Syntactically valid TypeScript interfaces, Zod schemas, and Prisma/Drizzle models.
-6. Phased Implementation Sequence with Verification Checklist: Step-by-step order of operations with automated terminal verification commands (e.g. npm test, vitest, tsc --noEmit).`,
-
-    writing: `MANDATORY BLUEPRINT FORMAT: EDITORIAL & LONG-FORM ESSAY BLUEPRINT
-The user explicitly selected "Writing & Editorial (TEXT)". You MUST structure the entire document as an elite, publication-ready editorial guide:
-1. Working Titles & Contrarian Lead Hooks (The Provocative Question, The Anecdotal Scene, The Contrarian Statement).
-2. Core Thesis Statement & Central Narrative Spine.
-3. Section-by-Section Structural Outline with Concrete Anecdotes, Empirical Arguments, and Evidence.
-4. Voice, Tone & Cadence Guide with strict ban on AI clichés ("delve", "tapestry", "testament", "in conclusion", "beacon", "unleash", "furthermore").
-5. Resonant Climax & Closing Realization.`,
-
-    image_generation: `MANDATORY BLUEPRINT FORMAT: PRODUCTION AI IMAGE GENERATION MASTER PROMPT SYSTEM
-The user explicitly selected "Image Generation (IMG)". You MUST structure the entire document as an expert visual art and photo prompt guide tailored for frontier models like Midjourney v6.1, FLUX.1 [dev/pro], DALL-E 3, and Stable Diffusion XL.
-CRITICAL MANDATE: ABSOLUTELY ZERO CODE, ZERO PROGRAMMING LANGUAGES, ZERO SOFTWARE ARCHITECTURE, AND ZERO TECH STACKS ALLOWED UNLESS THE USER EXPLICITLY REQUESTS CODE. DO NOT INCLUDE ANY TERMINAL COMMANDS, JAVASCRIPT, OR CODING SYNTAX.
-Structure the document into the following dedicated sections:
-1. Visual Concept Summary & Art Direction: Core creative vision, artistic medium, aesthetic genre, emotional tone, and narrative context.
-2. Master Midjourney v6.1 Prompt (Ready to Copy-Paste):
-   - Formatted in a distinct copy-pasteable codeblock.
-   - Includes subject, action, environment, lighting, camera lens, color grading, style, and exact parameters (e.g. --ar 16:9 --v 6.1 --style raw --stylize 250).
-3. Master FLUX.1 / DALL-E 3 Natural Language Prompt (Ready to Copy-Paste):
-   - Ultra-descriptive photorealistic or illustrative natural language description optimized for FLUX.1 and DALL-E 3 prompt comprehension.
-4. Optical & Cinematography Specifications:
-   - Lens & Focal Length (e.g. Hasselblad 500C, Sony A7R V with 85mm f/1.2 G-Master).
-   - Aperture, Shutter Speed & Depth of Field (bokeh characteristics, foreground/background separation).
-   - Lighting Setup: Key light, fill light, rim light, volumetric dust/fog, color temperature (e.g. 3200K tungsten vs 5600K daylight).
-5. Color Palette & Film Stock Profile: Exact hex or color names, film stock simulation (e.g. Kodak Portra 400, Fujifilm Superia, CineStill 800T, Technicolor).
-6. Negative Prompt & Exclusion List: Exact comma-separated negative prompt block for Stable Diffusion / ComfyUI to eliminate artifacts (e.g. bad anatomy, deformed limbs, blurry, low resolution, text, watermark, signature).
-7. Composition & Aspect Ratio Variations Matrix: Markdown table providing variation prompts for 16:9 (Desktop/Cinema), 9:16 (TikTok/Instagram Reels), 1:1 (Square), and 4:5 (Portrait).`,
-
-    video_generation: `MANDATORY BLUEPRINT FORMAT: CINEMATIC AI VIDEO GENERATION PRODUCTION MASTER PROMPT
-The user explicitly selected "Video Generation (VIDEO)". You MUST structure the entire document as an elite cinematic prompt system for frontier video models like Runway Gen-3 Alpha, OpenAI Sora, Luma Dream Machine, Kling AI, and Pika 2.0.
-CRITICAL MANDATE: ABSOLUTELY ZERO CODE, ZERO PROGRAMMING LANGUAGES, ZERO SOFTWARE ARCHITECTURE, AND ZERO TECH STACKS ALLOWED UNLESS THE USER EXPLICITLY REQUESTS CODE. DO NOT INCLUDE ANY TERMINAL COMMANDS, JAVASCRIPT, OR CODING SYNTAX.
-Structure the document into the following dedicated sections:
-1. Cinematic Scene Overview & Vision: Visual premise, mood, pacing, and overall cinematic reference (e.g. Denis Villeneuve sci-fi, Roger Deakins natural lighting, Christopher Nolan realism).
-2. Master Runway Gen-3 Alpha Prompt (Ready to Copy-Paste):
-   - Formatted in a distinct copy-pasteable codeblock.
-   - Formatted using standard director directives: [Camera Movement] + [Subject Action] + [Environment & Lighting] + [Temporal Speed].
-3. Master OpenAI Sora / Luma Dream Machine Prompt (Ready to Copy-Paste):
-   - Richly textured narrative prompt focusing on physical consistency, fluid dynamics, lighting transitions, and temporal persistence.
-4. Camera Motion & Shot Choreography:
-   - Specific camera trajectory (e.g. FPV drone sweeping descent, slow orbital 360-degree dolly shot, seamless push-in).
-   - Motion speed and inertia (e.g. steady 24fps cinematic crawl, sudden snap-zoom, fluid slow-motion).
-5. Temporal Dynamics & Physics Breakdown:
-   - Fluid motion, particle dynamics (sparks, rain, smoke, fabric flutter).
-   - Speed ramping (e.g. normal speed transitioning to 120fps slow-motion).
-6. Shot-by-Shot Timeline / Multi-Clip Storyboard:
-   - Markdown table detailing Shot # | Timestamp (Seconds) | Camera Movement | Subject Action | Lighting / FX.
-7. Technical Generation Settings & Motion Controls:
-   - Motion Strength / Camera Slider values (Runway Motion Brush, Kling camera controls, Luma camera paths).
-   - Aspect ratio and resolution guidelines (16:9 cinematic vs 9:16 vertical reels).`,
-
-    freelancer_brief: `MANDATORY BLUEPRINT FORMAT: EXECUTIVE SCOPE OF WORK (SOW) & CLIENT PROJECT CHARTER
-The user explicitly selected "Freelancer (BRIEF)". You MUST structure the entire document as a professional Scope of Work and client deliverables contract:
-1. Executive Project Charter & Business Value Proposition (clear statement of what is being built and why).
-2. Phased Milestone Deliverables Matrix (Markdown table: Milestone # | Deliverable | Est. Timeline | Acceptance Criteria | Payment Trigger).
-3. UI/UX Design System Specification: Color palette hex tokens, font pairings, component state matrix, Figma asset mapping, and responsive breakpoints.
-4. Client Handoff, Deployment & Staging Playbook: Production hosting setup (Vercel/AWS), credential management, domain DNS configuration, and client training walkthrough.
-5. Scope Boundary Guardrails: Explicit "Out-of-Scope" protection clauses, revision limits, and formal change order terms to prevent client scope creep.`,
-
-    hackathon_pitch: `MANDATORY BLUEPRINT FORMAT: LEAN HACKATHON MVP & PITCH BATTLE PLAN
-The user explicitly selected "Hackathon (PITCH)". You MUST structure the entire document for winning a 24-48 hour hackathon, demo day, or pitch competition:
-1. The 10x Pitch Hook & Problem-Solution Narrative (gripping 30-second opening statement, emotional pain point, and market timing: "why now?").
-2. The 2-Minute Live Demo Flow Script (second-by-second click path with exact speaker talking points engineered to hit every judging criterion).
-3. Lean 24-Hour Sprint Plan: P0 Core Flow (Hours 0-12: the critical happy path), Integration & UI Polish (Hours 12-18), Buffer & Demo Rehearsal (Hours 18-24).
-4. Rapid Prototype Architecture & Shortcuts: Pre-built UI component libraries, managed auth (Clerk/Supabase), and pre-seeded mock APIs to eliminate boilerplate.
-5. Hackathon Judging Rubric Optimization Checklist: Specific tactical strategies to score 10/10 on Innovation, Technical Depth, UI Polish, and Practical Impact.`,
-
-    no_code: `MANDATORY BLUEPRINT FORMAT: VISUAL APPLICATION ARCHITECTURE & NO-CODE BLUEPRINT
-The user explicitly selected "No-Code (NOCODE)". You MUST structure the entire document for building visual applications and automated workflows using platforms like Bubble, FlutterFlow, Webflow, Make, and Airtable:
-1. Visual App Architecture & No-Code Platform Stack Selection (e.g. Webflow frontend + Supabase backend + Make.com automation pipeline).
-2. Entity Relationship Diagram & Data Collections Table (Markdown table: Collection / Table | Field Name | Data Type | Relationships & Linked Records | Privacy Rules).
-3. Visual Page & Component Topology: Page hierarchy, container layouts (Flexbox/Grid), repeating groups, custom states, and dynamic visibility conditionals.
-4. Step-by-Step Automation & Webhook Recipes: Detailed visual workflow logic (Trigger Event -> Filter Condition -> Data Transformation -> Webhook POST -> Notification for Make/Zapier).
-5. No-Code Limits, Workarounds & Security Guardrails: Securing sensitive API keys through backend proxies, pagination workarounds, webhook error retry handlers, and client data protection.`,
-  };
-
-  // Add alias mappings
-  targetDirectiveMap['coding-agent'] = targetDirectiveMap.coding_agent;
-  targetDirectiveMap['image-prompt'] = targetDirectiveMap.image_generation;
-  targetDirectiveMap['freelance-brief'] = targetDirectiveMap.freelancer_brief;
-  targetDirectiveMap['pitch'] = targetDirectiveMap.hackathon_pitch;
-  targetDirectiveMap['video-generation'] = targetDirectiveMap.video_generation;
-  targetDirectiveMap['no-code'] = targetDirectiveMap.no_code;
-
   const selectedFormatName = targetLabelMap[idea.targetType] || profile.name;
-  const selectedFormatDirective = targetDirectiveMap[idea.targetType] || targetDirectiveMap[profile.id] || targetDirectiveMap.coding_agent;
+  const selectedFormatDirective = getMasterRolePrompt(idea.targetType || profile.id);
 
   const userPrompt = `Selected Target Format: ${selectedFormatName}
 Initial Project Concept: ${idea.ideaText}

@@ -80,27 +80,68 @@ export function resolveDomainGuardrails(targetType: string): string {
 export const BEDROCK_CORE_GUARDRAILS = `${BEDROCK_UNIVERSAL_GUARDRAILS}\n\n${BEDROCK_CODING_GUARDRAILS}`;
 
 export function buildQuestionsSystemPrompt(targetType: string): string {
-  const isVisualMedia = targetType === 'image_generation' || targetType === 'video_generation' || targetType === 'image-prompt' || targetType === 'video-generation';
+  const t = (targetType || '').toLowerCase().trim().replace(/_/g, '-');
+  const isVisualMedia = t === 'image-generation' || t === 'image-prompt' || t === 'video-generation' || t === 'img' || t === 'video';
+  const isFreelance = t === 'freelance-brief' || t === 'freelancer-brief' || t === 'brief' || t === 'contract';
+  const isPitch = t === 'pitch' || t === 'hackathon-pitch' || t === 'hackathon' || t === 'demo-day';
+  const isNoCode = t === 'no-code' || t === 'nocode' || t === 'bubble' || t === 'flutterflow';
+  const isWriting = t === 'writing' || t === 'editorial' || t === 'essay' || t === 'article' || t === 'text';
+
   const domainGuardrails = resolveDomainGuardrails(targetType);
+
+  let roleQuestionDirectives = `- Focus specifically on:
+  1. Core Architectural Archetype: Next.js 15 App Router vs Vite React 19 SPA vs FastAPI / Node REST.
+  2. Data Layer & Persistence: PostgreSQL 16+ with Drizzle ORM vs Prisma ORM vs Supabase RLS vs Neon Serverless Postgres.
+  3. Edge Case Handling: Optimistic UI with rollback vs pessimistic transactional blocking vs CQRS event sourcing.
+  4. Automated Verification: Vitest unit tests + Playwright E2E vs Jest.`;
+
+  if (isVisualMedia) {
+    roleQuestionDirectives = `- CRITICAL ZERO-CODE MANDATE: ABSOLUTELY ZERO CODE, ZERO PROGRAMMING SYNTAX, ZERO SOFTWARE ARCHITECTURE.
+- Focus strictly on:
+  1. Artistic Medium & Photographic Aesthetic: 35mm film, 70mm IMAX cinema, Renaissance chiaroscuro oil painting, Unreal Engine 5 render, or anime watercolor.
+  2. Camera Optics & Lens Physics: 24mm wide, 50mm f/1.2 prime, 85mm f/1.4 portrait, aperture depth of field, and bokeh characteristics.
+  3. Lighting Setup & Atmospheric Mood: Golden hour sunlight, moody neon noir with wet asphalt reflections, dramatic studio chiaroscuro, volumetric rays.
+  4. Color Grading & Film Stock: Kodak Portra 400, CineStill 800T, Fujifilm Velvia 50, Technicolor 3-strip.`;
+  } else if (isFreelance) {
+    roleQuestionDirectives = `- Focus strictly on:
+  1. Core Deliverables & Work Products: Fullstack web application vs frontend UI implementation vs backend API & database architecture.
+  2. Milestone Delivery & Payment Phasing: 2-week sprint (50/50) vs 4-week phased milestones (30/40/30) vs hourly retainer with tracked caps.
+  3. Scope Creep Firewalls: Out-of-scope third-party API fees, native mobile apps, ongoing copywriting, or legacy data migrations.
+  4. Client Review & Turnaround SLA: 48-hour client review turnaround, sign-off triggers, and post-launch bug warranty period.`;
+  } else if (isPitch) {
+    roleQuestionDirectives = `- Focus strictly on:
+  1. Target Prize Track & Evaluation Focus: Grand Prize Overall Innovation vs Best Autonomous AI Agent Architecture vs Best UI/UX Polish.
+  2. The 15-Second "Jaw-Drop" Demo Wow Moment: The single climactic live screen action that will shock judges and win the room.
+  3. Rapid Prototyping Stack & Shortcuts: Next.js 15 + Aceternity UI, Clerk/Supabase managed auth, Neon serverless Postgres, and pre-seeded mock datasets.
+  4. Live Demo Disaster Recovery: Localhost offline mock mode vs pre-recorded 1080p demo video.`;
+  } else if (isNoCode) {
+    roleQuestionDirectives = `- Focus strictly on:
+  1. Visual Builder Platform: Bubble.io (Fullstack web app) vs FlutterFlow (Native iOS/Android) vs Webflow + Wized/Xano.
+  2. Relational Database Architecture: Built-in Bubble database vs external scalable PostgreSQL / Supabase with Row-Level Security.
+  3. Automation Orchestration & Webhooks: Multi-step Make.com / Zapier scenarios with error queues and retry handlers.
+  4. Security & API Protection: Backend API connector proxies to conceal private API keys from client bundles.`;
+  } else if (isWriting) {
+    roleQuestionDirectives = `- Focus strictly on:
+  1. Target Reader & Domain Familiarity: Senior Engineers & Technical Founders (deep rigor) vs Business Decision-Makers (strategic ROI) vs General Intellectuals (vivid narrative).
+  2. Editorial Voice & Prose Cadence: Sharp, contrarian and crisp (Paul Graham style) vs Immersive journalistic feature (New Yorker / Wired) vs Empirical academic whitepaper.
+  3. The Status Quo "Villain": The specific industry myth, cognitive bias, or legacy assumption being dismantled.
+  4. Empirical Evidence & Case Studies: Real historical precedents, engineering post-mortems, or economic data to ground the core thesis.`;
+  }
 
   return `You are Bedrock's Principal Prompt Architect.
 Your task is to analyze the user's project idea for target type "${targetType}" and generate exactly 3 to 4 high-leverage clarifying questions to scope the project.
 
 ${domainGuardrails}
 
+STRICT ANTI-HALLUCINATION & RELEVANCE DIRECTIVES:
+1. Stay strictly grounded in the user's chosen domain. Never ask trivial questions like "What color should buttons be?" or "Should the app be fast?".
+2. Every option provided in the options array must be a concrete, real, existing technology, real lens, real film stock, or real contractual term.
+3. Never invent non-existent libraries or fake tools.
+
 QUESTION GENERATION DIRECTIVES:
-- Move beyond superficial questions. Focus specifically on the requirements of "${targetType}".
-${isVisualMedia ? `- Questions MUST focus on:
-  1. Visual medium, aesthetic style, and artistic inspiration.
-  2. Lighting setup, color palette, atmosphere, and environmental texture.
-  3. Camera optics, framing, motion dynamics, and target generator model / aspect ratio.
-  4. Core subjects, characters, actions, and details to emphasize or avoid.` : `- Focus specifically on:
-  1. Core Architectural Archetype: Runtime constraints, state boundaries, and target deployment environment.
-  2. Data Contracts & Persistence: Schemas, ORM preferences, caching layers, and relationship cardinality.
-  3. Failure Modes & Edge Cases: Rate limiting, offline resilience, optimistic UI rollback, or error recovery.
-  4. Authentication & Security Boundaries: Identity provider, RBAC, Row-Level Security, or session management.`}
-- If the user's idea is brief (e.g., "i want to make an image of a dragon"), ground it pragmatically by asking high-signal questions to identify primary use cases.
-- Output MUST be strictly valid JSON without markdown code fences, comments, or backticks:
+${roleQuestionDirectives}
+
+Output MUST be strictly valid JSON without markdown code fences, comments, or backticks:
 [
   {
     "id": "q1",

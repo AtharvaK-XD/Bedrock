@@ -5,6 +5,15 @@
  */
 
 import { buildQuestionsSystemPrompt } from './aiPrompts';
+import {
+  CODING_AGENT_MASTER_PROMPT,
+  IMAGE_GENERATION_MASTER_PROMPT,
+  VIDEO_GENERATION_MASTER_PROMPT,
+  FREELANCER_BRIEF_MASTER_PROMPT,
+  HACKATHON_PITCH_MASTER_PROMPT,
+  NO_CODE_MASTER_PROMPT,
+  WRITING_MASTER_PROMPT,
+} from './masterRolePrompts';
 
 export type UseCaseProfileId =
   | 'coding_agent'
@@ -42,6 +51,7 @@ export interface UseCaseProfile {
   recommendedModels: string[];
   unreliableModels: string[];
   questionPrompt: string;
+  synthesisPrompt?: string;
   fallbackQuestions: Question[];
   fewShotExamples: ProfileFewShotExample[];
 }
@@ -54,6 +64,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     description: 'Autonomous AI coding agent directives, rulebooks (.cursorrules / AGENT.md), and system specs',
     temperature: 0.2,
     minWordCount: 400,
+    synthesisPrompt: CODING_AGENT_MASTER_PROMPT,
     forbiddenTerms: [
       '// TODO',
       '/* TODO',
@@ -150,6 +161,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     description: 'Master image prompts for Midjourney v6.1, FLUX.1, DALL-E 3, and Stable Diffusion',
     temperature: 0.7,
     minWordCount: 250,
+    synthesisPrompt: IMAGE_GENERATION_MASTER_PROMPT,
     forbiddenTerms: [
       '```typescript',
       '```javascript',
@@ -225,6 +237,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     description: 'In-depth engineering essays, launch announcements, whitepapers, and technical post-mortems',
     temperature: 0.5,
     minWordCount: 450,
+    synthesisPrompt: WRITING_MASTER_PROMPT,
     forbiddenTerms: [
       'In conclusion,',
       'It goes without saying',
@@ -283,6 +296,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     description: 'Executive Scope of Work (SOW), milestone delivery tables, acceptance criteria, and contracts',
     temperature: 0.3,
     minWordCount: 350,
+    synthesisPrompt: FREELANCER_BRIEF_MASTER_PROMPT,
     forbiddenTerms: [
       'etc.',
       'and so on',
@@ -340,6 +354,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     description: '2-minute demo flow scripts, judging rubric optimization, P0/P1 scope, and 24-hr sprint plans',
     temperature: 0.6,
     minWordCount: 350,
+    synthesisPrompt: HACKATHON_PITCH_MASTER_PROMPT,
     forbiddenTerms: [
       'In our long term roadmap',
       '5 year projection',
@@ -396,6 +411,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     description: 'Visual database schemas, Airtable/Bubble relations, and step-by-step Zapier/Make recipes',
     temperature: 0.3,
     minWordCount: 300,
+    synthesisPrompt: NO_CODE_MASTER_PROMPT,
     forbiddenTerms: [
       'npm install',
       'cargo build',
@@ -447,6 +463,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     description: 'Runway Gen-3, Sora, and Luma prompt blocks with shot choreography and timeline storyboards',
     temperature: 0.7,
     minWordCount: 300,
+    synthesisPrompt: VIDEO_GENERATION_MASTER_PROMPT,
     forbiddenTerms: [
       '```typescript',
       'npm run',
