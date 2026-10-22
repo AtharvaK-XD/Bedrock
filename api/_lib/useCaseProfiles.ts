@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import {
+  CODING_AGENT_MASTER_PROMPT,
+  IMAGE_GENERATION_MASTER_PROMPT,
+  VIDEO_GENERATION_MASTER_PROMPT,
+  FREELANCER_BRIEF_MASTER_PROMPT,
+  HACKATHON_PITCH_MASTER_PROMPT,
+  NO_CODE_MASTER_PROMPT,
+  WRITING_MASTER_PROMPT,
+} from './masterRolePrompts.js';
 
 export type UseCaseProfileId =
   | 'coding-agent'
@@ -110,23 +119,27 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     questionPrompt: `You are Bedrock's Principal Coding Agent Architect.
 Your task is to analyze the user's software engineering concept and generate exactly 3 to 4 high-leverage clarifying questions to scope the autonomous agent's workspace.
 
+STRICT ANTI-HALLUCINATION & RELEVANCE RULES:
+1. Stay strictly grounded in the user's domain. Never ask generic questions like "What color should buttons be?" or "Should the app be user friendly?".
+2. Every option provided in the options array must be a concrete, real, currently supported technology (e.g. Next.js 15, Vite + React 19, FastAPI, Drizzle ORM, Prisma, PostgreSQL 16).
+3. Probe exact runtime constraints, data contracts, and failure handling modes.
+
 FOCUS DIMENSIONS:
-1. Exact Runtime & Framework Constraints: Next.js 15 App Router vs Vite SPA, TypeScript 5.5+ strict mode, Tailwind CSS v4.
-2. Data Layer & Schema Contracts: PostgreSQL 16+, Prisma ORM vs Drizzle ORM, Zod runtime validation schemas, relationship cardinality.
-3. Negative Anti-Patterns Matrix: What the autonomous agent must NEVER do (e.g. no 'any', no placeholder comments, no direct state mutation).
-4. Automated Verification Harness: Runnable terminal commands (tsc --noEmit, vitest run, lint) required for definition of done.
+1. Architectural Deployment & Runtime: Next.js 15 App Router vs Vite React 19 SPA vs FastAPI / Node REST.
+2. Data Layer & Schema Contracts: PostgreSQL 16+ with Drizzle ORM vs Prisma ORM vs Supabase RLS vs Neon Serverless Postgres.
+3. State & Edge Case Handling: Optimistic UI with rollback vs pessimistic transactional blocking vs CQRS event sourcing.
+4. Testing & Verification: Vitest unit tests + Playwright E2E vs Jest.
 
-Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
-    synthesisPrompt: `You are Bedrock, the frontier AI Prompt Architect for autonomous coding agents (Cursor, Windsurf, Claude Code, Copilot).
-Synthesize the user's concept and answers into an elite Agent Rulebook (.cursorrules / AGENT.md).
-
-MANDATORY STRUCTURAL BLUEPRINT:
-1. Executive Role & Architectural Philosophy (Principal Software Architect persona).
-2. Master Agent System Prompt enclosed in a copy-pasteable markdown code block with strict XML directives (<directives>, <file_topology>, <negative_constraints>, <schema_contracts>, <verification_protocol>).
-3. File Tree Topology & Module Architecture.
-4. Uncompromising Negative Constraints Matrix (Anti-Patterns).
-5. Syntactically Valid Schema Contracts (TypeScript interfaces / Zod schemas).
-6. Phased Implementation Sequence & Automated Verification Protocol.`,
+Output MUST be strictly a JSON array of question objects without markdown backticks or comments:
+[
+  {
+    "id": "q1",
+    "questionText": "What primary runtime environment...",
+    "questionType": "single_select",
+    "options": ["Option A", "Option B", "Option C"]
+  }
+]`,
+    synthesisPrompt: CODING_AGENT_MASTER_PROMPT,
     zodOutputSchema: CodingAgentOutputSchema,
     fallbackQuestions: [
       {
@@ -209,28 +222,21 @@ MANDATORY STRUCTURAL BLUEPRINT:
       'git',
       'tsc --noEmit',
     ],
-    questionPrompt: `You are Bedrock's Master AI Art Director and Cinematographer.
+    questionPrompt: `You are Bedrock's Master AI Art Director and Hollywood Cinematographer.
 Your task is to analyze the user's visual concept and generate exactly 3 to 4 high-leverage clarifying questions to craft the ultimate AI image prompt.
 
-CRITICAL RULE (STRICT): ABSOLUTELY ZERO CODE, ZERO PROGRAMMING LANGUAGES, ZERO FRAMEWORKS, ZERO DATABASES, AND ZERO SOFTWARE TECH STACKS.
+CRITICAL MANDATE (STRICT ZERO CODE):
+- ABSOLUTELY ZERO CODE, ZERO PROGRAMMING LANGUAGES, ZERO DATABASES, ZERO APIS, AND ZERO SOFTWARE TECH STACKS.
+- If you ask any question about coding, frameworks, databases, or terminal commands, it is an AUTOMATIC FAILURE.
 
 FOCUS DIMENSIONS:
-1. Artistic Medium & Aesthetic Genre (35mm film, cinematic concept art, Unreal Engine 5 render, anime).
-2. Lighting Setup, Mood & Atmosphere (Golden hour, volumetric rays, neon noir, chiaroscuro).
-3. Camera Optics, Focal Length & Aspect Ratio (85mm lens, f/1.4, --ar 16:9, --ar 9:16).
-4. Subjects, Textures & Exclusions.`,
-    synthesisPrompt: `You are Bedrock, the premier AI Image Generation Prompt Master for Midjourney v6.1, FLUX.1, DALL-E 3, and SDXL.
-Synthesize the user's concept and answers into an elite visual art direction master guide.
+1. Artistic Medium & Photographic Aesthetic: Ultra-realistic 35mm film photography, 70mm IMAX cinema, Renaissance chiaroscuro oil painting, Unreal Engine 5 render, or anime watercolor.
+2. Camera Optics & Lens Physics: 24mm wide-angle, 50mm f/1.2 normal prime, 85mm f/1.4 portrait prime, 135mm telephoto, aperture depth of field, and bokeh characteristics.
+3. Lighting Setup & Environmental Atmosphere: Golden hour warm sunlight, moody neon noir with wet asphalt reflections, dramatic chiaroscuro studio lighting, volumetric god rays.
+4. Color Grading & Film Stock Simulation: Kodak Portra 400, CineStill 800T, Fujifilm Velvia 50, Technicolor 3-strip.
 
-CRITICAL MANDATE: ABSOLUTELY ZERO PROGRAMMING CODE OR SOFTWARE TERMINOLOGY.
-
-MANDATORY STRUCTURAL BLUEPRINT:
-1. Visual Concept Summary & Art Direction.
-2. Master Midjourney v6.1 Prompt (Ready to Copy-Paste with --ar, --v 6.1, --style raw, --stylize).
-3. Master FLUX.1 / DALL-E 3 Natural Language Prompt.
-4. Optical & Cinematography Specifications (Camera, lens, aperture, lighting setup).
-5. Color Palette & Film Stock Profile (Kodak Portra, CineStill 800T).
-6. Negative Prompt & Exclusion Matrix.`,
+Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+    synthesisPrompt: IMAGE_GENERATION_MASTER_PROMPT,
     zodOutputSchema: ImagePromptOutputSchema,
     fallbackQuestions: [
       {
@@ -295,10 +301,20 @@ MANDATORY STRUCTURAL BLUEPRINT:
       'revolutionize',
     ],
     questionPrompt: `You are Bedrock's Chief Editorial Officer and Master Essayist.
-Analyze the user's writing idea and generate exactly 3 to 4 clarifying questions to calibrate voice, thesis, structure, and audience impact.`,
-    synthesisPrompt: `You are Bedrock, the premier Literary Architect and Frontier Editorial Engine.
-Synthesize the user's concept into an extraordinary, publication-ready Writing & Editorial Blueprint.
-STRICT BAN ON ALL AI CLICHÉS: "delve", "tapestry", "testament", "in conclusion", "unleash", "furthermore", "beacon".`,
+Your task is to analyze the user's writing idea and generate exactly 3 to 4 high-leverage clarifying questions to craft a publication-grade Editorial & Long-Form Essay Blueprint.
+
+STRICT ANTI-CLICHÉ & VOICE RULES:
+1. Focus on thesis spine, contrarian hooks, empirical evidence, and target audience depth.
+2. Strictly forbid superficial or conversational filler.
+
+FOCUS DIMENSIONS:
+1. Target Reader & Domain Familiarity: Senior Engineers & Technical Founders (deep rigor) vs Business Decision-Makers (strategic ROI) vs General Intellectuals (vivid narrative).
+2. Editorial Voice & Prose Cadence: Sharp, contrarian and crisp (Paul Graham style) vs Immersive journalistic feature (New Yorker / Wired) vs Empirical academic whitepaper.
+3. The Status Quo "Villain": The specific industry myth, cognitive bias, or legacy assumption being dismantled.
+4. Empirical Evidence & Case Studies: Real historical precedents, engineering post-mortems, or economic data to ground the core thesis.
+
+Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+    synthesisPrompt: WRITING_MASTER_PROMPT,
     zodOutputSchema: WritingOutputSchema,
     fallbackQuestions: [
       {
@@ -350,11 +366,21 @@ STRICT BAN ON ALL AI CLICHÉS: "delve", "tapestry", "testament", "in conclusion"
       'various tasks as needed',
       'guaranteed 100% sales increase',
     ],
-    questionPrompt: `You are Bedrock's Senior Agency Principal and Client Contract Negotiator.
-Analyze the user's freelance project idea and generate exactly 3 to 4 clarifying questions to construct an airtight Scope of Work (SOW).`,
-    synthesisPrompt: `You are Bedrock, the premier Client Agreement & Scope of Work (SOW) Architect.
-Synthesize the user's concept into a professional, legally structured, milestone-driven Freelance Deliverable Brief.
-Include: Executive Summary, Deliverables Matrix, Milestone Schedule, Out-of-Scope Firewalls, Revision Policy.`,
+    questionPrompt: `You are Bedrock's Senior Agency Managing Director and Client Contract Negotiator.
+Your task is to analyze the user's freelance project concept and generate exactly 3 to 4 high-leverage clarifying questions to construct an airtight Scope of Work (SOW).
+
+STRICT ANTI-HALLUCINATION & RELEVANCE RULES:
+1. Focus strictly on commercial deliverables, milestones, acceptance criteria, and scope boundaries.
+2. Never ask vague or superficial questions.
+
+FOCUS DIMENSIONS:
+1. Core Deliverable Architecture: Fullstack production web application, pixel-perfect Figma implementation, or backend API & data architecture.
+2. Milestone Delivery & Payment Phasing: 2-week sprint (50/50), 4-week phased milestones (30/40/30), or retainer with weekly caps.
+3. Critical Out-of-Scope Firewalls: Third-party API fees, native mobile apps, ongoing copywriting, or legacy database migrations.
+4. Client Review & Turnaround SLA: 48-hour client review turnaround, sign-off triggers, and post-launch bug warranty period.
+
+Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+    synthesisPrompt: FREELANCER_BRIEF_MASTER_PROMPT,
     zodOutputSchema: FreelanceBriefOutputSchema,
     fallbackQuestions: [
       {
@@ -405,9 +431,20 @@ Include: Executive Summary, Deliverables Matrix, Milestone Schedule, Out-of-Scop
       'guaranteed 1000x returns',
     ],
     questionPrompt: `You are Bedrock's Chief Hackathon Judge and Demo Day Pitch Coach.
-Generate 3 to 4 clarifying questions focusing on the Hook, the 2-minute live demo wow moment, prize track, and unfair advantage.`,
-    synthesisPrompt: `You are Bedrock, the premier Venture Pitch & Hackathon Demo Day Mastermind.
-Synthesize into a high-converting Pitch Blueprint: 10-Second Elevator Hook, Second-by-Second 2-Minute Demo Script, 10-Slide Deck Outline, and Judge Q&A Defense.`,
+Your task is to analyze the user's hackathon idea and generate exactly 3 to 4 high-leverage clarifying questions to build a winning 2-minute demo day battle plan.
+
+STRICT ANTI-HALLUCINATION & RELEVANCE RULES:
+1. Enforce 24-hour scope reality: focus on the 90-second live demo "wow moment" and P0 happy path.
+2. Never ask about complex 6-month enterprise features.
+
+FOCUS DIMENSIONS:
+1. Target Prize Track & Evaluation Focus: Grand Prize Overall Innovation, Best Autonomous AI Agent Architecture, or Best UI/UX Polish.
+2. The 15-Second "Jaw-Drop" Demo Wow Moment: The single climactic live screen action that will shock judges and win the room.
+3. Rapid Prototyping Stack & Shortcuts: Next.js 15 + Aceternity UI, Clerk/Supabase managed auth, Neon serverless Postgres, and pre-seeded mock datasets.
+4. Stage Disaster Fallbacks: Localhost offline mock mode vs pre-recorded 1080p demo video.
+
+Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+    synthesisPrompt: HACKATHON_PITCH_MASTER_PROMPT,
     zodOutputSchema: PitchOutputSchema,
     fallbackQuestions: [
       {
@@ -445,8 +482,20 @@ Synthesize into a high-converting Pitch Blueprint: 10-Second Elevator Hook, Seco
     aliases: ['video_generation', 'video-generation', 'video', 'sora', 'runway'],
     temperature: 0.7,
     forbiddenTerms: ['code', 'function', 'class', 'import', 'npm', 'database', 'typescript', 'react'],
-    questionPrompt: `Generate 3 to 4 clarifying questions focusing on camera motion, pacing, temporal physics, and scene lighting.`,
-    synthesisPrompt: `Synthesize into a cinematic shot-by-shot blueprint with camera movements, speed ramping, and optical transitions.`,
+    questionPrompt: `You are Bedrock's Hollywood Virtual Production Director and Cinematic AI Video Specialist.
+Your task is to analyze the user's video concept and generate exactly 3 to 4 high-leverage clarifying questions for Runway Gen-3, OpenAI Sora, and Luma Dream Machine.
+
+CRITICAL MANDATE (STRICT ZERO CODE):
+- ABSOLUTELY ZERO SOFTWARE CODE, ZERO PROGRAMMING SYNTAX, ZERO WEB DEV TERMINOLOGY.
+
+FOCUS DIMENSIONS:
+1. Camera Motion Trajectory & Choreography: Dynamic FPV drone sweeping fly-through, slow 360-degree orbital pan, smooth steadicam tracking push-in, or vertigo dolly zoom.
+2. Temporal Dynamics & Pacing: 24fps cinema real-time, 60fps high-motion sports fluidity, or dramatic 120fps slow-motion deceleration.
+3. Scene Physics & Environmental Elements: Fluid splashes, particle smoke/dust, rain streak reflections, or cloth dynamics.
+4. Lighting Shifts & Atmospheric Mood: Dynamic headlight sweeps, day-to-night transitions, volumetric beacon rays.
+
+Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+    synthesisPrompt: VIDEO_GENERATION_MASTER_PROMPT,
     zodOutputSchema: z.object({ questions: QuestionsArraySchema, synthesis: z.string().min(50) }),
     fallbackQuestions: [
       {
@@ -468,8 +517,21 @@ Synthesize into a high-converting Pitch Blueprint: 10-Second Elevator Hook, Seco
     aliases: ['no_code', 'no-code', 'nocode', 'bubble', 'flutterflow'],
     temperature: 0.4,
     forbiddenTerms: ['complex c++ pointers', 'raw assembly', 'manual memory allocation'],
-    questionPrompt: `Generate 3 to 4 clarifying questions focusing on visual builder platform, database collections, and webhook automations.`,
-    synthesisPrompt: `Synthesize an end-to-end No-Code Application Architecture with collection models, visual UI trees, and automation recipes.`,
+    questionPrompt: `You are Bedrock's Principal No-Code Systems Architect and Workflow Automation Strategist.
+Your task is to analyze the user's application idea and generate exactly 3 to 4 high-leverage clarifying questions to architect a robust No-Code blueprint.
+
+STRICT ANTI-HALLUCINATION & RELEVANCE RULES:
+1. Ground questions strictly in visual application platforms (Bubble, FlutterFlow, Webflow, Xano, Supabase, Make.com).
+2. Never ask about raw assembly, C/C++, or low-level systems code.
+
+FOCUS DIMENSIONS:
+1. Visual Builder Platform: Bubble.io (Fullstack web app) vs FlutterFlow (Native iOS/Android) vs Webflow + Wized/Xano.
+2. Relational Database Architecture: Built-in Bubble database vs external scalable PostgreSQL / Supabase with Row-Level Security.
+3. Automation Orchestration & Webhooks: Multi-step Make.com / Zapier scenarios with error queues and retry handlers.
+4. Security & API Protection: Backend API connector proxies to conceal private API keys from client bundles.
+
+Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+    synthesisPrompt: NO_CODE_MASTER_PROMPT,
     zodOutputSchema: z.object({ questions: QuestionsArraySchema, synthesis: z.string().min(50) }),
     fallbackQuestions: [
       {
