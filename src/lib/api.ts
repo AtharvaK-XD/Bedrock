@@ -33,7 +33,14 @@ import {
   type ValidationResult,
   type ValidationIssue,
 } from './validation';
+import {
+  getActiveModelSettings,
+  checkTokenBudgetGuard,
+  recordTokenUsage,
+  createStreamingPacer,
+} from './appSettings';
 export type {
+
   ModelTuningConfig,
   ModelTier,
   LLMPurpose,
@@ -221,13 +228,22 @@ export async function callGemini(
   systemInstruction?: string,
   apiKey?: string,
   targetModel?: string,
-  temperature = 0.7,
+  temperature?: number,
   onToken?: (token: string) => void
 ): Promise<string> {
+  const modelSettings = getActiveModelSettings();
+  checkTokenBudgetGuard(modelSettings.maxOutputTokens);
+
   const key = apiKey || getActiveApiKeys().geminiKey;
   if (!key) {
     throw new ApiError('Google Gemini API Key is required.', true, 'Google Gemini', 401);
   }
+
+  const effectiveTemp = temperature !== undefined ? temperature : modelSettings.temperature;
+  const maxOutputTokens = modelSettings.maxOutputTokens || 4096;
+  const topP = modelSettings.topP ?? 0.95;
+  const strictJsonMode = modelSettings.strictJsonMode || false;
+  const pacedOnToken = onToken ? createStreamingPacer(modelSettings.streamSpeed, onToken) : undefined;
 
   const modelsToTry = targetModel
     ? [targetModel, 'gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash']
@@ -235,7 +251,7 @@ export async function callGemini(
 
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
-  const isStreaming = typeof onToken === 'function';
+  const isStreaming = typeof pacedOnToken === 'function';
 
   for (const model of uniqueModels) {
     try {
@@ -243,7 +259,12 @@ export async function callGemini(
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}${key}`;
       const body: any = {
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature },
+        generationConfig: {
+          temperature: effectiveTemp,
+          maxOutputTokens,
+          topP,
+          ...(strictJsonMode ? { responseMimeType: 'application/json' } : {}),
+        },
       };
       if (systemInstruction) {
         body.systemInstruction = { parts: [{ text: systemInstruction }] };
@@ -279,19 +300,27 @@ export async function callGemini(
                 const chunk = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
                 if (chunk) {
                   accumulated += chunk;
-                  onToken(chunk);
+                  if (pacedOnToken) await pacedOnToken(chunk);
                 }
               } catch {
                 // ignore malformed line
               }
             }
           }
-          if (accumulated) return accumulated;
+          if (accumulated) {
+            const totalTokens = Math.max(1, Math.round((prompt.length + accumulated.length) / 4));
+            recordTokenUsage(totalTokens);
+            return accumulated;
+          }
         }
 
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text;
+        if (text) {
+          const totalTokens = Math.max(1, Math.round((prompt.length + text.length) / 4));
+          recordTokenUsage(totalTokens);
+          return text;
+        }
       }
 
       const errText = await response.text();
@@ -316,13 +345,22 @@ export async function callGroq(
   systemPrompt?: string,
   apiKey?: string,
   targetModel?: string,
-  temperature = 0.7,
+  temperature?: number,
   onToken?: (token: string) => void
 ): Promise<string> {
+  const modelSettings = getActiveModelSettings();
+  checkTokenBudgetGuard(modelSettings.maxOutputTokens);
+
   const key = apiKey || getActiveApiKeys().groqKey;
   if (!key) {
     throw new ApiError('Groq API Key is required.', true, 'Groq', 401);
   }
+
+  const effectiveTemp = temperature !== undefined ? temperature : modelSettings.temperature;
+  const maxOutputTokens = modelSettings.maxOutputTokens || 4096;
+  const topP = modelSettings.topP ?? 0.95;
+  const strictJsonMode = modelSettings.strictJsonMode || false;
+  const pacedOnToken = onToken ? createStreamingPacer(modelSettings.streamSpeed, onToken) : undefined;
 
   // Official production Groq models (zero 404 fictitious slugs)
   const modelsToTry = targetModel && !targetModel.includes('gpt-oss') && !targetModel.includes('qwen3.8')
@@ -331,7 +369,7 @@ export async function callGroq(
 
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
-  const isStreaming = typeof onToken === 'function';
+  const isStreaming = typeof pacedOnToken === 'function';
 
   for (const model of uniqueModels) {
     try {
@@ -347,8 +385,11 @@ export async function callGroq(
             ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
             { role: 'user', content: prompt },
           ],
-          temperature,
+          temperature: effectiveTemp,
+          max_tokens: maxOutputTokens,
+          top_p: topP,
           stream: isStreaming,
+          ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),
         }),
       });
 
@@ -376,19 +417,27 @@ export async function callGroq(
                 const chunk = json.choices?.[0]?.delta?.content || '';
                 if (chunk) {
                   accumulated += chunk;
-                  onToken(chunk);
+                  if (pacedOnToken) await pacedOnToken(chunk);
                 }
               } catch {
                 // ignore
               }
             }
           }
-          if (accumulated) return accumulated;
+          if (accumulated) {
+            const totalTokens = Math.max(1, Math.round((prompt.length + accumulated.length) / 4));
+            recordTokenUsage(totalTokens);
+            return accumulated;
+          }
         }
 
         const data = await response.json();
         const text = data.choices?.[0]?.message?.content;
-        if (text) return text;
+        if (text) {
+          const totalTokens = Math.max(1, Math.round((prompt.length + text.length) / 4));
+          recordTokenUsage(totalTokens);
+          return text;
+        }
       }
 
       const errText = await response.text();
@@ -413,18 +462,27 @@ export async function callOpenAi(
   systemPrompt?: string,
   apiKey?: string,
   targetModel = 'gpt-4o',
-  temperature = 0.7,
+  temperature?: number,
   onToken?: (token: string) => void
 ): Promise<string> {
+  const modelSettings = getActiveModelSettings();
+  checkTokenBudgetGuard(modelSettings.maxOutputTokens);
+
   const key = apiKey || getActiveApiKeys().openAiKey;
   if (!key) {
     throw new ApiError('OpenAI API Key is required.', true, 'OpenAI', 401);
   }
 
+  const effectiveTemp = temperature !== undefined ? temperature : modelSettings.temperature;
+  const maxOutputTokens = modelSettings.maxOutputTokens || 4096;
+  const topP = modelSettings.topP ?? 0.95;
+  const strictJsonMode = modelSettings.strictJsonMode || false;
+  const pacedOnToken = onToken ? createStreamingPacer(modelSettings.streamSpeed, onToken) : undefined;
+
   const models = [targetModel, 'gpt-4o-mini', 'gpt-4o'];
   const uniqueModels = Array.from(new Set(models));
   let lastError: Error | null = null;
-  const isStreaming = typeof onToken === 'function';
+  const isStreaming = typeof pacedOnToken === 'function';
 
   for (const model of uniqueModels) {
     try {
@@ -440,8 +498,11 @@ export async function callOpenAi(
             ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
             { role: 'user', content: prompt },
           ],
-          temperature,
+          temperature: effectiveTemp,
+          max_tokens: maxOutputTokens,
+          top_p: topP,
           stream: isStreaming,
+          ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),
         }),
       });
 
@@ -469,18 +530,27 @@ export async function callOpenAi(
                 const chunk = json.choices?.[0]?.delta?.content || '';
                 if (chunk) {
                   accumulated += chunk;
-                  onToken(chunk);
+                  if (pacedOnToken) await pacedOnToken(chunk);
                 }
               } catch {
                 // ignore
               }
             }
           }
-          if (accumulated) return accumulated;
+          if (accumulated) {
+            const totalTokens = Math.max(1, Math.round((prompt.length + accumulated.length) / 4));
+            recordTokenUsage(totalTokens);
+            return accumulated;
+          }
         }
 
         const data = await response.json();
-        return data.choices?.[0]?.message?.content || '';
+        const text = data.choices?.[0]?.message?.content;
+        if (text) {
+          const totalTokens = Math.max(1, Math.round((prompt.length + text.length) / 4));
+          recordTokenUsage(totalTokens);
+          return text;
+        }
       }
 
       const errText = await response.text();
@@ -502,12 +572,20 @@ export async function callOpenRouter(
   systemPrompt?: string,
   apiKey?: string,
   targetModel = 'openai/gpt-4o-mini',
-  temperature = 0.7
+  temperature?: number
 ): Promise<string> {
+  const modelSettings = getActiveModelSettings();
+  checkTokenBudgetGuard(modelSettings.maxOutputTokens);
+
   const key = apiKey || getActiveApiKeys().openRouterKey;
   if (!key) {
     throw new ApiError('OpenRouter API Key is required.', true, 'OpenRouter', 401);
   }
+
+  const effectiveTemp = temperature !== undefined ? temperature : modelSettings.temperature;
+  const maxOutputTokens = modelSettings.maxOutputTokens || 4096;
+  const topP = modelSettings.topP ?? 0.95;
+  const strictJsonMode = modelSettings.strictJsonMode || false;
 
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -523,7 +601,10 @@ export async function callOpenRouter(
         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
         { role: 'user', content: prompt },
       ],
-      temperature,
+      temperature: effectiveTemp,
+      max_tokens: maxOutputTokens,
+      top_p: topP,
+      ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),
     }),
   });
 
@@ -533,8 +614,14 @@ export async function callOpenRouter(
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  const text = data.choices?.[0]?.message?.content || '';
+  if (text) {
+    const totalTokens = Math.max(1, Math.round((prompt.length + text.length) / 4));
+    recordTokenUsage(totalTokens);
+  }
+  return text;
 }
+
 
 // Universal Client AI Dispatcher with Per-Model Tuning & Streaming Support
 export async function callClientAi(

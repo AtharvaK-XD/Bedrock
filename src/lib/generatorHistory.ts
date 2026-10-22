@@ -1,4 +1,5 @@
 import { savePromptToDb, fetchUserPromptsFromDb, deletePromptFromDb } from './telemetry';
+import { getActivePrivacySettings, scrubSecrets } from './appSettings';
 
 export interface HistoryPromptItem {
   id: string;
@@ -44,6 +45,10 @@ export function getStoredGeneratorHistory(): HistoryPromptItem[] {
 }
 
 export function saveGeneratorHistory(items: HistoryPromptItem[]): void {
+  const privacy = getActivePrivacySettings();
+  if (!privacy.saveHistory) {
+    return;
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     window.dispatchEvent(new CustomEvent(HISTORY_UPDATE_EVENT, { detail: items }));
@@ -55,17 +60,29 @@ export function saveGeneratorHistory(items: HistoryPromptItem[]): void {
 export function addPromptToHistory(
   item: Omit<HistoryPromptItem, 'id' | 'createdAt'> & { id?: string }
 ): HistoryPromptItem {
-  const current = getStoredGeneratorHistory();
+  const privacy = getActivePrivacySettings();
+  const rawTitle = item.title || item.ideaText.slice(0, 36) || 'Untitled Prompt';
+  const cleanTitle = scrubSecrets(rawTitle);
+  const cleanIdea = scrubSecrets(item.ideaText);
+  const cleanPrompt = item.promptText ? scrubSecrets(item.promptText) : undefined;
+
   const newItem: HistoryPromptItem = {
     id: item.id || `prompt-${Date.now()}`,
-    title: item.title || item.ideaText.slice(0, 36) || 'Untitled Prompt',
-    ideaText: item.ideaText,
+    title: cleanTitle,
+    ideaText: cleanIdea,
     targetType: item.targetType || 'coding_agent',
-    promptText: item.promptText,
+    promptText: cleanPrompt,
     isPinned: Boolean(item.isPinned),
     statusColor: item.statusColor,
     createdAt: Date.now(),
   };
+
+  if (!privacy.saveHistory) {
+    return newItem;
+  }
+
+  const current = getStoredGeneratorHistory();
+
 
   // Check if item already exists by ID
   const existingIdx = current.findIndex(i => i.id === newItem.id);

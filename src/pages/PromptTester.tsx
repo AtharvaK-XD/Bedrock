@@ -23,6 +23,8 @@ import { EncryptedText } from '../components/ui/encrypted-text';
 import { useUserProfile } from '../lib/useUserProfile';
 import { isModelAllowedForTier, getModelRequiredTier } from '../lib/subscriptionTiers';
 import { UpgradeModal } from '../components/ui/UpgradeModal';
+import { getActiveModelSettings } from '../lib/appSettings';
+
 
 const ARENA_PROMPT_PRESETS = [
   {
@@ -64,7 +66,8 @@ export default function PromptTester() {
   const defaultGroqAgent = AI_AGENTS.find(a => a.id === 'llama') || AI_AGENTS[0];
 
   const [agent1Id, setAgent1Id] = useState(defaultGeminiAgent.id);
-  const [model1Id, setModel1Id] = useState('gemini-3.5-flash-lite');
+  const [model1Id, setModel1Id] = useState(() => getActiveModelSettings().defaultModel || 'gemini-3.5-flash-lite');
+
   
   const [agent2Id, setAgent2Id] = useState(defaultGroqAgent.id);
   const [model2Id, setModel2Id] = useState(defaultGroqAgent.models[0]?.id || 'qwen/qwen3.8-27b');

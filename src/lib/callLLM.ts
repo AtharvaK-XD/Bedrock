@@ -19,6 +19,14 @@ import {
 } from './validation';
 import { getGroundedFacts } from './ragGrounding';
 import { isModelAllowedForTier, getModelRequiredTier } from './subscriptionTiers';
+import {
+  getActiveModelSettings,
+  checkTokenBudgetGuard,
+  recordTokenUsage,
+  createStreamingPacer,
+  scrubSecrets,
+} from './appSettings';
+
 
 export type ModelTier = 'frontier' | 'mid' | 'compact';
 
@@ -610,9 +618,13 @@ export function buildTunedPrompt(
   temperature: number;
   examplesUsedCount: number;
 } {
-  // 1. Resolve Temperature: explicit option > model tuned default adjusted by target domain
+  const modelSettings = getActiveModelSettings();
+
+  // 1. Resolve Temperature: explicit option > model settings configured temperature > model tuned default
   const targetType = options?.targetType || 'coding_agent';
-  let rawTemp = options?.temperature !== undefined ? options.temperature : modelTuning.temperature;
+  let rawTemp = options?.temperature !== undefined
+    ? options.temperature
+    : (modelSettings.temperature !== undefined ? modelSettings.temperature : modelTuning.temperature);
   let temperature = rawTemp;
   if (options?.targetType) {
     if (targetType === 'coding_agent' || targetType === 'full_stack' || targetType === 'cli_tool' || targetType === 'coding-agent') {
@@ -641,10 +653,16 @@ export function buildTunedPrompt(
   const ragFacts = getGroundedFacts(userPrompt, targetType);
   const ragBlock = ragFacts.groundedFactsBlock ? ragFacts.groundedFactsBlock : '';
 
-  // 5. Build Effective System Prompt
+  // 5. Injected User Custom Directives from Settings (Real-time active user preferences)
+  const userDirectivesBlock = modelSettings.systemPromptDirectives?.trim()
+    ? `## CUSTOM SYSTEM DIRECTIVES (User Settings Enforced):\n${modelSettings.systemPromptDirectives.trim()}`
+    : '';
+
+  // 6. Build Effective System Prompt
   const baseSystem = options?.systemPrompt || 'You are Bedrock’s Principal System Architect and Prompt Engineer.';
   const effectiveSystemPrompt = [
     baseSystem,
+    userDirectivesBlock,
     domainGuardrails,
     ragBlock,
     purposeContext,
@@ -653,8 +671,9 @@ export function buildTunedPrompt(
     .filter(Boolean)
     .join('\n\n');
 
-  // 6. Build Effective User Prompt (incorporating sliced few-shot examples)
-  let effectiveUserPrompt = userPrompt;
+  // 7. Build Effective User Prompt (incorporating sliced few-shot examples and secret scrubbing)
+  const scrubbedUserPrompt = scrubSecrets(userPrompt);
+  let effectiveUserPrompt = scrubbedUserPrompt;
   if (effectiveExamples.length > 0) {
     const formattedExamples = effectiveExamples
       .map((ex, index) => {
@@ -663,7 +682,7 @@ export function buildTunedPrompt(
       })
       .join('\n\n---\n\n');
 
-    effectiveUserPrompt = `## REFERENCE EXAMPLES (${effectiveExamples.length} Selected for Model Optimization):\n\n${formattedExamples}\n\n---\n\n## CURRENT TASK:\n${userPrompt}`;
+    effectiveUserPrompt = `## REFERENCE EXAMPLES (${effectiveExamples.length} Selected for Model Optimization):\n\n${formattedExamples}\n\n---\n\n## CURRENT TASK:\n${scrubbedUserPrompt}`;
   }
 
   return {
@@ -714,12 +733,17 @@ export async function callLLMWithMeta(
 ): Promise<CallLLMResult> {
   const startTime = Date.now();
   const keys = getActiveApiKeys();
+  const modelSettings = getActiveModelSettings();
+
+  // 0. Hard stop budget check before dispatching
+  checkTokenBudgetGuard(options?.maxTokens || modelSettings.maxOutputTokens || 100);
 
   // 1. Resolve Target Model & Tuning Configuration
   let effectiveModelId = modelId;
   if (!effectiveModelId || effectiveModelId === 'auto') {
-    // Smart auto-selection based on available keys
-    if (keys.geminiKey) effectiveModelId = 'gemini-flash-latest';
+    if (modelSettings.defaultModel && modelSettings.defaultModel !== 'auto') {
+      effectiveModelId = modelSettings.defaultModel;
+    } else if (keys.geminiKey) effectiveModelId = 'gemini-flash-latest';
     else if (keys.groqKey) effectiveModelId = 'llama-3.3-70b-versatile';
     else if (keys.openAiKey) effectiveModelId = 'gpt-4o';
     else if (keys.openRouterKey) effectiveModelId = 'openai/gpt-4o-mini';
@@ -737,6 +761,7 @@ export async function callLLMWithMeta(
   } catch {
     // fallback
   }
+
 
   if (effectiveModelId && effectiveModelId !== 'auto' && !isModelAllowedForTier(effectiveModelId, userPlan)) {
     const required = getModelRequiredTier(effectiveModelId);
@@ -871,7 +896,14 @@ export async function callLLMWithMeta(
 
   const latencyMs = Date.now() - startTime;
 
+  // Real-time Token Budget Accounting
+  const inputWords = prompt.trim().split(/\s+/).filter(Boolean).length;
+  const outputWords = text.trim().split(/\s+/).filter(Boolean).length;
+  const totalTokens = Math.max(1, Math.round((inputWords + outputWords) * 1.35));
+  recordTokenUsage(totalTokens);
+
   return {
+
     text,
     modelId: effectiveModelId,
     tuning,
@@ -917,8 +949,17 @@ async function dispatchProviderCall(
   keys: ReturnType<typeof getActiveApiKeys>,
   options?: CallLLMOptions
 ): Promise<{ text: string; providerUsed: string }> {
+  const modelSettings = getActiveModelSettings();
+  const maxOutputTokens = options?.maxTokens || modelSettings.maxOutputTokens || 4096;
+  const topP = modelSettings.topP ?? 0.95;
+  const streamSpeed = modelSettings.streamSpeed || 'smooth';
+  const strictJsonMode = modelSettings.strictJsonMode || false;
+  const autoFallback = modelSettings.autoFallback ?? true;
+
+  const rawOnToken = options?.onToken;
+  const onToken = rawOnToken ? createStreamingPacer(streamSpeed, rawOnToken) : undefined;
+
   const lowerModel = effectiveModelId.toLowerCase();
-  const onToken = options?.onToken;
   let text = '';
   let providerUsed = tuning.provider || 'unknown';
 
@@ -931,7 +972,10 @@ async function dispatchProviderCall(
       keys.ollamaEndpoint || 'http://localhost:11434',
       effectiveModelId,
       temperature,
-      onToken
+      onToken,
+      maxOutputTokens,
+      topP,
+      strictJsonMode
     );
   }
   // B. Perplexity AI (Sonar Live Grounding)
@@ -946,7 +990,9 @@ async function dispatchProviderCall(
       keys.perplexityKey,
       effectiveModelId,
       temperature,
-      onToken
+      onToken,
+      maxOutputTokens,
+      topP
     );
   }
   // C. Google Gemini
@@ -962,14 +1008,51 @@ async function dispatchProviderCall(
         ? 'gemini-3.5-flash-lite'
         : effectiveModelId;
 
-    text = await callGeminiDirect(
-      effectiveUserPrompt,
-      effectiveSystemPrompt,
-      keys.geminiKey,
-      targetGemini,
-      temperature,
-      onToken
-    );
+    try {
+      text = await callGeminiDirect(
+        effectiveUserPrompt,
+        effectiveSystemPrompt,
+        keys.geminiKey,
+        targetGemini,
+        temperature,
+        onToken,
+        maxOutputTokens,
+        topP,
+        strictJsonMode
+      );
+    } catch (geminiErr) {
+      if (!autoFallback) throw geminiErr;
+      console.warn('[Bedrock] Gemini call failed, attempting auto-fallback...', geminiErr);
+      if (keys.groqKey) {
+        providerUsed = 'Groq (Auto-Fallback)';
+        text = await callGroqDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.groqKey,
+          'llama-3.3-70b-versatile',
+          temperature,
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
+        );
+      } else if (keys.openAiKey) {
+        providerUsed = 'OpenAI (Auto-Fallback)';
+        text = await callOpenAiDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.openAiKey,
+          'gpt-4o-mini',
+          temperature,
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
+        );
+      } else {
+        throw geminiErr;
+      }
+    }
   }
   // D. Groq (Qwen, GPT-OSS, DeepSeek, Mixtral)
   else if (
@@ -989,16 +1072,53 @@ async function dispatchProviderCall(
         ? 'qwen/qwen3.8-27b'
         : effectiveModelId;
 
-    text = await callGroqDirect(
-      effectiveUserPrompt,
-      effectiveSystemPrompt,
-      keys.groqKey,
-      targetGroq,
-      temperature,
-      onToken
-    );
+    try {
+      text = await callGroqDirect(
+        effectiveUserPrompt,
+        effectiveSystemPrompt,
+        keys.groqKey,
+        targetGroq,
+        temperature,
+        onToken,
+        maxOutputTokens,
+        topP,
+        strictJsonMode
+      );
+    } catch (groqErr) {
+      if (!autoFallback) throw groqErr;
+      console.warn('[Bedrock] Groq call failed, attempting auto-fallback...', groqErr);
+      if (keys.geminiKey) {
+        providerUsed = 'Google Gemini (Auto-Fallback)';
+        text = await callGeminiDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.geminiKey,
+          'gemini-flash-latest',
+          temperature,
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
+        );
+      } else if (keys.openAiKey) {
+        providerUsed = 'OpenAI (Auto-Fallback)';
+        text = await callOpenAiDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.openAiKey,
+          'gpt-4o-mini',
+          temperature,
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
+        );
+      } else {
+        throw groqErr;
+      }
+    }
   }
-  // C. OpenAI Direct
+  // E. OpenAI Direct
   else if (
     (options?.preferredProvider === 'openai' ||
       tuning.provider === 'openai' ||
@@ -1006,16 +1126,53 @@ async function dispatchProviderCall(
     keys.openAiKey
   ) {
     providerUsed = 'OpenAI';
-    text = await callOpenAiDirect(
-      effectiveUserPrompt,
-      effectiveSystemPrompt,
-      keys.openAiKey,
-      effectiveModelId,
-      temperature,
-      onToken
-    );
+    try {
+      text = await callOpenAiDirect(
+        effectiveUserPrompt,
+        effectiveSystemPrompt,
+        keys.openAiKey,
+        effectiveModelId,
+        temperature,
+        onToken,
+        maxOutputTokens,
+        topP,
+        strictJsonMode
+      );
+    } catch (openAiErr) {
+      if (!autoFallback) throw openAiErr;
+      console.warn('[Bedrock] OpenAI call failed, attempting auto-fallback...', openAiErr);
+      if (keys.geminiKey) {
+        providerUsed = 'Google Gemini (Auto-Fallback)';
+        text = await callGeminiDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.geminiKey,
+          'gemini-flash-latest',
+          temperature,
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
+        );
+      } else if (keys.groqKey) {
+        providerUsed = 'Groq (Auto-Fallback)';
+        text = await callGroqDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.groqKey,
+          'llama-3.3-70b-versatile',
+          temperature,
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
+        );
+      } else {
+        throw openAiErr;
+      }
+    }
   }
-  // D. Hugging Face with resilient zero-cost fallback
+  // F. Hugging Face with resilient zero-cost fallback
   else if (
     (effectiveModelId.startsWith('hf/') || tuning.provider === 'huggingface') &&
     keys.huggingFaceKey
@@ -1027,9 +1184,11 @@ async function dispatchProviderCall(
         effectiveSystemPrompt,
         keys.huggingFaceKey,
         effectiveModelId.replace(/^hf\//, ''),
-        temperature
+        temperature,
+        maxOutputTokens
       );
     } catch (hfErr) {
+      if (!autoFallback) throw hfErr;
       console.warn('[Bedrock] Hugging Face serverless unavailable, routing to OpenRouter free:', hfErr);
       if (keys.openRouterKey) {
         providerUsed = 'OpenRouter (HF Free Fallback)';
@@ -1040,7 +1199,10 @@ async function dispatchProviderCall(
           keys.openRouterKey,
           fallbackTarget,
           temperature,
-          onToken
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
         );
       } else if (keys.groqKey) {
         providerUsed = 'Groq (HF Fallback)';
@@ -1050,29 +1212,68 @@ async function dispatchProviderCall(
           keys.groqKey,
           'qwen/qwen3.8-27b',
           temperature,
-          onToken
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
         );
       } else {
         throw hfErr;
       }
     }
   }
-  // E. OpenRouter (Frontier Multi-Model Router for Claude, GPT, Grok, etc.)
+  // G. OpenRouter (Frontier Multi-Model Router for Claude, GPT, Grok, etc.)
   else if (keys.openRouterKey) {
     providerUsed = 'OpenRouter';
     const targetOpenRouter = resolveOpenRouterModelId(effectiveModelId);
 
-    text = await callOpenRouterDirect(
-      effectiveUserPrompt,
-      effectiveSystemPrompt,
-      keys.openRouterKey,
-      targetOpenRouter,
-      temperature,
-      onToken
-    );
+    try {
+      text = await callOpenRouterDirect(
+        effectiveUserPrompt,
+        effectiveSystemPrompt,
+        keys.openRouterKey,
+        targetOpenRouter,
+        temperature,
+        onToken,
+        maxOutputTokens,
+        topP,
+        strictJsonMode
+      );
+    } catch (openRouterErr) {
+      if (!autoFallback) throw openRouterErr;
+      if (keys.geminiKey) {
+        providerUsed = 'Google Gemini (Auto-Fallback)';
+        text = await callGeminiDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.geminiKey,
+          'gemini-flash-latest',
+          temperature,
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
+        );
+      } else if (keys.groqKey) {
+        providerUsed = 'Groq (Auto-Fallback)';
+        text = await callGroqDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.groqKey,
+          'llama-3.3-70b-versatile',
+          temperature,
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
+        );
+      } else {
+        throw openRouterErr;
+      }
+    }
   }
-  // F. Fallback: Any configured key
-  else if (keys.geminiKey) {
+  // H. Fallback: Any configured key
+  else if (autoFallback && keys.geminiKey) {
     providerUsed = 'Google Gemini (Fallback)';
     text = await callGeminiDirect(
       effectiveUserPrompt,
@@ -1080,9 +1281,12 @@ async function dispatchProviderCall(
       keys.geminiKey,
       'gemini-flash-latest',
       temperature,
-      onToken
+      onToken,
+      maxOutputTokens,
+      topP,
+      strictJsonMode
     );
-  } else if (keys.groqKey) {
+  } else if (autoFallback && keys.groqKey) {
     providerUsed = 'Groq (Fallback)';
     text = await callGroqDirect(
       effectiveUserPrompt,
@@ -1090,9 +1294,12 @@ async function dispatchProviderCall(
       keys.groqKey,
       'llama-3.3-70b-versatile',
       temperature,
-      onToken
+      onToken,
+      maxOutputTokens,
+      topP,
+      strictJsonMode
     );
-  } else if (keys.openAiKey) {
+  } else if (autoFallback && keys.openAiKey) {
     providerUsed = 'OpenAI (Fallback)';
     text = await callOpenAiDirect(
       effectiveUserPrompt,
@@ -1100,10 +1307,13 @@ async function dispatchProviderCall(
       keys.openAiKey,
       'gpt-4o-mini',
       temperature,
-      onToken
+      onToken,
+      maxOutputTokens,
+      topP,
+      strictJsonMode
     );
   }
-  // G. Backend API Proxy Fallback
+  // I. Backend API Proxy Fallback
   else {
     providerUsed = 'Bedrock Backend Proxy';
     text = await callBackendProxy(
@@ -1111,7 +1321,10 @@ async function dispatchProviderCall(
       effectiveSystemPrompt,
       effectiveModelId,
       temperature,
-      onToken
+      onToken,
+      maxOutputTokens,
+      topP,
+      strictJsonMode
     );
   }
 
@@ -1128,7 +1341,10 @@ async function callOllamaDirect(
   endpoint = 'http://localhost:11434',
   targetModel = 'llama3.2',
   temperature = 0.7,
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void | Promise<void>,
+  maxOutputTokens = 4096,
+  topP = 0.95,
+  strictJsonMode = false
 ): Promise<string> {
   const cleanModel = targetModel.replace(/^ollama\//, '');
   const url = `${endpoint.replace(/\/$/, '')}/v1/chat/completions`;
@@ -1146,6 +1362,11 @@ async function callOllamaDirect(
         ],
         temperature,
         stream: isStreaming,
+        options: {
+          num_predict: maxOutputTokens,
+          top_p: topP,
+        },
+        ...(strictJsonMode ? { format: 'json' } : {}),
       }),
     });
 
@@ -1177,7 +1398,7 @@ async function callOllamaDirect(
             const chunk = json.choices?.[0]?.delta?.content || '';
             if (chunk) {
               accumulated += chunk;
-              onToken(chunk);
+              if (onToken) await onToken(chunk);
             }
           } catch {}
         }
@@ -1203,7 +1424,9 @@ async function callPerplexityDirect(
   apiKey?: string,
   targetModel = 'sonar-pro',
   temperature = 0.7,
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void | Promise<void>,
+  maxOutputTokens = 4096,
+  topP = 0.95
 ): Promise<string> {
   const isStreaming = typeof onToken === 'function';
   const response = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -1219,6 +1442,8 @@ async function callPerplexityDirect(
         { role: 'user', content: prompt },
       ],
       temperature,
+      max_tokens: maxOutputTokens,
+      top_p: topP,
       stream: isStreaming,
     }),
   });
@@ -1252,7 +1477,7 @@ async function callPerplexityDirect(
           const chunk = json.choices?.[0]?.delta?.content || '';
           if (chunk) {
             accumulated += chunk;
-            onToken(chunk);
+            if (onToken) await onToken(chunk);
           }
         } catch {}
       }
@@ -1270,7 +1495,10 @@ async function callGeminiDirect(
   apiKey?: string,
   targetModel = 'gemini-3.5-flash-lite',
   temperature = 0.7,
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void | Promise<void>,
+  maxOutputTokens = 4096,
+  topP = 0.95,
+  strictJsonMode = false
 ): Promise<string> {
   const normalized =
     targetModel === 'gemini-flash-latest' ||
@@ -1296,7 +1524,12 @@ async function callGeminiDirect(
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}${apiKey}`;
       const body: any = {
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature },
+        generationConfig: {
+          temperature,
+          maxOutputTokens,
+          topP,
+          ...(strictJsonMode ? { responseMimeType: 'application/json' } : {}),
+        },
       };
       if (systemInstruction) {
         body.systemInstruction = { parts: [{ text: systemInstruction }] };
@@ -1332,7 +1565,7 @@ async function callGeminiDirect(
                 const chunk = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
                 if (chunk) {
                   accumulated += chunk;
-                  onToken(chunk);
+                  if (onToken) await onToken(chunk);
                 }
               } catch {
                 // Ignore parse errors on SSE chunks
@@ -1366,7 +1599,10 @@ async function callGroqDirect(
   apiKey?: string,
   targetModel = 'qwen/qwen3.8-27b',
   temperature = 0.5,
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void | Promise<void>,
+  maxOutputTokens = 4096,
+  topP = 0.95,
+  strictJsonMode = false
 ): Promise<string> {
   const modelsToTry = [
     targetModel.includes('llama') ? 'qwen/qwen3.8-27b' : targetModel,
@@ -1393,7 +1629,10 @@ async function callGroqDirect(
             { role: 'user', content: prompt },
           ],
           temperature,
+          max_tokens: maxOutputTokens,
+          top_p: topP,
           stream: isStreaming,
+          ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),
         }),
       });
 
@@ -1424,7 +1663,7 @@ async function callGroqDirect(
                   '';
                 if (chunk) {
                   accumulated += chunk;
-                  onToken(chunk);
+                  if (onToken) await onToken(chunk);
                 }
               } catch {
                 // Ignore partial chunks
@@ -1458,7 +1697,10 @@ async function callOpenAiDirect(
   apiKey?: string,
   targetModel = 'gpt-4o',
   temperature = 0.7,
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void | Promise<void>,
+  maxOutputTokens = 4096,
+  topP = 0.95,
+  strictJsonMode = false
 ): Promise<string> {
   const models = [targetModel, 'gpt-4o-mini', 'gpt-4o'];
   const uniqueModels = Array.from(new Set(models));
@@ -1480,7 +1722,10 @@ async function callOpenAiDirect(
             { role: 'user', content: prompt },
           ],
           temperature,
+          max_tokens: maxOutputTokens,
+          top_p: topP,
           stream: isStreaming,
+          ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),
         }),
       });
 
@@ -1508,7 +1753,7 @@ async function callOpenAiDirect(
                 const chunk = json.choices?.[0]?.delta?.content || '';
                 if (chunk) {
                   accumulated += chunk;
-                  onToken(chunk);
+                  if (onToken) await onToken(chunk);
                 }
               } catch {
                 // Ignore partial chunk
@@ -1541,7 +1786,10 @@ async function callOpenRouterDirect(
   apiKey?: string,
   targetModel = 'openai/gpt-4o-mini',
   temperature = 0.7,
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void | Promise<void>,
+  maxOutputTokens = 4096,
+  topP = 0.95,
+  strictJsonMode = false
 ): Promise<string> {
   const isStreaming = typeof onToken === 'function';
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -1559,7 +1807,10 @@ async function callOpenRouterDirect(
         { role: 'user', content: prompt },
       ],
       temperature,
+      max_tokens: maxOutputTokens,
+      top_p: topP,
       stream: isStreaming,
+      ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),
     }),
   });
 
@@ -1595,7 +1846,7 @@ async function callOpenRouterDirect(
             '';
           if (chunk) {
             accumulated += chunk;
-            onToken(chunk);
+            if (onToken) await onToken(chunk);
           }
         } catch {
           // Ignore partial
@@ -1615,7 +1866,8 @@ async function callHuggingFaceDirect(
   systemPrompt?: string,
   apiKey?: string,
   model = 'mistralai/Mistral-7B-Instruct-v0.3',
-  temperature = 0.2
+  temperature = 0.2,
+  maxOutputTokens = 2048
 ): Promise<string> {
   const res = await fetch(`https://api-inference.huggingface.co/models/${model}/v1/chat/completions`, {
     method: 'POST',
@@ -1630,7 +1882,7 @@ async function callHuggingFaceDirect(
         { role: 'user', content: prompt },
       ],
       temperature,
-      max_tokens: 2048,
+      max_tokens: maxOutputTokens,
     }),
   });
 
@@ -1648,7 +1900,10 @@ async function callBackendProxy(
   systemPrompt?: string,
   targetModel = 'auto',
   temperature = 0.7,
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void | Promise<void>,
+  maxOutputTokens = 4096,
+  topP = 0.95,
+  strictJsonMode = false
 ): Promise<string> {
   const isStreaming = typeof onToken === 'function';
   const response = await fetch('/api/ai/test', {
@@ -1662,6 +1917,9 @@ async function callBackendProxy(
       systemPrompt,
       prompt,
       temperature,
+      maxOutputTokens,
+      topP,
+      strictJsonMode,
       stream: isStreaming,
     }),
   });
@@ -1690,7 +1948,7 @@ async function callBackendProxy(
             const json = JSON.parse(dataStr);
             if (json.token) {
               accumulated += json.token;
-              onToken(json.token);
+              if (onToken) await onToken(json.token);
             }
           } catch {
             // Ignore
@@ -1711,3 +1969,4 @@ async function callBackendProxy(
     401
   );
 }
+

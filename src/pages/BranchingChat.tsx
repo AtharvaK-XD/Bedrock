@@ -59,6 +59,7 @@ import {
 import { useUserProfile } from '../lib/useUserProfile';
 import { TIER_LIMITS, normalizeTier, isModelAllowedForTier, getModelRequiredTier } from '../lib/subscriptionTiers';
 import { UpgradeModal } from '../components/ui/UpgradeModal';
+import { getActiveModelSettings } from '../lib/appSettings';
 
 const NODE_CONFIG = {
   system: { 
@@ -1675,7 +1676,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
         title: `New ${config.title}`, 
         description: '',
         agentId: 'gemini',
-        modelId: 'gemini-3.5-flash-lite',
+        modelId: getActiveModelSettings().defaultModel || 'gemini-3.5-flash-lite',
         nodeType: type,
         status: 'idle',
         ...extraInitial,

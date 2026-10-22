@@ -19,6 +19,7 @@ import { isDesktopApp } from '../lib/platform';
 import { GeneratorHistorySidebar } from '../components/generator/GeneratorHistorySidebar';
 import { addPromptToHistory, syncHistoryFromDb, type HistoryPromptItem } from '../lib/generatorHistory';
 import { recordExecutionTrace } from '../lib/telemetry';
+import { getActiveModelSettings } from '../lib/appSettings';
 
 export default function Wizard() {
   const navigate = useNavigate();
@@ -219,10 +220,12 @@ export default function Wizard() {
       });
       setActivePromptId(updatedItem.id);
 
+      const currentDefaultModel = getActiveModelSettings().defaultModel || 'gemini-3.5-flash-lite';
+
       // Record real execution trace in Neon DB
       recordExecutionTrace({
         node: 'SYNTHESIS_PIPELINE',
-        model: 'gemini-2.5-flash',
+        model: currentDefaultModel,
         tokens: Math.max(450, Math.round(promptText.length / 3.8)),
         latency,
         status: 'OK',
@@ -231,13 +234,15 @@ export default function Wizard() {
       navigate('/app/result', { state: { promptText, idea, historyId: updatedItem.id } });
     } catch (err: any) {
       console.error('Prompt synthesis failed:', err);
+      const currentDefaultModel = getActiveModelSettings().defaultModel || 'gemini-3.5-flash-lite';
       recordExecutionTrace({
         node: 'SYNTHESIS_PIPELINE',
-        model: 'gemini-2.5-flash',
+        model: currentDefaultModel,
         tokens: 0,
         latency: Date.now() - synthStartTime,
         status: 'ERR',
       });
+
       const isKeyError = Boolean(
         err?.isApiKeyError ||
         err?.message?.toLowerCase().includes('api key') ||
