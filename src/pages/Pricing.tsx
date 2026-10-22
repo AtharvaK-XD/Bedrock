@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShieldCheck, 
   Check, 
-  Sparkles, 
   X, 
   ArrowRight, 
   Lock, 
@@ -183,10 +182,6 @@ export default function Pricing() {
         
         {/* Header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-copper-300 mb-3 backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 text-copper-400" />
-            <span>Cryptographically Verified Subscriptions</span>
-          </div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
