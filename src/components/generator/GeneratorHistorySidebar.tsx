@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   SlidersHorizontal, 
-  Download, 
   Search, 
   ChevronDown, 
   PanelLeftClose, 
@@ -12,8 +11,7 @@ import {
   X,
   User,
   Settings,
-  Sparkles,
-  Check
+  Sparkles
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
@@ -50,7 +48,6 @@ export function GeneratorHistorySidebar({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [sortAlphabetical, setSortAlphabetical] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [copiedNotification, setCopiedNotification] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -97,22 +94,6 @@ export function GeneratorHistorySidebar({
     setItems(updated);
   };
 
-  const handleExport = () => {
-    try {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(items, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `bedrock_prompts_history_${new Date().toISOString().slice(0, 10)}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-      setCopiedNotification(true);
-      setTimeout(() => setCopiedNotification(false), 2000);
-    } catch (err) {
-      console.error('Export failed:', err);
-    }
-  };
-
   // Filter items by search query
   const filteredItems = useMemo(() => {
     let result = items;
@@ -137,7 +118,6 @@ export function GeneratorHistorySidebar({
     clerkUser?.firstName || 
     clerkUser?.fullName?.split(' ')[0] || 
     (profile?.name && profile.name !== 'Prompt Architect' ? profile.name.split(' ')[0] : 'Architect');
-  const displayPlan = profile?.plan?.toLowerCase().includes('pro') ? 'Pro' : 'Free';
   const displayInitial = profile?.avatarInitials ? profile.avatarInitials[0] : (displayName[0] || 'B');
   const isDesktop = isDesktopApp();
 
@@ -166,35 +146,20 @@ export function GeneratorHistorySidebar({
 
         <div className="flex items-center gap-1">
           {isDesktop && (
-            <>
-              <button
-                type="button"
-                onClick={handleExport}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-                title={copiedNotification ? "Exported!" : "Export prompts JSON"}
-              >
-                {copiedNotification ? (
-                  <Check className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <Download className="w-4 h-4" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSearchOpen(prev => !prev);
-                  if (isSearchOpen) setSearchQuery('');
-                }}
-                className={cn(
-                  "p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer",
-                  isSearchOpen ? "text-copper-400 bg-white/5" : ""
-                )}
-                title="Search previous prompts"
-              >
-                <Search className="w-4 h-4" />
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => {
+                setIsSearchOpen(prev => !prev);
+                if (isSearchOpen) setSearchQuery('');
+              }}
+              className={cn(
+                "p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer",
+                isSearchOpen ? "text-copper-400 bg-white/5" : ""
+              )}
+              title="Search previous prompts"
+            >
+              <Search className="w-4 h-4" />
+            </button>
           )}
 
           <button
@@ -388,8 +353,8 @@ export function GeneratorHistorySidebar({
               <div className="w-6 h-6 rounded-full bg-[#24262c] border border-white/10 flex items-center justify-center text-[11px] font-semibold text-neutral-200 shrink-0">
                 {displayInitial}
               </div>
-              <span className="text-xs text-neutral-300 group-hover:text-white font-medium max-w-[100px] truncate">
-                {displayName} · {displayPlan}
+              <span className="text-xs text-neutral-300 group-hover:text-white font-medium max-w-[120px] truncate">
+                {displayName}
               </span>
               <ChevronDown className={cn(
                 "w-3 h-3 text-neutral-400 transition-transform duration-200",
@@ -422,36 +387,12 @@ export function GeneratorHistorySidebar({
                   <Settings className="w-3.5 h-3.5 text-neutral-400" />
                   <span>Settings</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    navigate('/app/pricing');
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-copper-400 hover:text-copper-300 hover:bg-copper-500/10 transition-colors cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Upgrade Plan</span>
-                </button>
               </div>
             )}
           </div>
 
-          {/* Right Action Icons: Download (Export) & Search */}
+          {/* Right Action Icons: Search */}
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={handleExport}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-              title={copiedNotification ? "Exported!" : "Export prompts JSON"}
-            >
-              {copiedNotification ? (
-                <Check className="w-4 h-4 text-emerald-400" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-            </button>
-
             <button
               type="button"
               onClick={() => {
