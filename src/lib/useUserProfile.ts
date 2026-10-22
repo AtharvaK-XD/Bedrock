@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { notifyAuthSuccess } from './sendAuthNotification';
+import { isDesktopApp } from './platform';
 
 export interface UserProfile {
   name: string;
@@ -99,7 +100,7 @@ export function getBlankProfile(userOrName?: any, email = '', joinedDate = ''): 
     username,
     role: 'Lead Prompt Architect',
     bio: '',
-    plan: 'Workstation Edition (BYOK)',
+    plan: isDesktopApp() ? 'Workstation Edition (BYOK)' : 'Free Plan',
     location: '',
     organization: '',
     avatarInitials: resolveInitials(cleanName),
@@ -129,7 +130,7 @@ function getStoredProfile(): UserProfile {
     return {
       ...getBlankProfile(),
       ...parsed,
-      plan: 'Workstation Edition (BYOK)',
+      plan: isDesktopApp() ? 'Workstation Edition (BYOK)' : (parsed.plan || 'Free Plan'),
       name: cleanName,
       avatarInitials: (parsed.avatarInitials === 'US' || !parsed.avatarInitials) ? cleanInitials : parsed.avatarInitials,
     };

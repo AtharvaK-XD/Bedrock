@@ -9,7 +9,8 @@ import {
   Columns2, 
   SlidersHorizontal,
   ChevronDown,
-  Trophy
+  Trophy,
+  Lock
 } from 'lucide-react';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { cn } from '../lib/utils';
@@ -20,6 +21,9 @@ import { PageTransition } from '../components/layout/PageTransition';
 import { isDesktopApp } from '../lib/platform';
 import { Button as StatefulButton } from '../components/ui/stateful-button';
 import { EncryptedText } from '../components/ui/encrypted-text';
+import { useUserProfile } from '../lib/useUserProfile';
+import { isModelAllowedForTier, getModelRequiredTier } from '../lib/subscriptionTiers';
+import { UpgradeModal } from '../components/ui/UpgradeModal';
 
 const ARENA_PROMPT_PRESETS = [
   {
@@ -66,6 +70,14 @@ export default function PromptTester() {
   const [agent2Id, setAgent2Id] = useState(defaultGroqAgent.id);
   const [model2Id, setModel2Id] = useState(defaultGroqAgent.models[0]?.id || 'qwen/qwen3.8-27b');
 
+  const { profile } = useUserProfile();
+  const [upgradeModal, setUpgradeModal] = useState<{
+    isOpen: boolean;
+    featureName?: string;
+    requiredTier?: 'pro' | 'ultimate';
+    reason?: string;
+  }>({ isOpen: false });
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -78,6 +90,31 @@ export default function PromptTester() {
 
   const handleTest = async () => {
     if (!prompt.trim()) return;
+
+    // Strict subscription tier gate for Duel models
+    const allowed1 = isModelAllowedForTier(model1Id, profile?.plan);
+    if (!allowed1) {
+      const req1 = getModelRequiredTier(model1Id);
+      setUpgradeModal({
+        isOpen: true,
+        featureName: `Model: ${model1Id}`,
+        requiredTier: req1 === 'ultimate' ? 'ultimate' : 'pro',
+        reason: `Model ${model1Id} is restricted to ${req1.toUpperCase()} subscribers. Upgrade your plan to run dual benchmarks with this frontier model.`,
+      });
+      return;
+    }
+
+    const allowed2 = isModelAllowedForTier(model2Id, profile?.plan);
+    if (!allowed2) {
+      const req2 = getModelRequiredTier(model2Id);
+      setUpgradeModal({
+        isOpen: true,
+        featureName: `Model: ${model2Id}`,
+        requiredTier: req2 === 'ultimate' ? 'ultimate' : 'pro',
+        reason: `Model ${model2Id} is restricted to ${req2.toUpperCase()} subscribers. Upgrade your plan to run dual benchmarks with this frontier model.`,
+      });
+      return;
+    }
 
     setIsTesting(true);
     setResult1('');
@@ -259,24 +296,42 @@ export default function PromptTester() {
             </div>
             <div className="max-h-[300px] overflow-y-auto px-1.5 custom-scrollbar" data-lenis-prevent="true">
               {currentAgent.models.map((m: any) => {
+                const isAllowed = isModelAllowedForTier(m.id, profile?.plan);
+                const required = getModelRequiredTier(m.id);
                 return (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => {
+                      if (!isAllowed) {
+                        setUpgradeModal({
+                          isOpen: true,
+                          featureName: m.name,
+                          requiredTier: required === 'ultimate' ? 'ultimate' : 'pro',
+                          reason: `${m.name} is reserved for ${required.toUpperCase()} Plan members. Upgrade to benchmark with this model.`,
+                        });
+                        setActiveDropdown(null);
+                        return;
+                      }
                       setModelId(m.id);
                       setActiveDropdown(null);
                     }}
                     className={cn(
-                      "w-full flex items-center justify-between px-2 py-1.5 text-xs text-left rounded-lg transition-colors cursor-pointer",
+                      "w-full flex items-center justify-between px-2 py-1.5 text-xs text-left rounded-lg transition-colors",
                       currentModel.id === m.id ? "bg-white/10 text-white font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
                     )}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <AgentIcon agent={currentAgent} model={m.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                       <span className="truncate">{m.name}</span>
+                      {!isAllowed && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase ml-1">
+                          <Lock className="w-2.5 h-2.5 text-copper-400" />
+                          <span>{required}</span>
+                        </span>
+                      )}
                     </div>
-                    {currentModel.id === m.id && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
+                    {currentModel.id === m.id && isAllowed && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
                   </button>
                 );
               })}
@@ -589,6 +644,14 @@ export default function PromptTester() {
           </div>
         </div>
       </div>
+
+      <UpgradeModal
+        isOpen={upgradeModal.isOpen}
+        onClose={() => setUpgradeModal({ isOpen: false })}
+        featureName={upgradeModal.featureName}
+        requiredTier={upgradeModal.requiredTier}
+        reason={upgradeModal.reason}
+      />
     </PageTransition>
   );
 }
