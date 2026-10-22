@@ -174,7 +174,7 @@ export default function Landing() {
         
         {/* Realistic 3D Background Element */}
         <div className="fixed inset-0 w-full h-screen pointer-events-none z-0 overflow-hidden">
-          <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-10"></div>
+          <div className="absolute inset-0 opacity-[0.03] bg-[url('/noise.svg')] z-10"></div>
           <Scene3D />
         </div>
 

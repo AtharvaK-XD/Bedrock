@@ -117,7 +117,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="bg-black text-white font-sans selection:bg-copper-500 selection:text-white relative">
       {/* Background gradients */}
       <div className="fixed inset-0 z-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-black/80 to-black pointer-events-none"></div>
-      <div className="fixed inset-0 z-0 opacity-[0.05] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
+      <div className="fixed inset-0 z-0 opacity-[0.05] pointer-events-none bg-[url('/noise.svg')] mix-blend-overlay"></div>
 
       {isDesktop ? (
         /* Desktop Application Layout: Sleek Left Sidebar + Full Height Workstation View */
