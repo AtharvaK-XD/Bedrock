@@ -48,7 +48,7 @@ Bedrock replaces brittle, unstructured text prompts with formal, hardened specif
 - **Visual DAG Branching Canvas**: Graph-based node orchestration (`@xyflow/react`) for multi-step prompt chaining, conditional routing, and merge operations.
 - **Parallel Multi-Model Benchmarking**: Dispatches identical prompts simultaneously across competing frontier models to benchmark latency, token cost, and adherence.
 - **15 Universal Export Targets**: Generates ready-to-use configurations for Cursor (`.cursorrules`), Claude Code (`CLAUDE.md`), Windsurf (`.windsurfrules`), GitHub Copilot, Vercel AI SDK, OpenAI SDK, Anthropic SDK, and raw JSON payloads.
-- **Comprehensive Settings & Inference Controls**: Custom inference parameters, token budget governors, developer personas, 5 visual themes, and local Ollama model integration.
+- **Comprehensive Settings & Inference Controls**: Custom inference parameters, token budget governors, 5 visual themes, and local Ollama model integration.
 
 ---
 
