@@ -5,10 +5,8 @@ import {
   Zap, 
   Gauge, 
   RotateCcw, 
-  Columns2, 
-  SlidersHorizontal,
-  ChevronDown,
-  Trophy,
+  ChevronDown, 
+  Trophy, 
   Lock
 } from 'lucide-react';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
@@ -56,7 +54,6 @@ export default function PromptTester() {
   const [metrics2, setMetrics2] = useState<ArenaBenchmarkMetrics | null>(null);
   const [copied1, setCopied1] = useState(false);
   const [copied2, setCopied2] = useState(false);
-  const [viewMode, setViewMode] = useState<'split' | 'diff'>('split');
   
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeDropdown, setActiveDropdown] = useState<'agent1' | 'model1' | 'agent2' | 'model2' | null>(null);
@@ -363,43 +360,18 @@ export default function PromptTester() {
           </p>
 
           {/* Quick Controls Bar */}
-          <div className="flex items-center justify-center gap-3 mt-4">
-            <div className="inline-flex items-center p-1 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md text-xs">
-              <button
-                type="button"
-                onClick={() => setViewMode('split')}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all",
-                  viewMode === 'split' ? "bg-white/10 text-white font-medium shadow-sm" : "text-gray-400 hover:text-white"
-                )}
-              >
-                <Columns2 className="w-3.5 h-3.5" />
-                <span>Split View</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('diff')}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all",
-                  viewMode === 'diff' ? "bg-white/10 text-white font-medium shadow-sm" : "text-gray-400 hover:text-white"
-                )}
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>Diff Inspector</span>
-              </button>
-            </div>
-
-            {(result1 || result2) && (
+          {(result1 || result2) && (
+            <div className="flex items-center justify-center gap-3 mt-4">
               <button
                 type="button"
                 onClick={resetArena}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white text-xs font-mono transition-all backdrop-blur-md"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white text-xs font-mono transition-all backdrop-blur-md cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Reset Results</span>
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 lg:gap-8 min-h-[720px] relative z-10">
