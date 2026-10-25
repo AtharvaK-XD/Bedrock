@@ -84,6 +84,15 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     setAuthError(null);
     setIsLoading(true);
 
+    // Sign out any lingering session in Clerk before starting OAuth to ensure the provider account selector/consent shows
+    try {
+      if (typeof clerk?.signOut === 'function' && (clerk?.session || clerk?.user || (window as any).Clerk?.session)) {
+        await clerk.signOut();
+      }
+    } catch (e) {
+      console.warn('Pre-OAuth signout warning:', e);
+    }
+
     // Desktop App (macOS & Windows): Open in external system browser tab to prevent Google 403 disallowed_useragent
     if (isDesktop) {
       const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);

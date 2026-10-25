@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useUserProfile } from '../../lib/useUserProfile';
 import { useAuth, hasApiKeysConfigured } from '../../lib/useAuth';
 import { useUser } from '@clerk/react';
-import { isMacOS } from '../../lib/platform';
+import { isMacOS, isDesktopApp } from '../../lib/platform';
 import { AppleLogo } from '../ui/ModelLogos';
 import { 
   LayoutDashboard,
@@ -230,7 +230,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
         <button
           onClick={async () => {
             await logout();
-            navigate('/login');
+            navigate(isDesktopApp() ? '/login' : '/', { replace: true });
           }}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer"
         >
