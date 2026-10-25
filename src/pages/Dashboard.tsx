@@ -185,7 +185,7 @@ export default function Dashboard() {
                 <div>
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <h2 className="text-lg sm:text-xl font-bold font-editorial text-white">
-                      {isFree ? 'Free Tier Workspace' : `${profile?.plan || 'Advanced Plan'} Active`}
+                      {isFree ? 'Free Tier Workspace' : `${profile?.plan || 'Pro Plan'} Active`}
                     </h2>
                     <span className={cn(
                       "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider border",

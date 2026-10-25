@@ -19,7 +19,7 @@ import { normalizeTier } from '../lib/subscriptionTiers';
 
 interface PricingTier {
   name: string;
-  slug: 'free' | 'advanced' | 'ultimate';
+  slug: 'free' | 'pro' | 'advanced' | 'ultimate';
   description: string;
   price: string;
   gstPrice: string;
@@ -48,8 +48,8 @@ const TIERS: PricingTier[] = [
     ],
   },
   {
-    name: 'Advanced',
-    slug: 'advanced',
+    name: 'Pro',
+    slug: 'pro',
     description: 'Uncapped prompts, frontier Pro models, and extended DAG architectures',
     price: '399',
     gstPrice: '71.82',
@@ -74,7 +74,7 @@ const TIERS: PricingTier[] = [
     gstPrice: '179.82',
     totalPrice: '1,178.82',
     features: [
-      { text: 'Everything in Advanced, plus:', active: true, bold: true },
+      { text: 'Everything in Pro, plus:', active: true, bold: true },
       { text: 'Claude 3.5 Sonnet (20241022) & GPT-4o Flagship', active: true, bold: true },
       { text: 'o3-mini & OpenAI reasoning models', active: true },
       { text: 'Perplexity Sonar Pro & xAI Grok-3 models', active: true },
@@ -117,7 +117,7 @@ export default function Pricing() {
     setIsProcessing(true);
     setErrorMessage(null);
 
-    const targetPlanName = checkoutTier.slug === 'ultimate' ? 'Ultimate Plan' : 'Advanced Plan';
+    const targetPlanName = checkoutTier.slug === 'ultimate' ? 'Ultimate Plan' : 'Pro Plan';
     const orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const token = typeof window !== 'undefined' ? localStorage.getItem('bedrock_token') : null;
@@ -204,7 +204,7 @@ export default function Pricing() {
           {TIERS.map((tier) => {
             const isCurrent = 
               (tier.slug === 'free' && currentTier === 'free') ||
-              (tier.slug === 'advanced' && currentTier === 'pro') ||
+              ((tier.slug === 'pro' || tier.slug === 'advanced') && currentTier === 'pro') ||
               (tier.slug === 'ultimate' && currentTier === 'ultimate');
 
             return (

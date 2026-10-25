@@ -56,7 +56,7 @@ export default function Billing() {
   const invoiceAmount = currentTier === 'ultimate' ? '₹1,178.82' : '₹470.82';
   const basePrice = currentTier === 'ultimate' ? '₹999.00' : '₹399.00';
   const gstPrice = currentTier === 'ultimate' ? '₹179.82' : '₹71.82';
-  const planDisplayName = currentTier === 'ultimate' ? 'Ultimate Plan' : currentTier === 'pro' ? 'Advanced Plan' : 'Free Tier';
+  const planDisplayName = currentTier === 'ultimate' ? 'Ultimate Plan' : currentTier === 'pro' ? 'Pro Plan' : 'Free Tier';
 
   const invoiceItems = isFree ? [] : [
     {
