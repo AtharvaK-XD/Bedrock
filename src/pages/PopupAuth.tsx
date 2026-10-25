@@ -18,47 +18,6 @@ export default function PopupAuth() {
 
   const providerName = strategy === 'oauth_github' ? 'GitHub' : 'Google';
 
-  const completeAlreadySignedIn = useCallback(() => {
-    try {
-      const activeClerk = clerk || (typeof window !== 'undefined' ? (window as any).Clerk : null);
-      const user = activeClerk?.user || (clerk as any)?.user;
-      const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || 'developer@bedrock.app';
-      const name = user?.fullName || user?.firstName || email.split('@')[0];
-      const now = Date.now();
-
-      localStorage.setItem('bedrock_auth_session', JSON.stringify({
-        isLoggedIn: true,
-        email,
-        name,
-        loginTime: new Date().toISOString(),
-        lastActiveAt: now,
-      }));
-      localStorage.setItem('bedrock_auth_event', now.toString());
-      try {
-        window.sessionStorage?.removeItem('bedrock_auth_popup');
-      } catch {}
-      window.dispatchEvent(new Event('bedrock_auth_update'));
-    } catch {}
-
-    if (typeof window !== 'undefined' && window.opener) {
-      try {
-        window.opener.postMessage('clerk-auth-complete', '*');
-      } catch {}
-    }
-
-    try {
-      window.close();
-    } catch {}
-    setTimeout(() => {
-      try { window.close(); } catch {}
-    }, 100);
-    setTimeout(() => {
-      if (typeof window !== 'undefined' && !window.closed) {
-        window.location.replace('/app');
-      }
-    }, 400);
-  }, [clerk]);
-
   const executeAuth = useCallback(async () => {
     try {
       setStatus('redirecting');
@@ -83,21 +42,29 @@ export default function PopupAuth() {
         client = (window as any).Clerk?.client;
       }
 
-      // Check if user is already signed in with Clerk
-      const isAlreadyAuthed = Boolean(
+      // Ensure any lingering session is cleanly signed out so the OAuth provider
+      // presents the fresh account chooser and consent screen
+      const hasLingeringSession = Boolean(
         (clerk as any)?.session ||
         (clerk as any)?.user ||
         (window as any).Clerk?.session ||
         (window as any).Clerk?.user ||
         client?.session
       );
-      if (isAlreadyAuthed) {
-        completeAlreadySignedIn();
-        return;
+      if (hasLingeringSession) {
+        try {
+          if (typeof clerk?.signOut === 'function') {
+            await clerk.signOut();
+          } else if (typeof (window as any).Clerk?.signOut === 'function') {
+            await (window as any).Clerk.signOut();
+          }
+        } catch (signOutErr) {
+          console.warn('PopupAuth pre-signout notice:', signOutErr);
+        }
       }
 
-      const targetSignIn = signIn || client?.signIn || (clerk as any).client?.signIn;
-      const targetSignUp = signUp || client?.signUp || (clerk as any).client?.signUp;
+      const targetSignIn = client?.signIn || signIn || (clerk as any).client?.signIn;
+      const targetSignUp = client?.signUp || signUp || (clerk as any).client?.signUp;
       const authResource = mode === 'register' ? (targetSignUp || targetSignIn) : (targetSignIn || targetSignUp);
 
       const origin = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file'))
@@ -106,7 +73,7 @@ export default function PopupAuth() {
       const callbackUrl = `${origin}/sso-callback?popup=1`;
       const targetUrl = `${origin}/sso-callback?popup=1`;
 
-      // Direct redirection to Google / GitHub native consent screen
+      // Redirect to Google / GitHub with explicit account selection & consent prompt
       if (typeof authResource?.authenticateWithRedirect === 'function') {
         await authResource.authenticateWithRedirect({
           strategy,
@@ -135,15 +102,42 @@ export default function PopupAuth() {
         err?.errors?.[0]?.message?.toLowerCase().includes('already signed in') ||
         err?.message?.toLowerCase().includes('already signed in');
 
+      // If Clerk rejected because of an existing session, sign out and retry immediately
       if (isAlreadySignedIn) {
-        completeAlreadySignedIn();
-        return;
+        try {
+          if (typeof clerk?.signOut === 'function') {
+            await clerk.signOut();
+          } else if (typeof (window as any).Clerk?.signOut === 'function') {
+            await (window as any).Clerk.signOut();
+          }
+          let retryClient = (clerk as any)?.client || (window as any).Clerk?.client;
+          const retrySignIn = retryClient?.signIn || signIn;
+          const retrySignUp = retryClient?.signUp || signUp;
+          const retryResource = mode === 'register' ? (retrySignUp || retrySignIn) : (retrySignIn || retrySignUp);
+
+          const origin = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file'))
+            ? window.location.origin
+            : 'https://bedrock-steel.vercel.app';
+          const callbackUrl = `${origin}/sso-callback?popup=1`;
+
+          if (typeof retryResource?.authenticateWithRedirect === 'function') {
+            await retryResource.authenticateWithRedirect({
+              strategy,
+              redirectUrl: callbackUrl,
+              redirectUrlComplete: callbackUrl,
+              oidcPrompt: 'select_account consent',
+            });
+            return;
+          }
+        } catch (retryErr) {
+          console.error('Retry after signout error:', retryErr);
+        }
       }
 
       setStatus('error');
       setErrorMessage(err?.message || `Failed to connect with ${providerName}.`);
     }
-  }, [clerk, signIn, signUp, strategy, mode, providerName, completeAlreadySignedIn]);
+  }, [clerk, signIn, signUp, strategy, mode, providerName]);
 
   useEffect(() => {
     let timer: any = null;
@@ -161,23 +155,8 @@ export default function PopupAuth() {
         client = (window as any).Clerk?.client;
       }
 
-      // Pre-check for existing session
-      const isAlreadyAuthed = Boolean(
-        (clerk as any)?.session ||
-        (clerk as any)?.user ||
-        (window as any).Clerk?.session ||
-        (window as any).Clerk?.user ||
-        client?.session
-      );
-      if (isAlreadyAuthed) {
-        attemptedRef.current = true;
-        if (timer) clearInterval(timer);
-        completeAlreadySignedIn();
-        return;
-      }
-
-      const targetSignIn = signIn || client?.signIn || (clerk as any).client?.signIn;
-      const targetSignUp = signUp || client?.signUp || (clerk as any).client?.signUp;
+      const targetSignIn = client?.signIn || signIn || (clerk as any).client?.signIn;
+      const targetSignUp = client?.signUp || signUp || (clerk as any).client?.signUp;
       const authResource = mode === 'register' ? (targetSignUp || targetSignIn) : (targetSignIn || targetSignUp);
 
       if (typeof authResource?.authenticateWithRedirect === 'function') {
@@ -207,7 +186,7 @@ export default function PopupAuth() {
       if (timer) clearInterval(timer);
       clearTimeout(fallbackTimer);
     };
-  }, [clerk, signIn, signUp, mode, executeAuth, completeAlreadySignedIn]);
+  }, [clerk, signIn, signUp, mode, executeAuth]);
 
   if (status === 'error') {
     return (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth as useClerkAuth, useUser } from '@clerk/react';
+import { useAuth as useClerkAuth, useUser, useClerk } from '@clerk/react';
 
 const AUTH_STORAGE_KEY = 'bedrock_auth_session';
 const AUTH_UPDATE_EVENT = 'bedrock_auth_update';
@@ -90,6 +90,7 @@ function getStoredSession(): AuthSession {
 
 export function useAuth() {
   const [localSession, setLocalSession] = useState<AuthSession>(getStoredSession);
+  const clerk = useClerk();
   const clerkAuth = useClerkAuth();
   const { user } = useUser();
   const lastTouchRef = useRef<number>(Date.now());
@@ -105,7 +106,9 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     try {
-      if (clerkAuth?.signOut) {
+      if (typeof clerk?.signOut === 'function') {
+        await clerk.signOut();
+      } else if (typeof clerkAuth?.signOut === 'function') {
         await clerkAuth.signOut();
       } else if (typeof (window as any).Clerk?.signOut === 'function') {
         await (window as any).Clerk.signOut();
@@ -123,7 +126,7 @@ export function useAuth() {
     }
     setLocalSession({ isLoggedIn: false });
     window.dispatchEvent(new Event(AUTH_UPDATE_EVENT));
-  }, [clerkAuth]);
+  }, [clerk, clerkAuth]);
 
   // Sync auth state across windows/tabs
   useEffect(() => {

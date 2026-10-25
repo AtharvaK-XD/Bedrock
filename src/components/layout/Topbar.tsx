@@ -318,7 +318,7 @@ export function Topbar() {
           <button
             onClick={async () => {
               await logout();
-              navigate(isDesktop ? '/login' : '/');
+              navigate(isDesktop ? '/login' : '/', { replace: true });
             }}
             title="Log Out"
             className="p-1.5 rounded-xl text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer border border-transparent hover:border-rose-500/20"
