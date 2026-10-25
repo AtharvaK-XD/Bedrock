@@ -503,7 +503,36 @@ export default function PromptTester() {
                   {isTesting ? (
                     <div className="h-full flex items-center justify-center text-gray-400 min-h-[220px]">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="w-6 h-6 border-2 border-gray-700 border-t-emerald-400 rounded-full animate-spin"></div>
+                        {/* GPU Hardware-Composited Loading Ring (Never freezes or stops) */}
+                        <div className="relative w-8 h-8 flex items-center justify-center">
+                          <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-sm pointer-events-none" />
+                          <svg className="w-full h-full" viewBox="0 0 32 32" fill="none">
+                            <circle
+                              cx="16"
+                              cy="16"
+                              r="13"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              className="text-gray-800"
+                            />
+                          </svg>
+                          <svg
+                            className="absolute inset-0 w-full h-full gpu-spinner text-emerald-400"
+                            viewBox="0 0 32 32"
+                            fill="none"
+                          >
+                            <circle
+                              cx="16"
+                              cy="16"
+                              r="13"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeDasharray="81.68"
+                              strokeDashoffset="55"
+                            />
+                          </svg>
+                        </div>
                         <EncryptedText 
                           text="STREAMING MODEL INFERENCE..." 
                           encryptedClassName="text-copper-500/60 font-mono text-xs"
@@ -589,7 +618,36 @@ export default function PromptTester() {
                   {isTesting ? (
                     <div className="h-full flex items-center justify-center text-gray-400 min-h-[220px]">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="w-6 h-6 border-2 border-gray-700 border-t-emerald-400 rounded-full animate-spin"></div>
+                        {/* GPU Hardware-Composited Loading Ring (Never freezes or stops) */}
+                        <div className="relative w-8 h-8 flex items-center justify-center">
+                          <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-sm pointer-events-none" />
+                          <svg className="w-full h-full" viewBox="0 0 32 32" fill="none">
+                            <circle
+                              cx="16"
+                              cy="16"
+                              r="13"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              className="text-gray-800"
+                            />
+                          </svg>
+                          <svg
+                            className="absolute inset-0 w-full h-full gpu-spinner text-emerald-400"
+                            viewBox="0 0 32 32"
+                            fill="none"
+                          >
+                            <circle
+                              cx="16"
+                              cy="16"
+                              r="13"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeDasharray="81.68"
+                              strokeDashoffset="55"
+                            />
+                          </svg>
+                        </div>
                         <EncryptedText 
                           text="BENCHMARKING LATENCY & TOKENS..." 
                           encryptedClassName="text-copper-500/60 font-mono text-xs"
