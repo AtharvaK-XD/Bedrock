@@ -28,7 +28,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
   const pollTimerRef = useRef<any>(null);
   const unsubRef = useRef<(() => void) | null>(null);
 
-  const { login } = useAuth();
+  const { login, isLoggedIn } = useAuth();
   const { updateProfile } = useUserProfile();
   const navigate = useNavigate();
   const clerk = useClerk();
@@ -37,6 +37,12 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
 
   const isDesktop = isDesktopApp();
   const targetPath = '/app';
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      navigate(targetPath, { replace: true });
+    }
+  }, [isLoggedIn, navigate]);
 
   useEffect(() => {
     return () => {

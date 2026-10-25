@@ -27,13 +27,15 @@ export default function SSOCallback() {
         const email = clerkUser?.primaryEmailAddress?.emailAddress || clerkUser?.emailAddresses?.[0]?.emailAddress || 'developer@bedrock.app';
         const name = clerkUser?.fullName || clerkUser?.firstName || email.split('@')[0];
         
+        const now = Date.now();
         localStorage.setItem('bedrock_auth_session', JSON.stringify({
           isLoggedIn: true,
           email,
           name,
-          loginTime: new Date().toISOString()
+          loginTime: new Date().toISOString(),
+          lastActiveAt: now,
         }));
-        localStorage.setItem('bedrock_auth_event', Date.now().toString());
+        localStorage.setItem('bedrock_auth_event', now.toString());
         try {
           window.sessionStorage?.removeItem('bedrock_auth_popup');
         } catch {
