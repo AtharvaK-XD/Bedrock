@@ -20,6 +20,7 @@ import pythonLogoImg from '../../assets/logos/python.png';
 import universalLogoImg from '../../assets/logos/universal.png';
 import appleLogoImg from '../../assets/logos/apple.png';
 import perplexityLogoImg from '../../assets/logos/perplexity.png';
+import qwenLogoImg from '../../assets/logos/qwen.png';
 
 export function AppleLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -264,17 +265,12 @@ export function OllamaLogo({ className = "w-4 h-4" }: { className?: string }) {
 
 export function QwenLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={cn("shrink-0", className)}>
-      <defs>
-        <linearGradient id="qwen-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#8A2BE2" />
-          <stop offset="100%" stopColor="#4A00E0" />
-        </linearGradient>
-      </defs>
-      <circle cx="12" cy="12" r="9.5" fill="url(#qwen-grad)" />
-      <path d="M12 6l5 3v6l-5 3-5-3V9l5-3z" stroke="#FFFFFF" strokeWidth="1.5" fill="none" />
-      <circle cx="12" cy="12" r="2" fill="#FFFFFF" />
-    </svg>
+    <img
+      src={qwenLogoImg}
+      alt="Alibaba Qwen"
+      draggable={false}
+      className={cn("object-contain shrink-0 select-none", className)}
+    />
   );
 }
 
@@ -384,29 +380,37 @@ export function getLogoComponent(idOrName?: string, fallbackName?: string): Reac
   // 9. DeepSeek
   if (key.includes('deepseek')) return DeepSeekLogo;
 
-  // 10. Hugging Face
+  // 10. Qwen / Alibaba (Matches all Qwen models across Groq, HF, Ollama, OpenRouter)
+  if (
+    key.includes('qwen') ||
+    key.includes('alibaba')
+  ) {
+    return QwenLogo;
+  }
+
+  // 11. Hugging Face
   if (key.includes('hugging') || key.includes('hf/') || key.includes('hf-')) {
     return HuggingFaceLogo;
   }
 
-  // 11. Google Gemini
+  // 12. Google Gemini
   if (key.includes('gemini') || key.includes('google') || key.includes('gemma')) {
     return GeminiLogo;
   }
 
-  // 12. Perplexity
+  // 13. Perplexity
   if (key.includes('perplexity') || key.includes('sonar') || key.includes('pplx')) return PerplexityLogo;
 
-  // 13. Grok / xAI
+  // 14. Grok / xAI
   if (key.includes('grok') || key.includes('x.ai') || key.includes('xai')) return GrokLogo;
 
-  // 14. Cursor IDE / Cursorrules
+  // 15. Cursor IDE / Cursorrules
   if (key.includes('cursor') || key.includes('cursorrules')) return CursorLogo;
 
-  // 15. Windsurf Cascade / Codeium
+  // 16. Windsurf Cascade / Codeium
   if (key.includes('windsurf') || key.includes('cascade')) return WindsurfLogo;
 
-  // 16. Python / LangChain
+  // 17. Python / LangChain
   if (
     key.includes('langchain') ||
     key.includes('python') ||
@@ -417,13 +421,10 @@ export function getLogoComponent(idOrName?: string, fallbackName?: string): Reac
     return PythonLogo;
   }
 
-  // 14. Groq
+  // 18. Groq
   if (key.includes('groq')) return GroqLogo;
 
-  // 15. Qwen
-  if (key.includes('qwen')) return QwenLogo;
-
-  // 16. Ollama
+  // 19. Ollama
   if (key.includes('ollama')) return OllamaLogo;
 
   // 17. Apple macOS / Darwin
