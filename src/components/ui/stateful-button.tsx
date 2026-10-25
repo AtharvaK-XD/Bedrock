@@ -96,8 +96,6 @@ export const Button = ({ className, children, disabled, ...props }: ButtonProps)
 
   return (
     <motion.button
-      layout
-      layoutId="button"
       ref={scope}
       disabled={disabled}
       className={cn(
@@ -107,11 +105,11 @@ export const Button = ({ className, children, disabled, ...props }: ButtonProps)
       {...buttonProps}
       onClick={handleClick}
     >
-      <motion.div layout className="flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <Loader />
         <CheckIcon />
-        <motion.span layout>{children}</motion.span>
-      </motion.div>
+        <span>{children}</span>
+      </div>
     </motion.button>
   );
 };
