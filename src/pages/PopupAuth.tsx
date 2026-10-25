@@ -18,6 +18,47 @@ export default function PopupAuth() {
 
   const providerName = strategy === 'oauth_github' ? 'GitHub' : 'Google';
 
+  const completeAlreadySignedIn = useCallback(() => {
+    try {
+      const activeClerk = clerk || (typeof window !== 'undefined' ? (window as any).Clerk : null);
+      const user = activeClerk?.user || (clerk as any)?.user;
+      const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || 'developer@bedrock.app';
+      const name = user?.fullName || user?.firstName || email.split('@')[0];
+      const now = Date.now();
+
+      localStorage.setItem('bedrock_auth_session', JSON.stringify({
+        isLoggedIn: true,
+        email,
+        name,
+        loginTime: new Date().toISOString(),
+        lastActiveAt: now,
+      }));
+      localStorage.setItem('bedrock_auth_event', now.toString());
+      try {
+        window.sessionStorage?.removeItem('bedrock_auth_popup');
+      } catch {}
+      window.dispatchEvent(new Event('bedrock_auth_update'));
+    } catch {}
+
+    if (typeof window !== 'undefined' && window.opener) {
+      try {
+        window.opener.postMessage('clerk-auth-complete', '*');
+      } catch {}
+    }
+
+    try {
+      window.close();
+    } catch {}
+    setTimeout(() => {
+      try { window.close(); } catch {}
+    }, 100);
+    setTimeout(() => {
+      if (typeof window !== 'undefined' && !window.closed) {
+        window.location.replace('/app');
+      }
+    }, 400);
+  }, [clerk]);
+
   const executeAuth = useCallback(async () => {
     try {
       setStatus('redirecting');
@@ -40,6 +81,19 @@ export default function PopupAuth() {
       }
       if (!client && typeof window !== 'undefined') {
         client = (window as any).Clerk?.client;
+      }
+
+      // Check if user is already signed in with Clerk
+      const isAlreadyAuthed = Boolean(
+        (clerk as any)?.session ||
+        (clerk as any)?.user ||
+        (window as any).Clerk?.session ||
+        (window as any).Clerk?.user ||
+        client?.session
+      );
+      if (isAlreadyAuthed) {
+        completeAlreadySignedIn();
+        return;
       }
 
       const targetSignIn = signIn || client?.signIn || (clerk as any).client?.signIn;
@@ -77,10 +131,19 @@ export default function PopupAuth() {
       throw new Error(`Failed to initialize ${providerName} authentication redirect.`);
     } catch (err: any) {
       console.error('PopupAuth error:', err);
+      const isAlreadySignedIn = 
+        err?.errors?.[0]?.message?.toLowerCase().includes('already signed in') ||
+        err?.message?.toLowerCase().includes('already signed in');
+
+      if (isAlreadySignedIn) {
+        completeAlreadySignedIn();
+        return;
+      }
+
       setStatus('error');
       setErrorMessage(err?.message || `Failed to connect with ${providerName}.`);
     }
-  }, [clerk, signIn, signUp, strategy, mode, providerName]);
+  }, [clerk, signIn, signUp, strategy, mode, providerName, completeAlreadySignedIn]);
 
   useEffect(() => {
     let timer: any = null;
@@ -96,6 +159,21 @@ export default function PopupAuth() {
       }
       if (!client && typeof window !== 'undefined') {
         client = (window as any).Clerk?.client;
+      }
+
+      // Pre-check for existing session
+      const isAlreadyAuthed = Boolean(
+        (clerk as any)?.session ||
+        (clerk as any)?.user ||
+        (window as any).Clerk?.session ||
+        (window as any).Clerk?.user ||
+        client?.session
+      );
+      if (isAlreadyAuthed) {
+        attemptedRef.current = true;
+        if (timer) clearInterval(timer);
+        completeAlreadySignedIn();
+        return;
       }
 
       const targetSignIn = signIn || client?.signIn || (clerk as any).client?.signIn;
@@ -129,7 +207,7 @@ export default function PopupAuth() {
       if (timer) clearInterval(timer);
       clearTimeout(fallbackTimer);
     };
-  }, [clerk, signIn, signUp, mode, executeAuth]);
+  }, [clerk, signIn, signUp, mode, executeAuth, completeAlreadySignedIn]);
 
   if (status === 'error') {
     return (

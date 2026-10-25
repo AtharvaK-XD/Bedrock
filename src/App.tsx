@@ -95,14 +95,22 @@ function AnimatedRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         {/* Root Route:
-            - Website (browser/Vercel): STRICTLY the original Landing page
-            - Desktop app: Login required on first launch, then goes to app
+            - If authenticated (within 7-day active window): navigate directly to /app Dashboard
+            - If unauthenticated / expired:
+                * Desktop app: redirect to /login
+                * Website: show Landing page for first-time sign up / sign in
         */}
         <Route 
           path="/" 
           element={
-            isDesktop ? (
-              isLoggedIn ? <Navigate to="/app" replace /> : <Navigate to="/login" replace />
+            !isLoaded ? (
+              <div className="flex items-center justify-center min-h-screen bg-[#050505]">
+                <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
+              </div>
+            ) : isLoggedIn ? (
+              <Navigate to="/app" replace />
+            ) : isDesktop ? (
+              <Navigate to="/login" replace />
             ) : (
               <Landing />
             )

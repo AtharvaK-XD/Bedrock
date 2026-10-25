@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthCard } from '../components/auth/AuthCard';
 import { Shield, Sparkles, Layout, Layers, Database, Globe } from 'lucide-react';
 import { AppleLogo, WindowsLogo } from '../components/ui/ModelLogos';
@@ -8,6 +8,7 @@ import { Scene3D } from '../components/landing/Scene3D';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { cn } from '../lib/utils';
+import { useAuth } from '../lib/useAuth';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -28,6 +29,14 @@ const RevealText = ({ text, className, containerClassName }: { text: string, cla
 export default function Landing() {
   const containerRef = useRef<HTMLDivElement>(null);
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
+  const { isLoggedIn, isLoaded } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isLoaded && isLoggedIn) {
+      navigate('/app', { replace: true });
+    }
+  }, [isLoaded, isLoggedIn, navigate]);
   
   useEffect(() => {
     const ctx = gsap.context(() => {
