@@ -278,16 +278,16 @@
   font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace !important;
 }
 
-/* Reduced Motion Mode */
-.reduce-motion *,
-.reduce-motion *::before,
-.reduce-motion *::after {
+/* Reduced Motion Mode: disable non-essential animations, but keep loading indicators spinning */
+.reduce-motion *:not(.gpu-spinner):not([class*="spin"]):not([class*="animate-spin"]),
+.reduce-motion *:not(.gpu-spinner):not([class*="spin"]):not([class*="animate-spin"])::before,
+.reduce-motion *:not(.gpu-spinner):not([class*="spin"]):not([class*="animate-spin"])::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
 }
 
-/* GPU-Accelerated Hardware Composited Spinners (Zero stutter/freeze) */
+/* GPU-Accelerated Hardware Composited Spinners (Zero stutter/freeze, runs continuously) */
 .gpu-spinner {
   will-change: transform;
   transform: translateZ(0);
