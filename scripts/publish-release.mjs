@@ -96,23 +96,35 @@ async function uploadAsset(repo, releaseId, filePath, assetName, contentType) {
   const fileData = fs.readFileSync(filePath);
   const uploadUrl = `https://uploads.github.com/repos/${repo}/releases/${releaseId}/assets?name=${encodeURIComponent(assetName)}`;
 
-  const uploadRes = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': contentType,
-      'Content-Length': fileStats.size.toString(),
-      'User-Agent': 'Bedrock-Publisher',
-      Accept: 'application/vnd.github.v3+json',
-    },
-    body: fileData,
-  });
+  let attempts = 0;
+  while (attempts < 3) {
+    attempts++;
+    try {
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': contentType,
+          'Content-Length': fileStats.size.toString(),
+          'User-Agent': 'Bedrock-Publisher',
+          Accept: 'application/vnd.github.v3+json',
+        },
+        body: fileData,
+      });
 
-  if (!uploadRes.ok) {
-    const errText = await uploadRes.text();
-    throw new Error(`Failed to upload ${assetName}: ${uploadRes.status} ${errText}`);
+      if (uploadRes.ok) {
+        console.log(`      ✓ ${assetName} uploaded successfully.`);
+        return;
+      }
+      const errText = await uploadRes.text();
+      console.warn(`  [Retry ${attempts}/3] Upload failed for ${assetName}: ${uploadRes.status} ${errText}`);
+      await new Promise((r) => setTimeout(r, 3000));
+    } catch (e) {
+      console.warn(`  [Retry ${attempts}/3] Network error uploading ${assetName}:`, e?.message || e);
+      await new Promise((r) => setTimeout(r, 3000));
+    }
   }
-  console.log(`      ✓ ${assetName} uploaded successfully.`);
+  throw new Error(`Failed to upload ${assetName} after 3 attempts.`);
 }
 
 async function run() {
