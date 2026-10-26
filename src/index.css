@@ -200,6 +200,21 @@
   overflow: visible !important;
 }
 
+/* Ensure BorderBeam's colorful traveling beam continuously rotates and is never paused */
+[data-beam],
+[data-beam]::before,
+[data-beam]::after,
+[data-beam] [data-beam-bloom] {
+  animation-play-state: running !important;
+}
+
+[data-beam][data-paused],
+[data-beam][data-paused]::before,
+[data-beam][data-paused]::after,
+[data-beam][data-paused] [data-beam-bloom] {
+  animation-play-state: running !important;
+}
+
 /* Custom Appearance Themes */
 [data-theme="obsidian"] body {
   background-color: #000000 !important;
@@ -278,13 +293,22 @@
   font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace !important;
 }
 
-/* Reduced Motion Mode: disable non-essential animations, but keep loading indicators spinning */
-.reduce-motion *:not(.gpu-spinner):not([class*="spin"]):not([class*="animate-spin"]),
-.reduce-motion *:not(.gpu-spinner):not([class*="spin"]):not([class*="animate-spin"])::before,
-.reduce-motion *:not(.gpu-spinner):not([class*="spin"]):not([class*="animate-spin"])::after {
+/* Reduced Motion Mode: disable non-essential animations, but keep loading indicators and border beam spinning */
+.reduce-motion *:not(.gpu-spinner):not([class*="spin"]):not([class*="animate-spin"]):not([data-beam]):not([data-beam] *),
+.reduce-motion *:not(.gpu-spinner):not([class*="spin"]):not([class*="animate-spin"]):not([data-beam]):not([data-beam] *)::before,
+.reduce-motion *:not(.gpu-spinner):not([class*="spin"]):not([class*="animate-spin"]):not([data-beam]):not([data-beam] *)::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-beam],
+  [data-beam]::before,
+  [data-beam]::after,
+  [data-beam] [data-beam-bloom] {
+    animation-play-state: running !important;
+  }
 }
 
 /* GPU-Accelerated Hardware Composited Spinners (Zero stutter/freeze, runs continuously) */
