@@ -73,13 +73,14 @@ async function uploadAsset(repo, releaseId, filePath, assetName, contentType) {
     return;
   }
 
-  // Check if asset already exists
+  // Check if asset already exists (GitHub replaces spaces with dots in filenames)
   const relRes = await githubFetch(`https://api.github.com/repos/${repo}/releases/${releaseId}`);
   const releaseData = await relRes.json();
+  const normalize = (s) => (s || '').replace(/\s+/g, '.').toLowerCase();
   if (releaseData.assets) {
     for (const existing of releaseData.assets) {
-      if (existing.name === assetName) {
-        console.log(`  Deleting existing asset ${assetName} (ID: ${existing.id})...`);
+      if (existing.name === assetName || normalize(existing.name) === normalize(assetName)) {
+        console.log(`  Deleting existing asset ${existing.name} (ID: ${existing.id})...`);
         await githubFetch(`https://api.github.com/repos/${repo}/releases/assets/${existing.id}`, {
           method: 'DELETE',
         });
@@ -124,7 +125,7 @@ async function run() {
   ];
 
   for (const { src, dest } of filesToDuplicate) {
-    if (fs.existsSync(src) && !fs.existsSync(dest)) {
+    if (fs.existsSync(src)) {
       console.log(`Copying ${src} -> ${dest}`);
       fs.copyFileSync(src, dest);
     }
