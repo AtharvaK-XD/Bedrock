@@ -580,41 +580,12 @@ export default function Wizard() {
               <PixelCard
                 active={true}
                 variant="copper"
-                gap={28}
-                speed={30}
+                gap={12}
+                speed={35}
                 className="w-full h-full !rounded-none !border-0 !bg-black flex flex-col items-center justify-center relative"
               >
                 <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 max-w-lg select-none pointer-events-none">
-                  {/* GPU Hardware-Composited Loading Ring (Will never freeze/stop) */}
-                  <div className="relative w-14 h-14 flex items-center justify-center">
-                    <div className="absolute inset-0 rounded-full bg-copper-500/20 blur-md pointer-events-none" />
-                    <svg className="w-full h-full" viewBox="0 0 48 48" fill="none">
-                      <circle
-                        cx="24"
-                        cy="24"
-                        r="20"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        className="text-copper-500/25"
-                      />
-                    </svg>
-                    <svg
-                      className="absolute inset-0 w-full h-full gpu-spinner text-copper-400"
-                      viewBox="0 0 48 48"
-                      fill="none"
-                    >
-                      <circle
-                        cx="24"
-                        cy="24"
-                        r="20"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeDasharray="125.6"
-                        strokeDashoffset="80"
-                      />
-                    </svg>
-                  </div>
+                  <div className="w-12 h-12 border-2 border-copper-500/30 border-t-copper-400 rounded-full animate-spin drop-shadow-[0_0_15px_rgba(200,168,107,0.5)]"></div>
                   <div className="mt-6 text-white font-display font-medium text-2xl sm:text-3xl tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
                     <EncryptedText
                       text={isGenerating ? 'Generating Follow-Up Questions' : 'Synthesizing Build-Ready Prompt'}
