@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 
-const repos = ['AtharvaK-XD/Bedrock', 'Bedrockxai/Bedrock'];
+const repos = ['Bedrockxai/Bedrock', 'AtharvaK-XD/Bedrock'];
 
 console.log('==> Fetching GitHub credentials for PR automation...');
 const credInput = 'protocol=https\nhost=github.com\n';
@@ -23,7 +23,6 @@ async function createAndMergePR(repo) {
   console.log(`==> Processing PR for repository: ${repo}`);
   console.log(`========================================================`);
 
-  // 1. Create Pull Request from testing into main
   const prTitle = 'Release v1.3.1: Desktop Cloud Sync, Per-Model BYOK Enforcer & Borderless Badges';
   const prBody = `## Bedrock v1.3.1 Release
 
@@ -37,16 +36,22 @@ async function createAndMergePR(repo) {
 `;
 
   console.log(`Creating Pull Request on ${repo} (head: testing, base: main)...`);
-  const prRes = await fetch(`https://api.github.com/repos/${repo}/pulls`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      title: prTitle,
-      head: 'testing',
-      base: 'main',
-      body: prBody,
-    }),
-  });
+  let prRes;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    prRes = await fetch(`https://api.github.com/repos/${repo}/pulls`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        title: prTitle,
+        head: 'testing',
+        base: 'main',
+        body: prBody,
+      }),
+    });
+    if (prRes.ok || prRes.status === 422) break;
+    console.log(`Attempt ${attempt} returned ${prRes.status}. Retrying in 2 seconds...`);
+    await new Promise((r) => setTimeout(r, 2000));
+  }
 
   let prData;
   if (prRes.ok) {
@@ -54,7 +59,6 @@ async function createAndMergePR(repo) {
     console.log(`✓ Pull Request #${prData.number} created successfully: ${prData.html_url}`);
   } else {
     const errText = await prRes.text();
-    // Check if PR already exists
     if (errText.includes('A pull request already exists')) {
       console.log(`PR already exists for ${repo}, fetching open PRs...`);
       const listRes = await fetch(`https://api.github.com/repos/${repo}/pulls?head=${repo.split('/')[0]}:testing&base=main`, { headers });
@@ -65,29 +69,33 @@ async function createAndMergePR(repo) {
       } else {
         throw new Error(`PR exists but could not be located on ${repo}: ${errText}`);
       }
+    } else if (errText.includes('No commits between') || errText.includes('already merged')) {
+      console.log(`✓ testing is already merged into main on ${repo}.`);
+      return;
     } else {
       throw new Error(`Failed to create PR on ${repo}: ${prRes.status} ${errText}`);
     }
   }
 
-  // 2. Merge Pull Request into main
-  console.log(`Merging Pull Request #${prData.number} into main on ${repo}...`);
-  const mergeRes = await fetch(`https://api.github.com/repos/${repo}/pulls/${prData.number}/merge`, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify({
-      commit_title: `Merge pull request #${prData.number} from testing (v1.3.1)`,
-      commit_message: prTitle,
-      merge_method: 'merge',
-    }),
-  });
+  if (prData) {
+    console.log(`Merging Pull Request #${prData.number} into main on ${repo}...`);
+    const mergeRes = await fetch(`https://api.github.com/repos/${repo}/pulls/${prData.number}/merge`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        commit_title: `Merge pull request #${prData.number} from testing (v1.3.1)`,
+        commit_message: prTitle,
+        merge_method: 'merge',
+      }),
+    });
 
-  if (mergeRes.ok) {
-    const mergeData = await mergeRes.json();
-    console.log(`✓ Pull Request #${prData.number} successfully merged! (SHA: ${mergeData.sha})`);
-  } else {
-    const mergeErr = await mergeRes.text();
-    throw new Error(`Failed to merge PR #${prData.number} on ${repo}: ${mergeRes.status} ${mergeErr}`);
+    if (mergeRes.ok) {
+      const mergeData = await mergeRes.json();
+      console.log(`✓ Pull Request #${prData.number} successfully merged! (SHA: ${mergeData.sha})`);
+    } else {
+      const mergeErr = await mergeRes.text();
+      throw new Error(`Failed to merge PR #${prData.number} on ${repo}: ${mergeRes.status} ${mergeErr}`);
+    }
   }
 }
 
@@ -95,7 +103,7 @@ async function run() {
   for (const repo of repos) {
     await createAndMergePR(repo);
   }
-  console.log('\n==> All Pull Requests successfully created and merged on both accounts!');
+  console.log('\n==> All Pull Requests successfully verified and merged on both accounts!');
 }
 
 run().catch((err) => {
