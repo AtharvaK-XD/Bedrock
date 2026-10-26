@@ -30,6 +30,8 @@ import { isDesktopApp } from '../lib/platform';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { testPrompt, saveWorkflow, loadWorkflows, deleteWorkflow } from '../lib/api';
+import { openApiKeyModal } from '../lib/apiKeyEvents';
+import { isModelKeyConfigured } from '../lib/apiKeysHelper';
 import {
   Bot,
   Sparkles,
@@ -299,6 +301,18 @@ const GenericNode = memo(({ id, data, selected }: { id: string, data: PromptNode
   };
 
   const handleRun = async () => {
+    if (isDesktopApp() && (data.nodeType === 'prompt' || data.nodeType === 'evaluation' || (data.nodeType === 'merge' && data.mergeStrategy === 'synthesize'))) {
+      if (!isModelKeyConfigured(data.modelId, data.agentId)) {
+        openApiKeyModal({
+          modelId: data.modelId,
+          agentId: data.agentId,
+          modelName: model?.name || data.modelId,
+          errorMessage: `Please configure your API key for ${model?.name || data.modelId} before running this pipeline node.`
+        });
+        return;
+      }
+    }
+
     setNodes(nodes => nodes.map(n => n.id === id ? { ...n, data: { ...n.data, status: 'running', output: undefined } } : n));
     
     try {
@@ -2162,6 +2176,14 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                         options={AI_AGENTS}
                         onChange={(agentId) => {
                           const newAgent = AI_AGENTS.find(a => a.id === agentId)!;
+                          if (isDesktopApp() && !isModelKeyConfigured(newAgent.models[0].id, newAgent.id)) {
+                            openApiKeyModal({
+                              agentId: newAgent.id,
+                              modelId: newAgent.models[0].id,
+                              modelName: newAgent.name,
+                              errorMessage: `Please configure your API key for ${newAgent.name} to use this model provider.`
+                            });
+                          }
                           onNodeDataChange(activeNode.id, { agentId: newAgent.id, modelId: newAgent.models[0].id });
                         }}
                         renderValue={(agent) => (
@@ -2182,6 +2204,16 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                         value={activeNode.data.modelId}
                         options={(AI_AGENTS.find(a => a.id === activeNode.data.agentId) || AI_AGENTS[0]).models}
                         onChange={(modelId) => {
+                          if (isDesktopApp() && !isModelKeyConfigured(modelId, activeNode.data.agentId)) {
+                            openApiKeyModal({
+                              agentId: activeNode.data.agentId,
+                              modelId: modelId,
+                              modelName: modelId,
+                              errorMessage: `Please configure your API key for ${modelId} before executing pipeline nodes.`
+                            });
+                            onNodeDataChange(activeNode.id, { modelId });
+                            return;
+                          }
                           if (!isModelAllowedForTier(modelId, profile?.plan)) {
                             const req = getModelRequiredTier(modelId);
                             setUpgradeModal({
@@ -2246,6 +2278,15 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                 
                 <button 
                   onClick={async () => {
+                    if (isDesktopApp() && !isModelKeyConfigured(activeNode.data.modelId, activeNode.data.agentId)) {
+                      openApiKeyModal({
+                        modelId: activeNode.data.modelId,
+                        agentId: activeNode.data.agentId,
+                        modelName: activeNode.data.modelId,
+                        errorMessage: `Please configure your API key for ${activeNode.data.modelId} before testing this node.`
+                      });
+                      return;
+                    }
                     const isAllowed = isModelAllowedForTier(activeNode.data.modelId, profile?.plan);
                     if (!isAllowed) {
                       const req = getModelRequiredTier(activeNode.data.modelId);

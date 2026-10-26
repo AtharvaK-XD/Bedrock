@@ -5,11 +5,32 @@ export interface UpdateStatus {
   error?: string;
   releaseNotes?: string;
   currentVersion?: string;
+  downloadUrl?: string;
 }
+
+export const CURRENT_APP_VERSION = '1.3.1';
 
 type UpdateListener = (status: UpdateStatus) => void;
 const listeners = new Set<UpdateListener>();
-let currentStatus: UpdateStatus = { status: 'idle' };
+let currentStatus: UpdateStatus = { status: 'idle', currentVersion: CURRENT_APP_VERSION };
+
+export function parseSemver(v?: string): [number, number, number] {
+  if (!v) return [0, 0, 0];
+  const cleaned = v.trim().replace(/^v/i, '').split('-')[0];
+  const parts = cleaned.split('.').map((p) => parseInt(p, 10) || 0);
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+export function isVersionNewer(remoteVersion: string, currentVersion: string): boolean {
+  const [rMaj, rMin, rPatch] = parseSemver(remoteVersion);
+  const [cMaj, cMin, cPatch] = parseSemver(currentVersion);
+
+  if (rMaj > cMaj) return true;
+  if (rMaj < cMaj) return false;
+  if (rMin > cMin) return true;
+  if (rMin < cMin) return false;
+  return rPatch > cPatch;
+}
 
 export function subscribeToUpdates(listener: UpdateListener): () => void {
   listeners.add(listener);
@@ -50,58 +71,133 @@ if (typeof window !== 'undefined' && (window as any).electronUpdater?.onStatusCh
 }
 
 /**
- * Checks for updates using Electron's native GitHub release updater,
- * with fallback for Tauri runtime if present.
+ * Directly queries the official GitHub releases API to check for newer published releases.
+ */
+export async function fetchLatestGitHubRelease(): Promise<{
+  tagName: string;
+  version: string;
+  name: string;
+  releaseNotes: string;
+  publishedAt: string;
+  htmlUrl: string;
+  downloadUrl?: string;
+} | null> {
+  const repos = ['Bedrockxai/Bedrock', 'AtharvaK-XD/Bedrock'];
+  for (const repo of repos) {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
+        headers: { Accept: 'application/vnd.github.v3+json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const tagName = data.tag_name || '';
+        const version = tagName.replace(/^v/i, '').replace(/-mac$/i, '');
+
+        const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
+        let downloadUrl = data.html_url;
+        if (Array.isArray(data.assets)) {
+          const matched = isMac
+            ? data.assets.find((a: any) => a.name?.endsWith('.dmg') || a.name?.endsWith('.zip'))
+            : data.assets.find((a: any) => a.name?.endsWith('.exe'));
+          if (matched?.browser_download_url) {
+            downloadUrl = matched.browser_download_url;
+          }
+        }
+
+        return {
+          tagName,
+          version,
+          name: data.name || `Bedrock ${tagName}`,
+          releaseNotes: data.body || '',
+          publishedAt: data.published_at || '',
+          htmlUrl: data.html_url,
+          downloadUrl,
+        };
+      }
+    } catch (e) {
+      console.warn(`[Updater] Error checking release on ${repo}:`, e);
+    }
+  }
+  return null;
+}
+
+/**
+ * Checks for updates using GitHub Releases API first, with fallback to Electron autoUpdater.
  */
 export async function checkForUpdates(): Promise<UpdateStatus> {
-  // 1. Electron auto-updater
+  notifyListeners({ status: 'checking', currentVersion: CURRENT_APP_VERSION });
+
+  // 1. Direct GitHub Releases API Check
+  try {
+    const latestRelease = await fetchLatestGitHubRelease();
+    if (latestRelease) {
+      const current = CURRENT_APP_VERSION;
+      const hasUpdate = isVersionNewer(latestRelease.version, current);
+
+      if (hasUpdate) {
+        const status: UpdateStatus = {
+          status: 'available',
+          version: latestRelease.version,
+          releaseNotes: latestRelease.releaseNotes,
+          currentVersion: current,
+          downloadUrl: latestRelease.downloadUrl,
+        };
+        notifyListeners(status);
+
+        // Also trigger background auto-download in Electron if supported
+        if (typeof window !== 'undefined' && (window as any).electronUpdater?.checkForUpdates) {
+          (window as any).electronUpdater.checkForUpdates().catch(() => {});
+        }
+
+        return status;
+      } else {
+        const status: UpdateStatus = {
+          status: 'up-to-date',
+          currentVersion: current,
+          version: latestRelease.version,
+        };
+        notifyListeners(status);
+        return status;
+      }
+    }
+  } catch (err: any) {
+    console.warn('[Updater] Direct GitHub release check error:', err);
+  }
+
+  // 2. Fallback: Electron auto-updater
   if (typeof window !== 'undefined' && (window as any).electronUpdater) {
     try {
-      notifyListeners({ status: 'checking' });
       const res = await (window as any).electronUpdater.checkForUpdates();
       if (res?.error) {
         const cleanErr = sanitizeUpdaterError(res.error);
-        notifyListeners({ status: 'error', error: cleanErr });
-        return { status: 'error', error: cleanErr };
+        notifyListeners({ status: 'error', error: cleanErr, currentVersion: CURRENT_APP_VERSION });
+        return { status: 'error', error: cleanErr, currentVersion: CURRENT_APP_VERSION };
       }
       return currentStatus;
     } catch (err: any) {
       const cleanErr = sanitizeUpdaterError(err?.message || 'Check failed');
-      notifyListeners({ status: 'error', error: cleanErr });
-      return { status: 'error', error: cleanErr };
+      notifyListeners({ status: 'error', error: cleanErr, currentVersion: CURRENT_APP_VERSION });
+      return { status: 'error', error: cleanErr, currentVersion: CURRENT_APP_VERSION };
     }
   }
 
-  // 2. Tauri updater fallback
-  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
-    try {
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const { relaunch } = await import('@tauri-apps/plugin-process');
-      const update = await check();
-      if (update) {
-        notifyListeners({ status: 'available', version: update.version });
-        await update.downloadAndInstall((event) => {
-          if (event.event === 'Finished') {
-            notifyListeners({ status: 'downloaded', version: update.version });
-          }
-        });
-        await relaunch();
-      } else {
-        notifyListeners({ status: 'up-to-date' });
-      }
-    } catch (err: any) {
-      notifyListeners({ status: 'error', error: err?.message });
-    }
-  }
-
-  return currentStatus;
+  const finalStatus: UpdateStatus = { status: 'up-to-date', currentVersion: CURRENT_APP_VERSION };
+  notifyListeners(finalStatus);
+  return finalStatus;
 }
 
 /**
- * Quits the application and runs the downloaded NSIS installer to apply the update.
+ * Quits the application and runs the downloaded NSIS installer to apply the update,
+ * or opens the installer download URL.
  */
-export async function applyUpdate(): Promise<void> {
-  if (typeof window !== 'undefined' && (window as any).electronUpdater) {
+export async function applyUpdate(downloadUrl?: string): Promise<void> {
+  if (typeof window !== 'undefined' && (window as any).electronUpdater?.installUpdate) {
     await (window as any).electronUpdater.installUpdate();
+    return;
+  }
+  if (downloadUrl) {
+    window.open(downloadUrl, '_blank');
+  } else {
+    window.open('https://github.com/Bedrockxai/Bedrock/releases/latest', '_blank');
   }
 }

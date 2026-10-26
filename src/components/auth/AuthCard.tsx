@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Mail, Lock, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/useAuth';
-import { useUserProfile } from '../../lib/useUserProfile';
+import { useUserProfile, syncRemoteUserProfile } from '../../lib/useUserProfile';
+import { syncHistoryFromDb } from '../../lib/generatorHistory';
 import { useSignIn, useSignUp } from '@clerk/react/legacy';
 import { useClerk } from '@clerk/react';
 import { isDesktopApp } from '../../lib/platform';
@@ -64,13 +65,19 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     try {
       const userEmail = payload.email || 'developer@bedrock.app';
       const userName = payload.name || userEmail.split('@')[0];
+      if (payload.token) {
+        localStorage.setItem('bedrock_token', payload.token);
+      }
       await login(userEmail, undefined, userName, mode === 'register' ? 'register' : 'login');
       notifyAuthSuccess({ email: userEmail, name: userName, type: mode === 'register' ? 'signup' : 'signin' });
       await updateProfile({
         name: userName,
         email: userEmail,
         avatarUrl: payload.avatarUrl || '',
+        plan: payload.plan || undefined,
       });
+      syncRemoteUserProfile().catch(() => {});
+      syncHistoryFromDb().catch(() => {});
       setIsLoading(false);
       navigate(targetPath);
     } catch (err: any) {

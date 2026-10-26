@@ -29,6 +29,34 @@ export default function BrowserAuthCallback() {
       const cleanName = resolveCleanName(currentUser.fullName || currentUser.firstName, cleanEmail);
       const avatarUrl = currentUser.imageUrl || '';
 
+      let sessionToken = '';
+      try {
+        if (clerk?.session) {
+          sessionToken = (await clerk.session.getToken()) || '';
+        } else if ((window as any).Clerk?.session) {
+          sessionToken = (await (window as any).Clerk.session.getToken()) || '';
+        }
+      } catch (tokErr) {
+        console.warn('[BrowserAuth] Could not retrieve session token:', tokErr);
+      }
+
+      let userPlan = (currentUser.publicMetadata as any)?.plan || 'Free Plan';
+      if (sessionToken) {
+        try {
+          const profileRes = await fetch('/api/user/profile', {
+            headers: { Authorization: `Bearer ${sessionToken}` },
+          });
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            if (profileData?.profile?.plan) {
+              userPlan = profileData.profile.plan;
+            }
+          }
+        } catch (planErr) {
+          console.warn('[BrowserAuth] Could not fetch server profile plan:', planErr);
+        }
+      }
+
       const payload = {
         nonce,
         email: cleanEmail,
@@ -36,6 +64,8 @@ export default function BrowserAuthCallback() {
         avatarUrl,
         clerkUserId: currentUser.id,
         strategy,
+        token: sessionToken,
+        plan: userPlan,
         timestamp: Date.now(),
       };
 
