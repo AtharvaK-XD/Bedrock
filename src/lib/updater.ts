@@ -8,7 +8,7 @@ export interface UpdateStatus {
   downloadUrl?: string;
 }
 
-export const CURRENT_APP_VERSION = '1.3.1';
+export const CURRENT_APP_VERSION = '1.3.3';
 
 type UpdateListener = (status: UpdateStatus) => void;
 const listeners = new Set<UpdateListener>();

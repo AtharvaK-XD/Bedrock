@@ -30,24 +30,25 @@ async function githubFetch(url, options = {}) {
   return res;
 }
 
-const winReleaseNotes = `# Bedrock v1.3.2 - Desktop Workstation & Clean Browser Authentication Flow
+const winReleaseNotes = `# Bedrock v1.3.3 - Production Stability & Crash-Proof Workstation
 
-This release improves the desktop authentication workflow and workstation layout:
+This release resolves process lifecycle issues, fixes background single-instance resumption, restores prompt generator synthesis animation, and hardens desktop stability:
 
 ## Highlights
-- **External Browser Authentication**: When authenticating with Google or GitHub OAuth, Bedrock automatically opens your system default web browser (Chrome, Edge, Firefox, etc.) to complete consent securely.
-- **Pure Desktop Workstation**: The external browser acts strictly as an authorization handoff bridge. Once authenticated, session tokens seamlessly route back into Bedrock Desktop via local loopback and deep links, and the full Bedrock Workstation runs exclusively inside the desktop app.
-- **Generator Workspace Cleanup**: Removed the redundant chat/tasks sidebar from the Generator page on Desktop. The desktop app exclusively uses the main workstation Sidebar (⌘1–⌘6), eliminating double sidebars. The website continues to feature the generator history panel.
+- **Crash-Proof Process Lifecycle**: Resolved the "Object has been destroyed" main process exception by strictly verifying window lifecycle states on single-instance activation, window closure, and dialog prompts.
+- **Background Instance Cleanup**: Ensured clean process shutdown on window closure, preventing zombie background processes from blocking new application launches.
+- **External Browser Authentication**: Smooth, automatic handoff to default system browser for Google/GitHub OAuth, routing credentials cleanly back into Bedrock Desktop.
+- **Prompt Generator Synthesis Animation**: Restored original high-fidelity circular spinning ring and dense pixel-grid parameters during prompt synthesis and refinement.
 - **Two-Way Cloud Sync**: Instant two-way synchronization for subscriptions, token credits, and history items across web and desktop platforms.
 - **Strict BYOK Model Security**: Bring-Your-Own-Key per-model verification with zero-retention client memory storage.
 
 ---
 
 ### Downloads
-- **Windows Installer**: \`Bedrock-Setup-1.3.2.exe\` (or \`Bedrock-Setup.exe\`)
+- **Windows Installer**: \`Bedrock-Setup-1.3.3.exe\` (or \`Bedrock-Setup.exe\`)
 `;
 
-const macReleaseNotes = `# Bedrock v1.3.2 - macOS Desktop Workstation
+const macReleaseNotes = `# Bedrock v1.3.3 - macOS Desktop Workstation
 
 Dedicated macOS release for Bedrock Prompt Engineering Workstation.
 Native universal build supporting Apple Silicon (M1/M2/M3/M4) and Intel Macs with two-way Cloud Data Sync, Bring-Your-Own-Key (BYOK) Model Security, Multi-Target Blueprint Exporters, and DAG Branching Canvas.
@@ -117,10 +118,10 @@ async function uploadAsset(repo, releaseId, filePath, assetName, contentType) {
 async function run() {
   // Normalize filenames in release directory
   const filesToDuplicate = [
-    { src: 'release/Bedrock Setup 1.3.2.exe', dest: 'release/Bedrock-Setup-1.3.2.exe' },
-    { src: 'release/Bedrock Setup 1.3.2.exe', dest: 'release/Bedrock-Setup.exe' },
-    { src: 'release/Bedrock Setup 1.3.2.exe.blockmap', dest: 'release/Bedrock-Setup-1.3.2.exe.blockmap' },
-    { src: 'release/Bedrock Setup 1.3.2.exe.blockmap', dest: 'release/Bedrock-Setup.exe.blockmap' },
+    { src: 'release/Bedrock Setup 1.3.3.exe', dest: 'release/Bedrock-Setup-1.3.3.exe' },
+    { src: 'release/Bedrock Setup 1.3.3.exe', dest: 'release/Bedrock-Setup.exe' },
+    { src: 'release/Bedrock Setup 1.3.3.exe.blockmap', dest: 'release/Bedrock-Setup-1.3.3.exe.blockmap' },
+    { src: 'release/Bedrock Setup 1.3.3.exe.blockmap', dest: 'release/Bedrock-Setup.exe.blockmap' },
   ];
 
   for (const { src, dest } of filesToDuplicate) {
@@ -135,30 +136,30 @@ async function run() {
     console.log(`==> Processing releases for repository: ${repo}`);
     console.log(`========================================================`);
 
-    // 1. Windows Release (v1.3.2)
+    // 1. Windows Release (v1.3.3)
     let winRelease;
-    const winGetRes = await githubFetch(`https://api.github.com/repos/${repo}/releases/tags/v1.3.2`);
+    const winGetRes = await githubFetch(`https://api.github.com/repos/${repo}/releases/tags/v1.3.3`);
     if (winGetRes.ok) {
       winRelease = await winGetRes.json();
-      console.log(`Windows Release v1.3.2 exists (ID: ${winRelease.id}). Updating details...`);
+      console.log(`Windows Release v1.3.3 exists (ID: ${winRelease.id}). Updating details...`);
       await githubFetch(`https://api.github.com/repos/${repo}/releases/${winRelease.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: 'Bedrock v1.3.2 - Desktop Workstation & Clean Browser Authentication Flow',
+          name: 'Bedrock v1.3.3 - Production Stability & Crash-Proof Workstation',
           body: winReleaseNotes,
           make_latest: 'true',
         }),
       });
     } else {
-      console.log(`Creating Windows release v1.3.2...`);
+      console.log(`Creating Windows release v1.3.3...`);
       const createRes = await githubFetch(`https://api.github.com/repos/${repo}/releases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tag_name: 'v1.3.2',
+          tag_name: 'v1.3.3',
           target_commitish: 'main',
-          name: 'Bedrock v1.3.2 - Desktop Workstation & Clean Browser Authentication Flow',
+          name: 'Bedrock v1.3.3 - Production Stability & Crash-Proof Workstation',
           body: winReleaseNotes,
           draft: false,
           prerelease: false,
@@ -171,46 +172,46 @@ async function run() {
         throw new Error(`Failed to create Windows release: ${createRes.status} ${err}`);
       }
       winRelease = await createRes.json();
-      console.log(`Windows release v1.3.2 created successfully (ID: ${winRelease.id}).`);
+      console.log(`Windows release v1.3.3 created successfully (ID: ${winRelease.id}).`);
     }
 
     const winAssets = [
       { name: 'Bedrock-Setup.exe', path: 'release/Bedrock-Setup.exe', type: 'application/octet-stream' },
-      { name: 'Bedrock-Setup-1.3.2.exe', path: 'release/Bedrock-Setup-1.3.2.exe', type: 'application/octet-stream' },
-      { name: 'Bedrock Setup 1.3.2.exe', path: 'release/Bedrock Setup 1.3.2.exe', type: 'application/octet-stream' },
+      { name: 'Bedrock-Setup-1.3.3.exe', path: 'release/Bedrock-Setup-1.3.3.exe', type: 'application/octet-stream' },
+      { name: 'Bedrock Setup 1.3.3.exe', path: 'release/Bedrock Setup 1.3.3.exe', type: 'application/octet-stream' },
       { name: 'latest.yml', path: 'release/latest.yml', type: 'text/yaml' },
-      { name: 'Bedrock-Setup-1.3.2.exe.blockmap', path: 'release/Bedrock-Setup-1.3.2.exe.blockmap', type: 'application/octet-stream' },
-      { name: 'Bedrock Setup 1.3.2.exe.blockmap', path: 'release/Bedrock Setup 1.3.2.exe.blockmap', type: 'application/octet-stream' },
+      { name: 'Bedrock-Setup-1.3.3.exe.blockmap', path: 'release/Bedrock-Setup-1.3.3.exe.blockmap', type: 'application/octet-stream' },
+      { name: 'Bedrock Setup 1.3.3.exe.blockmap', path: 'release/Bedrock Setup 1.3.3.exe.blockmap', type: 'application/octet-stream' },
     ];
 
     for (const item of winAssets) {
       await uploadAsset(repo, winRelease.id, item.path, item.name, item.type);
     }
 
-    // 2. macOS Dedicated Release (v1.3.2-mac)
+    // 2. macOS Dedicated Release (v1.3.3-mac)
     let macRelease;
-    const macGetRes = await githubFetch(`https://api.github.com/repos/${repo}/releases/tags/v1.3.2-mac`);
+    const macGetRes = await githubFetch(`https://api.github.com/repos/${repo}/releases/tags/v1.3.3-mac`);
     if (macGetRes.ok) {
       macRelease = await macGetRes.json();
-      console.log(`macOS Release v1.3.2-mac exists (ID: ${macRelease.id}). Updating details...`);
+      console.log(`macOS Release v1.3.3-mac exists (ID: ${macRelease.id}). Updating details...`);
       await githubFetch(`https://api.github.com/repos/${repo}/releases/${macRelease.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: 'Bedrock v1.3.2 - macOS Desktop Workstation',
+          name: 'Bedrock v1.3.3 - macOS Desktop Workstation',
           body: macReleaseNotes,
           make_latest: 'false',
         }),
       });
     } else {
-      console.log(`Creating dedicated macOS release v1.3.2-mac...`);
+      console.log(`Creating dedicated macOS release v1.3.3-mac...`);
       const createMacRes = await githubFetch(`https://api.github.com/repos/${repo}/releases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tag_name: 'v1.3.2-mac',
+          tag_name: 'v1.3.3-mac',
           target_commitish: 'main',
-          name: 'Bedrock v1.3.2 - macOS Desktop Workstation',
+          name: 'Bedrock v1.3.3 - macOS Desktop Workstation',
           body: macReleaseNotes,
           draft: false,
           prerelease: false,
@@ -223,7 +224,7 @@ async function run() {
         throw new Error(`Failed to create macOS release: ${createMacRes.status} ${err}`);
       }
       macRelease = await createMacRes.json();
-      console.log(`macOS release v1.3.2-mac created successfully (ID: ${macRelease.id}).`);
+      console.log(`macOS release v1.3.3-mac created successfully (ID: ${macRelease.id}).`);
     }
 
     const macAssets = [
@@ -260,7 +261,7 @@ async function run() {
     }
   }
 
-  console.log(`\n==> Finished publishing release v1.3.2 to both accounts!`);
+  console.log(`\n==> Finished publishing release v1.3.3 to both accounts!`);
 }
 
 run().catch((err) => {

@@ -11,6 +11,13 @@ if (process.platform === "win32") {
 	app.setAppUserModelId("com.bedrock.desktop");
 }
 
+process.on("uncaughtException", (err) => {
+	console.error("[Electron Main] Uncaught exception:", err);
+});
+process.on("unhandledRejection", (reason) => {
+	console.error("[Electron Main] Unhandled rejection:", reason);
+});
+
 const require = createRequire(import.meta.url);
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname, "..");
@@ -297,6 +304,10 @@ function createWindow() {
 	// Remove default application menu
 	win.removeMenu();
 
+	win.on("closed", () => {
+		win = null;
+	});
+
 	win.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
 		console.error("[Electron] Failed to load URL:", validatedURL, errorCode, errorDescription);
 	});
@@ -380,28 +391,43 @@ function createWindow() {
 	});
 
 	win.webContents.on("did-finish-load", () => {
-		win.webContents.setZoomFactor(0.92);
-		win.webContents.executeJavaScript("window.IS_ELECTRON = true; window.isDesktopApp = true;");
+		if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+			win.webContents.setZoomFactor(0.92);
+			win.webContents.executeJavaScript("window.IS_ELECTRON = true; window.isDesktopApp = true;").catch(() => {});
+		}
 	});
 
-	setupAutoUpdater(win);
+	setupAutoUpdater();
 
 	if (VITE_DEV_SERVER_URL) {
 		win.loadURL(`${VITE_DEV_SERVER_URL}/?desktop=true#/login`);
 	} else {
 		startLocalServer().then((url) => {
-			win.loadURL(`${url}/?desktop=true#/login`);
+			if (win && !win.isDestroyed()) {
+				win.loadURL(`${url}/?desktop=true#/login`);
+			}
 		}).catch(() => {
-			win.loadFile(path.join(RENDERER_DIST, "index.html"), {
-				query: { desktop: "true" },
-				hash: "/login"
-			});
+			if (win && !win.isDestroyed()) {
+				win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+					query: { desktop: "true" },
+					hash: "/login"
+				});
+			}
 		});
 	}
 }
 
-function setupAutoUpdater(mainWindow) {
-	if (!autoUpdater) return;
+let autoUpdaterInitialized = false;
+
+function sendUpdaterStatus(statusData) {
+	if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+		win.webContents.send("updater:status", statusData);
+	}
+}
+
+function setupAutoUpdater() {
+	if (!autoUpdater || autoUpdaterInitialized) return;
+	autoUpdaterInitialized = true;
 
 	try {
 		autoUpdater.autoDownload = true;
@@ -417,12 +443,12 @@ function setupAutoUpdater(mainWindow) {
 
 		autoUpdater.on("checking-for-update", () => {
 			console.log("[AutoUpdater] Checking for updates...");
-			mainWindow?.webContents.send("updater:status", { status: "checking" });
+			sendUpdaterStatus({ status: "checking" });
 		});
 
 		autoUpdater.on("update-available", (info) => {
 			console.log(`[AutoUpdater] Update available: v${info.version}`);
-			mainWindow?.webContents.send("updater:status", {
+			sendUpdaterStatus({
 				status: "available",
 				version: info.version,
 				releaseNotes: info.releaseNotes,
@@ -431,14 +457,14 @@ function setupAutoUpdater(mainWindow) {
 
 		autoUpdater.on("update-not-available", (_info) => {
 			console.log("[AutoUpdater] App is up to date.");
-			mainWindow?.webContents.send("updater:status", {
+			sendUpdaterStatus({
 				status: "up-to-date",
 				currentVersion: app.getVersion(),
 			});
 		});
 
 		autoUpdater.on("download-progress", (progressObj) => {
-			mainWindow?.webContents.send("updater:status", {
+			sendUpdaterStatus({
 				status: "downloading",
 				percent: Math.round(progressObj.percent),
 				bytesPerSecond: progressObj.bytesPerSecond,
@@ -449,12 +475,13 @@ function setupAutoUpdater(mainWindow) {
 
 		autoUpdater.on("update-downloaded", (info) => {
 			console.log(`[AutoUpdater] Update downloaded: v${info.version}`);
-			mainWindow?.webContents.send("updater:status", {
+			sendUpdaterStatus({
 				status: "downloaded",
 				version: info.version,
 			});
 
-			dialog.showMessageBox(mainWindow, {
+			const dialogParent = (win && !win.isDestroyed()) ? win : undefined;
+			dialog.showMessageBox(dialogParent, {
 				type: "info",
 				buttons: ["Restart Now", "Later"],
 				defaultId: 0,
@@ -467,7 +494,7 @@ function setupAutoUpdater(mainWindow) {
 				if (response === 0) {
 					autoUpdater.quitAndInstall();
 				}
-			});
+			}).catch(() => {});
 		});
 
 		autoUpdater.on("error", (err) => {
@@ -481,7 +508,7 @@ function setupAutoUpdater(mainWindow) {
 			} else if (rawMsg.includes("HttpError")) {
 				friendlyMsg = "Unable to fetch release details from GitHub. Please try again later.";
 			}
-			mainWindow?.webContents.send("updater:status", {
+			sendUpdaterStatus({
 				status: "error",
 				error: friendlyMsg,
 			});
@@ -548,7 +575,7 @@ ipcMain.handle("auth:start-external", async (_event, { strategy, mode, nonce }) 
 // Native filesystem 1-click export IPC handlers
 ipcMain.handle("file:select-folder", async () => {
 	try {
-		const targetWin = win || BrowserWindow.getFocusedWindow();
+		const targetWin = (win && !win.isDestroyed()) ? win : (BrowserWindow.getFocusedWindow() || undefined);
 		const result = await dialog.showOpenDialog(targetWin, {
 			title: "Select Project Root Folder for Bedrock Rules",
 			properties: ["openDirectory", "createDirectory"],
@@ -581,7 +608,7 @@ ipcMain.handle("file:save-to-folder", async (_event, { folderPath, fileName, con
 
 ipcMain.handle("file:save-with-dialog", async (_event, { defaultFileName, content, title }) => {
 	try {
-		const targetWin = win || BrowserWindow.getFocusedWindow();
+		const targetWin = (win && !win.isDestroyed()) ? win : (BrowserWindow.getFocusedWindow() || undefined);
 		const safeFileName = defaultFileName || "system-prompt.md";
 		const ext = path.extname(safeFileName).replace(".", "") || "md";
 		const result = await dialog.showSaveDialog(targetWin, {
@@ -615,12 +642,14 @@ if (!hasSingleInstanceLock) {
 
 	// Handle second-instance deep linking on Windows
 	app.on("second-instance", (_event, argv) => {
-		if (win) {
+		if (win && !win.isDestroyed()) {
 			if (win.isMinimized()) win.restore();
 			win.show();
 			win.setAlwaysOnTop(true);
 			win.focus();
 			win.setAlwaysOnTop(false);
+		} else {
+			createWindow();
 		}
 		if (Array.isArray(argv)) {
 			const deepLink = argv.find((arg) => typeof arg === "string" && arg.startsWith("bedrock://"));
@@ -631,7 +660,6 @@ if (!hasSingleInstanceLock) {
 	});
 
 	app.on("window-all-closed", () => {
-		closeAuthWindow();
 		if (process.platform !== "darwin") {
 			app.quit();
 			win = null;
@@ -639,7 +667,9 @@ if (!hasSingleInstanceLock) {
 	});
 
 	app.on("activate", () => {
-		if (BrowserWindow.getAllWindows().length === 0) createWindow();
+		if (!win || win.isDestroyed()) {
+			createWindow();
+		}
 	});
 
 	app.whenReady().then(() => {
