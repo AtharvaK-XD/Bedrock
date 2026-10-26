@@ -114,6 +114,35 @@ export default function Wizard() {
     }
   }, [location.state]);
 
+  // Continuous active driver: guarantees the colorful BorderBeam travels around the text box
+  const beamContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let rafId: number;
+    let start: number | null = null;
+    const cycleDurationMs = 2400;
+
+    const tick = (timestamp: number) => {
+      const el = beamContainerRef.current?.querySelector<HTMLElement>('[data-beam]');
+      if (el) {
+        const beamId = el.getAttribute('data-beam');
+        if (beamId) {
+          if (!start) start = timestamp;
+          const elapsed = timestamp - start;
+          const angle = ((elapsed % cycleDurationMs) / cycleDurationMs) * 360;
+          el.style.setProperty(`--beam-angle-${beamId}`, `${angle.toFixed(2)}deg`, 'important');
+          el.style.setProperty(`--beam-opacity-${beamId}`, '1', 'important');
+          if (el.hasAttribute('data-paused')) {
+            el.removeAttribute('data-paused');
+          }
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
   const handleGenerateQuestions = async () => {
     if (!idea.trim()) return;
     setErrorBanner(null);
@@ -333,12 +362,14 @@ export default function Wizard() {
               </p>
             </div>
 
-            <div className="max-w-5xl mx-auto w-full">
+            <div ref={beamContainerRef} className="max-w-5xl mx-auto w-full">
               <BorderBeam
                 size="md"
                 colorVariant="colorful"
                 borderRadius={24}
                 strength={1}
+                active={true}
+                duration={2.4}
                 className="rounded-3xl !overflow-visible relative z-30"
                 style={{ overflow: 'visible' }}
               >
