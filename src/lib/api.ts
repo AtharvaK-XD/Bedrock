@@ -39,6 +39,7 @@ import {
   recordTokenUsage,
   createStreamingPacer,
 } from './appSettings';
+import { isDesktopApp } from './platform';
 export type {
 
   ModelTuningConfig,
@@ -192,6 +193,23 @@ export function getActiveApiKeys() {
     const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_API_KEYS) : null;
     const parsed = raw ? JSON.parse(raw) : {};
 
+    // In the desktop app, strictly require user-configured BYOK keys without silent env fallback
+    if (isDesktopApp()) {
+      return {
+        geminiKey: (parsed.geminiKey || '').trim(),
+        groqKey: (parsed.groqKey || '').trim(),
+        openAiKey: (parsed.openAiKey || '').trim(),
+        anthropicKey: (parsed.anthropicKey || '').trim(),
+        openRouterKey: (parsed.openRouterKey || '').trim(),
+        huggingFaceKey: (parsed.huggingFaceKey || '').trim(),
+        perplexityKey: (parsed.perplexityKey || '').trim(),
+        mistralKey: (parsed.mistralKey || '').trim(),
+        cohereKey: (parsed.cohereKey || '').trim(),
+        xaiKey: (parsed.xaiKey || '').trim(),
+        ollamaEndpoint: (parsed.ollamaEndpoint || 'http://localhost:11434').trim(),
+      };
+    }
+
     return {
       geminiKey: (parsed.geminiKey || getEnvVar('VITE_GEMINI_API_KEY')).trim(),
       groqKey: (parsed.groqKey || getEnvVar('VITE_GROQ_API_KEY')).trim(),
@@ -206,6 +224,21 @@ export function getActiveApiKeys() {
       ollamaEndpoint: (parsed.ollamaEndpoint || 'http://localhost:11434').trim(),
     };
   } catch {
+    if (isDesktopApp()) {
+      return {
+        geminiKey: '',
+        groqKey: '',
+        openAiKey: '',
+        anthropicKey: '',
+        openRouterKey: '',
+        huggingFaceKey: '',
+        perplexityKey: '',
+        mistralKey: '',
+        cohereKey: '',
+        xaiKey: '',
+        ollamaEndpoint: 'http://localhost:11434',
+      };
+    }
     return {
       geminiKey: getEnvVar('VITE_GEMINI_API_KEY').trim(),
       groqKey: getEnvVar('VITE_GROQ_API_KEY').trim(),

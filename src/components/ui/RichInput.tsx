@@ -5,8 +5,11 @@ import type { IdeaPayload } from '../../lib/mockApi';
 import { usePromptQuota } from '../../lib/usePromptQuota';
 import { useUserProfile } from '../../lib/useUserProfile';
 import { isModelAllowedForTier, getModelRequiredTier } from '../../lib/subscriptionTiers';
+import { isDesktopApp } from '../../lib/platform';
+import { isModelKeyConfigured } from '../../lib/apiKeysHelper';
 import { QuotaLimitModal } from './QuotaLimitModal';
 import { UpgradeModal } from './UpgradeModal';
+import { ApiKeyPromptModal } from './ApiKeyPromptModal';
 import { Button as StatefulButton } from './stateful-button';
 
 interface RichInputProps {
@@ -206,8 +209,27 @@ export function RichInput({
 
   const [showQuotaModal, setShowQuotaModal] = useState(false);
 
+  const [apiKeyModal, setApiKeyModal] = useState<{
+    isOpen: boolean;
+    modelId?: string;
+    modelName?: string;
+    agentId?: string;
+  }>({ isOpen: false });
+
   const handleActionSubmit = () => {
     if (value.trim() && !isLoading) {
+      if (isDesktopApp()) {
+        if (!isModelKeyConfigured(selectedModelId, selectedAgentId)) {
+          setApiKeyModal({
+            isOpen: true,
+            modelId: selectedModelId,
+            modelName: selectedModel.name,
+            agentId: selectedAgentId,
+          });
+          return;
+        }
+      }
+
       if (isLimitReached) {
         setShowQuotaModal(true);
         return;
@@ -427,8 +449,18 @@ export function RichInput({
                             setActiveDropdown(null);
                             return;
                           }
-                          setSelectedAgentId(agent.id);
                           const firstAllowed = agent.models.find((m) => isModelAllowedForTier(m.id, profile?.plan)) || agent.models[0];
+                          if (isDesktopApp() && !isModelKeyConfigured(firstAllowed.id, agent.id)) {
+                            setApiKeyModal({
+                              isOpen: true,
+                              modelId: firstAllowed.id,
+                              modelName: firstAllowed.name,
+                              agentId: agent.id,
+                            });
+                            setActiveDropdown(null);
+                            return;
+                          }
+                          setSelectedAgentId(agent.id);
                           setSelectedModelId(firstAllowed.id);
                           setActiveDropdown(null);
                         }}
@@ -504,6 +536,16 @@ export function RichInput({
                               featureName: model.name,
                               requiredTier: required === 'ultimate' ? 'ultimate' : 'pro',
                               reason: `${model.name} is a high-capability model requiring an active ${required.toUpperCase()} Plan. Upgrade to unlock full access.`,
+                            });
+                            setActiveDropdown(null);
+                            return;
+                          }
+                          if (isDesktopApp() && !isModelKeyConfigured(model.id, selectedAgentId)) {
+                            setApiKeyModal({
+                              isOpen: true,
+                              modelId: model.id,
+                              modelName: model.name,
+                              agentId: selectedAgentId,
                             });
                             setActiveDropdown(null);
                             return;
@@ -655,6 +697,18 @@ export function RichInput({
         featureName={upgradeModal.featureName}
         requiredTier={upgradeModal.requiredTier}
         reason={upgradeModal.reason}
+      />
+
+      <ApiKeyPromptModal
+        isOpen={apiKeyModal.isOpen}
+        onClose={() => setApiKeyModal({ isOpen: false })}
+        modelId={apiKeyModal.modelId}
+        modelName={apiKeyModal.modelName}
+        agentId={apiKeyModal.agentId}
+        onKeySaved={() => {
+          if (apiKeyModal.agentId) setSelectedAgentId(apiKeyModal.agentId);
+          if (apiKeyModal.modelId) setSelectedModelId(apiKeyModal.modelId);
+        }}
       />
     </div>
   );

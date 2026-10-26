@@ -102,7 +102,6 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
  * Normalizes user plan strings from database or profile to a standard SubscriptionTier.
  */
 export function normalizeTier(plan?: string | null): SubscriptionTier {
-  if (isDesktopApp()) return 'ultimate';
   if (!plan) return 'free';
   const p = plan.toLowerCase().trim();
   if (p.includes('ultimate')) return 'ultimate';
@@ -114,10 +113,11 @@ export function normalizeTier(plan?: string | null): SubscriptionTier {
  * Returns the plan limits object for a given plan string.
  */
 export function getPlanLimits(plan?: string | null): PlanLimits {
+  const tier = normalizeTier(plan);
   if (isDesktopApp()) {
+    const baseLimits = TIER_LIMITS[tier] || TIER_LIMITS.free;
     return {
-      name: 'Workstation Edition (BYOK)',
-      tier: 'ultimate',
+      ...baseLimits,
       dailyGenerationsLimit: Infinity,
       dagNodeLimit: Infinity,
       libraryPromptLimit: Infinity,
@@ -125,17 +125,10 @@ export function getPlanLimits(plan?: string | null): PlanLimits {
       hasLiveTelemetry: true,
       hasAutomatedEvals: true,
       hasPriorityQueue: true,
-      features: [
-        'Desktop Workstation BYOK',
-        'Unlimited local prompt generations',
-        'All frontier models unlocked with your API keys',
-        'Unlimited DAG pipeline nodes & custom library templates',
-        '1-Click direct file saving (.cursorrules & CLAUDE.md)',
-      ],
+      name: tier === 'ultimate' ? 'Ultimate Plan' : tier === 'pro' ? 'Pro Plan' : 'Workstation Edition (BYOK)',
     };
   }
 
-  const tier = normalizeTier(plan);
   return TIER_LIMITS[tier] || TIER_LIMITS.free;
 }
 

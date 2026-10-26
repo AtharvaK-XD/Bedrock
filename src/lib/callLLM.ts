@@ -26,6 +26,8 @@ import {
   createStreamingPacer,
   scrubSecrets,
 } from './appSettings';
+import { isDesktopApp } from './platform';
+import { getRequiredProviderForModel, isModelKeyConfigured } from './apiKeysHelper';
 
 
 export type ModelTier = 'frontier' | 'mid' | 'compact';
@@ -770,6 +772,18 @@ export async function callLLMWithMeta(
       false,
       'SubscriptionGuard'
     );
+  }
+
+  // 1.6 Desktop BYOK Enforcement: Require user-added API key for target provider
+  if (isDesktopApp()) {
+    if (!isModelKeyConfigured(effectiveModelId, options?.preferredProvider)) {
+      const req = getRequiredProviderForModel(effectiveModelId, options?.preferredProvider);
+      throw new ApiError(
+        `API Key Required: Please add your ${req.providerName} API key in Settings > Models & API Keys to run ${effectiveModelId}.`,
+        false,
+        'MissingApiKey'
+      );
+    }
   }
 
   const tuning = getModelTuning(effectiveModelId);
