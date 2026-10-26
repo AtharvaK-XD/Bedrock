@@ -302,44 +302,46 @@ export default function Wizard() {
   return (
     <PageTransition className={cn(isDesktop ? "h-full" : "")}>
       <div className={cn("relative w-full", isDesktop ? "min-h-full flex-1" : "min-h-[calc(100vh-80px)]")}>
-        {/* Previous Prompts Sidebar (Both Web and Desktop Workstation) */}
-        <GeneratorHistorySidebar
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={toggleSidebar}
-          activeId={activePromptId}
-          onSelectPrompt={handleSelectPrompt}
-          onNewPrompt={handleNewPrompt}
-        />
+        {/* Previous Prompts Sidebar: WEBSITE ONLY (Desktop Workstation uses dedicated History workspace in main Sidebar) */}
+        {!isDesktop && (
+          <>
+            <GeneratorHistorySidebar
+              isCollapsed={isSidebarCollapsed}
+              onToggleCollapse={toggleSidebar}
+              activeId={activePromptId}
+              onSelectPrompt={handleSelectPrompt}
+              onNewPrompt={handleNewPrompt}
+            />
 
-        {/* Mobile backdrop overlay */}
-        {!isSidebarCollapsed && (
-          <div
-            onClick={toggleSidebar}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
-          />
-        )}
-
-        {/* Floating Expand Trigger when minimized */}
-        {isSidebarCollapsed && (
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className={cn(
-              "fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d10]/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200",
-              isDesktop ? "top-4 left-68" : "top-22 left-4"
+            {/* Mobile backdrop overlay */}
+            {!isSidebarCollapsed && (
+              <div
+                onClick={toggleSidebar}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
+              />
             )}
-            title="Show previous prompts"
-          >
-            <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
-            <span className="text-xs font-mono">History</span>
-          </button>
+
+            {/* Floating Expand Trigger when minimized */}
+            {isSidebarCollapsed && (
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d10]/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200 top-22 left-4"
+                title="Show previous prompts"
+              >
+                <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-mono">History</span>
+              </button>
+            )}
+          </>
         )}
 
         {/* Main Generator Workspace */}
         <div className={cn(
           "w-full px-4 sm:px-8 py-6 lg:py-10 transition-all duration-300",
-          isDesktop ? "min-h-full flex flex-col flex-1" : "min-h-[calc(100vh-80px)]",
-          !isSidebarCollapsed ? (isDesktop ? "pl-72 md:pl-76" : "md:pl-72 lg:pl-76") : "md:pl-8"
+          isDesktop 
+            ? "min-h-full flex flex-col flex-1" 
+            : cn("min-h-[calc(100vh-80px)]", !isSidebarCollapsed ? "md:pl-72 lg:pl-76" : "md:pl-8")
         )}>
         <div className={cn(
           "w-full flex flex-col gap-12 transition-all duration-500",

@@ -31,21 +31,78 @@ import { useAuth } from './lib/useAuth';
 import { isDesktopApp } from './lib/platform';
 import { UpdateBanner } from './components/layout/UpdateBanner';
 import { applyAppearanceToDom, BEDROCK_APPEARANCE_UPDATED_EVENT } from './lib/appSettings';
+import { ExternalLink } from 'lucide-react';
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!PUBLISHABLE_KEY) {
   console.warn("Missing VITE_CLERK_PUBLISHABLE_KEY in .env.local");
 }
 
-
 gsap.registerPlugin(ScrollTrigger);
 
 const queryClient = new QueryClient();
+
+function BrowserDesktopNotice() {
+  return (
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans select-none">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-emerald-500/10 blur-[180px] pointer-events-none rounded-full" />
+      <div className="relative z-10 w-full max-w-md bg-zinc-950/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 sm:p-10 shadow-2xl text-center space-y-6">
+        <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 p-2.5 mx-auto flex items-center justify-center shadow-xl ring-1 ring-white/10">
+          <img 
+            src="/logo-tight.png" 
+            alt="Bedrock Logo" 
+            className="w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(139,212,186,0.35)]" 
+          />
+        </div>
+        <div>
+          <h2 className="text-2xl font-display font-bold text-white tracking-tight">
+            Bedrock Desktop Active
+          </h2>
+          <p className="text-zinc-400 mt-2 text-sm leading-relaxed">
+            The Bedrock Workstation runs inside your Desktop Application. You can safely close this browser window and use Bedrock Desktop.
+          </p>
+        </div>
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => { window.location.href = 'bedrock://'; }}
+            className="w-full flex items-center justify-center gap-2 bg-[#2C9A8B] text-white rounded-xl py-3.5 font-semibold hover:bg-[#1F7A6E] transition-all cursor-pointer text-sm shadow-lg shadow-[#2C9A8B]/25 active:scale-[0.98]"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Return to Bedrock Desktop
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              try { window.close(); } catch {}
+            }}
+            className="w-full py-2.5 text-xs text-zinc-500 hover:text-zinc-300 font-mono transition-colors cursor-pointer"
+          >
+            Close this tab
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AnimatedRoutes() {
   const location = useLocation();
   const { isLoggedIn, isLoaded } = useAuth();
   const isDesktop = isDesktopApp();
+
+  const isExternalLoopback = 
+    !isDesktop && 
+    typeof window !== 'undefined' && 
+    (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost');
+
+  if (
+    isExternalLoopback && 
+    location.pathname !== '/browser-auth' && 
+    location.pathname !== '/browser-auth-callback'
+  ) {
+    return <BrowserDesktopNotice />;
+  }
   
   useEffect(() => {
     // Desktop App (Electron/Tauri): uses HashRouter, so redirect raw callback URLs to hash routes
@@ -206,7 +263,8 @@ function AnimatedRoutes() {
 
 function App() {
   const isDesktop = isDesktopApp();
-  const RouterComponent = isDesktop ? HashRouter : BrowserRouter;
+  const isHashRouted = isDesktop || (typeof window !== 'undefined' && Boolean(window.location.hash));
+  const RouterComponent = isHashRouted ? HashRouter : BrowserRouter;
 
   useEffect(() => {
     // Check for Tauri updates

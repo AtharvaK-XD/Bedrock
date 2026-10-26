@@ -29,14 +29,6 @@ export function isDesktopApp(): boolean {
   if (typeof window.location !== 'undefined') {
     if (window.location.search && window.location.search.includes('desktop=true')) return true;
     if (window.location.protocol === 'file:') return true;
-    // When loaded from Electron's loopback server with a hash route
-    if (
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
-      window.location.hash &&
-      (window.location.hash.includes('/login') || window.location.hash.includes('/signup') || window.location.hash.includes('/app'))
-    ) {
-      return true;
-    }
   }
 
   return false;

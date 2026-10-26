@@ -89,7 +89,12 @@ export default function BrowserAuthCallback() {
       // 2. Trigger bedrock:// protocol URL
       try {
         const protocolUrl = `bedrock://auth-complete?data=${encodeURIComponent(JSON.stringify(payload))}`;
-        window.location.href = protocolUrl;
+        const link = document.createElement('a');
+        link.href = protocolUrl;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => link.remove(), 1000);
       } catch (protocolErr) {
         console.warn('[BrowserAuth] Protocol deep link trigger error:', protocolErr);
       }

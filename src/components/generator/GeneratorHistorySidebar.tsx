@@ -41,6 +41,9 @@ export function GeneratorHistorySidebar({
   onSelectPrompt,
   onNewPrompt,
 }: GeneratorHistorySidebarProps) {
+  const isDesktop = isDesktopApp();
+  if (isDesktop) return null;
+
   const navigate = useNavigate();
   const { profile } = useUserProfile();
   const [items, setItems] = useState<HistoryPromptItem[]>(getStoredGeneratorHistory);
@@ -119,7 +122,6 @@ export function GeneratorHistorySidebar({
     clerkUser?.fullName?.split(' ')[0] || 
     (profile?.name && profile.name !== 'Prompt Architect' ? profile.name.split(' ')[0] : 'Architect');
   const displayInitial = profile?.avatarInitials ? profile.avatarInitials[0] : (displayName[0] || 'B');
-  const isDesktop = isDesktopApp();
 
   return (
     <aside
