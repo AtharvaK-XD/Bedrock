@@ -22,6 +22,7 @@ import { useUserProfile } from '../lib/useUserProfile';
 import { isModelAllowedForTier, getModelRequiredTier } from '../lib/subscriptionTiers';
 import { UpgradeModal } from '../components/ui/UpgradeModal';
 import { getActiveModelSettings } from '../lib/appSettings';
+import { isModelKeyConfigured } from '../lib/apiKeysHelper';
 
 
 const ARENA_PROMPT_PRESETS = [
@@ -89,6 +90,27 @@ export default function PromptTester() {
 
   const handleTest = async () => {
     if (!prompt.trim()) return;
+
+    if (isDesktop) {
+      if (!isModelKeyConfigured(model1Id, agent1Id)) {
+        openApiKeyModal({
+          modelId: model1Id,
+          agentId: agent1Id,
+          modelName: model1?.name || model1Id,
+          errorMessage: `Please add your API key for ${model1?.name || model1Id} to execute Arena tests.`
+        });
+        return;
+      }
+      if (!isModelKeyConfigured(model2Id, agent2Id)) {
+        openApiKeyModal({
+          modelId: model2Id,
+          agentId: agent2Id,
+          modelName: model2?.name || model2Id,
+          errorMessage: `Please add your API key for ${model2?.name || model2Id} to execute Arena tests.`
+        });
+        return;
+      }
+    }
 
     // Strict subscription tier gate for Duel models
     const allowed1 = isModelAllowedForTier(model1Id, profile?.plan);
@@ -251,6 +273,14 @@ export default function PromptTester() {
                     key={a.id}
                     type="button"
                     onClick={() => {
+                      if (isDesktop && !isModelKeyConfigured(a.models[0].id, a.id)) {
+                        openApiKeyModal({
+                          agentId: a.id,
+                          modelId: a.models[0].id,
+                          modelName: a.name,
+                          errorMessage: `Please configure your API key for ${a.name} to benchmark with this provider.`
+                        });
+                      }
                       setAgentId(a.id);
                       setModelId(a.models[0].id);
                       setActiveDropdown(null);
@@ -302,6 +332,17 @@ export default function PromptTester() {
                     key={m.id}
                     type="button"
                     onClick={() => {
+                      if (isDesktop && !isModelKeyConfigured(m.id, currentAgent.id)) {
+                        openApiKeyModal({
+                          agentId: currentAgent.id,
+                          modelId: m.id,
+                          modelName: m.name,
+                          errorMessage: `Please configure your API key for ${m.name} before running Arena tests.`
+                        });
+                        setModelId(m.id);
+                        setActiveDropdown(null);
+                        return;
+                      }
                       if (!isAllowed) {
                         setUpgradeModal({
                           isOpen: true,

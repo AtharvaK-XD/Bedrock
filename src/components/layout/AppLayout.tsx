@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Topbar } from './Topbar';
 import { Sidebar } from './Sidebar';
 import { ApiKeyGatewayModal } from '../auth/ApiKeyGatewayModal';
+import { ApiKeyPromptModal } from '../ui/ApiKeyPromptModal';
 import { hasApiKeysConfigured } from '../../lib/useAuth';
 import { isDesktopApp } from '../../lib/platform';
 import { OPEN_API_KEY_MODAL_EVENT, type OpenApiKeyModalDetail } from '../../lib/apiKeyEvents';
+import { syncRemoteUserProfile } from '../../lib/useUserProfile';
+import { syncHistoryFromDb } from '../../lib/generatorHistory';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const isPopup = 
@@ -30,8 +33,32 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showKeyGateway, setShowKeyGateway] = useState(false);
   const [gatewayError, setGatewayError] = useState<string | null>(null);
   const [manuallyOpened, setManuallyOpened] = useState(false);
+  const [specificKeyModal, setSpecificKeyModal] = useState<{
+    isOpen: boolean;
+    modelId?: string;
+    agentId?: string;
+    modelName?: string;
+  }>({ isOpen: false });
+
   const isDesktop = isDesktopApp();
   const navigate = useNavigate();
+
+  // Background two-way synchronization for User Profile, Plan, and Prompts History
+  useEffect(() => {
+    const doSync = () => {
+      syncRemoteUserProfile().catch(() => {});
+      syncHistoryFromDb().catch(() => {});
+    };
+
+    doSync();
+    window.addEventListener('focus', doSync);
+    const interval = setInterval(doSync, 60000);
+
+    return () => {
+      window.removeEventListener('focus', doSync);
+      clearInterval(interval);
+    };
+  }, []);
 
   if (isPopup) {
     return (
@@ -102,9 +129,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleOpenModal = (e: Event) => {
       const customEvent = e as CustomEvent<OpenApiKeyModalDetail>;
-      setGatewayError(customEvent.detail?.errorMessage || null);
-      setManuallyOpened(true);
-      setShowKeyGateway(true);
+      if (customEvent.detail?.modelId || customEvent.detail?.agentId) {
+        setSpecificKeyModal({
+          isOpen: true,
+          modelId: customEvent.detail.modelId,
+          agentId: customEvent.detail.agentId,
+          modelName: customEvent.detail.modelName,
+        });
+      } else {
+        setGatewayError(customEvent.detail?.errorMessage || null);
+        setManuallyOpened(true);
+        setShowKeyGateway(true);
+      }
     };
 
     window.addEventListener(OPEN_API_KEY_MODAL_EVENT, handleOpenModal);
@@ -151,6 +187,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           setManuallyOpened(false);
         }}
         canDismiss={manuallyOpened || hasApiKeysConfigured()}
+      />
+
+      {/* Targeted Model / Agent API Key Prompt Modal */}
+      <ApiKeyPromptModal
+        isOpen={specificKeyModal.isOpen}
+        modelId={specificKeyModal.modelId}
+        agentId={specificKeyModal.agentId}
+        modelName={specificKeyModal.modelName}
+        onClose={() => setSpecificKeyModal({ isOpen: false })}
+        onKeySaved={() => setSpecificKeyModal({ isOpen: false })}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Key, Eye, EyeOff, ExternalLink, ShieldCheck, CheckCircle2, Sparkles } from 'lucide-react';
 import { API_KEYS_UPDATED_EVENT } from '../../lib/apiKeyEvents';
+import { isDesktopApp } from '../../lib/platform';
 import {
   GeminiLogo,
   LlamaLogo,
@@ -27,9 +28,25 @@ interface ApiKeyGatewayModalProps {
 
 export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, initialError }: ApiKeyGatewayModalProps) {
   const loadStoredKeys = () => {
+    const isDesktop = isDesktopApp();
     try {
       const data = localStorage.getItem(STORAGE_KEY_API_KEYS);
       const parsed = data ? JSON.parse(data) : {};
+      if (isDesktop) {
+        return {
+          gemini: parsed.geminiKey || '',
+          groq: parsed.groqKey || '',
+          openai: parsed.openAiKey || '',
+          mistral: parsed.mistralKey || '',
+          cohere: parsed.cohereKey || '',
+          openrouter: parsed.openRouterKey || '',
+          anthropic: parsed.anthropicKey || '',
+          deepseek: parsed.deepSeekKey || '',
+          huggingface: parsed.huggingFaceKey || '',
+          nvidia: parsed.nvidiaKey || '',
+          xai: parsed.xaiKey || '',
+        };
+      }
       return {
         gemini: parsed.geminiKey || import.meta.env.VITE_GEMINI_API_KEY || '',
         groq: parsed.groqKey || import.meta.env.VITE_GROQ_API_KEY || '',
@@ -44,6 +61,21 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
         xai: parsed.xaiKey || import.meta.env.VITE_XAI_API_KEY || '',
       };
     } catch {
+      if (isDesktop) {
+        return {
+          gemini: '',
+          groq: '',
+          openai: '',
+          mistral: '',
+          cohere: '',
+          openrouter: '',
+          anthropic: '',
+          deepseek: '',
+          huggingface: '',
+          nvidia: '',
+          xai: '',
+        };
+      }
       return {
         gemini: import.meta.env.VITE_GEMINI_API_KEY || '',
         groq: import.meta.env.VITE_GROQ_API_KEY || '',
