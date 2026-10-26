@@ -364,9 +364,9 @@ function createWindow() {
 			// Allow Google OAuth, GitHub OAuth, Clerk authentication, and local loopback popups in-app
 			if (
 				parsed.hostname.includes("clerk") ||
-				parsed.hostname.includes("accounts.google.com") ||
-				parsed.hostname.includes("google.com") ||
-				parsed.hostname.includes("github.com") ||
+				parsed.hostname.includes("google") ||
+				parsed.hostname.includes("github") ||
+				parsed.hostname.includes("gstatic") ||
 				parsed.hostname === "localhost" ||
 				parsed.hostname === "127.0.0.1"
 			) {
@@ -601,9 +601,9 @@ ipcMain.handle("auth:start-external", async (_event, { strategy, mode, nonce }) 
 			const parsed = new URL(url);
 			if (
 				parsed.hostname.includes("clerk") ||
-				parsed.hostname.includes("accounts.google.com") ||
-				parsed.hostname.includes("google.com") ||
-				parsed.hostname.includes("github.com") ||
+				parsed.hostname.includes("google") ||
+				parsed.hostname.includes("github") ||
+				parsed.hostname.includes("gstatic") ||
 				parsed.hostname === "localhost" ||
 				parsed.hostname === "127.0.0.1"
 			) {
@@ -615,30 +615,11 @@ ipcMain.handle("auth:start-external", async (_event, { strategy, mode, nonce }) 
 	});
 
 	authWindow.webContents.on("will-navigate", (event, navigationUrl) => {
-		try {
-			if (navigationUrl.startsWith("bedrock://")) {
-				event.preventDefault();
-				handleProtocolUrl(navigationUrl);
-				return;
-			}
-			const parsed = new URL(navigationUrl);
-			const isAllowed =
-				parsed.hostname === "localhost" ||
-				parsed.hostname === "127.0.0.1" ||
-				parsed.hostname.includes("clerk") ||
-				parsed.hostname.includes("accounts.google.com") ||
-				parsed.hostname.includes("google.com") ||
-				parsed.hostname.includes("github.com") ||
-				parsed.hostname.includes("gstatic.com") ||
-				parsed.hostname.includes("googleapis.com");
-
-			if (!isAllowed) {
-				event.preventDefault();
-				shell.openExternal(navigationUrl);
-			}
-		} catch {
+		if (navigationUrl.startsWith("bedrock://")) {
 			event.preventDefault();
+			handleProtocolUrl(navigationUrl);
 		}
+		// Allow all OAuth redirect URLs to navigate freely inside authWindow - never kick them to external browser
 	});
 
 	authWindow.on("closed", () => {
