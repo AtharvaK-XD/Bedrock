@@ -27,10 +27,10 @@ var MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 var RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 
-// User agent identifying the Bedrock desktop environment
+// Use standard Chrome browser user agent so Google and GitHub OAuth never trigger 403 disallowed_useragent
 app.userAgentFallback = process.platform === "darwin"
-	? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.3.0 Electron/43.3.0"
-	: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 BedrockDesktop/1.3.0 Electron/43.3.0";
+	? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+	: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
 const MIME_TYPES = {
 	".html": "text/html",
@@ -58,6 +58,16 @@ if (process.defaultApp) {
 
 let localServerPort = 0;
 const pendingAuthSessions = new Map();
+let authWindow = null;
+
+function closeAuthWindow() {
+	if (authWindow && !authWindow.isDestroyed()) {
+		try {
+			authWindow.close();
+		} catch {}
+	}
+	authWindow = null;
+}
 
 function handleProtocolUrl(rawUrl) {
 	if (!rawUrl || typeof rawUrl !== "string") return;
@@ -70,10 +80,11 @@ function handleProtocolUrl(rawUrl) {
 				if (payload.nonce) {
 					pendingAuthSessions.set(payload.nonce, payload);
 				}
-				if (win && win.webContents) {
+				if (win && !win.isDestroyed() && win.webContents) {
 					win.webContents.send("auth:external-success", payload);
 				}
-				if (win) {
+				closeAuthWindow();
+				if (win && !win.isDestroyed()) {
 					if (win.isMinimized()) win.restore();
 					win.show();
 					win.setAlwaysOnTop(true);
@@ -117,10 +128,11 @@ function startLocalServer() {
 							if (payload.nonce) {
 								pendingAuthSessions.set(payload.nonce, payload);
 							}
-							if (win && win.webContents) {
+							if (win && !win.isDestroyed() && win.webContents) {
 								win.webContents.send("auth:external-success", payload);
 							}
-							if (win) {
+							closeAuthWindow();
+							if (win && !win.isDestroyed()) {
 								if (win.isMinimized()) win.restore();
 								win.show();
 								win.setAlwaysOnTop(true);
@@ -309,26 +321,70 @@ function createWindow() {
 	// =================== Navigation & Phishing Guard ===================
 	// Prevent malicious scripts from navigating the app to arbitrary remote domains
 	win.webContents.on("will-navigate", (event, navigationUrl) => {
-		const parsedUrl = new URL(navigationUrl);
-		const isAllowedHost =
-			parsedUrl.hostname === "localhost" ||
-			parsedUrl.hostname === "127.0.0.1" ||
-			parsedUrl.protocol === "file:";
+		try {
+			if (navigationUrl.startsWith("bedrock://")) {
+				event.preventDefault();
+				handleProtocolUrl(navigationUrl);
+				return;
+			}
+			const parsedUrl = new URL(navigationUrl);
+			const isAllowedHost =
+				parsedUrl.hostname === "localhost" ||
+				parsedUrl.hostname === "127.0.0.1" ||
+				parsedUrl.protocol === "file:";
 
-		if (!isAllowedHost) {
+			if (!isAllowedHost) {
+				event.preventDefault();
+				shell.openExternal(navigationUrl);
+			}
+		} catch {
 			event.preventDefault();
-			shell.openExternal(navigationUrl);
 		}
 	});
 
-	// Restrict window.open / popups: Always open in external system browser tab
+	// Restrict window.open / popups: Allow in-app authentication popups safely, open external web links in system browser
 	win.webContents.setWindowOpenHandler(({ url }) => {
 		try {
 			if (url === "about:blank" || url.startsWith("about:")) {
-				return { action: "deny" };
+				return {
+					action: "allow",
+					overrideBrowserWindowOptions: {
+						width: 540,
+						height: 720,
+						autoHideMenuBar: true,
+						webPreferences: {
+							webSecurity: true,
+							devTools: false
+						}
+					}
+				};
 			}
+
 			const parsed = new URL(url);
-			// Open external links and OAuth in external system browser
+			// Allow Google OAuth, GitHub OAuth, Clerk authentication, and local loopback popups in-app
+			if (
+				parsed.hostname.includes("clerk") ||
+				parsed.hostname.includes("accounts.google.com") ||
+				parsed.hostname.includes("google.com") ||
+				parsed.hostname.includes("github.com") ||
+				parsed.hostname === "localhost" ||
+				parsed.hostname === "127.0.0.1"
+			) {
+				return {
+					action: "allow",
+					overrideBrowserWindowOptions: {
+						width: 540,
+						height: 720,
+						autoHideMenuBar: true,
+						webPreferences: {
+							webSecurity: true,
+							devTools: false
+						}
+					}
+				};
+			}
+
+			// Open documentation / external links in external system browser
 			if (parsed.protocol === "https:" || parsed.protocol === "http:") {
 				shell.openExternal(url);
 			}
@@ -492,13 +548,104 @@ ipcMain.handle("updater:get-version", () => {
 	return app.getVersion();
 });
 
-// External browser authentication IPC handlers
+// Native in-app authentication IPC handlers
 ipcMain.handle("auth:get-local-port", () => localServerPort);
 
 ipcMain.handle("auth:start-external", async (_event, { strategy, mode, nonce }) => {
 	const port = localServerPort;
 	const authUrl = `http://127.0.0.1:${port}/#/browser-auth?strategy=${encodeURIComponent(strategy || "oauth_google")}&mode=${encodeURIComponent(mode || "register")}&nonce=${encodeURIComponent(nonce || "")}&port=${port}`;
-	shell.openExternal(authUrl);
+
+	if (authWindow && !authWindow.isDestroyed()) {
+		authWindow.focus();
+		return { success: true, url: authUrl };
+	}
+
+	const appIcon = getAppIcon();
+	const providerName = strategy === "oauth_github" ? "GitHub" : "Google";
+
+	authWindow = new BrowserWindow({
+		parent: win && !win.isDestroyed() ? win : undefined,
+		modal: true,
+		width: 540,
+		height: 720,
+		minWidth: 460,
+		minHeight: 600,
+		title: `Bedrock - Sign in with ${providerName}`,
+		icon: appIcon ? appIcon.native : undefined,
+		autoHideMenuBar: true,
+		backgroundColor: "#050505",
+		webPreferences: {
+			webSecurity: true,
+			contextIsolation: true,
+			nodeIntegration: false,
+			devTools: false
+		}
+	});
+
+	if (appIcon && appIcon.native) {
+		authWindow.setIcon(appIcon.native);
+	}
+
+	authWindow.removeMenu();
+
+	const cleanUA = process.platform === "darwin"
+		? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+		: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+	authWindow.webContents.setUserAgent(cleanUA);
+
+	authWindow.webContents.setWindowOpenHandler(({ url }) => {
+		try {
+			if (url === "about:blank" || url.startsWith("about:")) {
+				return { action: "allow" };
+			}
+			const parsed = new URL(url);
+			if (
+				parsed.hostname.includes("clerk") ||
+				parsed.hostname.includes("accounts.google.com") ||
+				parsed.hostname.includes("google.com") ||
+				parsed.hostname.includes("github.com") ||
+				parsed.hostname === "localhost" ||
+				parsed.hostname === "127.0.0.1"
+			) {
+				return { action: "allow" };
+			}
+			shell.openExternal(url);
+		} catch {}
+		return { action: "deny" };
+	});
+
+	authWindow.webContents.on("will-navigate", (event, navigationUrl) => {
+		try {
+			if (navigationUrl.startsWith("bedrock://")) {
+				event.preventDefault();
+				handleProtocolUrl(navigationUrl);
+				return;
+			}
+			const parsed = new URL(navigationUrl);
+			const isAllowed =
+				parsed.hostname === "localhost" ||
+				parsed.hostname === "127.0.0.1" ||
+				parsed.hostname.includes("clerk") ||
+				parsed.hostname.includes("accounts.google.com") ||
+				parsed.hostname.includes("google.com") ||
+				parsed.hostname.includes("github.com") ||
+				parsed.hostname.includes("gstatic.com") ||
+				parsed.hostname.includes("googleapis.com");
+
+			if (!isAllowed) {
+				event.preventDefault();
+				shell.openExternal(navigationUrl);
+			}
+		} catch {
+			event.preventDefault();
+		}
+	});
+
+	authWindow.on("closed", () => {
+		authWindow = null;
+	});
+
+	authWindow.loadURL(authUrl);
 	return { success: true, url: authUrl };
 });
 
@@ -588,6 +735,7 @@ if (!hasSingleInstanceLock) {
 	});
 
 	app.on("window-all-closed", () => {
+		closeAuthWindow();
 		if (process.platform !== "darwin") {
 			app.quit();
 			win = null;
