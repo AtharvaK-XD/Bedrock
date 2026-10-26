@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { notifyAuthSuccess } from './sendAuthNotification';
-import { isDesktopApp } from './platform';
 
 export interface UserProfile {
   name: string;
@@ -100,7 +99,7 @@ export function getBlankProfile(userOrName?: any, email = '', joinedDate = ''): 
     username,
     role: 'Lead Prompt Architect',
     bio: '',
-    plan: isDesktopApp() ? 'Workstation Edition (BYOK)' : 'Free Plan',
+    plan: 'Free Plan',
     location: '',
     organization: '',
     avatarInitials: resolveInitials(cleanName),
@@ -130,13 +129,63 @@ function getStoredProfile(): UserProfile {
     return {
       ...getBlankProfile(),
       ...parsed,
-      plan: isDesktopApp() ? 'Workstation Edition (BYOK)' : (parsed.plan || 'Free Plan'),
+      plan: parsed.plan || 'Free Plan',
       name: cleanName,
       avatarInitials: (parsed.avatarInitials === 'US' || !parsed.avatarInitials) ? cleanInitials : parsed.avatarInitials,
     };
   } catch {
     return getBlankProfile();
   }
+}
+
+/**
+ * Synchronizes the user profile and subscription plan from backend Neon DB,
+ * supporting both Clerk active sessions and desktop token persistence.
+ */
+export async function syncRemoteUserProfile(): Promise<UserProfile | null> {
+  try {
+    const clerk = (window as any).Clerk;
+    let token: string | null = null;
+    const clerkUser = clerk?.user;
+    if (clerk?.session) {
+      try {
+        token = await clerk.session.getToken();
+      } catch {}
+    }
+    if (!token && typeof localStorage !== 'undefined') {
+      token = localStorage.getItem('bedrock_token') || localStorage.getItem('bedrock_auth_token');
+    }
+
+    if (!token) return null;
+
+    const res = await fetch('/api/user/profile', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-user-name': clerkUser?.fullName || clerkUser?.firstName || '',
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const current = getStoredProfile();
+      const cleanName = resolveCleanName(data.name, data.email || clerkUser?.primaryEmailAddress?.emailAddress);
+      const cleanInitials = resolveInitials(cleanName);
+      const merged: UserProfile = {
+        ...getBlankProfile(cleanName, data.email || clerkUser?.primaryEmailAddress?.emailAddress, data.joinedDate),
+        ...data,
+        plan: data.plan || current.plan || 'Free Plan',
+        name: cleanName,
+        avatarInitials: cleanInitials,
+        avatarUrl: current.avatarUrl || data.avatarUrl || clerkUser?.imageUrl || '',
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      window.dispatchEvent(new Event(PROFILE_EVENT));
+      return merged;
+    }
+  } catch (err) {
+    console.warn('Failed to sync remote user profile:', err);
+  }
+  return null;
 }
 
 export function useUserProfile() {

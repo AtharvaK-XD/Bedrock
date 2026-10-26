@@ -31,7 +31,7 @@ import {
   HardDrive,
 } from 'lucide-react';
 import { AgentIcon, AppleLogo, PerplexityLogo } from '../components/ui/ModelLogos';
-import { subscribeToUpdates, checkForUpdates, applyUpdate } from '../lib/updater';
+import { subscribeToUpdates, checkForUpdates, applyUpdate, CURRENT_APP_VERSION } from '../lib/updater';
 import type { UpdateStatus } from '../lib/updater';
 import { isDesktopApp } from '../lib/platform';
 
@@ -2315,7 +2315,7 @@ export default function Settings() {
                               <AppleLogo className="w-5 h-5" />
                             </div>
                             <div>
-                              <p className="text-sm font-semibold text-white">Bedrock Desktop v1.2.5</p>
+                              <p className="text-sm font-semibold text-white">Bedrock Desktop v{CURRENT_APP_VERSION}</p>
                               <p className="text-xs text-gray-400 font-mono mt-0.5">Tauri & Electron Universal Workstation</p>
                             </div>
                           </div>

@@ -40,6 +40,19 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   } catch (e) {
     console.warn('Unable to get Clerk token for telemetry:', e);
   }
+
+  try {
+    const storedToken = localStorage.getItem('bedrock_token') || localStorage.getItem('bedrock_auth_token');
+    if (storedToken) {
+      return {
+        Authorization: `Bearer ${storedToken}`,
+        'Content-Type': 'application/json',
+      };
+    }
+  } catch {
+    // ignore local storage error
+  }
+
   return { 'Content-Type': 'application/json' };
 }
 
