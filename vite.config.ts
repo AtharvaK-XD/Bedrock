@@ -20,18 +20,25 @@ export default defineConfig(({ mode }) => {
     'VITE_RESEND_API_KEY',
   ];
 
+  // Overrides to force empty string for any forbidden secret in the client bundle
+  const defineOverrides: Record<string, string> = {};
+  for (const key of FORBIDDEN_SECRETS) {
+    defineOverrides[`import.meta.env.${key}`] = JSON.stringify('');
+    // Delete from process.env during Vite build execution so it cannot be inlined by envPrefix
+    delete process.env[key];
+  }
+
   for (const forbidden of FORBIDDEN_SECRETS) {
     if (env[forbidden] && env[forbidden].trim().length > 0) {
-      throw new Error(
-        `🚨 [SECURITY RISK DETECTED] "${forbidden}" is defined in your environment with a "VITE_" prefix.\n` +
-        `Vite automatically inlines all VITE_* variables directly into public client-side JavaScript.\n` +
-        `To fix: Remove the "VITE_" prefix so it is strictly accessible on the serverless backend (e.g. "${forbidden.replace('VITE_', '')}").`
+      console.warn(
+        `⚠️ [VITE_ LEAK GUARD] Stripped "${forbidden}" from client bundle to prevent public exposure in browser DevTools. (Use "${forbidden.replace('VITE_', '')}" in serverless backend).`
       );
     }
   }
 
   return {
     base: '/',
+    define: defineOverrides,
     plugins: [
       react(),
     ],

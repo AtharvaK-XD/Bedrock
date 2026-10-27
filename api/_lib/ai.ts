@@ -31,12 +31,12 @@ import { getModelTuning } from './modelTuning.js';
 
 function getApiKey(provider: 'groq' | 'gemini' | 'openrouter'): string {
   if (provider === 'groq') {
-    return process.env.GROQ_API_KEY || '';
+    return process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
   }
   if (provider === 'gemini') {
-    return process.env.GEMINI_API_KEY || '';
+    return process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
   }
-  return process.env.OPENROUTER_API_KEY || '';
+  return process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY || '';
 }
 
 /**

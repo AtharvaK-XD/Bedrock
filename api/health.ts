@@ -69,9 +69,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     },
     loadBalancer,
     aiProviders: {
-      groqConfigured: Boolean(process.env.GROQ_API_KEY),
-      geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
-      openRouterConfigured: Boolean(process.env.OPENROUTER_API_KEY),
+      groqConfigured: Boolean(process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY),
+      geminiConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY),
+      openRouterConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY),
     },
     version: '2.1.0-upstash-k6',
   });
