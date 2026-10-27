@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 
 function getDatabaseUrl(): string {
-  let url = process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED || '';
+  let url = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.DATABASE_URL_UNPOOLED || '';
   if (url.startsWith('"') && url.endsWith('"')) {
     url = url.slice(1, -1);
   }

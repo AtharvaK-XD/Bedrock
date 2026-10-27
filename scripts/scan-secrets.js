@@ -67,16 +67,38 @@ function scanDir(dir) {
 console.log('🔍 Running Bedrock Automated Secret Scanner...');
 scanDir(process.cwd());
 
+// Also scan compiled dist/assets if built, to guarantee zero secrets were inlined by Vite
+const distAssetsDir = path.join(process.cwd(), 'dist', 'assets');
+if (fs.existsSync(distAssetsDir)) {
+  const distFiles = fs.readdirSync(distAssetsDir);
+  for (const f of distFiles) {
+    if (f.endsWith('.js')) {
+      const bundleContent = fs.readFileSync(path.join(distAssetsDir, f), 'utf8');
+      for (const pattern of PATTERNS) {
+        const matches = bundleContent.match(pattern.regex);
+        if (matches) {
+          violations.push({
+            file: `dist/assets/${f} (Client JS Bundle)`,
+            rule: `LEAKED CLIENT SECRET: ${pattern.name}`,
+            match: matches[0].slice(0, 8) + '...' + matches[0].slice(-4),
+          });
+        }
+      }
+    }
+  }
+}
+
 console.log(`Scanned ${totalFilesScanned} files across repository.`);
 
 if (violations.length > 0) {
-  console.error('\n🚨 CRITICAL SECURITY ALERT: Unencrypted credentials detected in repository files:');
+  console.error('\n🚨 CRITICAL SECURITY ALERT: Unencrypted credentials detected:');
   for (const v of violations) {
     console.error(`  - [${v.rule}] in ${v.file} (Key: ${v.match})`);
   }
-  console.error('\nCommit BLOCKED. Move credentials to .env or encrypted CI environment variables.\n');
+  console.error('\nCommit BLOCKED. Move credentials to serverless backend environment variables (never prefix with VITE_).\n');
   process.exit(1);
 } else {
-  console.log('✅ No credentials or secret leaks detected in codebase.\n');
+  console.log('✅ No credentials or secret leaks detected in codebase or client bundles.\n');
   process.exit(0);
 }
+
