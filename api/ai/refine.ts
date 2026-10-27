@@ -10,13 +10,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Enforce distributed Upstash Redis rate limiting
-  const allowed = await enforceRateLimit(req, res, 'refine');
-  if (!allowed) return;
-
   const startTime = Date.now();
   const user = await authenticateRequest(req);
   const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+  const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
+
+  // Enforce distributed Upstash Redis rate limiting (per-user if authenticated, else IP)
+  const allowed = await enforceRateLimit(req, res, 'refine', user?.id || ip, isPaid);
+  if (!allowed) return;
 
   const body = req.body || {};
   const currentPrompt = (body.currentPrompt || body.prompt || '').trim();
@@ -33,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const safeContent = sanitizeAndDelimitPrompt(payload);
 
   try {
-    const { text, model } = await executeAiCompletion(safeContent, systemPrompt);
+    const { text, model } = await executeAiCompletion(safeContent, systemPrompt, user?.id);
     const extracted = extractRefineResult(text, currentPrompt, instruction);
 
     if (user?.id) {

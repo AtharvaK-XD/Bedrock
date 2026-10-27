@@ -4,6 +4,7 @@ export interface ProviderTarget {
   id: string;
   name: string;
   model: string;
+  provider: 'groq' | 'gemini' | 'openrouter';
   priority: number; // 1 = highest
   weight: number;
 }
@@ -13,6 +14,15 @@ export const AI_PROVIDERS: ProviderTarget[] = [
     id: 'groq-llama-70b',
     name: 'Groq LLaMA 3.3 70B',
     model: 'llama-3.3-70b-versatile',
+    provider: 'groq',
+    priority: 1,
+    weight: 5,
+  },
+  {
+    id: 'gemini-flash',
+    name: 'Google Gemini 2.5 Flash',
+    model: 'gemini-flash-latest',
+    provider: 'gemini',
     priority: 1,
     weight: 5,
   },
@@ -20,20 +30,7 @@ export const AI_PROVIDERS: ProviderTarget[] = [
     id: 'groq-llama-8b',
     name: 'Groq LLaMA 3.1 8B',
     model: 'llama-3.1-8b-instant',
-    priority: 1,
-    weight: 4,
-  },
-  {
-    id: 'groq-deepseek',
-    name: 'Groq DeepSeek R1 70B',
-    model: 'deepseek-r1-distill-llama-70b',
-    priority: 2,
-    weight: 3,
-  },
-  {
-    id: 'gemini-flash',
-    name: 'Google Gemini Flash Latest',
-    model: 'gemini-flash-latest',
+    provider: 'groq',
     priority: 2,
     weight: 4,
   },
@@ -41,16 +38,34 @@ export const AI_PROVIDERS: ProviderTarget[] = [
     id: 'openrouter-gpt4o',
     name: 'OpenRouter GPT-4o Mini',
     model: 'openai/gpt-4o-mini',
+    provider: 'openrouter',
+    priority: 2,
+    weight: 4,
+  },
+  {
+    id: 'gemini-flash-lite',
+    name: 'Google Gemini Flash Lite',
+    model: 'gemini-flash-lite-latest',
+    provider: 'gemini',
     priority: 3,
     weight: 3,
+  },
+  {
+    id: 'groq-deepseek',
+    name: 'Groq DeepSeek R1 70B',
+    model: 'deepseek-r1-distill-llama-70b',
+    provider: 'groq',
+    priority: 3,
+    weight: 2,
   },
 ];
 
 // Local in-memory circuit fallback
 const localCircuitMap = new Map<string, { trippedUntil: number; failures: number }>();
 
-const TRIP_DURATION_MS = 30000; // 30s cooldown before probing
-const MAX_FAILURES = 3;
+const TRIP_DURATION_MS = 30000; // 30s cooldown before probing for standard errors
+const RATE_LIMIT_COOLDOWN_MS = 15000; // 15s cooldown for 429 rate limit resets
+const MAX_FAILURES = 2; // Trip faster to prevent user latency lag
 
 /**
  * Checks whether a provider is healthy and not tripped by circuit breaker.
@@ -76,17 +91,36 @@ export async function isProviderHealthy(providerId: string): Promise<boolean> {
 
 /**
  * Records a failure on an AI provider. Trips circuit breaker if threshold is exceeded.
+ * Automatically identifies 429 rate limit errors and cascades cooldown to sibling models sharing the key.
  */
 export async function recordProviderFailure(providerId: string, error?: string): Promise<void> {
   const redis = getRedisClient();
+  const errMsg = error || '';
+  const isRateLimit = errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit');
+  const cooldownMs = isRateLimit ? RATE_LIMIT_COOLDOWN_MS : TRIP_DURATION_MS;
 
   // 1. Update local circuit state
   const local = localCircuitMap.get(providerId) || { trippedUntil: 0, failures: 0 };
   local.failures += 1;
 
-  if (local.failures >= MAX_FAILURES) {
-    local.trippedUntil = Date.now() + TRIP_DURATION_MS;
-    console.warn(`[LoadBalancer] Circuit for ${providerId} TRIPPED locally. Error: ${error || 'Unknown'}`);
+  // If rate-limited or threshold reached, trip immediately
+  if (isRateLimit || local.failures >= MAX_FAILURES) {
+    local.trippedUntil = Date.now() + cooldownMs;
+    console.warn(`[LoadBalancer] Circuit for ${providerId} TRIPPED locally (${isRateLimit ? '429 Rate Limit' : 'Failures: ' + local.failures}). Cooldown: ${cooldownMs / 1000}s`);
+
+    // If rate limit hit, cascade trip to other models sharing the same provider API key
+    const prefix = providerId.split('-')[0];
+    if (isRateLimit && prefix) {
+      for (const p of AI_PROVIDERS) {
+        if (p.id.startsWith(prefix) && p.id !== providerId) {
+          const sibling = localCircuitMap.get(p.id) || { trippedUntil: 0, failures: 0 };
+          sibling.failures = MAX_FAILURES;
+          sibling.trippedUntil = Date.now() + cooldownMs;
+          localCircuitMap.set(p.id, sibling);
+          console.warn(`[LoadBalancer] Cascaded 429 rate-limit cooldown to sibling provider ${p.id}`);
+        }
+      }
+    }
   }
   localCircuitMap.set(providerId, local);
 
@@ -96,8 +130,8 @@ export async function recordProviderFailure(providerId: string, error?: string):
       const failureCount = await redis.incr(`failures:ai:${providerId}`);
       await redis.expire(`failures:ai:${providerId}`, 60);
 
-      if (failureCount >= MAX_FAILURES) {
-        await redis.set(`circuit:ai:${providerId}`, 'tripped', { ex: Math.round(TRIP_DURATION_MS / 1000) });
+      if (isRateLimit || failureCount >= MAX_FAILURES) {
+        await redis.set(`circuit:ai:${providerId}`, 'tripped', { ex: Math.round(cooldownMs / 1000) });
         console.warn(`[LoadBalancer] Distributed circuit for ${providerId} TRIPPED in Redis.`);
       }
     } catch (err) {

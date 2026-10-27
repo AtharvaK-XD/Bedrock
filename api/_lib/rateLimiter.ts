@@ -35,6 +35,16 @@ const memoryStore = new Map<string, MemoryEntry>();
 
 function checkMemoryRateLimit(key: string, limit: number, windowSeconds: number) {
   const now = Date.now();
+
+  // Prune expired entries if memory map grows large
+  if (memoryStore.size > 1500) {
+    for (const [k, v] of memoryStore.entries()) {
+      if (now > v.resetAt) {
+        memoryStore.delete(k);
+      }
+    }
+  }
+
   const entry = memoryStore.get(key);
 
   if (!entry || now > entry.resetAt) {
@@ -99,33 +109,33 @@ interface PresetConfig {
 
 const PRESET_CONFIGS: Record<LimiterPreset, PresetConfig> = {
   synthesize: { requests: 12, windowSeconds: 60, prefix: 'ratelimit:ai:synthesize' },
-  questions: { requests: 20, windowSeconds: 60, prefix: 'ratelimit:ai:questions' },
-  refine: { requests: 20, windowSeconds: 60, prefix: 'ratelimit:ai:refine' },
-  test: { requests: 15, windowSeconds: 60, prefix: 'ratelimit:ai:test' },
-  prompts: { requests: 60, windowSeconds: 60, prefix: 'ratelimit:prompts' },
-  workflows: { requests: 60, windowSeconds: 60, prefix: 'ratelimit:workflows' },
-  general: { requests: 100, windowSeconds: 60, prefix: 'ratelimit:general' },
-  health: { requests: 200, windowSeconds: 60, prefix: 'ratelimit:health' },
+  questions: { requests: 24, windowSeconds: 60, prefix: 'ratelimit:ai:questions' },
+  refine: { requests: 24, windowSeconds: 60, prefix: 'ratelimit:ai:refine' },
+  test: { requests: 20, windowSeconds: 60, prefix: 'ratelimit:ai:test' },
+  prompts: { requests: 80, windowSeconds: 60, prefix: 'ratelimit:prompts' },
+  workflows: { requests: 80, windowSeconds: 60, prefix: 'ratelimit:workflows' },
+  general: { requests: 120, windowSeconds: 60, prefix: 'ratelimit:general' },
+  health: { requests: 300, windowSeconds: 60, prefix: 'ratelimit:health' },
 };
 
-// Cache Upstash Ratelimit instances
-const ratelimitInstances = new Map<LimiterPreset, Ratelimit>();
+// Cache Upstash Ratelimit instances (keyed by preset + tier)
+const ratelimitInstances = new Map<string, Ratelimit>();
 
-function getUpstashLimiter(preset: LimiterPreset): Ratelimit | null {
+function getUpstashLimiter(preset: LimiterPreset, requests: number, windowSeconds: number, prefix: string): Ratelimit | null {
   if (!redisClient) return null;
-  if (ratelimitInstances.has(preset)) {
-    return ratelimitInstances.get(preset)!;
+  const cacheKey = `${preset}:${requests}`;
+  if (ratelimitInstances.has(cacheKey)) {
+    return ratelimitInstances.get(cacheKey)!;
   }
 
-  const cfg = PRESET_CONFIGS[preset];
   const instance = new Ratelimit({
     redis: redisClient,
-    limiter: Ratelimit.slidingWindow(cfg.requests, `${cfg.windowSeconds} s` as any),
-    prefix: cfg.prefix,
+    limiter: Ratelimit.slidingWindow(requests, `${windowSeconds} s` as any),
+    prefix: `${prefix}:${requests}`,
     analytics: true,
   });
 
-  ratelimitInstances.set(preset, instance);
+  ratelimitInstances.set(cacheKey, instance);
   return instance;
 }
 
@@ -141,21 +151,30 @@ export interface RateLimitCheckResult {
  * Enforces rate limiting on a Vercel serverless request.
  * Sets X-RateLimit headers and automatically sends HTTP 429 if the quota is exceeded.
  *
+ * @param req Vercel HTTP Request
+ * @param res Vercel HTTP Response
+ * @param preset Rate limit preset configuration
+ * @param identifierOverride Custom identifier (e.g., user.id or IP)
+ * @param isPaidTier If true, scales allowable requests by 2.5x for paid subscribers
  * @returns true if allowed to proceed, false if response was terminated with 429.
  */
 export async function enforceRateLimit(
   req: VercelRequest,
   res: VercelResponse,
   preset: LimiterPreset,
-  identifierOverride?: string
+  identifierOverride?: string,
+  isPaidTier = false
 ): Promise<boolean> {
   const cfg = PRESET_CONFIGS[preset] || PRESET_CONFIGS.general;
   const ip = getClientIp(req);
   const identifier = identifierOverride || ip;
 
+  // Paid tier burst capacity scaling (2.5x request volume)
+  const allowedRequests = isPaidTier ? Math.round(cfg.requests * 2.5) : cfg.requests;
+
   let limitResult: { success: boolean; limit: number; remaining: number; reset: number };
 
-  const limiter = getUpstashLimiter(preset);
+  const limiter = getUpstashLimiter(preset, allowedRequests, cfg.windowSeconds, cfg.prefix);
   if (limiter) {
     try {
       const resData = await limiter.limit(identifier);
@@ -167,10 +186,10 @@ export async function enforceRateLimit(
       };
     } catch (redisErr) {
       console.warn(`[RateLimiter] Upstash Redis call failed for ${preset}, using memory fallback:`, redisErr);
-      limitResult = checkMemoryRateLimit(`${preset}:${identifier}`, cfg.requests, cfg.windowSeconds);
+      limitResult = checkMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
     }
   } else {
-    limitResult = checkMemoryRateLimit(`${preset}:${identifier}`, cfg.requests, cfg.windowSeconds);
+    limitResult = checkMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
   }
 
   const { success, limit, remaining, reset } = limitResult;
