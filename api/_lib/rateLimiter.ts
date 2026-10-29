@@ -99,7 +99,9 @@ export type LimiterPreset =
   | 'prompts'
   | 'workflows'
   | 'general'
-  | 'health';
+  | 'health'
+  | 'email'
+  | 'emailRecipient';
 
 interface PresetConfig {
   requests: number;
@@ -116,6 +118,9 @@ const PRESET_CONFIGS: Record<LimiterPreset, PresetConfig> = {
   workflows: { requests: 80, windowSeconds: 60, prefix: 'ratelimit:workflows' },
   general: { requests: 120, windowSeconds: 60, prefix: 'ratelimit:general' },
   health: { requests: 300, windowSeconds: 60, prefix: 'ratelimit:health' },
+  // Transactional email: per sender IP, and per recipient address
+  email: { requests: 5, windowSeconds: 3600, prefix: 'ratelimit:email:ip' },
+  emailRecipient: { requests: 3, windowSeconds: 86400, prefix: 'ratelimit:email:rcpt' },
 };
 
 // Cache Upstash Ratelimit instances (keyed by preset + tier)

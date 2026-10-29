@@ -1,4 +1,7 @@
+import crypto from 'node:crypto';
+import type { VercelResponse } from '@vercel/node';
 import { getDb, logSecurityEvent } from './db.js';
+import type { AuthenticatedUser } from './auth.js';
 
 // Suspicious patterns commonly used in prompt injection / system prompt extraction attacks
 const INJECTION_PATTERNS = [
@@ -44,53 +47,137 @@ export function checkPromptInjection(text: string, userId?: string, ipAddress?: 
 
 const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
 
-export interface QuotaCheckResult {
+/**
+ * Server-side AI usage quotas (rolling 5-hour window).
+ *
+ * Usage is recorded in "SecurityLog", which no API lets users modify or delete
+ * (unlike "Trace", which users can clear via DELETE /api/traces). Anonymous
+ * callers (e.g. the desktop app, which has no long-lived Clerk session yet) are
+ * metered per client IP with the same limits as the free tier.
+ *
+ * - generation: full prompt synthesis (the advertised "10 prompts / 5 hours")
+ * - assist:     questions, refine and model test calls (generous abuse cap)
+ */
+export type QuotaBucket = 'generation' | 'assist';
+
+const QUOTA_LIMITS: Record<QuotaBucket, { free: number; paid: number }> = {
+  generation: { free: 10, paid: 500 },
+  assist: { free: 100, paid: 1000 },
+};
+
+const QUOTA_EVENT: Record<QuotaBucket, string> = {
+  generation: 'AI_QUOTA_GENERATION',
+  assist: 'AI_QUOTA_ASSIST',
+};
+
+export interface QuotaReservation {
   allowed: boolean;
-  count: number;
+  /** true when the quota store could not be reached (request is refused) */
+  unavailable: boolean;
+  bucket: QuotaBucket;
   limit: number;
   resetMs: number;
+  /** SecurityLog row holding this unit of usage; null when nothing was recorded */
+  reservationId: string | null;
 }
 
+export const isPaidTier = (tier?: string | null) => tier === 'advanced' || tier === 'ultimate' || tier === 'pro';
+
 /**
- * Enforces server-side quota in Neon PostgreSQL
+ * Atomically checks the caller's rolling-window usage and records one unit if
+ * under the limit. Fails closed if the database is unavailable.
  */
-export async function enforceServerQuota(
-  userId: string,
-  tier: string
-): Promise<QuotaCheckResult> {
-  const isPaid = tier === 'advanced' || tier === 'ultimate' || tier === 'pro';
-  const limit = isPaid ? 500 : 10;
+export async function reserveQuota(params: {
+  bucket: QuotaBucket;
+  endpoint: string;
+  user: AuthenticatedUser | null;
+  ip: string;
+}): Promise<QuotaReservation> {
+  const { bucket, endpoint, user, ip } = params;
+  const paid = Boolean(user && !user.isGuest && isPaidTier(user.subscriptionTier));
+  const limit = paid ? QUOTA_LIMITS[bucket].paid : QUOTA_LIMITS[bucket].free;
+  const base = { bucket, limit, resetMs: FIVE_HOURS_MS };
+
+  // Local development guest (only issued for localhost hosts): no metering
+  if (user?.isGuest) {
+    return { ...base, allowed: true, unavailable: false, reservationId: null };
+  }
+
+  const eventType = QUOTA_EVENT[bucket];
+  const id = `quota_${crypto.randomUUID()}`;
+  const userId = user ? user.id : null;
+  const ipAddress = (ip || 'unknown').slice(0, 64);
 
   try {
     const sql = getDb();
-    const fiveHoursAgo = new Date(Date.now() - FIVE_HOURS_MS);
+    const rows = (user
+      ? await sql`
+          INSERT INTO "SecurityLog" (id, user_id, event_type, severity, ip_address, endpoint, message, created_at)
+          SELECT ${id}, ${userId}, ${eventType}, 'INFO', ${ipAddress}, ${endpoint}, 'AI usage (user)', NOW()
+          WHERE (
+            SELECT COUNT(*) FROM "SecurityLog"
+            WHERE user_id = ${userId} AND event_type = ${eventType}
+              AND created_at >= NOW() - INTERVAL '5 hours'
+          ) < ${limit}
+          RETURNING id
+        `
+      : await sql`
+          INSERT INTO "SecurityLog" (id, user_id, event_type, severity, ip_address, endpoint, message, created_at)
+          SELECT ${id}, NULL, ${eventType}, 'INFO', ${ipAddress}, ${endpoint}, 'AI usage (anonymous)', NOW()
+          WHERE (
+            SELECT COUNT(*) FROM "SecurityLog"
+            WHERE user_id IS NULL AND ip_address = ${ipAddress} AND event_type = ${eventType}
+              AND created_at >= NOW() - INTERVAL '5 hours'
+          ) < ${limit}
+          RETURNING id
+        `) as Array<{ id: string }>;
 
-    const rows = (await sql`
-      SELECT COUNT(*)::int as count FROM "Trace"
-      WHERE user_id = ${userId}
-        AND node_origin IN ('Wizard.synthesize', 'RefineModal.refine', 'Tester.test')
-        AND created_at >= ${fiveHoursAgo}
-    `) as any[];
-
-    const count = rows[0]?.count ?? 0;
-    const allowed = count < limit;
-
-    return {
-      allowed,
-      count,
-      limit,
-      resetMs: FIVE_HOURS_MS,
-    };
+    const allowed = rows.length > 0;
+    return { ...base, allowed, unavailable: false, reservationId: allowed ? id : null };
   } catch (err) {
-    console.error('[Quota] Failed to check quota in database:', err);
-    // In case of transient DB error, do not completely brick the user
-    return {
-      allowed: true,
-      count: 0,
-      limit,
-      resetMs: FIVE_HOURS_MS,
-    };
+    console.error('[Quota] Quota store unavailable, refusing request:', err);
+    return { ...base, allowed: false, unavailable: true, reservationId: null };
   }
+}
+
+/** Refunds a reserved unit (call when the AI request ultimately failed). */
+export async function releaseQuota(reservation: QuotaReservation | null | undefined): Promise<void> {
+  if (!reservation?.reservationId) return;
+  try {
+    const sql = getDb();
+    await sql`DELETE FROM "SecurityLog" WHERE id = ${reservation.reservationId}`;
+  } catch (err) {
+    console.error('[Quota] Failed to release quota reservation:', err);
+  }
+}
+
+/** Sends the standard 429 / 503 response for a refused reservation. */
+export function sendQuotaDenied(res: VercelResponse, quota: QuotaReservation) {
+  if (quota.unavailable) {
+    res.setHeader('Retry-After', '30');
+    return res.status(503).json({
+      error: 'Service Temporarily Unavailable',
+      code: 'QUOTA_SERVICE_UNAVAILABLE',
+      message: 'Usage limits could not be verified right now. Please try again shortly.',
+    });
+  }
+  if (quota.bucket === 'generation') {
+    return res.status(429).json({
+      error: 'Free Tier Limit Reached',
+      code: 'FREE_TIER_QUOTA_EXCEEDED',
+      message: `Free tier accounts can generate up to ${quota.limit} prompts per 5-hour session. Please upgrade to Pro for unlimited prompts.`,
+      sessionLimit: quota.limit,
+      sessionPrompts: quota.limit,
+      resetMs: quota.resetMs,
+    });
+  }
+  return res.status(429).json({
+    error: 'Usage Limit Reached',
+    code: 'AI_USAGE_LIMIT_EXCEEDED',
+    message: `Server AI usage limit of ${quota.limit} requests per 5 hours reached. Add your own API key in Settings for unlimited direct calls.`,
+    limit: quota.limit,
+    resetMs: quota.resetMs,
+  });
 }
 
 /**

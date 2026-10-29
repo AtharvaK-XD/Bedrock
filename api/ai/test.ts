@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
-import { checkPromptInjection, recordExecutionTrace } from '../_lib/security.js';
+import { checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion } from '../_lib/ai.js';
-import { enforceRateLimit } from '../_lib/rateLimiter.js';
+import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -12,7 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const startTime = Date.now();
   const user = await authenticateRequest(req);
-  const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+  const ip = getClientIp(req);
   const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
 
   // Enforce distributed Upstash Redis rate limiting (per-user if authenticated, else IP)
@@ -29,6 +29,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!prompt) {
     return res.status(400).json({ error: 'prompt is required' });
   }
+
+  // Server-side usage quota (per user, or per client IP for anonymous callers); fails closed
+  const quota = await reserveQuota({ bucket: 'assist', endpoint: 'ai/test', user, ip });
+  if (!quota.allowed) return sendQuotaDenied(res, quota);
 
   checkPromptInjection(prompt, user?.id, ip);
 
@@ -98,6 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       status: 'success',
     });
   } catch (err: any) {
+    await releaseQuota(quota);
     console.error('[Tester] Error:', err);
     return res.status(500).json({
       error: 'Prompt test execution failed',

@@ -22,27 +22,75 @@ interface CachedJwks {
 const jwksCache = new Map<string, CachedJwks>();
 const JWKS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+const normalizeIssuer = (iss: string) => iss.trim().replace(/\/+$/, '');
+
 /**
- * Fetches JWKS from Clerk issuer and converts each RSA key to a Node crypto KeyObject
+ * Decodes the Clerk Frontend API host from a publishable key
+ * (pk_test_/pk_live_ + base64("<frontend-api-host>$")).
  */
-async function getClerkPublicKey(issuer: string, kid: string): Promise<crypto.KeyObject | null> {
-  // 1. Direct PEM public key in environment variable (if provided)
+function issuerFromPublishableKey(key: string | undefined): string | null {
+  const match = (key || '').trim().replace(/^"|"$/g, '').match(/^pk_(?:test|live)_(.+)$/);
+  if (!match) return null;
+  try {
+    const host = Buffer.from(match[1], 'base64').toString('utf8').replace(/\$$/, '');
+    return /^[a-z0-9.-]+$/i.test(host) ? `https://${host}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Issuers we accept tokens from. A token's own `iss` claim is never trusted on
+ * its own — otherwise anyone could host a JWKS and mint tokens for any user.
+ */
+let allowedIssuersCache: Set<string> | null = null;
+function getAllowedIssuers(): Set<string> {
+  if (allowedIssuersCache) return allowedIssuersCache;
+  const issuers = new Set<string>();
+  for (const iss of (process.env.CLERK_ISSUER || process.env.CLERK_JWT_ISSUER || '').split(',')) {
+    if (iss.trim()) issuers.add(normalizeIssuer(iss));
+  }
+  for (const key of [process.env.CLERK_PUBLISHABLE_KEY, process.env.VITE_CLERK_PUBLISHABLE_KEY]) {
+    const iss = issuerFromPublishableKey(key);
+    if (iss) issuers.add(normalizeIssuer(iss));
+  }
+  if (issuers.size === 0) {
+    console.error('[Auth] No trusted Clerk issuer configured (set CLERK_ISSUER or VITE_CLERK_PUBLISHABLE_KEY). All tokens will be rejected.');
+  }
+  allowedIssuersCache = issuers;
+  return issuers;
+}
+
+let envPemKey: crypto.KeyObject | null | undefined;
+function getEnvPublicKey(): crypto.KeyObject | null {
+  if (envPemKey !== undefined) return envPemKey;
+  envPemKey = null;
   const envPem = process.env.CLERK_JWT_KEY || process.env.CLERK_PEM_PUBLIC_KEY;
   if (envPem) {
     try {
       const formattedPem = envPem.includes('BEGIN PUBLIC KEY')
         ? envPem
         : `-----BEGIN PUBLIC KEY-----\n${envPem}\n-----END PUBLIC KEY-----`;
-      return crypto.createPublicKey(formattedPem);
+      envPemKey = crypto.createPublicKey(formattedPem);
     } catch (e) {
       console.warn('[Auth] Error loading CLERK_JWT_KEY from env:', e);
     }
   }
+  return envPemKey;
+}
 
-  // 2. Normalize issuer URL
-  let cleanIssuer = issuer.trim();
-  if (cleanIssuer.endsWith('/')) {
-    cleanIssuer = cleanIssuer.slice(0, -1);
+/**
+ * Fetches JWKS from a trusted Clerk issuer and converts each RSA key to a Node crypto KeyObject
+ */
+async function getClerkPublicKey(issuer: string, kid: string): Promise<crypto.KeyObject | null> {
+  // 1. Direct PEM public key in environment variable (if provided)
+  const envKey = getEnvPublicKey();
+  if (envKey) return envKey;
+
+  // 2. Only ever fetch keys from an allow-listed issuer
+  const cleanIssuer = normalizeIssuer(issuer);
+  if (!getAllowedIssuers().has(cleanIssuer)) {
+    return null;
   }
 
   // 3. Check in-memory JWKS cache
@@ -122,9 +170,9 @@ async function verifyClerkJwt(token: string): Promise<any | null> {
     }
 
     const now = Math.floor(Date.now() / 1000);
-    // Expiration check with 60s clock skew allowance
-    if (claims.exp && typeof claims.exp === 'number' && now > claims.exp + 60) {
-      console.warn(`[Auth] Token expired (exp: ${claims.exp}, now: ${now})`);
+    // Expiration is mandatory; 60s clock skew allowance
+    if (typeof claims.exp !== 'number' || now > claims.exp + 60) {
+      console.warn(`[Auth] Token expired or missing exp (exp: ${claims.exp}, now: ${now})`);
       return null;
     }
 
@@ -134,13 +182,20 @@ async function verifyClerkJwt(token: string): Promise<any | null> {
       return null;
     }
 
-    // 3. Cryptographic Signature Verification
+    // 3. Issuer must be one of our own Clerk instances
     const issuer = claims.iss;
-    if (!issuer || typeof issuer !== 'string' || !issuer.startsWith('http')) {
-      console.warn('[Auth] Token missing valid issuer (iss) claim');
+    if (!issuer || typeof issuer !== 'string') {
+      console.warn('[Auth] Token missing issuer (iss) claim');
+      return null;
+    }
+    const allowedIssuers = getAllowedIssuers();
+    if (allowedIssuers.size > 0 && !allowedIssuers.has(normalizeIssuer(issuer))) {
+      // Log only (no DB write): this runs before rate limiting, so a DB insert here would be a cheap amplification vector
+      console.warn(`[Auth] Rejected token from untrusted issuer: ${issuer.slice(0, 200)} (sub: ${String(claims.sub).slice(0, 64)})`);
       return null;
     }
 
+    // 4. Cryptographic Signature Verification
     const publicKey = await getClerkPublicKey(issuer, header.kid);
     if (publicKey) {
       const dataToVerify = Buffer.from(`${parts[0]}.${parts[1]}`);
@@ -160,14 +215,8 @@ async function verifyClerkJwt(token: string): Promise<any | null> {
       return claims;
     }
 
-    // 4. Fallback in development/offline testing mode only
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[Auth] Non-production environment: JWKS unreachable, falling back to claims.');
-      return claims;
-    }
-
-    // In production, reject if public key could not be verified
-    console.warn(`[Auth] Unable to verify signature in production for key ID ${header.kid}`);
+    // Never accept unverified claims (no dev/offline fallback): fail closed
+    console.warn(`[Auth] Unable to verify token signature for key ID ${header.kid}`);
     return null;
   } catch (err: any) {
     console.warn('[Auth] JWT verification exception:', err?.message || err);
@@ -216,8 +265,10 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
       try {
         const sql = getDb();
         // Check if user exists in Neon DB
+        // Exact id match always wins over an email match
         const existing = await sql`
-          SELECT * FROM "User" WHERE id = ${userId} OR email = ${email} LIMIT 1
+          SELECT * FROM "User" WHERE id = ${userId} OR email = ${email}
+          ORDER BY (id = ${userId}) DESC LIMIT 1
         ` as UserRow[];
 
         if (existing.length > 0 && existing[0]) {

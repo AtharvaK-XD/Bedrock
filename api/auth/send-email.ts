@@ -1,6 +1,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer, { type Transporter } from 'nodemailer';
 import { Resend } from 'resend';
+import { authenticateRequest } from '../_lib/auth.js';
+import { logSecurityEvent } from '../_lib/db.js';
+import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
+
+const EMAIL_RE = /^[^\s@<>"'`,;:\\]+@[^\s@<>"'`,;:\\]+\.[^\s@<>"'`,;:\\]+$/;
+
+/** Escapes untrusted text before it is placed into the email HTML. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 let gmailTransporter: Transporter | null = null;
 let resendInstance: Resend | null = null;
@@ -45,14 +60,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Throttle per sender IP before doing any work
+  const clientIp = getClientIp(req);
+  if (!(await enforceRateLimit(req, res, 'email', `ip:${clientIp}`))) return;
+
   const { email, name, type } = req.body || {};
 
-  if (!email || typeof email !== 'string' || !email.includes('@')) {
+  if (type !== 'signup' && type !== 'signin') {
+    return res.status(400).json({ error: 'type must be "signup" or "signin"' });
+  }
+
+  const to = typeof email === 'string' ? email.toLowerCase().trim() : '';
+  if (!to || to.length > 254 || !EMAIL_RE.test(to)) {
     return res.status(400).json({ error: 'Valid email address is required' });
   }
 
-  const to = email.toLowerCase().trim();
-  const displayName = (name && typeof name === 'string' && name.trim()) || to.split('@')[0];
+  // A signed-in caller may only notify their own address
+  const caller = await authenticateRequest(req);
+  if (caller && !caller.isGuest && caller.email && !caller.email.endsWith('@clerk.user') && caller.email.toLowerCase() !== to) {
+    await logSecurityEvent({
+      userId: caller.id,
+      eventType: 'EMAIL_RECIPIENT_MISMATCH',
+      severity: 'WARN',
+      ipAddress: clientIp,
+      endpoint: 'auth/send-email',
+      message: 'Authenticated caller attempted to send an auth email to a different address',
+    });
+    return res.status(403).json({ error: 'Notifications can only be sent to your own email address' });
+  }
+
+  // Throttle per recipient so the endpoint cannot be used to spam an inbox
+  if (!(await enforceRateLimit(req, res, 'emailRecipient', `rcpt:${to}`))) return;
+
+  // Untrusted values are escaped before they are placed into the HTML template
+  const rawName = (typeof name === 'string' && name.replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, 60)) || to.split('@')[0];
+  const displayName = escapeHtml(rawName);
+  const safeTo = escapeHtml(to);
   const gmail = getGmailTransporter();
   const gmailUser = process.env.GMAIL_USER || 'bedrockofficialpage@gmail.com';
 
@@ -157,7 +200,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 </tr>
               </table>
               <p style="margin: 0; font-size: 12px; color: #6b7280; font-family: monospace;">
-                Account: <span style="color: #9ca3af;">${to}</span>
+                Account: <span style="color: #9ca3af;">${safeTo}</span>
               </p>
             </td>
           </tr>
@@ -180,7 +223,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
   } else {
     const loginTimestamp = new Date().toUTCString();
-    const ip = (req.headers['x-forwarded-for'] as string) || req.socket?.remoteAddress;
+    const ip = escapeHtml(clientIp);
     html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -251,7 +294,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     Account
                   </td>
                   <td style="padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; color: #f3f4f6; font-weight: 500;">
-                    <a href="#" style="color: #f3f4f6 !important; text-decoration: none !important; cursor: default;">${to}</a>
+                    <a href="#" style="color: #f3f4f6 !important; text-decoration: none !important; cursor: default;">${safeTo}</a>
                   </td>
                 </tr>
                 <tr>

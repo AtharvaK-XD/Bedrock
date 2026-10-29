@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
-import { sanitizeAndDelimitPrompt, checkPromptInjection, recordExecutionTrace } from '../_lib/security.js';
+import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion, QuestionOutput } from '../_lib/ai.js';
-import { enforceRateLimit } from '../_lib/rateLimiter.js';
+import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { getUseCaseProfile, classifyUseCase } from '../_lib/useCaseProfiles.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -12,7 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const startTime = Date.now();
   const user = await authenticateRequest(req);
-  const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+  const ip = getClientIp(req);
   const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
 
   // Enforce distributed Upstash Redis rate limiting (per-user if authenticated, else IP)
@@ -26,6 +26,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!ideaText) {
     return res.status(400).json({ error: 'ideaText is required' });
   }
+
+  // Server-side usage quota (per user, or per client IP for anonymous callers); fails closed
+  const quota = await reserveQuota({ bucket: 'assist', endpoint: 'ai/generate-questions', user, ip });
+  if (!quota.allowed) return sendQuotaDenied(res, quota);
 
   // Security: Check for prompt injection
   checkPromptInjection(ideaText, user?.id, ip);
@@ -59,6 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json(questions);
   } catch (err: any) {
+    await releaseQuota(quota);
     console.error('[GenerateQuestions] Error:', err);
     return res.status(200).json(profile.fallbackQuestions);
   }

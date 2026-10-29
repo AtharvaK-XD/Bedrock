@@ -1920,10 +1920,19 @@ async function callBackendProxy(
   strictJsonMode = false
 ): Promise<string> {
   const isStreaming = typeof onToken === 'function';
+  // Attach the Clerk session token when available so usage is metered per account
+  let authHeader: Record<string, string> = {};
+  try {
+    const token = await (window as any).Clerk?.session?.getToken?.();
+    if (token) authHeader = { Authorization: `Bearer ${token}` };
+  } catch {
+    // anonymous request
+  }
   const response = await fetch('/api/ai/test', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...authHeader,
       ...(isStreaming ? { Accept: 'text/event-stream' } : {}),
     },
     body: JSON.stringify({

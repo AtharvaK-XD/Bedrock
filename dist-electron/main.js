@@ -216,7 +216,13 @@ function startLocalServer() {
 					return;
 				}
 
-				let filePath = path.join(RENDERER_DIST, decodeURIComponent(parsedUrl.pathname));
+				// Resolve inside the renderer bundle only: block ../ and encoded traversal (%2e%2e%2f)
+				const rendererRoot = path.resolve(RENDERER_DIST);
+				let filePath = path.resolve(rendererRoot, "." + path.sep + decodeURIComponent(parsedUrl.pathname));
+				if (filePath !== rendererRoot && !filePath.startsWith(rendererRoot + path.sep)) {
+					res.writeHead(403, { "Content-Type": "text/plain" });
+					return res.end("Forbidden");
+				}
 
 				if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
 					filePath = path.join(filePath, "index.html");
@@ -230,9 +236,9 @@ function startLocalServer() {
 				const contentType = MIME_TYPES[ext] || "application/octet-stream";
 
 				const content = fs.readFileSync(filePath);
+				// No CORS header: the app loads its own files same-origin; other sites must not read them
 				res.writeHead(200, {
-					"Content-Type": contentType,
-					"Access-Control-Allow-Origin": "*"
+					"Content-Type": contentType
 				});
 				res.end(content);
 			} catch {
