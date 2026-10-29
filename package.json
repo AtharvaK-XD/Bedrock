@@ -158,6 +158,7 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@remotion/cli": "^4.0.534",
+    "@remotion/google-fonts": "^4.0.534",
     "@tailwindcss/typography": "^0.5.20",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/cli": "^2.11.4",

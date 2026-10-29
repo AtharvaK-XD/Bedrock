@@ -1,0 +1,40 @@
+{
+  "_note": "Narration script for the Bedrock launch film. Every claim comes from src/pages/Landing.tsx or README.md. `start` = target start time in seconds. Edit here; then re-run scripts/launch-video/generate_voiceover.py.",
+  "sections": [
+    {
+      "id": "problem",
+      "start": 0.6,
+      "text": "Every AI product starts with a prompt. A vague idea, typed into a box, and a hope. Then the model updates. The output drifts. And production breaks."
+    },
+    {
+      "id": "reveal",
+      "start": 12.2,
+      "text": "This is Bedrock. Intelligence, shaped by you."
+    },
+    {
+      "id": "generator",
+      "start": 17.4,
+      "text": "Describe what you want. Bedrock asks the right questions, then synthesizes a production-grade system prompt. Structured. Constrained. Ready to ship."
+    },
+    {
+      "id": "branching",
+      "start": 27.0,
+      "text": "Chain prompts on a visual DAG canvas. Route conditions, merge consensus, orchestrate entire agent workflows."
+    },
+    {
+      "id": "arena",
+      "start": 35.2,
+      "text": "Then prove it. Benchmark side by side across ten frontier models, with live latency and token telemetry."
+    },
+    {
+      "id": "export",
+      "start": 43.2,
+      "text": "Export in one click: Cursor, Claude Code, Windsurf, Copilot, the Vercel AI SDK, and more. Fifteen formats."
+    },
+    {
+      "id": "cta",
+      "start": 51.0,
+      "text": "Stop guessing with LLMs. Start engineering. Bedrock. Download free for Windows and Mac."
+    }
+  ]
+}

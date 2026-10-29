@@ -37,3 +37,5 @@ public/*.zip
 public/*.exe
 scratch/
 .neon
+.claude/
+

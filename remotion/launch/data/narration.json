@@ -1,0 +1,641 @@
+{
+  "source": "edge",
+  "sections": [
+    {
+      "id": "problem",
+      "file": "remotion/launch/audio-src/vo_problem.wav",
+      "start": 0.506,
+      "duration": 12.12,
+      "words": [
+        {
+          "text": "Every",
+          "start": 0.094,
+          "end": 0.412
+        },
+        {
+          "text": "AI",
+          "start": 0.423,
+          "end": 0.807
+        },
+        {
+          "text": "product",
+          "start": 0.818,
+          "end": 1.201
+        },
+        {
+          "text": "starts",
+          "start": 1.212,
+          "end": 1.519
+        },
+        {
+          "text": "with",
+          "start": 1.53,
+          "end": 1.629
+        },
+        {
+          "text": "a",
+          "start": 1.64,
+          "end": 1.684
+        },
+        {
+          "text": "prompt.",
+          "start": 1.695,
+          "end": 2.177
+        },
+        {
+          "text": "A",
+          "start": 2.928,
+          "end": 3.037
+        },
+        {
+          "text": "vague",
+          "start": 3.048,
+          "end": 3.333
+        },
+        {
+          "text": "idea,",
+          "start": 3.344,
+          "end": 3.739
+        },
+        {
+          "text": "typed",
+          "start": 3.925,
+          "end": 4.211
+        },
+        {
+          "text": "into",
+          "start": 4.221,
+          "end": 4.397
+        },
+        {
+          "text": "a",
+          "start": 4.408,
+          "end": 4.463
+        },
+        {
+          "text": "box,",
+          "start": 4.474,
+          "end": 4.846
+        },
+        {
+          "text": "and",
+          "start": 4.978,
+          "end": 5.132
+        },
+        {
+          "text": "a",
+          "start": 5.143,
+          "end": 5.164
+        },
+        {
+          "text": "hope.",
+          "start": 5.175,
+          "end": 5.537
+        },
+        {
+          "text": "Then",
+          "start": 6.294,
+          "end": 6.535
+        },
+        {
+          "text": "the",
+          "start": 6.546,
+          "end": 6.612
+        },
+        {
+          "text": "model",
+          "start": 6.623,
+          "end": 6.952
+        },
+        {
+          "text": "updates.",
+          "start": 6.963,
+          "end": 7.555
+        },
+        {
+          "text": "The",
+          "start": 8.311,
+          "end": 8.454
+        },
+        {
+          "text": "output",
+          "start": 8.465,
+          "end": 8.893
+        },
+        {
+          "text": "drifts.",
+          "start": 8.903,
+          "end": 9.441
+        },
+        {
+          "text": "And",
+          "start": 10.197,
+          "end": 10.34
+        },
+        {
+          "text": "production",
+          "start": 10.351,
+          "end": 10.811
+        },
+        {
+          "text": "breaks.",
+          "start": 10.822,
+          "end": 11.338
+        }
+      ]
+    },
+    {
+      "id": "reveal",
+      "file": "remotion/launch/audio-src/vo_reveal.wav",
+      "start": 12.106,
+      "duration": 4.368,
+      "words": [
+        {
+          "text": "This",
+          "start": 0.094,
+          "end": 0.313
+        },
+        {
+          "text": "is",
+          "start": 0.324,
+          "end": 0.445
+        },
+        {
+          "text": "Bedrock.",
+          "start": 0.456,
+          "end": 1.026
+        },
+        {
+          "text": "Intelligence,",
+          "start": 1.776,
+          "end": 2.533
+        },
+        {
+          "text": "shaped",
+          "start": 2.73,
+          "end": 3.092
+        },
+        {
+          "text": "by",
+          "start": 3.103,
+          "end": 3.235
+        },
+        {
+          "text": "you.",
+          "start": 3.246,
+          "end": 3.586
+        }
+      ]
+    },
+    {
+      "id": "generator",
+      "file": "remotion/launch/audio-src/vo_generator.wav",
+      "start": 17.306,
+      "duration": 11.352,
+      "words": [
+        {
+          "text": "Describe",
+          "start": 0.094,
+          "end": 0.543
+        },
+        {
+          "text": "what",
+          "start": 0.554,
+          "end": 0.664
+        },
+        {
+          "text": "you",
+          "start": 0.675,
+          "end": 0.774
+        },
+        {
+          "text": "want.",
+          "start": 0.785,
+          "end": 1.168
+        },
+        {
+          "text": "Bedrock",
+          "start": 1.919,
+          "end": 2.357
+        },
+        {
+          "text": "asks",
+          "start": 2.368,
+          "end": 2.675
+        },
+        {
+          "text": "the",
+          "start": 2.686,
+          "end": 2.774
+        },
+        {
+          "text": "right",
+          "start": 2.785,
+          "end": 3.004
+        },
+        {
+          "text": "questions,",
+          "start": 3.015,
+          "end": 3.575
+        },
+        {
+          "text": "then",
+          "start": 3.772,
+          "end": 3.958
+        },
+        {
+          "text": "synthesizes",
+          "start": 3.969,
+          "end": 4.605
+        },
+        {
+          "text": "a",
+          "start": 4.616,
+          "end": 4.671
+        },
+        {
+          "text": "production-grade",
+          "start": 4.682,
+          "end": 5.318
+        },
+        {
+          "text": "system",
+          "start": 5.329,
+          "end": 5.691
+        },
+        {
+          "text": "prompt.",
+          "start": 5.702,
+          "end": 6.14
+        },
+        {
+          "text": "Structured.",
+          "start": 6.897,
+          "end": 7.577
+        },
+        {
+          "text": "Constrained.",
+          "start": 8.322,
+          "end": 9.079
+        },
+        {
+          "text": "Ready",
+          "start": 9.825,
+          "end": 10.077
+        },
+        {
+          "text": "to",
+          "start": 10.088,
+          "end": 10.175
+        },
+        {
+          "text": "ship.",
+          "start": 10.186,
+          "end": 10.57
+        }
+      ]
+    },
+    {
+      "id": "branching",
+      "file": "remotion/launch/audio-src/vo_branching.wav",
+      "start": 28.102,
+      "duration": 7.992,
+      "words": [
+        {
+          "text": "Chain",
+          "start": 0.094,
+          "end": 0.434
+        },
+        {
+          "text": "prompts",
+          "start": 0.445,
+          "end": 0.774
+        },
+        {
+          "text": "on",
+          "start": 0.785,
+          "end": 0.883
+        },
+        {
+          "text": "a",
+          "start": 0.894,
+          "end": 0.938
+        },
+        {
+          "text": "visual",
+          "start": 0.949,
+          "end": 1.322
+        },
+        {
+          "text": "DAG",
+          "start": 1.333,
+          "end": 1.804
+        },
+        {
+          "text": "canvas.",
+          "start": 1.815,
+          "end": 2.407
+        },
+        {
+          "text": "Route",
+          "start": 3.158,
+          "end": 3.454
+        },
+        {
+          "text": "conditions,",
+          "start": 3.465,
+          "end": 4.046
+        },
+        {
+          "text": "merge",
+          "start": 4.2,
+          "end": 4.507
+        },
+        {
+          "text": "consensus,",
+          "start": 4.518,
+          "end": 5.132
+        },
+        {
+          "text": "orchestrate",
+          "start": 5.274,
+          "end": 5.768
+        },
+        {
+          "text": "entire",
+          "start": 5.779,
+          "end": 6.228
+        },
+        {
+          "text": "agent",
+          "start": 6.239,
+          "end": 6.535
+        },
+        {
+          "text": "workflows.",
+          "start": 6.546,
+          "end": 7.215
+        }
+      ]
+    },
+    {
+      "id": "arena",
+      "file": "remotion/launch/audio-src/vo_arena.wav",
+      "start": 35.543,
+      "duration": 7.32,
+      "words": [
+        {
+          "text": "Then",
+          "start": 0.094,
+          "end": 0.346
+        },
+        {
+          "text": "prove",
+          "start": 0.357,
+          "end": 0.609
+        },
+        {
+          "text": "it.",
+          "start": 0.62,
+          "end": 0.839
+        },
+        {
+          "text": "Benchmark",
+          "start": 1.59,
+          "end": 2.105
+        },
+        {
+          "text": "side",
+          "start": 2.116,
+          "end": 2.434
+        },
+        {
+          "text": "by",
+          "start": 2.445,
+          "end": 2.566
+        },
+        {
+          "text": "side",
+          "start": 2.577,
+          "end": 2.884
+        },
+        {
+          "text": "across",
+          "start": 2.895,
+          "end": 3.235
+        },
+        {
+          "text": "ten",
+          "start": 3.246,
+          "end": 3.476
+        },
+        {
+          "text": "frontier",
+          "start": 3.487,
+          "end": 3.903
+        },
+        {
+          "text": "models,",
+          "start": 3.914,
+          "end": 4.353
+        },
+        {
+          "text": "with",
+          "start": 4.496,
+          "end": 4.638
+        },
+        {
+          "text": "live",
+          "start": 4.649,
+          "end": 4.945
+        },
+        {
+          "text": "latency",
+          "start": 4.956,
+          "end": 5.482
+        },
+        {
+          "text": "and",
+          "start": 5.493,
+          "end": 5.603
+        },
+        {
+          "text": "token",
+          "start": 5.614,
+          "end": 5.921
+        },
+        {
+          "text": "telemetry.",
+          "start": 5.932,
+          "end": 6.557
+        }
+      ]
+    },
+    {
+      "id": "export",
+      "file": "remotion/launch/audio-src/vo_export.wav",
+      "start": 43.106,
+      "duration": 9.552,
+      "words": [
+        {
+          "text": "Export",
+          "start": 0.094,
+          "end": 0.532
+        },
+        {
+          "text": "in",
+          "start": 0.543,
+          "end": 0.664
+        },
+        {
+          "text": "one",
+          "start": 0.675,
+          "end": 0.894
+        },
+        {
+          "text": "click:",
+          "start": 0.905,
+          "end": 1.245
+        },
+        {
+          "text": "Cursor,",
+          "start": 1.454,
+          "end": 1.925
+        },
+        {
+          "text": "Claude",
+          "start": 2.1,
+          "end": 2.418
+        },
+        {
+          "text": "Code,",
+          "start": 2.429,
+          "end": 2.78
+        },
+        {
+          "text": "Windsurf,",
+          "start": 2.978,
+          "end": 3.559
+        },
+        {
+          "text": "Copilot,",
+          "start": 3.745,
+          "end": 4.271
+        },
+        {
+          "text": "the",
+          "start": 4.513,
+          "end": 4.6
+        },
+        {
+          "text": "Vercel",
+          "start": 4.611,
+          "end": 5.039
+        },
+        {
+          "text": "AI",
+          "start": 5.05,
+          "end": 5.379
+        },
+        {
+          "text": "SDK,",
+          "start": 5.39,
+          "end": 6.07
+        },
+        {
+          "text": "and",
+          "start": 6.289,
+          "end": 6.443
+        },
+        {
+          "text": "more.",
+          "start": 6.454,
+          "end": 6.881
+        },
+        {
+          "text": "Fifteen",
+          "start": 7.632,
+          "end": 8.136
+        },
+        {
+          "text": "formats.",
+          "start": 8.147,
+          "end": 8.783
+        }
+      ]
+    },
+    {
+      "id": "cta",
+      "file": "remotion/launch/audio-src/vo_cta.wav",
+      "start": 52.115,
+      "duration": 7.272,
+      "words": [
+        {
+          "text": "Stop",
+          "start": 0.094,
+          "end": 0.489
+        },
+        {
+          "text": "guessing",
+          "start": 0.5,
+          "end": 0.818
+        },
+        {
+          "text": "with",
+          "start": 0.829,
+          "end": 0.949
+        },
+        {
+          "text": "LLMs.",
+          "start": 0.96,
+          "end": 1.53
+        },
+        {
+          "text": "Start",
+          "start": 1.673,
+          "end": 1.98
+        },
+        {
+          "text": "engineering.",
+          "start": 1.991,
+          "end": 2.572
+        },
+        {
+          "text": "Bedrock.",
+          "start": 3.322,
+          "end": 3.925
+        },
+        {
+          "text": "Download",
+          "start": 4.671,
+          "end": 5.121
+        },
+        {
+          "text": "free",
+          "start": 5.132,
+          "end": 5.406
+        },
+        {
+          "text": "for",
+          "start": 5.417,
+          "end": 5.581
+        },
+        {
+          "text": "Windows",
+          "start": 5.592,
+          "end": 5.987
+        },
+        {
+          "text": "and",
+          "start": 5.998,
+          "end": 6.096
+        },
+        {
+          "text": "Mac.",
+          "start": 6.107,
+          "end": 6.502
+        }
+      ]
+    }
+  ]
+}

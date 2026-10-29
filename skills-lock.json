@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "higgsfield-generate": {
+      "source": "higgsfield-ai/skills",
+      "sourceType": "github",
+      "skillPath": "higgsfield-generate/SKILL.md",
+      "computedHash": "2751e3182cdeff8396c32ae3e2adef1329d80933732d91e1a1fd62ac20784d73"
+    },
     "neon": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
