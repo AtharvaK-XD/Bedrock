@@ -61,6 +61,37 @@ function getAllowedIssuers(): Set<string> {
   return issuers;
 }
 
+/**
+ * Allowed `azp` origins from CLERK_AUTHORIZED_PARTIES (comma-separated). When the variable is
+ * not set, azp is not enforced (warning logged once). Loopback origins on any port are always
+ * allowed for the desktop app's external-browser sign-in.
+ */
+const LOOPBACK_AZP_RE = /^http:\/\/(127\.0\.0\.1|localhost)(:\d{1,5})?$/;
+let authorizedPartiesCache: Set<string> | null | undefined;
+function getAuthorizedParties(): Set<string> | null {
+  if (authorizedPartiesCache !== undefined) return authorizedPartiesCache;
+  const parties = (process.env.CLERK_AUTHORIZED_PARTIES || '')
+    .split(',')
+    .map((p) => normalizeIssuer(p))
+    .filter(Boolean);
+  if (parties.length === 0) {
+    console.warn('[Auth] CLERK_AUTHORIZED_PARTIES is not set: token azp is not enforced.');
+    authorizedPartiesCache = null;
+  } else {
+    authorizedPartiesCache = new Set(parties);
+  }
+  return authorizedPartiesCache;
+}
+
+function isAuthorizedParty(azp: unknown): boolean {
+  if (azp === undefined) return true; // tokens without azp are accepted
+  if (typeof azp !== 'string') return false;
+  const parties = getAuthorizedParties();
+  if (!parties) return true;
+  const origin = normalizeIssuer(azp);
+  return LOOPBACK_AZP_RE.test(origin) || parties.has(origin);
+}
+
 let envPemKey: crypto.KeyObject | null | undefined;
 function getEnvPublicKey(): crypto.KeyObject | null {
   if (envPemKey !== undefined) return envPemKey;
@@ -195,7 +226,13 @@ async function verifyClerkJwt(token: string): Promise<any | null> {
       return null;
     }
 
-    // 4. Cryptographic Signature Verification
+    // 4. Authorized party (azp): the origin the token was issued for
+    if (!isAuthorizedParty(claims.azp)) {
+      console.warn(`[Auth] Rejected token for unauthorized party: ${String(claims.azp).slice(0, 200)}`);
+      return null;
+    }
+
+    // 5. Cryptographic Signature Verification
     const publicKey = await getClerkPublicKey(issuer, header.kid);
     if (publicKey) {
       const dataToVerify = Buffer.from(`${parts[0]}.${parts[1]}`);
@@ -249,9 +286,7 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
       const email = claims.email || claims.primary_email || `${userId}@clerk.user`;
       let name = claims.name || claims.first_name || (req.headers['x-user-name'] as string) || '';
       if (!name || name.startsWith('user_') || name.includes('@')) {
-        if (/kulkarni.*atharva|atharva.*kulkarni/i.test(email)) {
-          name = 'Atharva Kulkarni';
-        } else if (email && email.includes('@') && !email.endsWith('@clerk.user')) {
+        if (email && email.includes('@') && !email.endsWith('@clerk.user')) {
           const handle = email.split('@')[0];
           const cleanWords = handle.replace(/[0-9._-]+/g, ' ').trim().split(' ').filter(Boolean);
           name = cleanWords.length > 0 
