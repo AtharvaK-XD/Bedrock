@@ -23,11 +23,18 @@ const h = vi.hoisted(() => {
     showSaveDialog: vi.fn(),
     showMessageBox: vi.fn(),
   };
-  return { state, shell, dialog };
+  // Reversible stand-in for OS encryption (byte-wise XOR) so tests can check nothing is stored in plain text
+  const xor = (buf: Buffer) => Buffer.from(buf.map((b) => b ^ 0x5a));
+  const safeStorage = {
+    isEncryptionAvailable: vi.fn(() => true),
+    encryptString: (s: string) => xor(Buffer.from(s, 'utf-8')),
+    decryptString: (buf: Buffer) => xor(buf).toString('utf-8'),
+  };
+  return { state, shell, dialog, safeStorage };
 });
 
 vi.mock('electron', () => {
-  const { state, shell, dialog } = h;
+  const { state, shell, dialog, safeStorage } = h;
   const webContents = {
     on: (event: string, fn: any) => state.webContentsEvents.set(event, fn),
     setWindowOpenHandler: (fn: any) => { state.windowOpenHandler = fn; },
@@ -64,6 +71,7 @@ vi.mock('electron', () => {
     BrowserWindow,
     shell,
     dialog,
+    safeStorage,
     session: { defaultSession: { webRequest: { onHeadersReceived: () => {} } } },
     ipcMain: { handle: (channel: string, fn: any) => state.handlers.set(channel, fn) },
     nativeImage: { createFromPath: () => ({ isEmpty: () => true }) },
@@ -229,5 +237,32 @@ describe('file export IPC', () => {
 
   it('validates save-with-dialog content', async () => {
     expect((await invoke('file:save-with-dialog', { defaultFileName: 'a.md', content: { not: 'text' } })).success).toBe(false);
+  });
+});
+
+describe('OS-encrypted API key store', () => {
+  const secret = JSON.stringify({ groqKey: 'gsk_test_should_not_be_plain' });
+
+  it('stores API keys encrypted and loads them back', async () => {
+    expect((await invoke('secrets:save', 'bedrock_api_keys', secret)).success).toBe(true);
+    const onDisk = fs.readFileSync(path.join(state.userData, 'secure-store.json'), 'utf-8');
+    expect(onDisk).not.toContain('gsk_test_should_not_be_plain');
+    const loaded = await invoke('secrets:load');
+    expect(loaded).toEqual({ available: true, values: { bedrock_api_keys: secret } });
+
+    expect((await invoke('secrets:save', 'bedrock_api_keys', null)).success).toBe(true);
+    expect((await invoke('secrets:load')).values).toEqual({});
+  });
+
+  it('only accepts known keys and bounded string values', async () => {
+    expect((await invoke('secrets:save', 'bedrock_token', 'x')).success).toBe(false);
+    expect((await invoke('secrets:save', '../../evil', 'x')).success).toBe(false);
+    expect((await invoke('secrets:save', 'bedrock_api_keys', { not: 'text' })).success).toBe(false);
+    expect((await invoke('secrets:save', 'bedrock_api_keys', 'x'.repeat(64 * 1024 + 1))).success).toBe(false);
+  });
+
+  it('reports unavailable when the OS cannot encrypt (the app then keeps browser storage)', async () => {
+    h.safeStorage.isEncryptionAvailable.mockReturnValueOnce(false);
+    expect(await invoke('secrets:load')).toEqual({ available: false, values: {} });
   });
 });

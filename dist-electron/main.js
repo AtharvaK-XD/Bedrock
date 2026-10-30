@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { BrowserWindow, app, shell, session, dialog, ipcMain, nativeImage } from "electron";
+import { BrowserWindow, app, shell, session, dialog, ipcMain, nativeImage, safeStorage } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
@@ -825,6 +825,64 @@ ipcMain.handle("file:save-with-dialog", async (_event, options) => {
 		}
 		fs.writeFileSync(result.filePath, content, "utf-8");
 		return { success: true, filePath: result.filePath };
+	} catch (err) {
+		return { success: false, error: err?.message || String(err) };
+	}
+});
+
+// OS-encrypted storage for the renderer's API keys (Windows DPAPI / macOS Keychain via safeStorage).
+// Values are kept encrypted in userData/secure-store.json instead of plain text in localStorage.
+const SECURE_STORE_KEYS = new Set(["bedrock_api_keys"]);
+const MAX_SECURE_VALUE_CHARS = 64 * 1024;
+
+function secureStoreFile() {
+	return path.join(app.getPath("userData"), "secure-store.json");
+}
+
+function readSecureStore() {
+	try {
+		const parsed = JSON.parse(fs.readFileSync(secureStoreFile(), "utf-8"));
+		return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+	} catch {
+		return {};
+	}
+}
+
+function writeSecureStore(store) {
+	const file = secureStoreFile();
+	fs.mkdirSync(path.dirname(file), { recursive: true });
+	const tmp = `${file}.tmp`;
+	fs.writeFileSync(tmp, JSON.stringify(store), "utf-8");
+	fs.renameSync(tmp, file);
+}
+
+ipcMain.handle("secrets:load", () => {
+	if (!safeStorage.isEncryptionAvailable()) return { available: false, values: {} };
+	const store = readSecureStore();
+	const values = {};
+	for (const key of SECURE_STORE_KEYS) {
+		if (typeof store[key] !== "string") continue;
+		try {
+			values[key] = safeStorage.decryptString(Buffer.from(store[key], "base64"));
+		} catch (err) {
+			console.warn("[SecureStore] Could not decrypt a stored value:", err?.message || err);
+		}
+	}
+	return { available: true, values };
+});
+
+ipcMain.handle("secrets:save", (_event, key, value) => {
+	try {
+		if (!SECURE_STORE_KEYS.has(key)) return { success: false, error: "Unknown secure key." };
+		if (value !== null && (typeof value !== "string" || value.length > MAX_SECURE_VALUE_CHARS)) {
+			return { success: false, error: "Value is missing or too large." };
+		}
+		if (!safeStorage.isEncryptionAvailable()) return { success: false, error: "OS encryption is not available." };
+		const store = readSecureStore();
+		if (value === null) delete store[key];
+		else store[key] = safeStorage.encryptString(value).toString("base64");
+		writeSecureStore(store);
+		return { success: true };
 	} catch (err) {
 		return { success: false, error: err?.message || String(err) };
 	}

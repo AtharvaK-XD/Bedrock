@@ -25,7 +25,8 @@ jobs:
         run: npm run scan:secrets
 
       - name: Check Dependencies Security Audit
-        run: npm audit --audit-level=critical || true
+        # Fails the build on any critical advisory (raise to --audit-level=high once the major upgrades land)
+        run: npm audit --audit-level=critical
 
       - name: Validate TypeScript Compilation
         run: npm run build
