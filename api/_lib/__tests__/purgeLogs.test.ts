@@ -18,14 +18,14 @@ const h = vi.hoisted(() => {
   return { state, sql };
 });
 
-vi.mock('../../_lib/db.js', () => ({ getDb: () => h.sql }));
+vi.mock('../db.js', () => ({ getDb: () => h.sql }));
 
-import purgeLogs from '../purge-logs.js';
+import tracesHandler from '../../traces/index.js';
 
 const SECRET = 'test-cron-secret-value';
 
 function mockReq(method: string, authorization?: string) {
-  return { method, headers: authorization ? { authorization } : {}, query: {}, body: {} } as any;
+  return { method, headers: authorization ? { authorization } : {}, query: { action: 'purge-logs' }, body: {} } as any;
 }
 
 function mockRes() {
@@ -56,24 +56,24 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('GET /api/cron/purge-logs', () => {
+describe('GET /api/cron/purge-logs (via /api/traces?action=purge-logs)', () => {
   it('refuses callers without the cron secret, and everyone when CRON_SECRET is not set', async () => {
     for (const auth of [undefined, 'Bearer wrong', `Bearer ${SECRET}x`, SECRET]) {
       const res = mockRes();
-      await purgeLogs(mockReq('GET', auth), res);
+      await tracesHandler(mockReq('GET', auth), res);
       expect(res.statusCode).toBe(401);
     }
 
     vi.stubEnv('CRON_SECRET', '');
     const unset = mockRes();
-    await purgeLogs(mockReq('GET', 'Bearer '), unset);
+    await tracesHandler(mockReq('GET', 'Bearer '), unset);
     expect(unset.statusCode).toBe(401);
     expect(h.state.calls).toHaveLength(0);
   });
 
   it('only answers GET (the method Vercel Cron uses)', async () => {
     const res = mockRes();
-    await purgeLogs(mockReq('POST', `Bearer ${SECRET}`), res);
+    await tracesHandler(mockReq('POST', `Bearer ${SECRET}`), res);
     expect(res.statusCode).toBe(405);
     expect(h.state.calls).toHaveLength(0);
   });
@@ -82,7 +82,7 @@ describe('GET /api/cron/purge-logs', () => {
     const rounds = [batch(5000, 120, 3, 0), batch(10, 0, 0, 0), batch(0, 0, 0, 0)];
     h.state.responder = () => rounds.shift();
     const res = mockRes();
-    await purgeLogs(mockReq('GET', `Bearer ${SECRET}`), res);
+    await tracesHandler(mockReq('GET', `Bearer ${SECRET}`), res);
 
     expect(res.statusCode).toBe(200);
     expect(h.state.calls).toEqual(Array(3).fill('SELECT * FROM purge_old_logs()'));
@@ -97,7 +97,7 @@ describe('GET /api/cron/purge-logs', () => {
   it('stops after 20 rounds even if rows remain', async () => {
     h.state.responder = () => batch(5000, 0, 0, 0);
     const res = mockRes();
-    await purgeLogs(mockReq('GET', `Bearer ${SECRET}`), res);
+    await tracesHandler(mockReq('GET', `Bearer ${SECRET}`), res);
     expect(h.state.calls).toHaveLength(20);
     expect(res.body).toMatchObject({ rounds: 20, finished: false });
   });
@@ -107,7 +107,7 @@ describe('GET /api/cron/purge-logs', () => {
       throw Object.assign(new Error('function purge_old_logs() does not exist'), { code: '42883' });
     };
     const res = mockRes();
-    await purgeLogs(mockReq('GET', `Bearer ${SECRET}`), res);
+    await tracesHandler(mockReq('GET', `Bearer ${SECRET}`), res);
     expect(res.statusCode).toBe(503);
     expect(res.body.code).toBe('MIGRATION_NOT_APPLIED');
 
@@ -115,7 +115,7 @@ describe('GET /api/cron/purge-logs', () => {
       throw new Error('password authentication failed for user neondb_owner');
     };
     const failed = mockRes();
-    await purgeLogs(mockReq('GET', `Bearer ${SECRET}`), failed);
+    await tracesHandler(mockReq('GET', `Bearer ${SECRET}`), failed);
     expect(failed.statusCode).toBe(500);
     expect(JSON.stringify(failed.body)).not.toContain('neondb_owner');
   });

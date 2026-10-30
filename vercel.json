@@ -6,6 +6,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/cron/purge-logs",
+      "destination": "/api/traces?action=purge-logs"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
