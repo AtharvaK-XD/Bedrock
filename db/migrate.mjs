@@ -2,7 +2,9 @@
 // Tiny migration runner for the Neon database.
 //   node db/migrate.mjs status
 //   node db/migrate.mjs up   --yes          (apply every pending migration, in order)
+//   node db/migrate.mjs up   --yes --to 0004 (apply pending migrations up to and including 0004 only)
 //   node db/migrate.mjs down --yes          (undo the most recent migration)
+//   node db/migrate.mjs down --yes --all    (undo every applied migration, newest first)
 // Safety: it reads ONLY the env var DATABASE_URL_DEV (a Neon dev branch). It never reads DATABASE_URL.
 // It prints the database HOST (never the password) so you can confirm it is the dev branch before anything runs.
 import { readdir, readFile } from 'node:fs/promises';
@@ -13,6 +15,13 @@ import { neon } from '@neondatabase/serverless';
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 const [command = 'status', ...flags] = process.argv.slice(2);
 const confirmed = flags.includes('--yes');
+const all = flags.includes('--all');
+const toIndex = flags.indexOf('--to');
+const upTo = toIndex >= 0 ? flags[toIndex + 1] : null;
+if (toIndex >= 0 && !/^\d{4}$/.test(upTo || '')) {
+  console.error('--to needs a 4-digit migration number, e.g. --to 0004. Nothing was done.');
+  process.exit(1);
+}
 
 const url = (process.env.DATABASE_URL_DEV || '').trim().replace(/^"|"$/g, '');
 if (!url) {
@@ -47,21 +56,23 @@ if (command === 'status') {
     process.exit(1);
   }
   if (command === 'up') {
-    for (const f of ups.filter((u) => !applied.has(nameOf(u)))) {
+    for (const f of ups.filter((u) => !applied.has(nameOf(u)) && (!upTo || nameOf(u).slice(0, 4) <= upTo))) {
       console.log(`applying ${nameOf(f)} ...`);
       await run(f);
       await sql.query('INSERT INTO schema_migrations(name) VALUES ($1)', [nameOf(f)]);
     }
     console.log('done');
   } else {
-    const last = ups.filter((u) => applied.has(nameOf(u))).pop();
-    if (!last) { console.log('nothing to undo'); process.exit(0); }
-    console.log(`reverting ${nameOf(last)} ...`);
-    await run(`${nameOf(last)}.down.sql`);
-    await sql.query('DELETE FROM schema_migrations WHERE name = $1', [nameOf(last)]);
+    const toUndo = ups.filter((u) => applied.has(nameOf(u))).reverse();
+    if (toUndo.length === 0) { console.log('nothing to undo'); process.exit(0); }
+    for (const f of all ? toUndo : toUndo.slice(0, 1)) {
+      console.log(`reverting ${nameOf(f)} ...`);
+      await run(`${nameOf(f)}.down.sql`);
+      await sql.query('DELETE FROM schema_migrations WHERE name = $1', [nameOf(f)]);
+    }
     console.log('done');
   }
 } else {
-  console.error('Usage: node db/migrate.mjs status | up --yes | down --yes');
+  console.error('Usage: node db/migrate.mjs status | up --yes [--to NNNN] | down --yes [--all]');
   process.exit(1);
 }
