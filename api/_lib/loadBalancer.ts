@@ -90,6 +90,30 @@ export async function isProviderHealthy(providerId: string): Promise<boolean> {
 }
 
 /**
+ * Same check as isProviderHealthy for many providers at once: one Redis MGET instead of one GET
+ * per provider. Falls back to the per-provider path (local circuit state) if Redis is unreachable.
+ */
+async function filterHealthyProviders(providers: ProviderTarget[]): Promise<ProviderTarget[]> {
+  const redis = getRedisClient();
+  let trippedInRedis: Set<string> | null = null;
+
+  if (redis && providers.length > 0) {
+    try {
+      const values = await redis.mget<Array<string | null>>(...providers.map((p) => `circuit:ai:${p.id}`));
+      trippedInRedis = new Set(providers.filter((_, i) => Boolean(values[i])).map((p) => p.id));
+    } catch (err) {
+      console.warn('[LoadBalancer] Redis batch check failed, using local circuit:', err);
+    }
+  }
+
+  return providers.filter((p) => {
+    if (trippedInRedis?.has(p.id)) return false;
+    const local = localCircuitMap.get(p.id);
+    return !(local && Date.now() < local.trippedUntil);
+  });
+}
+
+/**
  * Records a failure on an AI provider. Trips circuit breaker if threshold is exceeded.
  * Automatically identifies 429 rate limit errors and cascades cooldown to sibling models sharing the key.
  */
@@ -167,12 +191,7 @@ export async function selectOptimalProvider(
   availableProviders: ProviderTarget[] = AI_PROVIDERS
 ): Promise<ProviderTarget | null> {
   // Filter for healthy providers
-  const healthy: ProviderTarget[] = [];
-  for (const p of availableProviders) {
-    if (await isProviderHealthy(p.id)) {
-      healthy.push(p);
-    }
-  }
+  const healthy = await filterHealthyProviders(availableProviders);
 
   if (healthy.length === 0) {
     // If all are tripped, fail-open to the highest priority provider to probe recovery
