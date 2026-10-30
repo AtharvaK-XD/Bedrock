@@ -50,14 +50,8 @@ export const AI_PROVIDERS: ProviderTarget[] = [
     priority: 3,
     weight: 3,
   },
-  {
-    id: 'groq-deepseek',
-    name: 'Groq DeepSeek R1 70B',
-    model: 'deepseek-r1-distill-llama-70b',
-    provider: 'groq',
-    priority: 3,
-    weight: 2,
-  },
+  // groq-deepseek (deepseek-r1-distill-llama-70b) removed: as a reasoning model it can emit
+  // <think> notes into the user's prompt, and its availability on Groq is unconfirmed.
 ];
 
 // Local in-memory circuit fallback

@@ -1,78 +1,67 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getDb } from './_lib/db.js';
 import { getRedisClient, enforceRateLimit } from './_lib/rateLimiter.js';
-import { getLoadBalancerMetrics } from './_lib/loadBalancer.js';
 
+/** A result is reused for this long per server instance, so a burst of checks costs one DB + Redis probe. */
+const HEALTH_CACHE_MS = 10_000;
+
+interface HealthBody {
+  status: 'ok' | 'degraded';
+  timestamp: string;
+  database: { status: 'connected' | 'error' };
+  redis: { status: 'connected' | 'error' | 'unconfigured' };
+}
+
+let cached: { at: number; body: HealthBody } | null = null;
+
+/**
+ * Public liveness check. It reports only whether the database and Redis respond: no error text,
+ * provider configuration or circuit-breaker state, since anyone can call it.
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   // Rate limit health checks to prevent denial of service
-  await enforceRateLimit(req, res, 'health');
+  const allowed = await enforceRateLimit(req, res, 'health');
+  if (!allowed) return;
 
-  const startTime = Date.now();
-  let dbStatus = 'disconnected';
-  let dbLatency = -1;
+  if (cached && Date.now() - cached.at < HEALTH_CACHE_MS) {
+    return res.status(200).json(cached.body);
+  }
 
+  let dbStatus: HealthBody['database']['status'] = 'error';
   try {
     const sql = getDb();
     const result = (await sql`SELECT 1 as alive`) as any[];
     if (Array.isArray(result) && result.length > 0) {
       dbStatus = 'connected';
-      dbLatency = Date.now() - startTime;
     }
   } catch (err: any) {
-    dbStatus = `error: ${err.message}`;
+    console.error('[Health] Database check failed:', err);
   }
 
-  // Upstash Redis health check
-  let redisStatus = 'disconnected';
-  let redisLatency = -1;
+  let redisStatus: HealthBody['redis']['status'] = 'unconfigured';
   const redis = getRedisClient();
-
   if (redis) {
-    const redisStart = Date.now();
+    redisStatus = 'error';
     try {
       const pong = await redis.ping();
       if (pong) {
         redisStatus = 'connected';
-        redisLatency = Date.now() - redisStart;
       }
     } catch (rErr: any) {
-      redisStatus = `error: ${rErr.message}`;
+      console.error('[Health] Redis check failed:', rErr);
     }
-  } else {
-    redisStatus = 'unconfigured (in-memory fallback active)';
   }
 
-  const loadBalancer = await getLoadBalancerMetrics();
-
-  return res.status(200).json({
-    status: 'ok',
-    service: 'Bedrock Production Backend',
+  const body: HealthBody = {
+    status: dbStatus === 'connected' ? 'ok' : 'degraded',
     timestamp: new Date().toISOString(),
-    database: {
-      provider: 'Neon Lakebase PostgreSQL',
-      status: dbStatus,
-      latencyMs: dbLatency,
-    },
-    redis: {
-      provider: 'Upstash Distributed Redis',
-      status: redisStatus,
-      latencyMs: redisLatency,
-    },
-    rateLimiting: {
-      engine: redis ? 'Upstash Edge Sliding-Window' : 'In-Memory Sliding-Window Fallback',
-      active: true,
-      standardHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'Retry-After'],
-    },
-    loadBalancer,
-    aiProviders: {
-      groqConfigured: Boolean(process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY),
-      geminiConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY),
-      openRouterConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY),
-    },
-    version: '2.1.0-upstash-k6',
-  });
+    database: { status: dbStatus },
+    redis: { status: redisStatus },
+  };
+  cached = { at: Date.now(), body };
+  return res.status(200).json(body);
 }

@@ -129,14 +129,51 @@ describe('AI endpoints', () => {
   });
 
   describe('failure handling', () => {
-    it('synthesize JSON: 500 with a generic message and code, quota refunded', async () => {
+    it('synthesize JSON: busy providers give 503 + Retry-After with a generic message and code, quota refunded', async () => {
       executeAiCompletion.mockRejectedValue(failure());
       const res = mockRes();
       await synthesize(mockReq({ idea: { rawText: 'an idea' } }), res);
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(503);
+      expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '15');
       expect(res.body.error).toBe('Prompt synthesis failed on server');
       expect(res.body.code).toBe('AI_ALL_PROVIDERS_FAILED');
+      expect(res.body.retryAfterSeconds).toBe(15);
       expect(releaseQuota).toHaveBeenCalledTimes(1);
+    });
+
+    it('synthesize JSON: a deadline overrun is also reported as busy (503)', async () => {
+      executeAiCompletion.mockRejectedValue(new AiCompletionError('AI_DEADLINE_EXCEEDED', 'The AI request took too long. Please try again.'));
+      const res = mockRes();
+      await synthesize(mockReq({ idea: { rawText: 'an idea' } }), res);
+      expect(res.statusCode).toBe(503);
+      expect(res.body.code).toBe('AI_DEADLINE_EXCEEDED');
+    });
+
+    it('synthesize JSON: a missing server configuration stays a 500 without Retry-After', async () => {
+      executeAiCompletion.mockRejectedValue(new AiCompletionError('AI_NOT_CONFIGURED', 'AI service is not available right now. Please try again later.'));
+      const res = mockRes();
+      await synthesize(mockReq({ idea: { rawText: 'an idea' } }), res);
+      expect(res.statusCode).toBe(500);
+      expect(res.setHeader).not.toHaveBeenCalledWith('Retry-After', expect.anything());
+      expect(res.body.retryAfterSeconds).toBeUndefined();
+    });
+
+    it('every AI response carries a request id; failures include it in the body', async () => {
+      executeAiCompletion.mockRejectedValue(failure());
+      const res = mockRes();
+      await synthesize(mockReq({ idea: { rawText: 'an idea' } }, { 'x-vercel-id': 'bom1::abc-123' }), res);
+      expect(res.setHeader).toHaveBeenCalledWith('X-Request-Id', 'bom1::abc-123');
+      expect(res.body.requestId).toBe('bom1::abc-123');
+    });
+
+    it('the structured log line never contains the user idea', async () => {
+      const errorLog = vi.mocked(console.error);
+      executeAiCompletion.mockRejectedValue(failure());
+      await synthesize(mockReq({ idea: { rawText: 'MY-SECRET-STARTUP-IDEA' } }), mockRes());
+      const line = errorLog.mock.calls.map((c) => c[0]).find((c) => typeof c === 'string' && c.includes('"type":"ai_request"'));
+      expect(line).toBeDefined();
+      expect(JSON.parse(line as string)).toMatchObject({ route: 'ai/synthesize', outcome: 'error', code: 'AI_ALL_PROVIDERS_FAILED' });
+      expect(line).not.toContain('MY-SECRET-STARTUP-IDEA');
     });
 
     it('synthesize JSON: unexpected errors never leak their message', async () => {
@@ -159,6 +196,7 @@ describe('AI endpoints', () => {
       const events = res.written.join('');
       expect(events).toContain('"error":"Prompt synthesis failed on server"');
       expect(events).toContain('"code":"AI_ALL_PROVIDERS_FAILED"');
+      expect(events).toContain('"retryAfterSeconds":15');
       expect(events.trim().endsWith('data: [DONE]')).toBe(true);
       expect(releaseQuota).toHaveBeenCalledTimes(1);
     });
@@ -173,13 +211,22 @@ describe('AI endpoints', () => {
       expect(res.written.join('')).toContain('"error":"Prompt test execution failed"');
     });
 
-    it('refine: 500 JSON with a generic message', async () => {
+    it('refine: busy providers give 503 JSON with a generic message', async () => {
       reserveQuota.mockResolvedValue({ allowed: true, unavailable: false, bucket: 'assist', limit: 100, resetMs: 1, reservationId: 'q3' });
       executeAiCompletion.mockRejectedValue(failure());
       const res = mockRes();
       await refine(mockReq({ currentPrompt: 'p', instruction: 'make it shorter' }), res);
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(503);
       expect(res.body.code).toBe('AI_ALL_PROVIDERS_FAILED');
+    });
+
+    it('test JSON: busy providers give 503 + Retry-After', async () => {
+      reserveQuota.mockResolvedValue({ allowed: true, unavailable: false, bucket: 'assist', limit: 100, resetMs: 1, reservationId: 'q4' });
+      executeAiCompletion.mockRejectedValue(failure());
+      const res = mockRes();
+      await testEndpoint(mockReq({ prompt: 'hello' }), res);
+      expect(res.statusCode).toBe(503);
+      expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '15');
     });
   });
 

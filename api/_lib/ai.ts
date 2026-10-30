@@ -93,6 +93,19 @@ function clip(text: string): string {
 }
 
 /**
+ * Removes reasoning-model "thinking" blocks (`<think>…</think>`) so they never end up in the
+ * user's prompt. An unclosed `<think>` means the rest of the text is reasoning and is dropped too.
+ * Text without a `<think>` tag is returned unchanged.
+ */
+export function stripReasoningText(text: string): string {
+  if (!/<think>/i.test(text)) return text;
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*$/i, '')
+    .trimStart();
+}
+
+/**
  * Transient = worth one more try on the same provider: gateway-level HTTP errors and
  * connection resets. Timeouts (AbortError) are not retried: they already spent their budget.
  */
@@ -213,7 +226,7 @@ async function callGroq(
     }
 
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning || '';
+    return data.choices?.[0]?.message?.content || '';
   } finally {
     clearTimeout(timeoutId);
   }
@@ -471,9 +484,6 @@ export async function executeAiCompletion(
     if (target.id === 'groq-llama-8b') {
       return await callGroq(prompt, tunedSystem, 'llama-3.1-8b-instant', currentOnToken, temp, timeoutMs);
     }
-    if (target.id === 'groq-deepseek') {
-      return await callGroq(prompt, tunedSystem, 'deepseek-r1-distill-llama-70b', currentOnToken, temp, timeoutMs);
-    }
     if (target.id === 'gemini-flash') {
       return await callGemini(prompt, tunedSystem, 'gemini-flash-latest', currentOnToken, temp, timeoutMs);
     }
@@ -528,25 +538,29 @@ export async function executeAiCompletion(
       : undefined;
 
     try {
-      const text = await withTransientRetry(
+      const rawText = await withTransientRetry(
         () => dispatchToProvider(provider, trackedOnToken, attemptTimeoutMs),
         // Retrying after tokens reached the client would send them twice
         { deadlineAt, canRetry: () => tokensEmitted === 0 }
       );
+      const text = stripReasoningText(rawText || '');
       if (text && text.trim().length > 0) {
         await recordProviderSuccess(provider.id);
         const modelName = `${provider.name} (${provider.model})`;
 
-        // Async non-blocking telemetry to Langfuse
+        // Async non-blocking telemetry to Langfuse (sizes and timing only, never user text or output)
         recordLangfuseGeneration({
           traceName: 'bedrock_ai_completion',
           model: modelName,
-          input: { systemPrompt, prompt },
-          output: text,
           userId,
           startTime,
           endTime: new Date(),
-          metadata: { providerId: provider.id, providerModel: provider.model },
+          metadata: {
+            providerId: provider.id,
+            providerModel: provider.model,
+            inputChars: prompt.length + (systemPrompt?.length ?? 0),
+            outputChars: text.length,
+          },
         }).catch((e) => console.warn('[Langfuse] Error in recordLangfuseGeneration:', e));
 
         return {
@@ -576,21 +590,22 @@ export async function executeAiCompletion(
     }
   }
 
-  // Record failure trace in Langfuse
+  const failureCode: AiErrorCode = deadlineExceeded ? 'AI_DEADLINE_EXCEEDED' : 'AI_ALL_PROVIDERS_FAILED';
+
+  // Record failure trace in Langfuse (error code only: upstream messages can echo request content)
   recordLangfuseGeneration({
     traceName: 'bedrock_ai_completion',
     model: 'all_providers_failed',
-    input: { systemPrompt, prompt },
-    output: null,
     userId,
     startTime,
     endTime: new Date(),
     level: 'ERROR',
-    statusMessage: lastError?.message || 'All providers failed',
+    statusMessage: failureCode,
+    metadata: { inputChars: prompt.length + (systemPrompt?.length ?? 0) },
   }).catch((e) => console.warn('[Langfuse] Error reporting failure:', e));
 
   console.error(
     `[AI] ${deadlineExceeded ? 'Deadline reached before a provider succeeded' : 'All providers failed'}. Last error: ${clip(lastError?.message || 'Unknown provider error')}`
   );
-  throw aiError(deadlineExceeded ? 'AI_DEADLINE_EXCEEDED' : 'AI_ALL_PROVIDERS_FAILED');
+  throw aiError(failureCode);
 }

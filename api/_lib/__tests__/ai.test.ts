@@ -11,7 +11,22 @@ vi.mock('../loadBalancer.js', async () => {
   };
 });
 
-import { executeAiCompletion, AiCompletionError } from '../ai.js';
+import { executeAiCompletion, AiCompletionError, stripReasoningText } from '../ai.js';
+
+describe('stripReasoningText', () => {
+  it('leaves normal text untouched', () => {
+    expect(stripReasoningText('  # Title\nbody  ')).toBe('  # Title\nbody  ');
+  });
+
+  it('removes closed think blocks, including several', () => {
+    expect(stripReasoningText('<think>a</think>Hello <THINK>b\nc</THINK>world')).toBe('Hello world');
+  });
+
+  it('drops everything after an unclosed think tag', () => {
+    expect(stripReasoningText('Answer.\n<think>still reasoning when cut off')).toBe('Answer.\n');
+    expect(stripReasoningText('<think>only reasoning')).toBe('');
+  });
+});
 
 const okBody = (text: string) => ({
   ok: true,
@@ -64,14 +79,58 @@ describe('executeAiCompletion', () => {
   it('does not retry a non-transient status such as 400', async () => {
     fetchMock.mockResolvedValue(errBody(400, 'bad request'));
     await expect(executeAiCompletion('p', 's')).rejects.toBeInstanceOf(AiCompletionError);
-    // one attempt per provider in the Groq family; none repeated
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    // one attempt per provider in the Groq family (2 models since DeepSeek was removed); none repeated
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('does not retry on an error body that merely contains "503"', async () => {
     fetchMock.mockResolvedValue(errBody(400, 'request id 5031 invalid'));
     await expect(executeAiCompletion('p', 's')).rejects.toBeInstanceOf(AiCompletionError);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('strips <think> reasoning blocks from the returned answer', async () => {
+    fetchMock.mockResolvedValueOnce(okBody('<think>private chain of thought</think>\n# Final prompt'));
+    const result = await executeAiCompletion('p', 's');
+    expect(result.text).toBe('# Final prompt');
+  });
+
+  it('never returns a provider "reasoning" field as the answer', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: '', reasoning: 'internal notes' } }] }) })
+      .mockResolvedValueOnce(okBody('real answer'));
+    const result = await executeAiCompletion('p', 's');
+    expect(result.text).toBe('real answer');
+  });
+
+  it('sends Langfuse only model, timing and sizes, never the prompt or the answer', async () => {
+    const { recordLangfuseGeneration } = await import('../langfuse.js');
+    const record = vi.mocked(recordLangfuseGeneration);
+    record.mockClear();
+    fetchMock.mockResolvedValueOnce(okBody('ANSWER-TEXT-123'));
+    await executeAiCompletion('USER-PROMPT-TEXT', 'SYSTEM-PROMPT-TEXT', 'user_1');
+
+    expect(record).toHaveBeenCalledTimes(1);
+    const sent = record.mock.calls[0][0] as Record<string, unknown>;
+    expect(sent).not.toHaveProperty('input');
+    expect(sent).not.toHaveProperty('output');
+    const serialized = JSON.stringify(sent);
+    expect(serialized).not.toContain('USER-PROMPT-TEXT');
+    expect(serialized).not.toContain('SYSTEM-PROMPT-TEXT');
+    expect(serialized).not.toContain('ANSWER-TEXT-123');
+    expect(sent.metadata).toMatchObject({ inputChars: expect.any(Number), outputChars: 'ANSWER-TEXT-123'.length });
+  });
+
+  it('reports only the error code to Langfuse when every provider fails', async () => {
+    const { recordLangfuseGeneration } = await import('../langfuse.js');
+    const record = vi.mocked(recordLangfuseGeneration);
+    record.mockClear();
+    fetchMock.mockResolvedValue(errBody(500, 'upstream echoed USER-PROMPT-TEXT'));
+    await executeAiCompletion('USER-PROMPT-TEXT', 's').catch(() => {});
+
+    const sent = record.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(sent.statusMessage).toBe('AI_ALL_PROVIDERS_FAILED');
+    expect(JSON.stringify(sent)).not.toContain('USER-PROMPT-TEXT');
   });
 
   it('never exposes upstream error bodies in the thrown message', async () => {

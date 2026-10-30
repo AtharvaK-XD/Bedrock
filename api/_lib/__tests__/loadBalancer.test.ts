@@ -23,6 +23,13 @@ function makeRedis(overrides: Record<string, unknown> = {}) {
   };
 }
 
+describe('AI_PROVIDERS', () => {
+  it('does not route traffic to the DeepSeek reasoning model', () => {
+    expect(AI_PROVIDERS.some((p) => /deepseek/i.test(p.id) || /deepseek/i.test(p.model))).toBe(false);
+    expect(AI_PROVIDERS).toHaveLength(5);
+  });
+});
+
 describe('selectOptimalProvider', () => {
   beforeEach(() => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});

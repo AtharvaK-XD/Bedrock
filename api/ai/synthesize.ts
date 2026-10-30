@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion, AI_DEFAULT_BUDGET_MS } from '../_lib/ai.js';
-import { INPUT_LIMITS, firstLengthError, sendAiFailure } from '../_lib/aiHttp.js';
+import { INPUT_LIMITS, firstLengthError, sendAiFailure, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { buildSynthesisSystemPrompt } from '../_lib/aiPrompts.js';
 import { getUseCaseProfile, validatePromptAgainstForbiddenTerms } from '../_lib/useCaseProfiles.js';
@@ -45,6 +45,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const startTime = Date.now();
+  const requestId = getRequestId(req);
+  res.setHeader('X-Request-Id', requestId);
   const user = await authenticateRequest(req);
   const ip = getClientIp(req);
   const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
@@ -158,6 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
+      logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model, stream: true });
       return;
     }
 
@@ -222,6 +225,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model: effectiveModel });
     return res.status(200).json({
       promptText: finalText.trim(),
       modelTarget: effectiveModel,
@@ -238,6 +242,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: any) {
     await releaseQuota(quota);
     console.error('[Synthesize] Error:', err);
-    return sendAiFailure(res, err, 'Prompt synthesis failed on server');
+    logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'error', latencyMs: Date.now() - startTime, code: err?.code, stream: wantsStream });
+    return sendAiFailure(res, err, 'Prompt synthesis failed on server', requestId);
   }
 }

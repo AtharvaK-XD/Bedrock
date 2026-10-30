@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion, QuestionOutput } from '../_lib/ai.js';
-import { INPUT_LIMITS, firstLengthError } from '../_lib/aiHttp.js';
+import { INPUT_LIMITS, firstLengthError, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { getUseCaseProfile, classifyUseCase } from '../_lib/useCaseProfiles.js';
 
@@ -12,6 +12,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const startTime = Date.now();
+  const requestId = getRequestId(req);
+  res.setHeader('X-Request-Id', requestId);
   const user = await authenticateRequest(req);
   const ip = getClientIp(req);
   const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
@@ -67,10 +69,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    logAiRequest({ route: 'ai/generate-questions', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model });
     return res.status(200).json(questions);
   } catch (err: any) {
     await releaseQuota(quota);
     console.error('[GenerateQuestions] Error:', err);
+    logAiRequest({ route: 'ai/generate-questions', requestId, outcome: 'fallback', latencyMs: Date.now() - startTime, code: err?.code });
     return res.status(200).json(profile.fallbackQuestions);
   }
 }

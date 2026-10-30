@@ -1,8 +1,24 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb } from '../_lib/db.js';
+import { enforceRateLimit } from '../_lib/rateLimiter.js';
+import { DATA_LIMITS, sendDbFailure, firstFieldError, clampCount } from '../_lib/dataHttp.js';
+
+/**
+ * Server-side AI routes store 'success' / 'error' (recordExecutionTrace), while POST /api/traces and
+ * the dashboard use 'OK' / 'ERR'. Map to the dashboard's values so successful AI runs count as healthy.
+ */
+function normalizeTraceStatus(status: unknown): string {
+  if (status === 'success') return 'OK';
+  if (status === 'error') return 'ERR';
+  return typeof status === 'string' && status ? status : 'OK';
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Enforce distributed Upstash Redis rate limiting
+  const allowed = await enforceRateLimit(req, res, 'general');
+  if (!allowed) return;
+
   const user = await authenticateRequest(req);
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized: valid session token required.' });
@@ -28,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         model: r.model_target || 'gemini-2.5-flash',
         tokens: Number(r.tokens_used) || 0,
         latency: Number(r.latency_ms) || 0,
-        status: r.status || 'OK',
+        status: normalizeTraceStatus(r.status),
       }));
 
       // Compute aggregated metrics for this specific user
@@ -64,20 +80,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         traces,
       });
     } catch (err: any) {
-      console.error('[Traces] GET error:', err);
-      return res.status(500).json({ error: 'Failed to fetch telemetry traces', message: err.message });
+      return sendDbFailure(res, '[Traces] GET error:', 'Failed to fetch telemetry traces', err);
     }
   }
 
   // POST /api/traces: Log new execution trace
   if (req.method === 'POST') {
+    const body = req.body || {};
+    const fieldError = firstFieldError([
+      [body.id, DATA_LIMITS.id, 'id'],
+      [body.node || body.nodeOrigin, DATA_LIMITS.traceLabel, 'node'],
+      [body.model || body.modelTarget, DATA_LIMITS.traceLabel, 'model'],
+    ]);
+    if (fieldError) {
+      return res.status(400).json({ error: fieldError });
+    }
+
     try {
-      const body = req.body || {};
       const id = body.id || `TRC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
       const nodeOrigin = body.node || body.nodeOrigin || 'PROMPT_GEN';
       const modelTarget = body.model || body.modelTarget || 'gemini-2.5-flash';
-      const tokensUsed = parseInt(body.tokens || body.tokensUsed || '0', 10);
-      const latencyMs = parseInt(body.latency || body.latencyMs || '0', 10);
+      // Client-reported numbers cannot be verified; keep them within plausible bounds
+      const tokensUsed = clampCount(body.tokens || body.tokensUsed, DATA_LIMITS.traceTokensMax);
+      const latencyMs = clampCount(body.latency || body.latencyMs, DATA_LIMITS.traceLatencyMsMax);
       const status = body.status === 'ERR' || body.status === 'ERR_TIMEOUT' ? 'ERR' : 'OK';
 
       await sql`
@@ -90,8 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({ success: true, id });
     } catch (err: any) {
-      console.error('[Traces] POST error:', err);
-      return res.status(500).json({ error: 'Failed to record execution trace', message: err.message });
+      return sendDbFailure(res, '[Traces] POST error:', 'Failed to record execution trace', err);
     }
   }
 
@@ -101,8 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`DELETE FROM "Trace" WHERE user_id = ${user.id}`;
       return res.status(200).json({ success: true, message: 'Traces cleared' });
     } catch (err: any) {
-      console.error('[Traces] DELETE error:', err);
-      return res.status(500).json({ error: 'Failed to clear traces', message: err.message });
+      return sendDbFailure(res, '[Traces] DELETE error:', 'Failed to clear traces', err);
     }
   }
 

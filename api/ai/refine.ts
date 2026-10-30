@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion } from '../_lib/ai.js';
-import { INPUT_LIMITS, firstLengthError, sendAiFailure } from '../_lib/aiHttp.js';
+import { INPUT_LIMITS, firstLengthError, sendAiFailure, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { buildRefineSystemPrompt, extractRefineResult } from '../_lib/aiPrompts.js';
 
@@ -12,6 +12,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const startTime = Date.now();
+  const requestId = getRequestId(req);
+  res.setHeader('X-Request-Id', requestId);
   const user = await authenticateRequest(req);
   const ip = getClientIp(req);
   const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
@@ -61,6 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    logAiRequest({ route: 'ai/refine', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model });
     return res.status(200).json({
       updatedMarkdown: extracted.updatedMarkdown,
       summary: extracted.summary,
@@ -69,6 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: any) {
     await releaseQuota(quota);
     console.error('[Refine] Error:', err);
-    return sendAiFailure(res, err, 'Prompt refinement failed');
+    logAiRequest({ route: 'ai/refine', requestId, outcome: 'error', latencyMs: Date.now() - startTime, code: err?.code });
+    return sendAiFailure(res, err, 'Prompt refinement failed', requestId);
   }
 }
