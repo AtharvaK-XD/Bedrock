@@ -121,6 +121,32 @@ describe('POST /api/prompts', () => {
     expect(h.state.calls).toHaveLength(0);
   });
 
+  it("maps the database's own limits (migration 0003) to clear answers instead of 500", async () => {
+    h.state.responder = () => {
+      throw Object.assign(new Error('ROW_LIMIT_EXCEEDED: Prompt allows at most 2000 rows per user'), { code: '23514' });
+    };
+    const full = mockRes();
+    await prompts(mockReq('POST', { title: 't', content: 'c' }), full);
+    expect(full.statusCode).toBe(409);
+    expect(full.body.code).toBe('PROMPT_LIMIT_REACHED');
+
+    h.state.responder = () => {
+      throw Object.assign(new Error('new row for relation "Prompt" violates check constraint "Prompt_size_chk"'), { code: '23514' });
+    };
+    const big = mockRes();
+    await prompts(mockReq('POST', { title: 't', content: 'c' }), big);
+    expect(big.statusCode).toBe(400);
+    expect(big.body.code).toBe('PROMPT_TOO_LARGE');
+    expect(JSON.stringify(big.body)).not.toContain('Prompt_size_chk');
+  });
+
+  it('rejects ids longer than the database allows (100)', async () => {
+    const res = mockRes();
+    await prompts(mockReq('POST', { id: 'p'.repeat(101), content: 'c' }), res);
+    expect(res.statusCode).toBe(400);
+    expect(h.state.calls).toHaveLength(0);
+  });
+
   it('returns a generic message when the database fails', async () => {
     h.state.responder = () => {
       throw new Error('relation "Prompt" column full_content violates constraint xyz');
@@ -161,6 +187,24 @@ describe('POST /api/workflows', () => {
     expect(res.statusCode).toBe(409);
     expect(res.body.code).toBe('WORKFLOW_LIMIT_REACHED');
   });
+
+  it("maps the database's own limits (migration 0003) to clear answers instead of 500", async () => {
+    h.state.responder = () => {
+      throw Object.assign(new Error('ROW_LIMIT_EXCEEDED: BranchingTree allows at most 500 rows per user'), { code: '23514' });
+    };
+    const full = mockRes();
+    await workflows(mockReq('POST', { title: 'x', nodes: [], edges: [] }), full);
+    expect(full.statusCode).toBe(409);
+    expect(full.body.code).toBe('WORKFLOW_LIMIT_REACHED');
+
+    h.state.responder = () => {
+      throw Object.assign(new Error('violates check constraint "BranchingTree_size_chk"'), { code: '23514' });
+    };
+    const big = mockRes();
+    await workflows(mockReq('POST', { title: 'x', nodes: [], edges: [] }), big);
+    expect(big.statusCode).toBe(400);
+    expect(big.body.code).toBe('WORKFLOW_TOO_LARGE');
+  });
 });
 
 describe('/api/traces', () => {
@@ -197,6 +241,23 @@ describe('/api/traces', () => {
     await traces(mockReq('GET'), res);
     expect(h.authenticateRequest).not.toHaveBeenCalled();
     expect(h.state.calls).toHaveLength(0);
+  });
+});
+
+describe('GET /api/user/profile', () => {
+  it('reads only the columns it returns, never the password hash', async () => {
+    h.state.responder = () => [{ id: 'user_A', name: 'Alice', email: 'a@example.com', username: 'alice', created_at: '2026-10-01T00:00:00Z' }];
+    const res = mockRes();
+    await profile(mockReq('GET'), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toMatchObject({ id: 'user_A', name: 'Alice', username: 'alice' });
+    const select = h.state.calls[0].text;
+    expect(select).not.toContain('SELECT *');
+    expect(select).not.toContain('password_hash');
+    for (const column of ['username', 'bio', 'github', 'website', 'subscription_tier', 'joined_date']) {
+      expect(select).toContain(column);
+    }
   });
 });
 

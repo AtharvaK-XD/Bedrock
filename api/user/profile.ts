@@ -19,7 +19,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // GET: Fetch profile
   if (req.method === 'GET') {
     try {
-      const rows = await sql`SELECT * FROM "User" WHERE id = ${user.id} LIMIT 1` as UserRow[];
+      // Only the columns this response uses: never read password_hash or billing ids here
+      const rows = await sql`
+        SELECT id, name, username, email, avatar_url, avatar_initials, plan, role, bio, location,
+          organization, github, huggingface, website, joined_date, created_at, subscription_tier
+        FROM "User" WHERE id = ${user.id} LIMIT 1
+      ` as Array<Omit<UserRow, 'password_hash' | 'email_verified' | 'mfa_enabled' | 'updated_at'>>;
       if (rows.length === 0 || !rows[0]) {
         return res.status(200).json({
           name: user.name,
