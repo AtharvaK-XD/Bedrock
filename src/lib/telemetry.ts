@@ -1,5 +1,10 @@
 import type { HistoryPromptItem } from './generatorHistory';
 import { getActivePrivacySettings, scrubSecrets, getSessionTokensCount } from './appSettings';
+import { reportSyncProblem, describeSaveLimit } from './syncNotice';
+
+// Only server-side trouble (5xx) or rate limiting (429) is worth interrupting the user for.
+// Other statuses (e.g. 401 when signed out on desktop) are expected and stay quiet.
+const isSyncFailure = (res: Response) => res.status >= 500 || res.status === 429;
 
 export interface UserTraceItem {
   id: string;
@@ -166,7 +171,7 @@ export async function savePromptToDb(prompt: {
 
   try {
     const headers = await getAuthHeader();
-    await fetch('/api/prompts', {
+    const res = await fetch('/api/prompts', {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -178,8 +183,15 @@ export async function savePromptToDb(prompt: {
         tags: prompt.tags || [prompt.targetType || 'Custom'],
       }),
     });
+    const limitMessage = await describeSaveLimit(res);
+    if (limitMessage) {
+      reportSyncProblem(limitMessage);
+    } else if (isSyncFailure(res)) {
+      reportSyncProblem("Couldn't back up your prompt to the cloud. It is still saved on this device.");
+    }
   } catch (err) {
     console.warn('[Prompts] Failed to save prompt to DB:', err);
+    reportSyncProblem("Couldn't back up your prompt to the cloud. It is still saved on this device.");
   }
 }
 
@@ -208,9 +220,12 @@ export async function fetchUserPromptsFromDb(): Promise<HistoryPromptItem[]> {
           createdAt: new Date(p.createdAt).getTime(),
         }));
       }
+    } else if (isSyncFailure(res)) {
+      reportSyncProblem("Couldn't load your cloud history. Showing what is saved on this device.");
     }
   } catch (err) {
     console.warn('[Prompts] Failed to fetch prompts from DB:', err);
+    reportSyncProblem("Couldn't load your cloud history. Showing what is saved on this device.");
   }
   return [];
 }
@@ -218,11 +233,15 @@ export async function fetchUserPromptsFromDb(): Promise<HistoryPromptItem[]> {
 export async function deletePromptFromDb(id: string): Promise<void> {
   try {
     const headers = await getAuthHeader();
-    await fetch(`/api/prompts?id=${encodeURIComponent(id)}`, {
+    const res = await fetch(`/api/prompts?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
       headers,
     });
+    if (isSyncFailure(res)) {
+      reportSyncProblem("Couldn't remove this prompt from the cloud. It may reappear after a refresh.");
+    }
   } catch (err) {
     console.warn('[Prompts] Failed to delete prompt from DB:', err);
+    reportSyncProblem("Couldn't remove this prompt from the cloud. It may reappear after a refresh.");
   }
 }

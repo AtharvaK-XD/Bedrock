@@ -79,7 +79,7 @@ export function UpgradeModal({
           <div className="absolute -top-24 -right-24 w-60 h-60 bg-copper-500/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Close button */}
-          <button
+          <button aria-label="Close"
             type="button"
             onClick={onClose}
             className="absolute top-5 right-5 p-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white transition-colors"

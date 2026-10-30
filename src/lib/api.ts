@@ -40,6 +40,7 @@ import {
   createStreamingPacer,
 } from './appSettings';
 import { isDesktopApp } from './platform';
+import { reportSyncProblem, describeSaveLimit } from './syncNotice';
 export type {
 
   ModelTuningConfig,
@@ -1209,6 +1210,8 @@ export const saveWorkflow = async (workflow: { id?: string; title: string; nodes
     if (response.ok) {
       return await response.json();
     }
+    const limitMessage = await describeSaveLimit(response);
+    if (limitMessage) reportSyncProblem(limitMessage);
   } catch {
     // Offline / desktop fallback
   }

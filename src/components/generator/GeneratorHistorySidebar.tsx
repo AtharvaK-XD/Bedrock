@@ -189,7 +189,7 @@ export function GeneratorHistorySidebar({
               className="w-full bg-white/[0.04] border border-white/10 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-copper-500/50"
             />
             {searchQuery && (
-              <button
+              <button aria-label="Clear search"
                 type="button"
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2 text-neutral-400 hover:text-white"

@@ -102,7 +102,9 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
 
     // Desktop App (macOS & Windows): Open in external system browser tab to prevent Google 403 disallowed_useragent
     if (isDesktop) {
-      const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const nonceBytes = new Uint8Array(16);
+      crypto.getRandomValues(nonceBytes);
+      const nonce = Array.from(nonceBytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
       try {
         const electronAuth = (window as any).electronAuth;

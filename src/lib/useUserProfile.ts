@@ -50,9 +50,6 @@ export function resolveCleanName(rawName?: string | null, rawEmail?: string | nu
   const email = rawEmail || (typeof window !== 'undefined' ? (window as any).Clerk?.user?.primaryEmailAddress?.emailAddress : '');
   if (email && email.includes('@') && !email.endsWith('@clerk.user')) {
     const handle = email.split('@')[0];
-    if (/kulkarni.*atharva|atharva.*kulkarni/i.test(handle)) {
-      return 'Atharva Kulkarni';
-    }
     const cleanWords = handle.replace(/[0-9._-]+/g, ' ').trim().split(' ').filter(Boolean);
     if (cleanWords.length > 0) {
       return cleanWords.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');

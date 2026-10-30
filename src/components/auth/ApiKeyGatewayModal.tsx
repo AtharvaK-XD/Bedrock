@@ -282,7 +282,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                   placeholder="AIzaSy..."
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-cyan-400/60 focus:ring-1 focus:ring-cyan-400/30 transition-all pr-10"
                 />
-                <button
+                <button aria-label="Show or hide API key"
                   type="button"
                   onClick={() => toggleShowKey('gemini')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
@@ -320,7 +320,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                   placeholder="gsk_..."
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-emerald-400/60 focus:ring-1 focus:ring-emerald-400/30 transition-all pr-10"
                 />
-                <button
+                <button aria-label="Show or hide API key"
                   type="button"
                   onClick={() => toggleShowKey('groq')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
@@ -366,7 +366,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         placeholder="sk-proj-..."
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
                       />
-                      <button
+                      <button aria-label="Show or hide API key"
                         type="button"
                         onClick={() => toggleShowKey('openai')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
@@ -393,7 +393,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         placeholder="Key from console.mistral.ai..."
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
                       />
-                      <button
+                      <button aria-label="Show or hide API key"
                         type="button"
                         onClick={() => toggleShowKey('mistral')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
@@ -420,7 +420,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         placeholder="Key from dashboard.cohere.com..."
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
                       />
-                      <button
+                      <button aria-label="Show or hide API key"
                         type="button"
                         onClick={() => toggleShowKey('cohere')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
@@ -447,7 +447,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         placeholder="sk-or-v1-..."
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
                       />
-                      <button
+                      <button aria-label="Show or hide API key"
                         type="button"
                         onClick={() => toggleShowKey('openrouter')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
@@ -474,7 +474,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         placeholder="sk-ant-api03-..."
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
                       />
-                      <button
+                      <button aria-label="Show or hide API key"
                         type="button"
                         onClick={() => toggleShowKey('anthropic')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
@@ -501,7 +501,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         placeholder="sk-..."
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
                       />
-                      <button
+                      <button aria-label="Show or hide API key"
                         type="button"
                         onClick={() => toggleShowKey('deepseek')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
@@ -528,7 +528,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         placeholder="hf_..."
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
                       />
-                      <button
+                      <button aria-label="Show or hide API key"
                         type="button"
                         onClick={() => toggleShowKey('huggingface')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
@@ -555,7 +555,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         placeholder="nvapi-..."
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
                       />
-                      <button
+                      <button aria-label="Show or hide API key"
                         type="button"
                         onClick={() => toggleShowKey('nvidia')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
@@ -582,7 +582,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                         placeholder="xai-..."
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-all pr-10"
                       />
-                      <button
+                      <button aria-label="Show or hide API key"
                         type="button"
                         onClick={() => toggleShowKey('xai')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"

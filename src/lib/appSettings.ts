@@ -247,7 +247,9 @@ export function applyAppearanceToDom(settings?: AppearanceSettings): void {
     else if (current.fontFamily === 'mono') root.classList.add('font-mono-mode');
     else root.classList.add('font-sans-mode');
 
-    if (current.reducedMotion) {
+    // Honor the in-app toggle and the operating system's reduced-motion preference
+    const osPrefersReducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (current.reducedMotion || osPrefersReducedMotion) {
       root.classList.add('reduce-motion');
     } else {
       root.classList.remove('reduce-motion');
