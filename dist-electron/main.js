@@ -11,6 +11,15 @@ if (process.platform === "win32") {
 	app.setAppUserModelId("com.bedrock.desktop");
 }
 
+// Installed builds refuse debugging switches: they would let another program on this computer
+// take control of the app and read decrypted API keys (complements the Electron fuses in package.json)
+const BLOCKED_DEBUG_SWITCHES = ["remote-debugging-port", "remote-debugging-pipe", "remote-debugging-address", "inspect", "inspect-brk", "inspect-port", "js-flags"];
+if (app.isPackaged && BLOCKED_DEBUG_SWITCHES.some((name) => app.commandLine?.hasSwitch?.(name))) {
+	console.error("[Electron Main] Debugging switches are not allowed in installed builds. Exiting.");
+	app.exit(1);
+	process.exit(1);
+}
+
 process.on("uncaughtException", (err) => {
 	console.error("[Electron Main] Uncaught exception:", err);
 });
@@ -395,7 +404,8 @@ function startLocalServer() {
 			}
 		});
 
-		server.listen(0, () => {
+		// Loopback only: other devices on the same network cannot reach this server
+		server.listen(0, "127.0.0.1", () => {
 			localServerPort = server.address().port;
 			resolve(`http://127.0.0.1:${localServerPort}`);
 		});
@@ -502,34 +512,21 @@ function createWindow() {
 						width: 540,
 						height: 720,
 						autoHideMenuBar: true,
-						webPreferences: {
-							webSecurity: true,
-							devTools: false
-						}
+						webPreferences: POPUP_WEB_PREFERENCES
 					}
 				};
 			}
 
 			const parsed = new URL(url);
-			// Allow Google OAuth, GitHub OAuth, Clerk authentication, and local loopback popups in-app
-			if (
-				parsed.hostname.includes("clerk") ||
-				parsed.hostname.includes("google") ||
-				parsed.hostname.includes("github") ||
-				parsed.hostname.includes("gstatic") ||
-				parsed.hostname === "localhost" ||
-				parsed.hostname === "127.0.0.1"
-			) {
+			// Allow Google OAuth, GitHub OAuth, Clerk authentication, and local loopback popups in-app (exact hosts)
+			if ((parsed.protocol === "https:" || parsed.protocol === "http:") && isAuthPopupHost(parsed.hostname)) {
 				return {
 					action: "allow",
 					overrideBrowserWindowOptions: {
 						width: 540,
 						height: 720,
 						autoHideMenuBar: true,
-						webPreferences: {
-							webSecurity: true,
-							devTools: false
-						}
+						webPreferences: POPUP_WEB_PREFERENCES
 					}
 				};
 			}
@@ -830,6 +827,66 @@ ipcMain.handle("file:save-with-dialog", async (_event, options) => {
 	}
 });
 
+// ---- Content-Security-Policy (kept in line with the website's policy in vercel.json) ----
+const DEV_CSP = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http://localhost:* http://127.0.0.1:* https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://accounts.google.com https://*.google.com https://*.googleapis.com https://github.com https://*.github.com https://fonts.googleapis.com https://fonts.gstatic.com https://bedrock-steel.vercel.app; object-src 'none'; base-uri 'self';";
+// sha256 of the inline popup-closing script in index.html (LF and CRLF checkouts)
+const INDEX_INLINE_SCRIPT_HASHES = "'sha256-4Bo01ZNy7SnDqO38T4qi0U10NKwmezB9OuofGmwyLtw=' 'sha256-KO0VPu5IYIyjwTyCO1dKZTc5y6RrRCB+BOVbBG7UA5U='";
+const CLERK_HOSTS = "https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com";
+const APP_CSP = [
+	"default-src 'self'",
+	`script-src 'self' ${INDEX_INLINE_SCRIPT_HASHES} ${CLERK_HOSTS} https://challenges.cloudflare.com https://us-assets.i.posthog.com`,
+	"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+	"font-src 'self' data: https://fonts.gstatic.com",
+	"img-src 'self' data: blob: https:",
+	"media-src 'self' blob:",
+	`connect-src 'self' http://127.0.0.1:* http://localhost:* https://bedrock-steel.vercel.app ${CLERK_HOSTS} https://*.protect.clerk.com:* https://*.ingest.us.sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://generativelanguage.googleapis.com https://api.groq.com https://api.openai.com https://openrouter.ai https://api-inference.huggingface.co https://api.perplexity.ai https://api.github.com`,
+	`frame-src 'self' https://challenges.cloudflare.com ${CLERK_HOSTS}`,
+	"worker-src 'self' blob:",
+	"object-src 'none'",
+	"base-uri 'self'",
+	"form-action 'self'"
+].join("; ");
+
+/** Returns the CSP for a response, or null to leave the response's own headers untouched. */
+function cspForResponse(url) {
+	if (VITE_DEV_SERVER_URL) return DEV_CSP;
+	if (!localServerPort || typeof url !== "string") return null;
+	let parsed;
+	try {
+		parsed = new URL(url);
+	} catch {
+		return null;
+	}
+	const isOwnServer =
+		parsed.protocol === "http:" &&
+		(parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") &&
+		parsed.port === String(localServerPort);
+	if (!isOwnServer) return null;
+	if (parsed.pathname.startsWith("/sandbox/")) {
+		// Explicit origin instead of 'self': the sandboxed frame has an opaque origin
+		const own = `http://127.0.0.1:${localServerPort} http://localhost:${localServerPort}`;
+		return `default-src 'none'; script-src ${own} 'unsafe-eval'; frame-ancestors ${own}`;
+	}
+	return APP_CSP;
+}
+
+// In-app popups only for exact sign-in hosts (a name merely containing "google" is not enough)
+const AUTH_POPUP_HOSTS = new Set(["accounts.google.com", "github.com", "clerk.com", "localhost", "127.0.0.1"]);
+const AUTH_POPUP_HOST_SUFFIXES = [".clerk.accounts.dev", ".accounts.dev", ".clerk.com"];
+
+function isAuthPopupHost(hostname) {
+	const host = String(hostname || "").toLowerCase();
+	return AUTH_POPUP_HOSTS.has(host) || AUTH_POPUP_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix));
+}
+
+const POPUP_WEB_PREFERENCES = {
+	webSecurity: true,
+	devTools: false,
+	contextIsolation: true,
+	nodeIntegration: false,
+	sandbox: true
+};
+
 // OS-encrypted storage for the renderer's API keys (Windows DPAPI / macOS Keychain via safeStorage).
 // Values are kept encrypted in userData/secure-store.json instead of plain text in localStorage.
 const SECURE_STORE_KEYS = new Set(["bedrock_api_keys"]);
@@ -932,15 +989,20 @@ if (!hasSingleInstanceLock) {
 	});
 
 	app.whenReady().then(() => {
-		// Set Content-Security-Policy headers dynamically.
-		// 'unsafe-eval' stays until workflow code nodes run in a sandboxed Worker (Frontend REQUEST).
+		// Content-Security-Policy. Packaged builds: strict policy on the app's own loopback pages
+		// (no eval, no inline scripts except the hashed popup script in index.html); the code-node
+		// sandbox page alone may eval. Responses from other sites (Clerk, Google, GitHub) keep their
+		// own headers. Dev server: the old permissive policy (Vite HMR needs inline/eval).
 		session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+			const policy = cspForResponse(details.url);
+			if (!policy) {
+				callback({});
+				return;
+			}
 			callback({
 				responseHeaders: {
 					...details.responseHeaders,
-					"Content-Security-Policy": [
-						"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http://localhost:* http://127.0.0.1:* https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://accounts.google.com https://*.google.com https://*.googleapis.com https://github.com https://*.github.com https://fonts.googleapis.com https://fonts.gstatic.com https://bedrock-steel.vercel.app; object-src 'none'; base-uri 'self';"
-					]
+					"Content-Security-Policy": [policy]
 				}
 			});
 		});

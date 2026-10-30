@@ -339,10 +339,14 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
 
       try {
         const sql = getDb();
-        // Check if user exists in Neon DB
+        // Check if user exists in Neon DB. Linking to an existing account by email is only allowed
+        // when the token says the email is verified (Clerk claim from `{{user.email_verified}}`);
+        // otherwise anyone who registers an unverified copy of an address could take over that account.
+        const emailVerified = claims.email_verified === true || claims.email_verified === 'true';
+        const linkEmail = emailVerified && !email.endsWith('@clerk.user') ? email : null;
         // Exact id match always wins over an email match
         const existing = await sql`
-          SELECT * FROM "User" WHERE id = ${userId} OR email = ${email}
+          SELECT * FROM "User" WHERE id = ${userId} OR (${linkEmail}::text IS NOT NULL AND email = ${linkEmail})
           ORDER BY (id = ${userId}) DESC LIMIT 1
         ` as UserRow[];
 

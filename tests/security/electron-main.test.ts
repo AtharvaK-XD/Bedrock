@@ -16,6 +16,7 @@ const h = vi.hoisted(() => {
     sent: [] as Array<[string, any]>,
     userData: '',
     readyResolve: null as null | (() => void),
+    headersHandler: null as null | ((details: any, cb: (r: any) => void) => void),
   };
   const shell = { openExternal: vi.fn() };
   const dialog = {
@@ -72,7 +73,7 @@ vi.mock('electron', () => {
     shell,
     dialog,
     safeStorage,
-    session: { defaultSession: { webRequest: { onHeadersReceived: () => {} } } },
+    session: { defaultSession: { webRequest: { onHeadersReceived: (fn: any) => { state.headersHandler = fn; } } } },
     ipcMain: { handle: (channel: string, fn: any) => state.handlers.set(channel, fn) },
     nativeImage: { createFromPath: () => ({ isEmpty: () => true }) },
   };
@@ -89,9 +90,10 @@ beforeAll(async () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'log').mockImplementation(() => {});
   await import('../../dist-electron/main.js');
-  for (let i = 0; i < 100 && !state.loadedUrl; i++) await new Promise((r) => setTimeout(r, 20));
+  // Up to 10 s: the full suite runs many files in parallel
+  for (let i = 0; i < 500 && !state.loadedUrl; i++) await new Promise((r) => setTimeout(r, 20));
   base = new URL(state.loadedUrl).origin;
-});
+}, 20_000);
 
 afterAll(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
 
@@ -122,6 +124,65 @@ describe('shell.openExternal scheme allow-list', () => {
     willNavigate({ preventDefault() {} }, 'https://docs.example.com/page');
     state.windowOpenHandler!({ url: 'http://example.com/' });
     expect(shell.openExternal).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('in-app popups', () => {
+  it('opens sign-in popups in-app only for exact auth hosts, sandboxed', () => {
+    for (const url of ['https://accounts.google.com/o/oauth2/v2/auth', 'https://github.com/login/oauth', 'https://foo-bar-12.clerk.accounts.dev/v1/oauth']) {
+      const result = state.windowOpenHandler!({ url });
+      expect(result.action).toBe('allow');
+      expect(result.overrideBrowserWindowOptions.webPreferences).toMatchObject({ sandbox: true, contextIsolation: true, nodeIntegration: false });
+    }
+    expect(shell.openExternal).not.toHaveBeenCalled();
+  });
+
+  it('never opens look-alike hosts in-app (they go to the system browser)', () => {
+    for (const url of ['https://google.evil.example/login', 'https://evilgoogle.com/', 'https://github.com.evil.example/', 'https://clerk-login.evil.example/']) {
+      expect(state.windowOpenHandler!({ url }).action).toBe('deny');
+    }
+    expect(shell.openExternal).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('content security policy', () => {
+  const policyFor = (url: string) => {
+    let result: any;
+    state.headersHandler!({ url, responseHeaders: {} }, (r) => { result = r; });
+    return result?.responseHeaders?.['Content-Security-Policy']?.[0] as string | undefined;
+  };
+
+  it('uses a strict policy on the app pages: no eval, no inline scripts except the hashed one', () => {
+    const csp = policyFor(`${base}/index.html`)!;
+    expect(csp).toContain("script-src 'self' 'sha256-");
+    expect(csp).not.toContain('unsafe-eval');
+    expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
+    expect(csp).toContain("object-src 'none'");
+  });
+
+  it('allows eval only on the code-node sandbox page', () => {
+    const csp = policyFor(`${base}/sandbox/code-runner.html`)!;
+    expect(csp).toContain("'unsafe-eval'");
+    expect(csp).toContain("default-src 'none'");
+  });
+
+  it('leaves responses from other sites untouched', () => {
+    expect(policyFor('https://accounts.google.com/signin')).toBeUndefined();
+    expect(policyFor('http://127.0.0.1:1/other-port')).toBeUndefined();
+  });
+});
+
+describe('loopback server binding', () => {
+  it('is not reachable on this machine\'s network addresses', async () => {
+    const port = new URL(base).port;
+    const lanIps = Object.values(os.networkInterfaces()).flat()
+      .filter((i): i is os.NetworkInterfaceInfo => Boolean(i && i.family === 'IPv4' && !i.internal))
+      .map((i) => i.address);
+    for (const ip of lanIps.slice(0, 2)) {
+      await expect(fetch(`http://${ip}:${port}/`, { signal: AbortSignal.timeout(1500) })).rejects.toThrow();
+    }
+    // Still answers on loopback (status depends on whether dist/ was built)
+    expect((await fetch(`${base}/`)).status).toBeGreaterThan(0);
   });
 });
 

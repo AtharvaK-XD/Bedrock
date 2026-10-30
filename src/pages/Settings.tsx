@@ -221,7 +221,8 @@ const DEFAULT_API_KEYS: ApiKeysState = {
   ollamaHost: 'http://localhost:11434',
 };
 
-// Workspace backup import: keys that identify the signed-in user or hold credentials are never restored
+// Workspace backup: keys that identify the signed-in user or hold credentials are never written
+// to the backup file and never restored from one (same rule on web and desktop)
 const BACKUP_IMPORT_BLOCKED_KEYS = new Set([
   STORAGE_KEY_API_KEYS,
   'bedrock_token',
@@ -466,7 +467,7 @@ export default function Settings() {
       const data: Record<string, any> = {};
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('bedrock_')) {
+        if (key && key.startsWith('bedrock_') && !BACKUP_IMPORT_BLOCKED_KEYS.has(key)) {
           data[key] = localStorage.getItem(key);
         }
       }

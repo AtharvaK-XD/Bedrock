@@ -9,6 +9,16 @@
   "build": {
     "appId": "com.bedrock.desktop",
     "productName": "Bedrock",
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false,
+      "resetAdHocDarwinSignature": true
+    },
     "icon": "build/icon.ico",
     "directories": {
       "output": "release"
@@ -153,7 +163,7 @@
     "resend": "^6.32.1",
     "tailwind-merge": "^3.6.0",
     "three": "^0.185.1",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
@@ -172,7 +182,6 @@
     "bestzip": "^3.0.2",
     "electron": "^43.3.0",
     "electron-builder": "^26.15.3",
-    "electron-packager": "^17.1.2",
     "oxlint": "^1.75.0",
     "postcss": "^8.5.25",
     "remotion": "^4.0.534",
@@ -180,5 +189,20 @@
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "zod": "$zod",
+    "@vercel/node": {
+      "undici": "6.29.1",
+      "path-to-regexp": "6.3.0",
+      "path-to-regexp": "6.3.0"
+    },
+    "@vercel/static-config": {
+      "path-to-regexp": "6.3.0",
+      "ajv": "8.20.0"
+    },
+    "@tailwindcss/typography": {
+      "postcss-selector-parser": "6.1.5"
+    }
   }
 }
