@@ -491,7 +491,7 @@ export function validateSynthesisOutput(
   for (const stub of lazyStubs) {
     issues.push({
       type: 'forbidden_term',
-      term,
+      term: stub,
       message: `Prompt contains lazy placeholder stub "${stub}". Full implementation is required.`,
     });
   }
