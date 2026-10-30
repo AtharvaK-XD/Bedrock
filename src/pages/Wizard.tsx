@@ -211,7 +211,7 @@ export default function Wizard() {
       } else {
         setErrorBanner({
           type: 'general',
-          title: 'Generation Failed',
+          title: err?.code === 'AI_BUSY' ? 'AI is busy' : 'Generation Failed',
           message: err?.message || 'An error occurred while generating questions. Please try again.',
         });
       }
@@ -288,7 +288,7 @@ export default function Wizard() {
       } else {
         setErrorBanner({
           type: 'general',
-          title: 'Synthesis Failed',
+          title: err?.code === 'AI_BUSY' ? 'AI is busy' : 'Synthesis Failed',
           message: err?.message || 'An error occurred while synthesizing prompt. Please try again.',
         });
       }
@@ -492,6 +492,7 @@ export default function Wizard() {
                             {q.questionType === 'free_text' && (
                               <Input 
                                 value={answers[q.id] as string || ''}
+                                maxLength={1000}
                                 onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
                                 placeholder="Your answer..."
                                 className="bg-[#111] border-white/10 text-white placeholder:text-gray-500 hover:border-white/20 focus-visible:bg-white/5 focus-visible:border-copper-500/50"

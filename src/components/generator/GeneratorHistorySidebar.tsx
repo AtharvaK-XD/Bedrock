@@ -34,7 +34,13 @@ interface GeneratorHistorySidebarProps {
   onNewPrompt: () => void;
 }
 
-export function GeneratorHistorySidebar({
+export function GeneratorHistorySidebar(props: GeneratorHistorySidebarProps) {
+  // The desktop app has its own sidebar. Bail out in a wrapper so the hooks below always run in the same order.
+  if (isDesktopApp()) return null;
+  return <GeneratorHistorySidebarContent {...props} />;
+}
+
+function GeneratorHistorySidebarContent({
   isCollapsed,
   onToggleCollapse,
   activeId,
@@ -42,8 +48,6 @@ export function GeneratorHistorySidebar({
   onNewPrompt,
 }: GeneratorHistorySidebarProps) {
   const isDesktop = isDesktopApp();
-  if (isDesktop) return null;
-
   const navigate = useNavigate();
   const { profile } = useUserProfile();
   const [items, setItems] = useState<HistoryPromptItem[]>(getStoredGeneratorHistory);

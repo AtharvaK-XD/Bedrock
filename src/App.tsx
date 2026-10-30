@@ -107,15 +107,14 @@ function AnimatedRoutes() {
     typeof window !== 'undefined' && 
     (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost');
 
-  if (
-    isExternalLoopback && 
-    location.pathname !== '/browser-auth' && 
-    location.pathname !== '/browser-auth-callback'
-  ) {
-    return <BrowserDesktopNotice />;
-  }
-  
+  // Decided here, but returned only after all hooks below have run (React needs the same hooks every render)
+  const showLoopbackNotice =
+    isExternalLoopback &&
+    location.pathname !== '/browser-auth' &&
+    location.pathname !== '/browser-auth-callback';
+
   useEffect(() => {
+    if (showLoopbackNotice) return;
     // Desktop App (Electron/Tauri): uses HashRouter, so redirect raw callback URLs to hash routes
     if (isDesktop && typeof window !== 'undefined' && !window.location.hash) {
       if (
@@ -136,11 +135,12 @@ function AnimatedRoutes() {
 
     window.scrollTo(0, 0);
     ScrollTrigger.refresh();
-  }, [location.pathname, isDesktop]);
+  }, [location.pathname, isDesktop, showLoopbackNotice]);
 
   // OAuth Popup Safeguard: if an OAuth popup reaches /app, close it immediately
   useEffect(() => {
-    const isPopup = 
+    if (showLoopbackNotice) return;
+    const isPopup =
       (typeof window !== 'undefined' && window.name === 'BedrockOAuth') ||
       (typeof window !== 'undefined' && window.sessionStorage?.getItem('bedrock_auth_popup') === '1') ||
       (typeof window !== 'undefined' && window.location.search?.includes('popup=1'));
@@ -157,8 +157,12 @@ function AnimatedRoutes() {
       setTimeout(() => window.close(), 50);
       setTimeout(() => window.close(), 200);
     }
-  }, [location.pathname]);
-  
+  }, [location.pathname, showLoopbackNotice]);
+
+  if (showLoopbackNotice) {
+    return <BrowserDesktopNotice />;
+  }
+
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>

@@ -309,7 +309,9 @@ export function useUserProfile() {
     };
   }, []);
 
-  const updateProfile = async (updates: Partial<UserProfile>) => {
+  // Resolves { ok: false, message } only when the server rejected the values (400 / 409, e.g. username taken).
+  // Network or server errors still save locally and resolve { ok: true }, as before.
+  const updateProfile = async (updates: Partial<UserProfile>): Promise<{ ok: boolean; message?: string }> => {
     const current = getStoredProfile();
     const cleanName = updates.name ? resolveCleanName(updates.name, updates.email || current.email) : current.name;
     const nextInitials = cleanName ? resolveInitials(cleanName) : current.avatarInitials;
@@ -339,6 +341,13 @@ export function useUserProfile() {
           headers: authHeaders,
           body: JSON.stringify({ ...updates, name: cleanName }),
         });
+        if (res.status === 400 || res.status === 409) {
+          const body = await res.json().catch(() => ({}));
+          return {
+            ok: false,
+            message: body?.message || body?.error || "Couldn't save your profile. Please check the fields and try again.",
+          };
+        }
         if (!res.ok) {
           console.warn('API update failed, saving locally as fallback');
         }
@@ -351,6 +360,7 @@ export function useUserProfile() {
 
     setProfileState(updated);
     window.dispatchEvent(new Event(PROFILE_EVENT));
+    return { ok: true };
   };
 
   const resetProfile = () => {
