@@ -64,18 +64,142 @@ if (process.defaultApp) {
 }
 
 let localServerPort = 0;
-const pendingAuthSessions = new Map();
+const pendingAuthSessions = new Map(); // nonce -> { payload, expiresAt }
+
+// =================== Security helpers ===================
+
+// Only web links may be handed to the OS; other schemes (file:, ms-msdt:, search-ms:, custom
+// protocol handlers) can launch local programs.
+const SAFE_EXTERNAL_PROTOCOLS = new Set(["https:", "http:"]);
+function openExternalSafe(rawUrl) {
+	try {
+		const parsed = new URL(rawUrl);
+		if (!SAFE_EXTERNAL_PROTOCOLS.has(parsed.protocol)) {
+			console.warn("[Security] Blocked openExternal for scheme:", parsed.protocol);
+			return false;
+		}
+		shell.openExternal(parsed.toString());
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+// Desktop sign-in nonces: only nonces issued through our own renderer (auth:start-external) are
+// accepted by the loopback callback and the bedrock:// deep link. Single use, short-lived.
+const AUTH_NONCE_RE = /^[A-Za-z0-9_-]{8,128}$/;
+const AUTH_NONCE_TTL_MS = 10 * 60 * 1000;
+const MAX_AUTH_BODY_BYTES = 64 * 1024;
+const issuedAuthNonces = new Map(); // nonce -> expiresAt
+
+function pruneAuthState() {
+	const now = Date.now();
+	for (const [nonce, expiresAt] of issuedAuthNonces) {
+		if (expiresAt <= now) issuedAuthNonces.delete(nonce);
+	}
+	for (const [nonce, entry] of pendingAuthSessions) {
+		if (entry.expiresAt <= now) pendingAuthSessions.delete(nonce);
+	}
+}
+
+function registerAuthNonce(nonce) {
+	pruneAuthState();
+	issuedAuthNonces.set(nonce, Date.now() + AUTH_NONCE_TTL_MS);
+}
+
+const AUTH_PAYLOAD_FIELDS = ["email", "name", "avatarUrl", "clerkUserId", "strategy", "token", "plan"];
+
+/** Validates an external sign-in payload and consumes its nonce. Returns a sanitized copy or null. */
+function acceptAuthPayload(payload) {
+	pruneAuthState();
+	if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+	const nonce = payload.nonce;
+	if (typeof nonce !== "string" || !AUTH_NONCE_RE.test(nonce) || !issuedAuthNonces.has(nonce)) return null;
+	issuedAuthNonces.delete(nonce);
+
+	const clean = { nonce };
+	for (const key of AUTH_PAYLOAD_FIELDS) {
+		const value = payload[key];
+		if (typeof value === "string" && value.length <= 8192) clean[key] = value;
+	}
+	if (typeof payload.timestamp === "number") clean.timestamp = payload.timestamp;
+	pendingAuthSessions.set(nonce, { payload: clean, expiresAt: Date.now() + AUTH_NONCE_TTL_MS });
+	return clean;
+}
+
+/** Our own loopback origins (the app window and the external sign-in page both use them). */
+function isOwnLoopbackOrigin(origin) {
+	return origin === `http://127.0.0.1:${localServerPort}` || origin === `http://localhost:${localServerPort}`;
+}
+
+/** Rejects requests that a browser marks as coming from another website. */
+function isTrustedLocalRequest(req) {
+	const origin = req.headers.origin;
+	if (origin !== undefined) return isOwnLoopbackOrigin(origin);
+	// No Origin header (e.g. same-origin GET): fall back to the browser's Fetch Metadata
+	const fetchSite = req.headers["sec-fetch-site"];
+	return fetchSite === undefined || fetchSite === "same-origin" || fetchSite === "none";
+}
+
+/** CORS headers only for our own loopback origin (never "*"). */
+function loopbackCorsHeaders(req) {
+	const origin = req.headers.origin;
+	return isOwnLoopbackOrigin(origin) ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : {};
+}
+
+// Folders the user approved for 1-click export (via the native folder picker or a native
+// confirmation dialog). Persisted in the main process, out of reach of page scripts.
+const MAX_EXPORT_CONTENT_CHARS = 2 * 1024 * 1024;
+const ALLOWED_EXPORT_NAMES = new Set([".cursorrules", ".windsurfrules"]);
+const ALLOWED_EXPORT_EXTENSIONS = new Set([".md", ".txt", ".json", ".ts", ".py", ".sh", ".yaml", ".yml"]);
+let approvedFolders = null;
+
+function approvedFoldersFile() {
+	return path.join(app.getPath("userData"), "approved-export-folders.json");
+}
+
+function loadApprovedFolders() {
+	if (approvedFolders) return approvedFolders;
+	approvedFolders = new Set();
+	try {
+		const list = JSON.parse(fs.readFileSync(approvedFoldersFile(), "utf-8"));
+		if (Array.isArray(list)) list.filter((p) => typeof p === "string").forEach((p) => approvedFolders.add(p));
+	} catch {
+		// first run or unreadable file: start empty
+	}
+	return approvedFolders;
+}
+
+function approveFolder(realFolder) {
+	const set = loadApprovedFolders();
+	set.add(realFolder);
+	try {
+		fs.mkdirSync(path.dirname(approvedFoldersFile()), { recursive: true });
+		fs.writeFileSync(approvedFoldersFile(), JSON.stringify([...set]), "utf-8");
+	} catch (err) {
+		console.warn("[Security] Could not persist approved export folders:", err?.message);
+	}
+}
+
+function isAllowedExportFileName(fileName) {
+	if (typeof fileName !== "string" || fileName.length === 0 || fileName.length > 255) return false;
+	if (fileName !== path.basename(fileName) || /[\\/:*?"<>|\u0000-\u001F]/.test(fileName) || fileName === "." || fileName === "..") return false;
+	if (ALLOWED_EXPORT_NAMES.has(fileName)) return true;
+	return ALLOWED_EXPORT_EXTENSIONS.has(path.extname(fileName).toLowerCase());
+}
 
 function handleProtocolUrl(rawUrl) {
-	if (!rawUrl || typeof rawUrl !== "string") return;
+	if (!rawUrl || typeof rawUrl !== "string" || rawUrl.length > 32768) return;
 	try {
 		if (rawUrl.startsWith("bedrock://")) {
 			const parsed = new URL(rawUrl.replace("bedrock://", "http://bedrock/"));
 			const dataParam = parsed.searchParams.get("data");
 			if (dataParam) {
-				const payload = JSON.parse(decodeURIComponent(dataParam));
-				if (payload.nonce) {
-					pendingAuthSessions.set(payload.nonce, payload);
+				// Any website can open a bedrock:// link: accept only payloads for a nonce we issued
+				const payload = acceptAuthPayload(JSON.parse(decodeURIComponent(dataParam)));
+				if (!payload) {
+					console.warn("[Security] Ignored bedrock:// auth payload with unknown or used nonce");
+					return;
 				}
 				if (win && !win.isDestroyed() && win.webContents) {
 					win.webContents.send("auth:external-success", payload);
@@ -105,25 +229,44 @@ function startLocalServer() {
 			try {
 				const parsedUrl = new URL(req.url, "http://127.0.0.1");
 
-				// Handle CORS preflight
+				// Handle CORS preflight: only our own loopback origins (never "*")
 				if (req.method === "OPTIONS") {
-					res.writeHead(204, {
-						"Access-Control-Allow-Origin": "*",
-						"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-						"Access-Control-Allow-Headers": "Content-Type, Authorization"
-					});
+					const cors = loopbackCorsHeaders(req);
+					res.writeHead(204, cors["Access-Control-Allow-Origin"]
+						? {
+							...cors,
+							"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+							"Access-Control-Allow-Headers": "Content-Type, Authorization"
+						}
+						: {});
 					return res.end();
 				}
 
 				// Handle Desktop Auth Completion Callback from external browser
 				if (req.method === "POST" && parsedUrl.pathname === "/api/desktop-auth-complete") {
+					if (!isTrustedLocalRequest(req)) {
+						res.writeHead(403, { "Content-Type": "application/json" });
+						return res.end(JSON.stringify({ error: "Forbidden" }));
+					}
 					let body = "";
-					req.on("data", (chunk) => { body += chunk; });
+					let tooLarge = false;
+					req.on("data", (chunk) => {
+						if (tooLarge) return;
+						body += chunk;
+						if (body.length > MAX_AUTH_BODY_BYTES) {
+							tooLarge = true;
+							res.writeHead(413, { "Content-Type": "application/json", ...loopbackCorsHeaders(req) });
+							res.end(JSON.stringify({ error: "Payload too large" }));
+							req.destroy();
+						}
+					});
 					req.on("end", () => {
+						if (tooLarge) return;
 						try {
-							const payload = JSON.parse(body);
-							if (payload.nonce) {
-								pendingAuthSessions.set(payload.nonce, payload);
+							const payload = acceptAuthPayload(JSON.parse(body));
+							if (!payload) {
+								res.writeHead(403, { "Content-Type": "application/json", ...loopbackCorsHeaders(req) });
+								return res.end(JSON.stringify({ error: "Unknown or expired sign-in request" }));
 							}
 							if (win && !win.isDestroyed() && win.webContents) {
 								win.webContents.send("auth:external-success", payload);
@@ -142,13 +285,13 @@ function startLocalServer() {
 							}
 							res.writeHead(200, {
 								"Content-Type": "application/json",
-								"Access-Control-Allow-Origin": "*"
+								...loopbackCorsHeaders(req)
 							});
 							res.end(JSON.stringify({ success: true }));
 						} catch {
 							res.writeHead(400, {
 								"Content-Type": "application/json",
-								"Access-Control-Allow-Origin": "*"
+								...loopbackCorsHeaders(req)
 							});
 							res.end(JSON.stringify({ error: "Invalid JSON" }));
 						}
@@ -156,21 +299,26 @@ function startLocalServer() {
 					return;
 				}
 
-				// Handle Auth Status Polling
+				// Handle Auth Status Polling (same-origin only; each session can be read once)
 				if (req.method === "GET" && parsedUrl.pathname === "/api/desktop-auth-status") {
+					if (!isTrustedLocalRequest(req)) {
+						res.writeHead(403, { "Content-Type": "application/json" });
+						return res.end(JSON.stringify({ error: "Forbidden" }));
+					}
+					pruneAuthState();
 					const nonce = parsedUrl.searchParams.get("nonce");
-					if (nonce && pendingAuthSessions.has(nonce)) {
-						const data = pendingAuthSessions.get(nonce);
+					if (typeof nonce === "string" && AUTH_NONCE_RE.test(nonce) && pendingAuthSessions.has(nonce)) {
+						const entry = pendingAuthSessions.get(nonce);
 						pendingAuthSessions.delete(nonce);
 						res.writeHead(200, {
 							"Content-Type": "application/json",
-							"Access-Control-Allow-Origin": "*"
+							...loopbackCorsHeaders(req)
 						});
-						return res.end(JSON.stringify({ authenticated: true, session: data }));
+						return res.end(JSON.stringify({ authenticated: true, session: entry.payload }));
 					}
 					res.writeHead(200, {
 						"Content-Type": "application/json",
-						"Access-Control-Allow-Origin": "*"
+						...loopbackCorsHeaders(req)
 					});
 					return res.end(JSON.stringify({ authenticated: false }));
 				}
@@ -207,7 +355,7 @@ function startLocalServer() {
 						console.warn("[LocalServer API Proxy] Remote proxy unreachable:", err.message);
 						res.writeHead(502, {
 							"Content-Type": "application/json",
-							"Access-Control-Allow-Origin": "*",
+							...loopbackCorsHeaders(req),
 						});
 						res.end(JSON.stringify({ error: "Backend proxy unreachable", message: err.message, offline: true }));
 					});
@@ -297,8 +445,8 @@ function createWindow() {
 			contextIsolation: true, // Strict sandbox isolation between preload and page
 			nodeIntegration: false, // Prevent page scripts from accessing Node APIs
 			allowRunningInsecureContent: false, // Disallow HTTP content over HTTPS
-			devTools: true, // Enable DevTools for inspection and debugging
-			sandbox: false // Preload requires process context for window flags
+			devTools: !app.isPackaged, // DevTools only in development builds
+			sandbox: true // OS-level renderer sandbox; preload.cjs only uses contextBridge/ipcRenderer/webFrame
 		},
 		autoHideMenuBar: true
 	});
@@ -337,7 +485,7 @@ function createWindow() {
 
 			if (!isAllowedHost) {
 				event.preventDefault();
-				shell.openExternal(navigationUrl);
+				openExternalSafe(navigationUrl);
 			}
 		} catch {
 			event.preventDefault();
@@ -386,10 +534,8 @@ function createWindow() {
 				};
 			}
 
-			// Open documentation / external links in external system browser
-			if (parsed.protocol === "https:" || parsed.protocol === "http:") {
-				shell.openExternal(url);
-			}
+			// Open documentation / external links in external system browser (http/https only)
+			openExternalSafe(url);
 		} catch {
 			// Ignore invalid URLs
 		}
@@ -569,12 +715,21 @@ ipcMain.handle("updater:get-version", () => {
 // Native authentication IPC handlers
 ipcMain.handle("auth:get-local-port", () => localServerPort);
 
-ipcMain.handle("auth:start-external", async (_event, { strategy, mode, nonce }) => {
+ipcMain.handle("auth:start-external", async (_event, options) => {
+	const { strategy, mode, nonce } = options && typeof options === "object" ? options : {};
+	const safeStrategy = typeof strategy === "string" && /^oauth_[a-z0-9_]{1,32}$/.test(strategy) ? strategy : "oauth_google";
+	const safeMode = mode === "login" || mode === "register" ? mode : "register";
+	if (typeof nonce !== "string" || !AUTH_NONCE_RE.test(nonce)) {
+		return { success: false, error: "Invalid sign-in request." };
+	}
+	// Only this nonce will be accepted back from the browser / bedrock:// deep link
+	registerAuthNonce(nonce);
+
 	const port = localServerPort;
-	const authUrl = `http://127.0.0.1:${port}/#/browser-auth?strategy=${encodeURIComponent(strategy || "oauth_google")}&mode=${encodeURIComponent(mode || "register")}&nonce=${encodeURIComponent(nonce || "")}&port=${port}`;
+	const authUrl = `http://127.0.0.1:${port}/#/browser-auth?strategy=${encodeURIComponent(safeStrategy)}&mode=${encodeURIComponent(safeMode)}&nonce=${encodeURIComponent(nonce)}&port=${port}`;
 
 	// Open the authentication screen directly in the user's system default browser (Chrome, Edge, etc.)
-	shell.openExternal(authUrl);
+	openExternalSafe(authUrl);
 	return { success: true, url: authUrl };
 });
 
@@ -590,21 +745,54 @@ ipcMain.handle("file:select-folder", async () => {
 		if (result.canceled || !result.filePaths.length) {
 			return { canceled: true };
 		}
+		// The user picked this folder in a native dialog: approve it for 1-click exports
+		approveFolder(fs.realpathSync(result.filePaths[0]));
 		return { canceled: false, folderPath: result.filePaths[0] };
 	} catch (err) {
 		return { canceled: true, error: err?.message || String(err) };
 	}
 });
 
-ipcMain.handle("file:save-to-folder", async (_event, { folderPath, fileName, content }) => {
+ipcMain.handle("file:save-to-folder", async (_event, options) => {
 	try {
-		if (!folderPath || !fileName) {
-			return { success: false, error: "Missing destination folder path or file name." };
+		const { folderPath, fileName, content } = options && typeof options === "object" ? options : {};
+		if (typeof folderPath !== "string" || folderPath.length === 0 || folderPath.length > 1024 || !path.isAbsolute(folderPath)) {
+			return { success: false, error: "Invalid destination folder." };
 		}
-		if (!fs.existsSync(folderPath)) {
-			fs.mkdirSync(folderPath, { recursive: true });
+		if (!isAllowedExportFileName(fileName)) {
+			return { success: false, error: "This file name or type cannot be saved." };
 		}
-		const fullPath = path.join(folderPath, fileName);
+		if (typeof content !== "string" || content.length > MAX_EXPORT_CONTENT_CHARS) {
+			return { success: false, error: "File content is missing or too large." };
+		}
+		if (!fs.existsSync(folderPath) || !fs.statSync(folderPath).isDirectory()) {
+			return { success: false, error: "Destination folder does not exist." };
+		}
+
+		// Write only into folders the user approved in a native dialog (page scripts cannot fake this)
+		const realFolder = fs.realpathSync(folderPath);
+		if (!loadApprovedFolders().has(realFolder)) {
+			const targetWin = (win && !win.isDestroyed()) ? win : (BrowserWindow.getFocusedWindow() || undefined);
+			const { response } = await dialog.showMessageBox(targetWin, {
+				type: "question",
+				buttons: ["Allow", "Cancel"],
+				defaultId: 1,
+				cancelId: 1,
+				title: "Allow file export - Bedrock",
+				message: "Allow Bedrock to save files in this folder?",
+				detail: `${realFolder}\n\nFile: ${fileName}`,
+				noLink: true,
+			});
+			if (response !== 0) {
+				return { success: false, canceled: true, error: "Folder access was not allowed." };
+			}
+			approveFolder(realFolder);
+		}
+
+		const fullPath = path.join(realFolder, fileName);
+		if (path.dirname(fullPath) !== realFolder) {
+			return { success: false, error: "Invalid file name." };
+		}
 		fs.writeFileSync(fullPath, content, "utf-8");
 		return { success: true, filePath: fullPath, fileName };
 	} catch (err) {
@@ -612,10 +800,17 @@ ipcMain.handle("file:save-to-folder", async (_event, { folderPath, fileName, con
 	}
 });
 
-ipcMain.handle("file:save-with-dialog", async (_event, { defaultFileName, content, title }) => {
+ipcMain.handle("file:save-with-dialog", async (_event, options) => {
 	try {
+		const { defaultFileName, content, title: rawTitle } = options && typeof options === "object" ? options : {};
+		if (typeof content !== "string" || content.length > MAX_EXPORT_CONTENT_CHARS) {
+			return { success: false, error: "File content is missing or too large." };
+		}
 		const targetWin = (win && !win.isDestroyed()) ? win : (BrowserWindow.getFocusedWindow() || undefined);
-		const safeFileName = defaultFileName || "system-prompt.md";
+		const safeFileName = typeof defaultFileName === "string" && defaultFileName.length <= 255 && defaultFileName
+			? path.basename(defaultFileName)
+			: "system-prompt.md";
+		const title = typeof rawTitle === "string" ? rawTitle.slice(0, 200) : undefined;
 		const ext = path.extname(safeFileName).replace(".", "") || "md";
 		const result = await dialog.showSaveDialog(targetWin, {
 			title: title || `Save ${safeFileName}`,
@@ -679,13 +874,14 @@ if (!hasSingleInstanceLock) {
 	});
 
 	app.whenReady().then(() => {
-		// Set Content-Security-Policy headers dynamically
+		// Set Content-Security-Policy headers dynamically.
+		// 'unsafe-eval' stays until workflow code nodes run in a sandboxed Worker (Frontend REQUEST).
 		session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
 			callback({
 				responseHeaders: {
 					...details.responseHeaders,
 					"Content-Security-Policy": [
-						"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http://localhost:* http://127.0.0.1:* https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://accounts.google.com https://*.google.com https://*.googleapis.com https://github.com https://*.github.com https://fonts.googleapis.com https://fonts.gstatic.com https://bedrock-steel.vercel.app;"
+						"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http://localhost:* http://127.0.0.1:* https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://accounts.google.com https://*.google.com https://*.googleapis.com https://github.com https://*.github.com https://fonts.googleapis.com https://fonts.gstatic.com https://bedrock-steel.vercel.app; object-src 'none'; base-uri 'self';"
 					]
 				}
 			});

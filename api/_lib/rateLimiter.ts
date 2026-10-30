@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { isIP } from 'node:net';
 import { Redis } from '@upstash/redis';
 import { Ratelimit } from '@upstash/ratelimit';
 
@@ -75,20 +76,32 @@ function checkMemoryRateLimit(key: string, limit: number, windowSeconds: number)
   };
 }
 
-// Extract Client IP address from request headers
+// If even the in-memory fallback fails, refuse the request (fail closed) instead of allowing it.
+function safeMemoryRateLimit(key: string, limit: number, windowSeconds: number) {
+  try {
+    return checkMemoryRateLimit(key, limit, windowSeconds);
+  } catch (err) {
+    console.error('[RateLimiter] Memory fallback failed, refusing request:', err);
+    return { success: false, limit, remaining: 0, reset: Date.now() + windowSeconds * 1000 };
+  }
+}
+
+/**
+ * Extracts the client IP used for rate limits and anonymous quotas.
+ * On Vercel, `x-vercel-forwarded-for` / `x-forwarded-for` are set by the platform, which
+ * overwrites client-supplied X-Forwarded-For to prevent spoofing (Vercel request-headers docs).
+ * Only syntactically valid IPs are accepted, so a junk header value cannot become a fresh key.
+ */
 export function getClientIp(req: VercelRequest): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string') {
-    return forwarded.split(',')[0]?.trim() || req.socket.remoteAddress || '127.0.0.1';
+  const candidates = [req.headers['x-vercel-forwarded-for'], req.headers['x-forwarded-for'], req.headers['x-real-ip']];
+  for (const header of candidates) {
+    const raw = Array.isArray(header) ? header[0] : header;
+    if (typeof raw !== 'string') continue;
+    const first = raw.split(',')[0]?.trim() || '';
+    if (first.length <= 64 && isIP(first)) return first;
   }
-  if (Array.isArray(forwarded) && forwarded.length > 0) {
-    return forwarded[0].trim();
-  }
-  const realIp = req.headers['x-real-ip'];
-  if (typeof realIp === 'string') {
-    return realIp.trim();
-  }
-  return req.socket.remoteAddress || '127.0.0.1';
+  const socketIp = req.socket?.remoteAddress || '';
+  return isIP(socketIp) ? socketIp : '127.0.0.1';
 }
 
 export type LimiterPreset =
@@ -191,10 +204,10 @@ export async function enforceRateLimit(
       };
     } catch (redisErr) {
       console.warn(`[RateLimiter] Upstash Redis call failed for ${preset}, using memory fallback:`, redisErr);
-      limitResult = checkMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
+      limitResult = safeMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
     }
   } else {
-    limitResult = checkMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
+    limitResult = safeMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
   }
 
   const { success, limit, remaining, reset } = limitResult;

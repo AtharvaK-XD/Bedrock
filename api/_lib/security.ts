@@ -3,16 +3,38 @@ import type { VercelResponse } from '@vercel/node';
 import { getDb, logSecurityEvent } from './db.js';
 import type { AuthenticatedUser } from './auth.js';
 
-// Suspicious patterns commonly used in prompt injection / system prompt extraction attacks
-const INJECTION_PATTERNS = [
-  /ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|directives|prompts)/i,
-  /disregard\s+(all\s+)?(previous|above|prior)\s+(instructions|rules)/i,
+// Suspicious patterns commonly used in prompt injection / system prompt extraction attacks.
+// Policy: FLAG ONLY. Bedrock users legitimately write about these topics (guardrail design),
+// and all user input is already wrapped in <UNTRUSTED_USER_INPUT>, so nothing is blocked here.
+// "high" = attempts to extract or override Bedrock's own system prompt; "flag" = generic phrasing.
+const HIGH_CONFIDENCE_PATTERNS = [
   /reveal\s+(your\s+)?(system\s+prompt|hidden\s+instructions|initial\s+prompt)/i,
   /print\s+(your\s+)?(system\s+prompt|core\s+instructions|developer\s+mode)/i,
   /you\s+are\s+now\s+in\s+developer\s+mode/i,
-  /DAN\s+mode|jailbreak/i,
   /output\s+the\s+above\s+text\s+verbatim/i,
 ];
+const FLAG_PATTERNS = [
+  /ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|directives|prompts)/i,
+  /disregard\s+(all\s+)?(previous|above|prior)\s+(instructions|rules)/i,
+  /DAN\s+mode|jailbreak/i,
+];
+
+export type PromptInjectionLevel = 'none' | 'flag' | 'high';
+
+/**
+ * Classifies text against the injection patterns. Zero-width and other invisible characters are
+ * removed first so obfuscated phrases ("ign​ore previous instructions") are still detected.
+ */
+export function assessPromptInjection(text: string): { level: PromptInjectionLevel; pattern: string | null } {
+  const normalized = String(text ?? '').replace(/[​-‏⁠-⁤﻿­]/g, '');
+  for (const pattern of HIGH_CONFIDENCE_PATTERNS) {
+    if (pattern.test(normalized)) return { level: 'high', pattern: pattern.toString() };
+  }
+  for (const pattern of FLAG_PATTERNS) {
+    if (pattern.test(normalized)) return { level: 'flag', pattern: pattern.toString() };
+  }
+  return { level: 'none', pattern: null };
+}
 
 /**
  * Strips invisible unicode escapes and delimits user input safely
@@ -27,22 +49,19 @@ export function sanitizeAndDelimitPrompt(rawText: string): string {
 }
 
 /**
- * Checks for prompt injection and logs security alert if detected
+ * Checks for prompt injection and logs a security event if detected (flag only, never blocks).
  */
 export function checkPromptInjection(text: string, userId?: string, ipAddress?: string): boolean {
-  for (const pattern of INJECTION_PATTERNS) {
-    if (pattern.test(text)) {
-      logSecurityEvent({
-        userId,
-        eventType: 'SUSPICIOUS_PROMPT_INJECTION',
-        severity: 'WARN',
-        ipAddress,
-        message: `Prompt injection pattern detected: ${pattern.toString()}`,
-      });
-      return true;
-    }
-  }
-  return false;
+  const { level, pattern } = assessPromptInjection(text);
+  if (level === 'none') return false;
+  logSecurityEvent({
+    userId,
+    eventType: 'SUSPICIOUS_PROMPT_INJECTION',
+    severity: 'WARN',
+    ipAddress,
+    message: `Prompt injection pattern detected (level: ${level}): ${pattern}`,
+  });
+  return true;
 }
 
 const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
