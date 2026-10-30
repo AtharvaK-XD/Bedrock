@@ -39,26 +39,104 @@ function getApiKey(provider: 'groq' | 'gemini' | 'openrouter'): string {
   return process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY || '';
 }
 
+/** Overall wall-clock budget for one request (Vercel maxDuration is 60 s; leave headroom to respond). */
+export const AI_DEFAULT_BUDGET_MS = 50_000;
+/** Longest a single provider attempt may run. */
+const PROVIDER_TIMEOUT_MS = 20_000;
+/** A new provider attempt is not started with less than this left in the budget. */
+const MIN_ATTEMPT_MS = 3_000;
+/** Upstream error bodies are cut to this length before being kept or logged. */
+const MAX_ERROR_BODY_CHARS = 500;
+
+/** Upstream HTTP failure; carries the status so retry and failover logic need not parse message text. */
+export class ProviderHttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ProviderHttpError';
+    this.status = status;
+  }
+}
+
+export type AiErrorCode =
+  | 'AI_NOT_CONFIGURED'
+  | 'AI_ALL_PROVIDERS_FAILED'
+  | 'AI_DEADLINE_EXCEEDED'
+  | 'AI_STREAM_INTERRUPTED';
+
 /**
- * Helper for transient network retries with exponential backoff & jitter
+ * Error safe to return to clients: the message never contains upstream response bodies,
+ * env var names or provider details. Details are logged server-side only.
  */
-async function withTransientRetry<T>(fn: () => Promise<T>, maxRetries = 1): Promise<T> {
+export class AiCompletionError extends Error {
+  code: AiErrorCode;
+  constructor(code: AiErrorCode, message: string) {
+    super(message);
+    this.name = 'AiCompletionError';
+    this.code = code;
+  }
+}
+
+const PUBLIC_AI_ERROR_MESSAGES: Record<AiErrorCode, string> = {
+  AI_NOT_CONFIGURED: 'AI service is not available right now. Please try again later.',
+  AI_ALL_PROVIDERS_FAILED: 'All AI providers are busy or unavailable. Please try again shortly.',
+  AI_DEADLINE_EXCEEDED: 'The AI request took too long. Please try again.',
+  AI_STREAM_INTERRUPTED: 'The AI response was interrupted. Please try again.',
+};
+
+function aiError(code: AiErrorCode): AiCompletionError {
+  return new AiCompletionError(code, PUBLIC_AI_ERROR_MESSAGES[code]);
+}
+
+function clip(text: string): string {
+  return text.length > MAX_ERROR_BODY_CHARS ? `${text.slice(0, MAX_ERROR_BODY_CHARS)}…` : text;
+}
+
+/**
+ * Removes reasoning-model "thinking" blocks (`<think>…</think>`) so they never end up in the
+ * user's prompt. An unclosed `<think>` means the rest of the text is reasoning and is dropped too.
+ * Text without a `<think>` tag is returned unchanged.
+ */
+export function stripReasoningText(text: string): string {
+  if (!/<think>/i.test(text)) return text;
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*$/i, '')
+    .trimStart();
+}
+
+/**
+ * Transient = worth one more try on the same provider: gateway-level HTTP errors and
+ * connection resets. Timeouts (AbortError) are not retried: they already spent their budget.
+ */
+function isTransientError(err: any): boolean {
+  if (err instanceof ProviderHttpError) {
+    return err.status === 502 || err.status === 503 || err.status === 504;
+  }
+  if (err?.name === 'AbortError') return false;
+  const code = String(err?.code || err?.cause?.code || '').toUpperCase();
+  if (code === 'ECONNRESET' || code === 'ETIMEDOUT') return true;
+  return err instanceof TypeError && String(err.message).toLowerCase().includes('fetch failed');
+}
+
+/**
+ * Bounded retry for transient failures: at most `maxRetries` extra attempts, only while
+ * `canRetry()` allows it (e.g. nothing streamed to the client yet) and the deadline leaves room.
+ */
+async function withTransientRetry<T>(
+  fn: () => Promise<T>,
+  opts: { deadlineAt: number; canRetry?: () => boolean; maxRetries?: number }
+): Promise<T> {
+  const maxRetries = opts.maxRetries ?? 1;
   let attempt = 0;
   while (true) {
     try {
       return await fn();
     } catch (err: any) {
       attempt++;
-      const msg = (err?.message || '').toLowerCase();
-      const isTransient =
-        msg.includes('503') ||
-        msg.includes('502') ||
-        msg.includes('econnreset') ||
-        msg.includes('etimedout') ||
-        msg.includes('fetch failed') ||
-        msg.includes('overloaded');
-      if (attempt <= maxRetries && isTransient) {
-        const backoff = 150 + Math.random() * 200;
+      const backoff = 150 + Math.random() * 200;
+      const hasTime = opts.deadlineAt - Date.now() > backoff + MIN_ATTEMPT_MS;
+      if (attempt <= maxRetries && isTransientError(err) && hasTime && (opts.canRetry?.() ?? true)) {
         await new Promise((resolve) => setTimeout(resolve, backoff));
         continue;
       }
@@ -75,7 +153,8 @@ async function callGroq(
   systemPrompt?: string,
   model = 'llama-3.3-70b-versatile',
   onToken?: (token: string) => void,
-  temperature = 0.5
+  temperature = 0.5,
+  timeoutMs = PROVIDER_TIMEOUT_MS
 ): Promise<string> {
   const key = getApiKey('groq');
   if (!key) throw new Error('GROQ_API_KEY is not configured on the server.');
@@ -89,7 +168,7 @@ async function callGroq(
   const isStreaming = typeof onToken === 'function';
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 45000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -110,7 +189,7 @@ async function callGroq(
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`Groq API returned ${res.status}: ${err}`);
+      throw new ProviderHttpError(`Groq API returned ${res.status}: ${clip(err)}`, res.status);
     }
 
     if (isStreaming && res.body) {
@@ -147,7 +226,7 @@ async function callGroq(
     }
 
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning || '';
+    return data.choices?.[0]?.message?.content || '';
   } finally {
     clearTimeout(timeoutId);
   }
@@ -161,7 +240,8 @@ async function callGemini(
   systemPrompt?: string,
   model = 'gemini-flash-lite-latest',
   onToken?: (token: string) => void,
-  temperature = 0.55
+  temperature = 0.55,
+  timeoutMs = PROVIDER_TIMEOUT_MS
 ): Promise<string> {
   const key = getApiKey('gemini');
   if (!key) throw new Error('GEMINI_API_KEY is not configured on the server.');
@@ -172,10 +252,14 @@ async function callGemini(
 
   const isStreaming = typeof onToken === 'function';
   let lastError: Error | null = null;
+  // The model fallbacks share one time budget so three candidates cannot take 3x the timeout
+  const providerDeadline = Date.now() + timeoutMs;
 
   for (const m of candidates) {
+    const attemptMs = providerDeadline - Date.now();
+    if (attemptMs < 1_000) break;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    const timeoutId = setTimeout(() => controller.abort(), attemptMs);
 
     try {
       const endpoint = isStreaming ? 'streamGenerateContent?alt=sse&key=' : 'generateContent?key=';
@@ -197,7 +281,7 @@ async function callGemini(
 
       if (!res.ok) {
         const err = await res.text();
-        lastError = new Error(`Gemini API returned ${res.status}: ${err}`);
+        lastError = new ProviderHttpError(`Gemini API returned ${res.status}: ${clip(err)}`, res.status);
         if (res.status === 503 || res.status === 404) continue;
         throw lastError;
       }
@@ -255,7 +339,8 @@ async function callOpenRouter(
   systemPrompt?: string,
   model = 'openai/gpt-4o-mini',
   onToken?: (token: string) => void,
-  temperature = 0.5
+  temperature = 0.5,
+  timeoutMs = PROVIDER_TIMEOUT_MS
 ): Promise<string> {
   const key = getApiKey('openrouter');
   if (!key) throw new Error('OPENROUTER_API_KEY is not configured on the server.');
@@ -269,7 +354,7 @@ async function callOpenRouter(
   const isStreaming = typeof onToken === 'function';
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 45000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -292,7 +377,7 @@ async function callOpenRouter(
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`OpenRouter API returned ${res.status}: ${err}`);
+      throw new ProviderHttpError(`OpenRouter API returned ${res.status}: ${clip(err)}`, res.status);
     }
 
     if (isStreaming && res.body) {
@@ -353,9 +438,14 @@ export async function executeAiCompletion(
   systemPrompt?: string,
   userId?: string,
   onToken?: (token: string) => void,
-  temperatureOverride?: number
+  temperatureOverride?: number,
+  options?: {
+    /** Absolute epoch ms by which this call must finish. Callers making several calls for one request share one value. */
+    deadlineAt?: number;
+  }
 ): Promise<{ text: string; model: string }> {
   const startTime = new Date();
+  const deadlineAt = options?.deadlineAt ?? Date.now() + AI_DEFAULT_BUDGET_MS;
 
   // 1. Gather all candidates that have valid API keys
   const groqAvailable = Boolean(getApiKey('groq'));
@@ -370,15 +460,17 @@ export async function executeAiCompletion(
   });
 
   if (candidates.length === 0) {
-    throw new Error(
-      'No AI providers configured on the server. Please ensure GROQ_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY is configured in Vercel environment variables.'
+    console.error(
+      '[AI] No AI providers configured. Set GROQ_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY in the server environment.'
     );
+    throw aiError('AI_NOT_CONFIGURED');
   }
 
   // Helper to execute a single provider with model-specific tuning or use-case temperature override
   const dispatchToProvider = async (
     target: ProviderTarget,
-    currentOnToken?: (tok: string) => void
+    currentOnToken: ((tok: string) => void) | undefined,
+    timeoutMs: number
   ): Promise<string> => {
     const tuning = getModelTuning(target.model || target.id);
     const tunedSystem = systemPrompt
@@ -387,31 +479,28 @@ export async function executeAiCompletion(
     const temp = temperatureOverride !== undefined ? temperatureOverride : tuning.temperature;
 
     if (target.id === 'groq-llama-70b') {
-      return await callGroq(prompt, tunedSystem, 'llama-3.3-70b-versatile', currentOnToken, temp);
+      return await callGroq(prompt, tunedSystem, 'llama-3.3-70b-versatile', currentOnToken, temp, timeoutMs);
     }
     if (target.id === 'groq-llama-8b') {
-      return await callGroq(prompt, tunedSystem, 'llama-3.1-8b-instant', currentOnToken, temp);
-    }
-    if (target.id === 'groq-deepseek') {
-      return await callGroq(prompt, tunedSystem, 'deepseek-r1-distill-llama-70b', currentOnToken, temp);
+      return await callGroq(prompt, tunedSystem, 'llama-3.1-8b-instant', currentOnToken, temp, timeoutMs);
     }
     if (target.id === 'gemini-flash') {
-      return await callGemini(prompt, tunedSystem, 'gemini-flash-latest', currentOnToken, temp);
+      return await callGemini(prompt, tunedSystem, 'gemini-flash-latest', currentOnToken, temp, timeoutMs);
     }
     if (target.id === 'gemini-flash-lite') {
-      return await callGemini(prompt, tunedSystem, 'gemini-flash-lite-latest', currentOnToken, temp);
+      return await callGemini(prompt, tunedSystem, 'gemini-flash-lite-latest', currentOnToken, temp, timeoutMs);
     }
     if (target.id === 'openrouter-gpt4o') {
-      return await callOpenRouter(prompt, tunedSystem, 'openai/gpt-4o-mini', currentOnToken, temp);
+      return await callOpenRouter(prompt, tunedSystem, 'openai/gpt-4o-mini', currentOnToken, temp, timeoutMs);
     }
     // Fallback dynamic routing by model identifier
     if (target.model.includes('llama') || target.id.startsWith('groq')) {
-      return await callGroq(prompt, tunedSystem, target.model, currentOnToken, temp);
+      return await callGroq(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs);
     }
     if (target.model.includes('gemini') || target.id.startsWith('gemini')) {
-      return await callGemini(prompt, tunedSystem, target.model, currentOnToken, temp);
+      return await callGemini(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs);
     }
-    return await callOpenRouter(prompt, tunedSystem, target.model, currentOnToken, temp);
+    return await callOpenRouter(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs);
   };
 
   // 2. Select optimal provider via distributed round-robin / circuit health
@@ -425,12 +514,20 @@ export async function executeAiCompletion(
 
   let lastError: Error | null = null;
   const throttledProviders = new Set<string>();
+  let deadlineExceeded = false;
 
   for (const provider of executionOrder) {
     // If this provider's entire family hit 429 rate limit, skip sibling models sharing the same key
     if (throttledProviders.has(provider.provider)) {
       continue;
     }
+
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs < MIN_ATTEMPT_MS) {
+      deadlineExceeded = true;
+      break;
+    }
+    const attemptTimeoutMs = Math.min(PROVIDER_TIMEOUT_MS, remainingMs);
 
     let tokensEmitted = 0;
     const trackedOnToken = onToken
@@ -441,21 +538,29 @@ export async function executeAiCompletion(
       : undefined;
 
     try {
-      const text = await withTransientRetry(() => dispatchToProvider(provider, trackedOnToken));
+      const rawText = await withTransientRetry(
+        () => dispatchToProvider(provider, trackedOnToken, attemptTimeoutMs),
+        // Retrying after tokens reached the client would send them twice
+        { deadlineAt, canRetry: () => tokensEmitted === 0 }
+      );
+      const text = stripReasoningText(rawText || '');
       if (text && text.trim().length > 0) {
         await recordProviderSuccess(provider.id);
         const modelName = `${provider.name} (${provider.model})`;
 
-        // Async non-blocking telemetry to Langfuse
+        // Async non-blocking telemetry to Langfuse (sizes and timing only, never user text or output)
         recordLangfuseGeneration({
           traceName: 'bedrock_ai_completion',
           model: modelName,
-          input: { systemPrompt, prompt },
-          output: text,
           userId,
           startTime,
           endTime: new Date(),
-          metadata: { providerId: provider.id, providerModel: provider.model },
+          metadata: {
+            providerId: provider.id,
+            providerModel: provider.model,
+            inputChars: prompt.length + (systemPrompt?.length ?? 0),
+            outputChars: text.length,
+          },
         }).catch((e) => console.warn('[Langfuse] Error in recordLangfuseGeneration:', e));
 
         return {
@@ -464,7 +569,7 @@ export async function executeAiCompletion(
         };
       }
     } catch (err: any) {
-      const errMsg = err?.message || String(err);
+      const errMsg = clip(err?.message || String(err));
       console.warn(`[LoadBalancer] Provider ${provider.name} failed:`, errMsg);
       await recordProviderFailure(provider.id, errMsg);
       lastError = err;
@@ -480,25 +585,27 @@ export async function executeAiCompletion(
 
       // If tokens have already been streamed to the client, we cannot fail over transparently
       if (tokensEmitted > 0) {
-        throw err;
+        throw aiError('AI_STREAM_INTERRUPTED');
       }
     }
   }
 
-  // Record failure trace in Langfuse
+  const failureCode: AiErrorCode = deadlineExceeded ? 'AI_DEADLINE_EXCEEDED' : 'AI_ALL_PROVIDERS_FAILED';
+
+  // Record failure trace in Langfuse (error code only: upstream messages can echo request content)
   recordLangfuseGeneration({
     traceName: 'bedrock_ai_completion',
     model: 'all_providers_failed',
-    input: { systemPrompt, prompt },
-    output: null,
     userId,
     startTime,
     endTime: new Date(),
     level: 'ERROR',
-    statusMessage: lastError?.message || 'All providers failed',
+    statusMessage: failureCode,
+    metadata: { inputChars: prompt.length + (systemPrompt?.length ?? 0) },
   }).catch((e) => console.warn('[Langfuse] Error reporting failure:', e));
 
-  throw new Error(
-    `All AI providers failed under load. Last error: ${lastError?.message || 'Unknown provider error'}`
+  console.error(
+    `[AI] ${deadlineExceeded ? 'Deadline reached before a provider succeeded' : 'All providers failed'}. Last error: ${clip(lastError?.message || 'Unknown provider error')}`
   );
+  throw aiError(failureCode);
 }

@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion } from '../_lib/ai.js';
+import { INPUT_LIMITS, firstLengthError, sendAiFailure, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
 
@@ -11,6 +12,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const startTime = Date.now();
+  const requestId = getRequestId(req);
+  res.setHeader('X-Request-Id', requestId);
   const user = await authenticateRequest(req);
   const ip = getClientIp(req);
   const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
@@ -28,6 +31,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!prompt) {
     return res.status(400).json({ error: 'prompt is required' });
+  }
+
+  const limitError = firstLengthError([
+    [prompt, INPUT_LIMITS.testPrompt, 'prompt'],
+    [rawSystemPrompt, INPUT_LIMITS.testSystemPrompt, 'systemPrompt'],
+  ]);
+  if (limitError) {
+    return res.status(400).json({ error: limitError });
   }
 
   // Server-side usage quota (per user, or per client IP for anonymous callers); fails closed
@@ -76,6 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.write(`data: ${JSON.stringify({ done: true, text, modelTarget: model, latencyMs: latency, tokensUsed: tokens, status: 'success' })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
+      logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, stream: true });
       return;
     }
 
@@ -94,6 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model });
     return res.status(200).json({
       text,
       latencyMs: latency,
@@ -104,9 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: any) {
     await releaseQuota(quota);
     console.error('[Tester] Error:', err);
-    return res.status(500).json({
-      error: 'Prompt test execution failed',
-      message: err.message,
-    });
+    logAiRequest({ route: 'ai/test', requestId, outcome: 'error', latencyMs: Date.now() - startTime, code: err?.code, stream: wantsStream });
+    return sendAiFailure(res, err, 'Prompt test execution failed', requestId);
   }
 }

@@ -1,8 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, UserRow } from '../_lib/db.js';
+import { enforceRateLimit } from '../_lib/rateLimiter.js';
+import { DATA_LIMITS, PG_UNIQUE_VIOLATION, sendDbFailure, firstFieldError, isUnsafeLink } from '../_lib/dataHttp.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Enforce distributed Upstash Redis rate limiting
+  const allowed = await enforceRateLimit(req, res, 'general');
+  if (!allowed) return;
+
   const user = await authenticateRequest(req);
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized: valid session token required.' });
@@ -53,15 +59,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         subscriptionTier: u.subscription_tier || 'free',
       });
     } catch (err: any) {
-      console.error('[Profile] GET error:', err);
-      return res.status(500).json({ error: 'Failed to fetch user profile', message: err.message });
+      return sendDbFailure(res, '[Profile] GET error:', 'Failed to fetch user profile', err);
     }
   }
 
   // PUT: Update profile
   if (req.method === 'PUT') {
+    const body = req.body || {};
+    const fieldError = firstFieldError([
+      [body.name, DATA_LIMITS.profileName, 'name'],
+      [body.username, DATA_LIMITS.profileUsername, 'username'],
+      [body.bio, DATA_LIMITS.profileBio, 'bio'],
+      [body.location, DATA_LIMITS.profileShortText, 'location'],
+      [body.organization, DATA_LIMITS.profileShortText, 'organization'],
+      [body.github, DATA_LIMITS.profileLink, 'github'],
+      [body.huggingface, DATA_LIMITS.profileLink, 'huggingface'],
+      [body.website, DATA_LIMITS.profileLink, 'website'],
+    ]);
+    if (fieldError) {
+      return res.status(400).json({ error: fieldError });
+    }
+    for (const field of ['github', 'huggingface', 'website'] as const) {
+      if (body[field] && isUnsafeLink(body[field])) {
+        return res.status(400).json({ error: `${field} must be a normal web link (http or https)` });
+      }
+    }
+
     try {
-      const body = req.body || {};
       const name = body.name || user.name;
       const username = body.username || null;
       const bio = body.bio || null;
@@ -91,8 +115,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: true,
       });
     } catch (err: any) {
-      console.error('[Profile] PUT error:', err);
-      return res.status(500).json({ error: 'Failed to update user profile', message: err.message });
+      if (err?.code === PG_UNIQUE_VIOLATION) {
+        return res.status(409).json({
+          error: 'Profile value already in use',
+          code: 'PROFILE_VALUE_TAKEN',
+          message: 'That username is already taken. Please choose another one.',
+        });
+      }
+      return sendDbFailure(res, '[Profile] PUT error:', 'Failed to update user profile', err);
     }
   }
 

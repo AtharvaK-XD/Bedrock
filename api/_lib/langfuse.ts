@@ -13,15 +13,15 @@ export const langfuse = (publicKey && secretKey)
   : null;
 
 /**
- * Records an LLM generation trace to Langfuse without interrupting execution
+ * Records an LLM generation trace to Langfuse without interrupting execution.
+ * Only model, timing, status, user id and numeric metadata are sent: prompts and outputs
+ * stay on our servers, so there are deliberately no input/output fields here.
  */
 export async function recordLangfuseGeneration(params: {
   traceName: string;
   model: string;
-  input: any;
-  output: any;
   userId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
   startTime?: Date;
   endTime?: Date;
   level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
@@ -33,24 +33,19 @@ export async function recordLangfuseGeneration(params: {
       name: params.traceName,
       userId: params.userId,
       metadata: params.metadata,
-      input: params.input,
-      output: params.output,
     });
 
     const generation = trace.generation({
       name: params.traceName,
       model: params.model,
-      input: params.input,
-      output: params.output,
+      metadata: params.metadata,
       startTime: params.startTime || new Date(),
       endTime: params.endTime || new Date(),
       level: params.level || 'DEFAULT',
       statusMessage: params.statusMessage,
     });
 
-    generation.end({
-      output: params.output,
-    });
+    generation.end();
 
     await langfuse.flushAsync();
   } catch (err) {
