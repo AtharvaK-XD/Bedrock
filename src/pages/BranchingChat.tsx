@@ -31,6 +31,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { testPrompt, saveWorkflow, loadWorkflows, deleteWorkflow } from '../lib/api';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
+import { runSandboxedCode } from '../lib/sandboxedCode';
 import { isModelKeyConfigured } from '../lib/apiKeysHelper';
 import {
   Bot,
@@ -400,9 +401,8 @@ const GenericNode = memo(({ id, data, selected }: { id: string, data: PromptNode
             codeNodeRunApproved = true;
           }
           try {
-            const runner = new Function('input', script);
-            const res = runner(upstreamText || data.description);
-            outputResult = typeof res === 'object' ? JSON.stringify(res, null, 2) : String(res);
+            // Runs in a sandboxed frame with no access to this page, its storage or tokens
+            outputResult = await runSandboxedCode(script, upstreamText || data.description);
           } catch (err: any) {
             throw new Error(`Code execution error: ${err.message}`);
           }

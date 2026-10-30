@@ -92,6 +92,27 @@ function isAuthorizedParty(azp: unknown): boolean {
   return LOOPBACK_AZP_RE.test(origin) || parties.has(origin);
 }
 
+const PRODUCTION_APP_ORIGIN = 'https://bedrock-steel.vercel.app';
+
+/**
+ * Browser origins allowed to call Bedrock's credentialed endpoints cross-origin: the request's
+ * own host (same-origin, including preview deployments), the production site, the
+ * CLERK_AUTHORIZED_PARTIES list and the desktop app's loopback server.
+ */
+export function isAllowedAppOrigin(origin: string, requestHost?: string): boolean {
+  const clean = normalizeIssuer(origin);
+  if (LOOPBACK_AZP_RE.test(clean) || clean === PRODUCTION_APP_ORIGIN) return true;
+  if (getAuthorizedParties()?.has(clean)) return true;
+  if (requestHost) {
+    try {
+      return new URL(clean).host === requestHost.toLowerCase();
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 let envPemKey: crypto.KeyObject | null | undefined;
 function getEnvPublicKey(): crypto.KeyObject | null {
   if (envPemKey !== undefined) return envPemKey;
@@ -175,6 +196,19 @@ async function getClerkPublicKey(issuer: string, kid: string): Promise<crypto.Ke
   }
 }
 
+const SIGNATURE_FAILURE_LOG_WINDOW_MS = 60 * 1000;
+let lastSignatureFailureLoggedAt = 0;
+let signatureFailuresSuppressed = 0;
+
+function shouldPersistSignatureFailure(now = Date.now()): boolean {
+  if (now - lastSignatureFailureLoggedAt >= SIGNATURE_FAILURE_LOG_WINDOW_MS) {
+    lastSignatureFailureLoggedAt = now;
+    return true;
+  }
+  signatureFailuresSuppressed += 1;
+  return false;
+}
+
 /**
  * Cryptographically verifies a Clerk RS256 JWT token.
  * Validates token structure, signature, expiration (exp), not-before (nbf), and claims.
@@ -240,13 +274,19 @@ async function verifyClerkJwt(token: string): Promise<any | null> {
 
       const isVerified = crypto.verify('RSA-SHA256', dataToVerify, publicKey, signature);
       if (!isVerified) {
-        console.warn(`[Auth] CRITICAL: Invalid signature for user ${claims.sub}`);
-        await logSecurityEvent({
-          userId: claims.sub,
-          eventType: 'AUTH_SIGNATURE_INVALID',
-          severity: 'CRITICAL',
-          message: `Forged or invalid JWT signature detected for subject ${claims.sub}`,
-        });
+        const subject = String(claims.sub).slice(0, 64);
+        console.warn(`[Auth] CRITICAL: Invalid signature for user ${subject}`);
+        // This runs before most rate limits: write at most one DB row per window per instance,
+        // so a flood of forged tokens cannot be turned into a flood of database inserts.
+        if (shouldPersistSignatureFailure()) {
+          await logSecurityEvent({
+            userId: null,
+            eventType: 'AUTH_SIGNATURE_INVALID',
+            severity: 'CRITICAL',
+            message: `Forged or invalid JWT signature detected for subject ${subject} (${signatureFailuresSuppressed} similar events not stored)`,
+          });
+          signatureFailuresSuppressed = 0;
+        }
         return null;
       }
       return claims;

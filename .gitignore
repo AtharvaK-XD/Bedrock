@@ -39,3 +39,8 @@ scratch/
 .neon
 .claude/
 
+# Local databases (may contain real user data; never commit)
+*.db
+*.db-journal
+*.sqlite
+

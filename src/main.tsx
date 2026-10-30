@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/react'
 import { PostHogProvider } from '@posthog/react'
 import './index.css'
 import App from './App.tsx'
+import { initSecureKeyStore } from './lib/secureKeyStore'
 
 Sentry.init({
   dsn: 'https://bc8788b769ee7e46499af64ac7672f33@o4512165526437888.ingest.us.sentry.io/4512165536923648',
@@ -55,10 +56,13 @@ const posthogApiKey =
   import.meta.env.VITE_POSTHOG_PROJECT_TOKEN ||
   'phc_uL4jhA9XRcgtFUzhifkjZuGHjmYcQ3BGev3bWNvrj4BD'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <PostHogProvider apiKey={posthogApiKey} options={posthogOptions}>
-      <App />
-    </PostHogProvider>
-  </StrictMode>,
-)
+// Desktop: load OS-encrypted API keys before the app reads them (no-op on the website)
+initSecureKeyStore().finally(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <PostHogProvider apiKey={posthogApiKey} options={posthogOptions}>
+        <App />
+      </PostHogProvider>
+    </StrictMode>,
+  )
+})

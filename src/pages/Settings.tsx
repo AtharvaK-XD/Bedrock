@@ -221,6 +221,17 @@ const DEFAULT_API_KEYS: ApiKeysState = {
   ollamaHost: 'http://localhost:11434',
 };
 
+// Workspace backup import: keys that identify the signed-in user or hold credentials are never restored
+const BACKUP_IMPORT_BLOCKED_KEYS = new Set([
+  STORAGE_KEY_API_KEYS,
+  'bedrock_token',
+  'bedrock_auth_token',
+  'bedrock_auth_session',
+  'bedrock_auth_event',
+  'bedrock_active_user_id',
+]);
+const BACKUP_IMPORT_MAX_VALUE_CHARS = 2_000_000;
+
 function getStoredApiKeys(): ApiKeysState {
   try {
     const data = localStorage.getItem(STORAGE_KEY_API_KEYS);
@@ -480,9 +491,15 @@ export default function Settings() {
     reader.onload = (event) => {
       try {
         const content = JSON.parse(event.target?.result as string);
+        if (!content || typeof content !== 'object' || Array.isArray(content)) throw new Error('Invalid backup');
         for (const [k, v] of Object.entries(content)) {
-          if (typeof v === 'string') localStorage.setItem(k, v);
-          else localStorage.setItem(k, JSON.stringify(v));
+          // Restore Bedrock settings only. Login tokens and API keys are never taken from a file:
+          // a crafted backup could otherwise sign the user into another account or swap in
+          // someone else's API key (which would send the user's prompts to that account).
+          if (!k.startsWith('bedrock_') || BACKUP_IMPORT_BLOCKED_KEYS.has(k)) continue;
+          const value = typeof v === 'string' ? v : JSON.stringify(v);
+          if (value.length > BACKUP_IMPORT_MAX_VALUE_CHARS) continue;
+          localStorage.setItem(k, value);
         }
         setImportedStatus('Workspace archive restored successfully!');
         playUiAudio('success', appearance.soundFeedback);

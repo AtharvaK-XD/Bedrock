@@ -7,27 +7,53 @@
   },
   "rewrites": [
     {
-      "source": "/api/groq/(.*)",
-      "destination": "https://api.groq.com/$1"
-    },
-    {
-      "source": "/api/gemini/(.*)",
-      "destination": "https://generativelanguage.googleapis.com/$1"
-    },
-    {
-      "source": "/api/openrouter/(.*)",
-      "destination": "https://openrouter.ai/api/$1"
-    },
-    {
-      "source": "/api/huggingface/(.*)",
-      "destination": "https://api-inference.huggingface.co/$1"
-    },
-    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
+    {
+      "source": "/((?!sandbox/).*)",
+      "headers": [
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), usb=(), serial=(), bluetooth=()"
+        },
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'self'; script-src 'self' 'sha256-4Bo01ZNy7SnDqO38T4qi0U10NKwmezB9OuofGmwyLtw=' 'sha256-KO0VPu5IYIyjwTyCO1dKZTc5y6RrRCB+BOVbBG7UA5U=' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com https://challenges.cloudflare.com https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com:* https://*.ingest.us.sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://generativelanguage.googleapis.com https://api.groq.com https://api.openai.com https://openrouter.ai https://api-inference.huggingface.co https://api.perplexity.ai https://api.github.com http://localhost:* http://127.0.0.1:*; frame-src 'self' https://challenges.cloudflare.com https://*.protect.clerk.com https://*.clerk.accounts.dev https://*.clerk.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/sandbox/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'none'; script-src 'self' 'unsafe-eval'; frame-ancestors 'self'"
+        }
+      ]
+    },
     {
       "source": "/",
       "headers": [

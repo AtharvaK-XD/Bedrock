@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer, { type Transporter } from 'nodemailer';
 import { Resend } from 'resend';
-import { authenticateRequest } from '../_lib/auth.js';
+import { authenticateRequest, isAllowedAppOrigin } from '../_lib/auth.js';
 import { logSecurityEvent } from '../_lib/db.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 
@@ -47,22 +47,37 @@ function getResend(): Resend | null {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS support for desktop app & web
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  // CORS only for Bedrock's own web origins and the desktop app (never a wildcard)
+  const origin = typeof req.headers.origin === 'string' ? req.headers.origin : '';
+  const originAllowed = !origin || isAllowedAppOrigin(origin, req.headers.host);
+  res.setHeader('Vary', 'Origin');
+  if (origin && originAllowed) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return res.status(originAllowed ? 204 : 403).end();
   }
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  if (!originAllowed) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
+
   // Throttle per sender IP before doing any work
   const clientIp = getClientIp(req);
   if (!(await enforceRateLimit(req, res, 'email', `ip:${clientIp}`))) return;
+
+  // Only a signed-in Bedrock user can trigger their own sign-in / welcome email
+  const caller = await authenticateRequest(req);
+  if (!caller || caller.isGuest) {
+    return res.status(401).json({ error: 'Sign in required' });
+  }
 
   const { email, name, type } = req.body || {};
 
@@ -75,9 +90,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Valid email address is required' });
   }
 
-  // A signed-in caller may only notify their own address
-  const caller = await authenticateRequest(req);
-  if (caller && !caller.isGuest && caller.email && !caller.email.endsWith('@clerk.user') && caller.email.toLowerCase() !== to) {
+  // The caller may only notify their own address (when the account's email is known)
+  if (caller.email && !caller.email.endsWith('@clerk.user') && caller.email.toLowerCase() !== to) {
     await logSecurityEvent({
       userId: caller.id,
       eventType: 'EMAIL_RECIPIENT_MISMATCH',
@@ -380,11 +394,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         html,
       });
       if (error) {
-        return res.status(200).json({ success: false, error: error.message, provider: 'resend' });
+        console.error('[Vercel send-email] Resend dispatch error:', error);
+        return res.status(200).json({ success: false, error: 'Email could not be sent', provider: 'resend' });
       }
       return res.status(200).json({ success: true, messageId: data?.id, provider: 'resend' });
     } catch (err: any) {
-      return res.status(200).json({ success: false, error: err.message, provider: 'resend' });
+      console.error('[Vercel send-email] Resend dispatch error:', err);
+      return res.status(200).json({ success: false, error: 'Email could not be sent', provider: 'resend' });
     }
   }
 

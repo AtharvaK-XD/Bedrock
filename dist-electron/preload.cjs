@@ -80,6 +80,16 @@ contextBridge.exposeInMainWorld(
   })
 );
 
+// OS-encrypted storage for the user's own API keys (main process allows only known keys)
+contextBridge.exposeInMainWorld(
+  "electronSecrets",
+  Object.freeze({
+    isAvailable: true,
+    load: () => ipcRenderer.invoke("secrets:load"),
+    save: (key, value) => ipcRenderer.invoke("secrets:save", String(key), typeof value === "string" ? value : null),
+  })
+);
+
 // Expose safe, direct filesystem operations for 1-click rule file saving
 // (all arguments are validated again in the main process)
 contextBridge.exposeInMainWorld(
