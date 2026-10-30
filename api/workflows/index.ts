@@ -2,7 +2,16 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText } from '../_lib/dataHttp.js';
+import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText, dbLimitKind } from '../_lib/dataHttp.js';
+
+function sendWorkflowLimitReached(res: VercelResponse) {
+  return res.status(409).json({
+    error: 'Saved workflow limit reached',
+    code: 'WORKFLOW_LIMIT_REACHED',
+    message: `You can keep up to ${DATA_LIMITS.workflowsPerUser} saved workflows. Delete some to save new ones.`,
+    limit: DATA_LIMITS.workflowsPerUser,
+  });
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enforce distributed Upstash Redis rate limiting
@@ -89,15 +98,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         SELECT COUNT(*)::int AS count FROM "BranchingTree" WHERE user_id = ${user.id}
       `) as Array<{ count: number }>;
       if (count >= DATA_LIMITS.workflowsPerUser) {
-        return res.status(409).json({
-          error: 'Saved workflow limit reached',
-          code: 'WORKFLOW_LIMIT_REACHED',
-          message: `You can keep up to ${DATA_LIMITS.workflowsPerUser} saved workflows. Delete some to save new ones.`,
-          limit: DATA_LIMITS.workflowsPerUser,
-        });
+        return sendWorkflowLimitReached(res);
       }
       return res.status(409).json({ error: 'This workflow id is already in use', code: 'WORKFLOW_ID_CONFLICT' });
     } catch (err: any) {
+      // The database's own limits (migration 0003) refused the row
+      const limitKind = dbLimitKind(err);
+      if (limitKind === 'row_limit') {
+        return sendWorkflowLimitReached(res);
+      }
+      if (limitKind === 'too_large') {
+        return res.status(400).json({
+          error: 'Workflow is too large to save',
+          code: 'WORKFLOW_TOO_LARGE',
+          message: 'This workflow is too large to save. Remove some nodes and try again.',
+        });
+      }
       return sendDbFailure(res, '[Workflows] POST error:', 'Failed to save workflow', err);
     }
   }

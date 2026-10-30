@@ -2,7 +2,16 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText } from '../_lib/dataHttp.js';
+import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText, dbLimitKind } from '../_lib/dataHttp.js';
+
+function sendPromptLimitReached(res: VercelResponse) {
+  return res.status(409).json({
+    error: 'Saved prompt limit reached',
+    code: 'PROMPT_LIMIT_REACHED',
+    message: `You can keep up to ${DATA_LIMITS.promptsPerUser} saved prompts. Delete some to save new ones.`,
+    limit: DATA_LIMITS.promptsPerUser,
+  });
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enforce distributed Upstash Redis rate limiting
@@ -96,15 +105,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         SELECT COUNT(*)::int AS count FROM "Prompt" WHERE user_id = ${user.id}
       `) as Array<{ count: number }>;
       if (count >= DATA_LIMITS.promptsPerUser) {
-        return res.status(409).json({
-          error: 'Saved prompt limit reached',
-          code: 'PROMPT_LIMIT_REACHED',
-          message: `You can keep up to ${DATA_LIMITS.promptsPerUser} saved prompts. Delete some to save new ones.`,
-          limit: DATA_LIMITS.promptsPerUser,
-        });
+        return sendPromptLimitReached(res);
       }
       return res.status(409).json({ error: 'This prompt id is already in use', code: 'PROMPT_ID_CONFLICT' });
     } catch (err: any) {
+      // The database's own limits (migration 0003) refused the row
+      const limitKind = dbLimitKind(err);
+      if (limitKind === 'row_limit') {
+        return sendPromptLimitReached(res);
+      }
+      if (limitKind === 'too_large') {
+        return res.status(400).json({
+          error: 'Prompt is too large to save',
+          code: 'PROMPT_TOO_LARGE',
+          message: 'This prompt is too large to save. Shorten it and try again.',
+        });
+      }
       return sendDbFailure(res, '[Prompts] POST error:', 'Failed to save prompt', err);
     }
   }

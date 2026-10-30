@@ -2,7 +2,8 @@ import type { VercelResponse } from '@vercel/node';
 
 /** Size and count limits for data saved through the prompts, workflows, traces and profile routes. */
 export const DATA_LIMITS = {
-  id: 200,
+  // Matches the database's own id checks (migration 0003: char_length(id) <= 100)
+  id: 100,
   // Prompts
   promptTitle: 300,
   promptSnippet: 1_000,
@@ -29,6 +30,19 @@ export const DATA_LIMITS = {
 
 /** Postgres error code for a unique constraint violation. */
 export const PG_UNIQUE_VIOLATION = '23505';
+
+/** Postgres error code for a CHECK constraint, also raised by the per-user row cap trigger (migration 0003). */
+export const PG_CHECK_VIOLATION = '23514';
+
+/**
+ * Classifies a database refusal from the migration 0003 limits: 'row_limit' for the per-user row cap
+ * trigger (ROW_LIMIT_EXCEEDED), 'too_large' for a size CHECK, null for any other error.
+ */
+export function dbLimitKind(err: unknown): 'row_limit' | 'too_large' | null {
+  const e = err as { code?: unknown; message?: unknown } | null;
+  if (e?.code !== PG_CHECK_VIOLATION) return null;
+  return String(e.message ?? '').includes('ROW_LIMIT_EXCEEDED') ? 'row_limit' : 'too_large';
+}
 
 /**
  * Sends a 500 for a failed database call. The driver's error text (table and column names,

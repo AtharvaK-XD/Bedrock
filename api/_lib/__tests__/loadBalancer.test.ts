@@ -52,26 +52,36 @@ describe('selectOptimalProvider', () => {
     expect(fakeRedis.incr).toHaveBeenCalledTimes(1);
   });
 
-  it('never selects a provider whose circuit is tripped in Redis', async () => {
-    const trippedId = AI_PROVIDERS[0].id;
-    fakeRedis = makeRedis({
-      mget: vi.fn(async (...keys: string[]) => keys.map((k) => (k === `circuit:ai:${trippedId}` ? 'tripped' : null))),
+  function trippedInRedis(...ids: string[]) {
+    return makeRedis({
+      mget: vi.fn(async (...keys: string[]) => keys.map((k) => (ids.some((id) => k === `circuit:ai:${id}`) ? 'tripped' : null))),
     });
-    const picks = new Set<string>();
-    for (let i = 0; i < AI_PROVIDERS.length * 2; i++) {
-      picks.add((await selectOptimalProvider(AI_PROVIDERS))!.id);
-    }
-    expect(picks.has(trippedId)).toBe(false);
-    expect(picks.size).toBe(AI_PROVIDERS.length - 1);
+  }
+
+  async function pick(times: number): Promise<string[]> {
+    const order: string[] = [];
+    for (let i = 0; i < times; i++) order.push((await selectOptimalProvider(AI_PROVIDERS))!.id);
+    return order;
+  }
+
+  it('sends normal traffic only to the strongest tier, alternating between its providers', async () => {
+    fakeRedis = makeRedis();
+    const order = await pick(10);
+    expect(new Set(order)).toEqual(new Set(['groq-llama-70b', 'gemini-flash']));
+    for (let i = 1; i < order.length; i++) expect(order[i]).not.toBe(order[i - 1]);
   });
 
-  it('keeps round-robin order over healthy providers (selection order unchanged)', async () => {
-    fakeRedis = makeRedis();
-    const order: string[] = [];
-    for (let i = 0; i < AI_PROVIDERS.length; i++) {
-      order.push((await selectOptimalProvider(AI_PROVIDERS))!.id);
-    }
-    expect(order).toEqual(AI_PROVIDERS.map((p) => p.id));
+  it('never selects a provider whose circuit is tripped in Redis', async () => {
+    fakeRedis = trippedInRedis('groq-llama-70b');
+    expect(new Set(await pick(10))).toEqual(new Set(['gemini-flash']));
+  });
+
+  it('uses the backup tier only while every stronger provider is tripped', async () => {
+    fakeRedis = trippedInRedis('groq-llama-70b', 'gemini-flash');
+    expect(new Set(await pick(10))).toEqual(new Set(['groq-llama-8b', 'openrouter-gpt4o']));
+
+    fakeRedis = trippedInRedis('groq-llama-70b', 'gemini-flash', 'groq-llama-8b', 'openrouter-gpt4o');
+    expect(new Set(await pick(4))).toEqual(new Set(['gemini-flash-lite']));
   });
 
   it('falls back to local circuit state when the batch read fails', async () => {

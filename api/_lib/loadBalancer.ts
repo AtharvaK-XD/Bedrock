@@ -179,7 +179,30 @@ export async function recordProviderSuccess(providerId: string): Promise<void> {
 let localRoundRobin = 0;
 
 /**
- * Selects the next healthy AI provider using distributed round-robin and weighted load balancing.
+ * Smooth weighted round-robin order for one cycle: each provider appears `weight` times, spread out
+ * (weights 5/5 alternate A, B, A, B ... instead of A x5 then B x5).
+ */
+function weightedCycle(providers: ProviderTarget[]): ProviderTarget[] {
+  const weights = providers.map((p) => Math.max(1, Math.round(p.weight)));
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  const current = weights.map(() => 0);
+  const cycle: ProviderTarget[] = [];
+  for (let step = 0; step < total; step++) {
+    let best = 0;
+    for (let i = 0; i < providers.length; i++) {
+      current[i] += weights[i];
+      if (current[i] > current[best]) best = i;
+    }
+    current[best] -= total;
+    cycle.push(providers[best]);
+  }
+  return cycle;
+}
+
+/**
+ * Selects the next healthy AI provider. Only the best healthy priority tier is used
+ * (1 = strongest models); lower tiers take traffic only while every provider above them is
+ * tripped. Within the tier, providers share traffic by weight via a distributed counter.
  */
 export async function selectOptimalProvider(
   availableProviders: ProviderTarget[] = AI_PROVIDERS
@@ -192,23 +215,26 @@ export async function selectOptimalProvider(
     return availableProviders[0] || null;
   }
 
+  const bestPriority = Math.min(...healthy.map((p) => p.priority));
+  const cycle = weightedCycle(healthy.filter((p) => p.priority === bestPriority));
+
   const redis = getRedisClient();
   let index = 0;
 
   if (redis) {
     try {
       const counter = await redis.incr('loadbalance:ai:counter');
-      index = Math.abs(counter) % healthy.length;
+      index = Math.abs(counter) % cycle.length;
     } catch {
-      localRoundRobin = (localRoundRobin + 1) % healthy.length;
+      localRoundRobin = (localRoundRobin + 1) % cycle.length;
       index = localRoundRobin;
     }
   } else {
-    localRoundRobin = (localRoundRobin + 1) % healthy.length;
+    localRoundRobin = (localRoundRobin + 1) % cycle.length;
     index = localRoundRobin;
   }
 
-  return healthy[index];
+  return cycle[index];
 }
 
 /**

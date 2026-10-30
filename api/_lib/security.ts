@@ -69,8 +69,9 @@ const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
 /**
  * Server-side AI usage quotas (rolling 5-hour window).
  *
- * Usage is recorded in "SecurityLog", which no API lets users modify or delete
- * (unlike "Trace", which users can clear via DELETE /api/traces). Anonymous
+ * Usage is recorded in "QuotaEvent" through reserve_quota() (migration 0004), or in
+ * "SecurityLog" while that migration is not applied. No API lets users modify or delete
+ * either table (unlike "Trace", which users can clear via DELETE /api/traces). Anonymous
  * callers (e.g. the desktop app, which has no long-lived Clerk session yet) are
  * metered per client IP with the same limits as the free tier.
  *
@@ -96,8 +97,42 @@ export interface QuotaReservation {
   bucket: QuotaBucket;
   limit: number;
   resetMs: number;
-  /** SecurityLog row holding this unit of usage; null when nothing was recorded */
+  /** Row holding this unit of usage; null when nothing was recorded */
   reservationId: string | null;
+  /** Table holding reservationId: "QuotaEvent" (migration 0004) or the older "SecurityLog" path */
+  store?: 'QuotaEvent' | 'SecurityLog';
+}
+
+// Postgres codes for "function / table does not exist": migration 0004 is not applied to this database yet
+const PG_UNDEFINED_FUNCTION = '42883';
+const PG_UNDEFINED_TABLE = '42P01';
+// After a "not applied" answer, use the SecurityLog path for this long before checking again
+const QUOTA_TABLE_RECHECK_MS = 5 * 60 * 1000;
+let quotaTableMissingUntil = 0;
+
+/**
+ * Reserves one unit through reserve_quota() (migration 0004), which locks per user / IP so parallel
+ * requests cannot overshoot the limit. Returns null when the migration is not applied, so the caller
+ * can use the older SecurityLog query instead.
+ */
+async function reserveViaQuotaTable(
+  sql: ReturnType<typeof getDb>,
+  p: { id: string; userId: string | null; ip: string; bucket: QuotaBucket; endpoint: string; limit: number }
+): Promise<boolean | null> {
+  if (Date.now() < quotaTableMissingUntil) return null;
+  try {
+    const rows = (await sql`
+      SELECT reserve_quota(${p.id}, ${p.userId}::text, ${p.ip}, ${p.bucket}, ${p.endpoint}, ${p.limit}::int) AS granted
+    `) as Array<{ granted: boolean }>;
+    return rows[0]?.granted === true;
+  } catch (err: any) {
+    if (err?.code === PG_UNDEFINED_FUNCTION || err?.code === PG_UNDEFINED_TABLE) {
+      quotaTableMissingUntil = Date.now() + QUOTA_TABLE_RECHECK_MS;
+      console.warn('[Quota] reserve_quota() not found (migration 0004 not applied); using SecurityLog counting');
+      return null;
+    }
+    throw err;
+  }
 }
 
 export const isPaidTier = (tier?: string | null) => tier === 'advanced' || tier === 'ultimate' || tier === 'pro';
@@ -129,6 +164,11 @@ export async function reserveQuota(params: {
 
   try {
     const sql = getDb();
+    const granted = await reserveViaQuotaTable(sql, { id, userId, ip: ipAddress, bucket, endpoint, limit });
+    if (granted !== null) {
+      return { ...base, allowed: granted, unavailable: false, reservationId: granted ? id : null, store: 'QuotaEvent' };
+    }
+
     const rows = (user
       ? await sql`
           INSERT INTO "SecurityLog" (id, user_id, event_type, severity, ip_address, endpoint, message, created_at)
@@ -152,7 +192,7 @@ export async function reserveQuota(params: {
         `) as Array<{ id: string }>;
 
     const allowed = rows.length > 0;
-    return { ...base, allowed, unavailable: false, reservationId: allowed ? id : null };
+    return { ...base, allowed, unavailable: false, reservationId: allowed ? id : null, store: 'SecurityLog' };
   } catch (err) {
     console.error('[Quota] Quota store unavailable, refusing request:', err);
     return { ...base, allowed: false, unavailable: true, reservationId: null };
@@ -164,7 +204,11 @@ export async function releaseQuota(reservation: QuotaReservation | null | undefi
   if (!reservation?.reservationId) return;
   try {
     const sql = getDb();
-    await sql`DELETE FROM "SecurityLog" WHERE id = ${reservation.reservationId}`;
+    if (reservation.store === 'QuotaEvent') {
+      await sql`DELETE FROM "QuotaEvent" WHERE id = ${reservation.reservationId}`;
+    } else {
+      await sql`DELETE FROM "SecurityLog" WHERE id = ${reservation.reservationId}`;
+    }
   } catch (err) {
     console.error('[Quota] Failed to release quota reservation:', err);
   }
