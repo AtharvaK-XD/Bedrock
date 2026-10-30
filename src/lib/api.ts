@@ -707,7 +707,32 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+/** Seconds to wait when the Bedrock server answered 503 "AI providers busy" (see api/_lib/aiHttp.ts), else null. */
+export async function readServerBusySeconds(response: Response): Promise<number | null> {
+  if (response.status !== 503) return null;
+  const body = await response.clone().json().catch(() => ({}));
+  const fromBody = Number(body?.retryAfterSeconds);
+  const fromHeader = Number(response.headers.get('Retry-After'));
+  const seconds = fromBody > 0 ? fromBody : fromHeader > 0 ? fromHeader : 15;
+  return Math.min(Math.round(seconds), 300);
+}
+
+/** Shown instead of the "no API key" message when the only reason we failed is a busy server. */
+export function serverBusyError(seconds: number): ApiError {
+  const err = new ApiError(
+    `Bedrock's AI is busy right now. Please try again in ${seconds} seconds.`,
+    false,
+    'Bedrock Cloud',
+    503
+  );
+  (err as any).code = 'AI_BUSY';
+  (err as any).retryAfterSeconds = seconds;
+  return err;
+}
+
 export const generateQuestions = async (payload: IdeaPayload): Promise<Question[]> => {
+  let serverBusySeconds: number | null = null;
+
   // 1. Try secure server-side generation first
   try {
     const authHeaders = await getAuthHeaders();
@@ -722,6 +747,8 @@ export const generateQuestions = async (payload: IdeaPayload): Promise<Question[
       if (Array.isArray(data) && data.length > 0) {
         return data as Question[];
       }
+    } else {
+      serverBusySeconds = await readServerBusySeconds(response);
     }
   } catch (backendErr) {
     console.warn('[Bedrock] Server generation not available, falling back:', backendErr);
@@ -804,12 +831,14 @@ Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored 
     if (response.ok) {
       return (await response.json()) as Question[];
     }
+    serverBusySeconds = (await readServerBusySeconds(response)) ?? serverBusySeconds;
   } catch (backendErr) {
     console.warn('[Bedrock] Backend not available:', backendErr);
   }
 
   // If no client keys were configured
   if (!hasClientKey) {
+    if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
     throw new ApiError(
       'Please enter your Google Gemini or Groq API key in the app to start generating prompts.',
       true,
@@ -926,6 +955,8 @@ ${selectedFormatDirective}
 
 Produce the bespoke, publication-grade prompt document adhering strictly to this target purpose.`;
 
+  let serverBusySeconds: number | null = null;
+
   // 1. Try secure backend synthesis first
   try {
     const authHeaders = await getAuthHeaders();
@@ -1001,6 +1032,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
       (quotaErr as any).code = 'FREE_TIER_QUOTA_EXCEEDED';
       throw quotaErr;
     }
+    serverBusySeconds = await readServerBusySeconds(response);
   } catch (err: any) {
     if (err?.code === 'FREE_TIER_QUOTA_EXCEEDED' || err?.statusCode === 429) {
       throw err;
@@ -1025,6 +1057,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
     return sanitizePromptOutput(raw);
   }
 
+  if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
   throw new ApiError(
     'No API key configured. Please set your Google Gemini or Groq key in Settings or connect to Bedrock Cloud.',
     true,
@@ -1082,6 +1115,8 @@ export const refinePrompt = async (
     }
   }
 
+  let serverBusySeconds: number | null = null;
+
   // 1. Try secure backend refine first
   try {
     const authHeaders = await getAuthHeaders();
@@ -1101,10 +1136,12 @@ export const refinePrompt = async (
         };
       }
     }
+    serverBusySeconds = await readServerBusySeconds(response);
   } catch (err) {
     console.warn('[Bedrock] Server refine not available, falling back:', err);
   }
 
+  if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
   throw new ApiError(
     'No API key configured. Please set your Google Gemini or Groq key to refine prompt.',
     true,

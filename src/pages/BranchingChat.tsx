@@ -181,7 +181,7 @@ const DATA_PRESETS = [
   }
 ];
 
-// Code nodes run JavaScript with full access to this page. Ask once per session before running any,
+// Code nodes run JavaScript in a locked sandbox (src/lib/sandboxedCode.ts). Still ask once per session,
 // because workflows can be imported or shared and may contain code the user did not write.
 let codeNodeRunApproved = false;
 
@@ -391,8 +391,8 @@ const GenericNode = memo(({ id, data, selected }: { id: string, data: PromptNode
           const script = data.codeScript || 'return input;';
           if (!codeNodeRunApproved) {
             const ok = window.confirm(
-              'This workflow contains a Code node. It runs JavaScript with full access to this app, including your saved API keys.\n\n' +
-              'Only continue if you wrote this code or fully trust where the workflow came from.\n\n' +
+              'This workflow contains a Code node. It runs custom JavaScript in a locked sandbox with no access to your account or saved keys.\n\n' +
+              'Only continue if you wrote this code or trust where the workflow came from.\n\n' +
               'Run it?'
             );
             if (!ok) {

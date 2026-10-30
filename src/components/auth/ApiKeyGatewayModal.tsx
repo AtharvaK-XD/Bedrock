@@ -233,7 +233,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
             </div>
 
             {canDismiss && (
-              <button
+              <button aria-label="Close"
                 onClick={onSuccess}
                 className="text-white/40 hover:text-white text-lg font-mono px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
               >

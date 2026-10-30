@@ -61,17 +61,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  if (isPopup) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[#050505] text-sandstone-300">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
-          <span className="text-sm font-mono">Authentication complete. Closing window...</span>
-        </div>
-      </div>
-    );
-  }
-
   // Desktop keyboard shortcuts: ⌘1 to ⌘6
   useEffect(() => {
     if (!isDesktop) return;
@@ -149,6 +138,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       window.removeEventListener(OPEN_API_KEY_MODAL_EVENT, handleOpenModal);
     };
   }, []);
+
+  // Returned after all hooks so React always sees the same hooks in the same order
+  if (isPopup) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#050505] text-sandstone-300">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
+          <span className="text-sm font-mono">Authentication complete. Closing window...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-black text-white font-sans selection:bg-copper-500 selection:text-white relative">

@@ -178,6 +178,7 @@ export default function Profile() {
   }, [profile]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const activeTheme = BANNER_THEMES.find((t) => t.id === bannerTheme) || BANNER_THEMES[0];
 
@@ -280,10 +281,16 @@ export default function Profile() {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    updateProfile(formData);
+    setSaveError(null);
+    const result = await updateProfile(formData);
+    if (!result.ok) {
+      setIsSaving(false);
+      setSaveError(result.message || "Couldn't save your profile. Please try again.");
+      return;
+    }
     setTimeout(() => {
       setIsSaving(false);
       setSaveSuccess(true);
@@ -956,6 +963,11 @@ export default function Profile() {
                       Saved successfully
                     </span>
                   )}
+                  {saveError && (
+                    <span role="alert" className="max-w-xs px-3 py-1 rounded-2xl text-xs font-mono font-semibold bg-red-500/15 text-red-300 border border-red-500/30">
+                      {saveError}
+                    </span>
+                  )}
                 </div>
 
                 <form onSubmit={handleSave} className="space-y-6 font-mono text-xs">
@@ -1064,7 +1076,7 @@ export default function Profile() {
                       <label className="text-xs uppercase tracking-wider text-gray-300">Full Name</label>
                       <input
                         type="text"
-                        value={formData.name}
+                        value={formData.name} maxLength={100}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         required
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 font-sans"
@@ -1075,7 +1087,7 @@ export default function Profile() {
                       <label className="text-xs uppercase tracking-wider text-gray-300">Username Handle</label>
                       <input
                         type="text"
-                        value={formData.username}
+                        value={formData.username} maxLength={50}
                         onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                         required
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 font-mono"
@@ -1111,7 +1123,7 @@ export default function Profile() {
                       <label className="text-xs uppercase tracking-wider text-gray-300">Organization</label>
                       <input
                         type="text"
-                        value={formData.organization}
+                        value={formData.organization} maxLength={100}
                         onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 font-sans"
                       />
@@ -1121,7 +1133,7 @@ export default function Profile() {
                       <label className="text-xs uppercase tracking-wider text-gray-300">Location</label>
                       <input
                         type="text"
-                        value={formData.location}
+                        value={formData.location} maxLength={100}
                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 font-sans"
                       />
@@ -1132,7 +1144,7 @@ export default function Profile() {
                     <label className="text-xs uppercase tracking-wider text-gray-300">Bio & Summary</label>
                     <textarea
                       rows={3}
-                      value={formData.bio}
+                      value={formData.bio} maxLength={1000}
                       onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 resize-none font-sans leading-relaxed"
                     />
@@ -1143,7 +1155,7 @@ export default function Profile() {
                       <label className="text-xs uppercase tracking-wider text-gray-300">GitHub Username</label>
                       <input
                         type="text"
-                        value={formData.github}
+                        value={formData.github} maxLength={300}
                         onChange={(e) => setFormData({ ...formData, github: e.target.value })}
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 font-mono"
                       />
@@ -1153,7 +1165,7 @@ export default function Profile() {
                       <label className="text-xs uppercase tracking-wider text-gray-300">HuggingFace Username</label>
                       <input
                         type="text"
-                        value={formData.huggingface}
+                        value={formData.huggingface} maxLength={300}
                         onChange={(e) => setFormData({ ...formData, huggingface: e.target.value })}
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 font-mono"
                       />

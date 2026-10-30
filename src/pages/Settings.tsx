@@ -1150,7 +1150,7 @@ export default function Settings() {
                                 <p className="text-xs text-gray-400 font-mono">{item.desc}</p>
                               </div>
                               <button
-                                type="button"
+                                type="button" role="switch" aria-checked={Boolean(modelSettings[item.key])} aria-label={item.title}
                                 onClick={() => {
                                   playUiAudio('toggle', appearance.soundFeedback);
                                   setModelSettings((prev) => ({ ...prev, [item.key]: !prev[item.key] }));
@@ -1693,7 +1693,7 @@ export default function Settings() {
                               <p className="text-xs text-gray-400 font-mono">Disallow new generations when session prompt threshold is reached</p>
                             </div>
                             <button
-                              type="button"
+                              type="button" role="switch" aria-checked={Boolean(tokenSettings.hardStopOnLimit)} aria-label="Hard Stop on Quota Limit"
                               onClick={() => {
                                 playUiAudio('toggle', appearance.soundFeedback);
                                 setTokenSettings((prev) => ({ ...prev, hardStopOnLimit: !prev.hardStopOnLimit }));
@@ -1718,7 +1718,7 @@ export default function Settings() {
                               <p className="text-xs text-gray-400 font-mono">Automatically compress earlier branching turns when node exceeds 8k tokens</p>
                             </div>
                             <button
-                              type="button"
+                              type="button" role="switch" aria-checked={Boolean(tokenSettings.autoCompactContext)} aria-label="Context Window Auto-Compaction"
                               onClick={() => {
                                 playUiAudio('toggle', appearance.soundFeedback);
                                 setTokenSettings((prev) => ({ ...prev, autoCompactContext: !prev.autoCompactContext }));
@@ -2013,7 +2013,7 @@ export default function Settings() {
                               <p className="text-xs text-gray-400 font-mono">Play subtle mechanical sound cues on synthesis start and completion</p>
                             </div>
                             <button
-                              type="button"
+                              type="button" role="switch" aria-checked={Boolean(appearance.soundFeedback)} aria-label="Mechanical Audio & Haptic Clicks"
                               onClick={() => {
                                 const nextVal = !appearance.soundFeedback;
                                 playUiAudio('toggle', nextVal);
@@ -2042,7 +2042,7 @@ export default function Settings() {
                               <p className="text-xs text-gray-400 font-mono">Render dynamic glowing star particles and ambient gradient mesh</p>
                             </div>
                             <button
-                              type="button"
+                              type="button" role="switch" aria-checked={Boolean(appearance.particleEffects)} aria-label="Animated Particle Starfield"
                               onClick={() => {
                                 playUiAudio('toggle', appearance.soundFeedback);
                                 setAppearance((prev) => ({ ...prev, particleEffects: !prev.particleEffects }));
@@ -2067,7 +2067,7 @@ export default function Settings() {
                               <p className="text-xs text-gray-400 font-mono">Disable non-essential animations and transitions for performance and accessibility</p>
                             </div>
                             <button
-                              type="button"
+                              type="button" role="switch" aria-checked={Boolean(appearance.reducedMotion)} aria-label="Reduced Motion Mode"
                               onClick={() => {
                                 playUiAudio('toggle', appearance.soundFeedback);
                                 const next = { ...appearance, reducedMotion: !appearance.reducedMotion };
@@ -2156,7 +2156,7 @@ export default function Settings() {
                               <p className="text-xs text-gray-400 font-mono">{item.desc}</p>
                             </div>
                             <button
-                              type="button"
+                              type="button" role="switch" aria-checked={Boolean(notifications[item.key])} aria-label={item.title}
                               onClick={() => {
                                 playUiAudio('toggle', appearance.soundFeedback);
                                 setNotifications((prev) => ({ ...prev, [item.key]: !prev[item.key] }));
@@ -2233,7 +2233,7 @@ export default function Settings() {
                               <p className="text-xs text-gray-400 font-mono">{item.desc}</p>
                             </div>
                             <button
-                              type="button"
+                              type="button" role="switch" aria-checked={Boolean(privacy[item.key])} aria-label={item.title}
                               onClick={() => {
                                 playUiAudio('toggle', appearance.soundFeedback);
                                 setPrivacy((prev) => ({ ...prev, [item.key]: !prev[item.key] }));

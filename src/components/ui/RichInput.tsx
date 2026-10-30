@@ -584,7 +584,7 @@ export function RichInput({
             {files.map((file, idx) => (
               <div key={idx} className="flex items-center gap-2 bg-white/[0.04] border border-white/10 px-2.5 py-1 rounded-lg text-xs text-zinc-300">
                 <span className="truncate max-w-[150px] font-mono text-[11px]">{file.name}</span>
-                <button type="button" onClick={() => removeFile(idx)} className="text-zinc-500 hover:text-white transition-colors text-sm leading-none">
+                <button aria-label="Remove file" type="button" onClick={() => removeFile(idx)} className="text-zinc-500 hover:text-white transition-colors text-sm leading-none">
                   ×
                 </button>
               </div>
@@ -594,6 +594,7 @@ export function RichInput({
         <textarea
           ref={textareaRef}
           value={value}
+          maxLength={4000}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholderText}

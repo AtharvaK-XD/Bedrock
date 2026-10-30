@@ -190,7 +190,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
             {files.map((file, idx) => (
               <div key={idx} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1 rounded-md text-xs text-gray-300 font-mono">
                 <span className="truncate max-w-[150px]">{file.name}</span>
-                <button 
+                <button aria-label="Remove file" 
                   type="button" 
                   onClick={(e) => {
                     e.stopPropagation();
@@ -207,6 +207,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         <textarea
           ref={textareaRef}
           value={input}
+          maxLength={2000}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => {
