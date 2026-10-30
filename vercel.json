@@ -1,16 +1,9 @@
 {
   "functions": {
     "api/**/*.ts": {
-      "maxDuration": 60,
-      "memory": 1024
+      "maxDuration": 60
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron/purge-logs",
-      "schedule": "0 3 * * *"
-    }
-  ],
   "rewrites": [
     {
       "source": "/((?!api/).*)",

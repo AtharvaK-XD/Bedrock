@@ -1,0 +1,22 @@
+# Exclude tests and test suites from Vercel function routes
+**/__tests__/**
+**/*.test.ts
+**/*.test.js
+**/*.spec.ts
+**/*.spec.js
+tests/**
+
+# Video rendering tooling and raw heavy media
+remotion/**
+scripts/launch-video/**
+public/audio/launch/**
+public/audio/soundtrack-mastered.wav
+public/audio/soundtrack.wav
+public/bedrock-intro.mp4
+
+# Local databases, migrations tooling & release packaging
+db/**
+release/**
+.neon/**
+*.db
+*.sqlite
