@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, UserRow } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
+import { handleDesktopTicket } from '../_lib/desktopTicket.js';
 import { DATA_LIMITS, PG_UNIQUE_VIOLATION, sendDbFailure, firstFieldError, isUnsafeLink } from '../_lib/dataHttp.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -12,6 +13,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const user = await authenticateRequest(req);
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized: valid session token required.' });
+  }
+
+  // Desktop sign-in ticket (routed here, not a new file, to stay inside the 12-function Hobby cap)
+  if (req.query?.action === 'desktop-ticket') {
+    return handleDesktopTicket(req, res, user);
   }
 
   const sql = getDb();
