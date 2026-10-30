@@ -116,7 +116,7 @@ function registerAuthNonce(nonce) {
 	issuedAuthNonces.set(nonce, Date.now() + AUTH_NONCE_TTL_MS);
 }
 
-const AUTH_PAYLOAD_FIELDS = ["email", "name", "avatarUrl", "clerkUserId", "strategy", "token", "plan"];
+const AUTH_PAYLOAD_FIELDS = ["email", "name", "avatarUrl", "clerkUserId", "strategy", "token", "plan", "ticket"];
 
 /** Validates an external sign-in payload and consumes its nonce. Returns a sanitized copy or null. */
 function acceptAuthPayload(payload) {

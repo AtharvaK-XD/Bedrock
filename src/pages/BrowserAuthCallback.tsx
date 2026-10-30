@@ -4,15 +4,19 @@ import { AuthenticateWithRedirectCallback, useUser, useClerk } from '@clerk/reac
 import { Check, ExternalLink, ArrowRight } from 'lucide-react';
 import { resolveCleanName } from '../lib/useUserProfile';
 import { PageTransition } from '../components/layout/PageTransition';
+import { loadPendingDesktopAuth, clearPendingDesktopAuth } from '../lib/desktopAuthHandoff';
 
 export default function BrowserAuthCallback() {
   const [searchParams] = useSearchParams();
   const { user, isLoaded, isSignedIn } = useUser();
   const clerk = useClerk();
+  // Saved by BrowserAuth before leaving for Google/GitHub; used when the return URL lost its query
+  const [pending] = useState(loadPendingDesktopAuth);
 
-  const nonce = searchParams.get('nonce') || '';
-  const port = searchParams.get('port') || '0';
-  const strategy = searchParams.get('strategy') || 'oauth_google';
+  const nonce = searchParams.get('nonce') || pending?.nonce || '';
+  const rawPort = searchParams.get('port') || pending?.port || '';
+  const port = rawPort && rawPort !== '0' ? rawPort : (typeof window !== 'undefined' ? window.location.port : '') || '0';
+  const strategy = searchParams.get('strategy') || pending?.strategy || 'oauth_google';
 
   const [handshakeComplete, setHandshakeComplete] = useState(false);
   const [countdown, setCountdown] = useState(5);
@@ -99,6 +103,7 @@ export default function BrowserAuthCallback() {
         console.warn('[BrowserAuth] Protocol deep link trigger error:', protocolErr);
       }
 
+      clearPendingDesktopAuth();
       setHandshakeComplete(true);
     };
 

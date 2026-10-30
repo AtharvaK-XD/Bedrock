@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AnimatePresence } from 'framer-motion';
@@ -43,6 +43,7 @@ import { isDesktopApp } from './lib/platform';
 import { UpdateBanner } from './components/layout/UpdateBanner';
 import { applyAppearanceToDom, BEDROCK_APPEARANCE_UPDATED_EVENT } from './lib/appSettings';
 import { ExternalLink } from 'lucide-react';
+import { loadPendingDesktopAuth } from './lib/desktopAuthHandoff';
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!PUBLISHABLE_KEY) {
@@ -112,6 +113,9 @@ function AnimatedRoutes() {
     isExternalLoopback &&
     location.pathname !== '/browser-auth' &&
     location.pathname !== '/browser-auth-callback';
+  // Back from Google/GitHub on a desktop sign-in, but the return URL lost #/browser-auth-callback:
+  // finish the hand-off instead of showing the notice (read once, the callback clears it when done)
+  const [resumeDesktopAuth] = useState(() => isExternalLoopback && loadPendingDesktopAuth() !== null);
 
   useEffect(() => {
     if (showLoopbackNotice) return;
@@ -160,7 +164,7 @@ function AnimatedRoutes() {
   }, [location.pathname, showLoopbackNotice]);
 
   if (showLoopbackNotice) {
-    return <BrowserDesktopNotice />;
+    return resumeDesktopAuth ? <BrowserAuthCallback /> : <BrowserDesktopNotice />;
   }
 
   return (

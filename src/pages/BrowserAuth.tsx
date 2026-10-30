@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useClerk } from '@clerk/react';
 import { useSignIn, useSignUp } from '@clerk/react/legacy';
+import { savePendingDesktopAuth } from '../lib/desktopAuthHandoff';
 
 export default function BrowserAuth() {
   const [searchParams] = useSearchParams();
@@ -12,7 +13,8 @@ export default function BrowserAuth() {
   const strategy = (searchParams.get('strategy') as 'oauth_google' | 'oauth_github') || 'oauth_google';
   const mode = searchParams.get('mode') || 'login';
   const nonce = searchParams.get('nonce') || '';
-  const port = searchParams.get('port') || '0';
+  const rawPort = searchParams.get('port') || '';
+  const port = rawPort && rawPort !== '0' ? rawPort : (typeof window !== 'undefined' ? window.location.port : '') || '0';
 
   const [status, setStatus] = useState<'initializing' | 'redirecting' | 'error'>('initializing');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -40,6 +42,8 @@ export default function BrowserAuth() {
       const authResource = mode === 'register' ? (targetSignUp || targetSignIn) : (targetSignIn || targetSignUp);
 
       const callbackUrl = `${window.location.origin}/#/browser-auth-callback?nonce=${encodeURIComponent(nonce)}&port=${encodeURIComponent(port)}&strategy=${encodeURIComponent(strategy)}`;
+      // Kept in this tab in case the return URL loses its #/browser-auth-callback part
+      savePendingDesktopAuth({ nonce, port, strategy });
 
       // Immediate redirect to Google / GitHub consent screen
       if (typeof authResource?.authenticateWithRedirect === 'function') {
