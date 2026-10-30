@@ -9,6 +9,7 @@ import { isDesktopApp } from '../../lib/platform';
 import { OPEN_API_KEY_MODAL_EVENT, type OpenApiKeyModalDetail } from '../../lib/apiKeyEvents';
 import { syncRemoteUserProfile } from '../../lib/useUserProfile';
 import { syncHistoryFromDb } from '../../lib/generatorHistory';
+import { SyncNotice } from './SyncNotice';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const isPopup = 
@@ -176,6 +177,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       )}
+
+      <SyncNotice />
 
       {/* In-App API Key Gateway & Update Modal */}
       <ApiKeyGatewayModal

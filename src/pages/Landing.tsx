@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthCard } from '../components/auth/AuthCard';
 import { Shield, Sparkles, Layout, Layers, Database, Globe } from 'lucide-react';
 import { AppleLogo, WindowsLogo } from '../components/ui/ModelLogos';
 import { PageTransition } from '../components/layout/PageTransition';
-import { Scene3D } from '../components/landing/Scene3D';
+// three.js is large, so the 3D background loads after the page is usable.
+const Scene3D = lazy(() => import('../components/landing/Scene3D').then((m) => ({ default: m.Scene3D })));
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { cn } from '../lib/utils';
@@ -184,7 +185,9 @@ export default function Landing() {
         {/* Realistic 3D Background Element */}
         <div className="fixed inset-0 w-full h-screen pointer-events-none z-0 overflow-hidden">
           <div className="absolute inset-0 opacity-[0.03] bg-[url('/noise.svg')] z-10"></div>
-          <Scene3D />
+          <Suspense fallback={null}>
+            <Scene3D />
+          </Suspense>
         </div>
 
         {/* Hero Section */}
@@ -348,7 +351,7 @@ export default function Landing() {
               { icon: <Sparkles className="w-5 h-5" />, title: "Multi-Agent Synthesis", desc: "Transforms raw briefs into production directives with clarifying questions across 7 archetypes including Coding, Image, and Video Generation." },
               { icon: <Layers className="w-5 h-5" />, title: "Visual DAG Branching", desc: "Node-based canvas for non-linear prompt orchestration. Build complex logic with condition routers, dynamic data stores, and consensus merges." },
               { icon: <Layout className="w-5 h-5" />, title: "Side-by-Side Arena", desc: "Instantly benchmark your refined prompts across 10 frontier models including Claude 3.7, GPT-4o, DeepSeek-R1, and Gemini 2.5." },
-              { icon: <Shield className="w-5 h-5" />, title: "Local Privacy & BYOK", desc: "Native desktop workstation for macOS and Windows with client-side credential encryption. Your proprietary prompts and API keys never leave your machine." },
+              { icon: <Shield className="w-5 h-5" />, title: "Local Privacy & BYOK", desc: "Native desktop workstation for macOS and Windows. Bring your own API keys: they are stored on your device only and go straight to the AI provider you choose, never to Bedrock servers." },
               { icon: <Database className="w-5 h-5" />, title: "Tactile Physics Deck", desc: "Interactive blueprint catalog featuring infinite zoom from 5% to 300%, freeform 1:1 momentum physics, and curated engineering patterns." },
               { icon: <Globe className="w-5 h-5" />, title: "15-Target Exporters", desc: "Export directly into .cursorrules, CLAUDE.md, Windsurf, Copilot, Vercel AI SDK, Python, cURL, and typed JSON API payloads." }
             ].map((feature, idx) => (

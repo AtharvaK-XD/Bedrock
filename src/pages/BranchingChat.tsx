@@ -180,6 +180,10 @@ const DATA_PRESETS = [
   }
 ];
 
+// Code nodes run JavaScript with full access to this page. Ask once per session before running any,
+// because workflows can be imported or shared and may contain code the user did not write.
+let codeNodeRunApproved = false;
+
 const CODE_TEMPLATES = [
   { id: 'uppercase', name: 'To Uppercase', code: '// Convert upstream text to uppercase\nreturn input.trim().toUpperCase();' },
   { id: 'json_parse', name: 'Parse & Format JSON', code: '// Pretty-print valid JSON or return original\ntry {\n  const obj = JSON.parse(input);\n  return JSON.stringify(obj, null, 2);\n} catch (e) {\n  return input;\n}' },
@@ -384,6 +388,17 @@ const GenericNode = memo(({ id, data, selected }: { id: string, data: PromptNode
 
         case 'code': {
           const script = data.codeScript || 'return input;';
+          if (!codeNodeRunApproved) {
+            const ok = window.confirm(
+              'This workflow contains a Code node. It runs JavaScript with full access to this app, including your saved API keys.\n\n' +
+              'Only continue if you wrote this code or fully trust where the workflow came from.\n\n' +
+              'Run it?'
+            );
+            if (!ok) {
+              throw new Error('Code node was not run because you chose not to allow custom code.');
+            }
+            codeNodeRunApproved = true;
+          }
           try {
             const runner = new Function('input', script);
             const res = runner(upstreamText || data.description);
@@ -2533,7 +2548,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
               className="w-full pl-9 pr-8 py-1.5 text-xs bg-black/50 backdrop-blur-md border border-white/10 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-white/25 focus:bg-black/80 transition-all shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)]"
             />
             {searchQuery ? (
-              <button 
+              <button aria-label="Clear search" 
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
               >

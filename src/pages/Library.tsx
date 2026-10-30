@@ -646,7 +646,7 @@ export default function Library() {
               />
               <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               {search && (
-                <button
+                <button aria-label="Clear search"
                   onClick={() => setSearch('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
                 >
@@ -1109,7 +1109,7 @@ export default function Library() {
                     </div>
                   </div>
 
-                  <button
+                  <button aria-label="Close"
                     onClick={() => setSelectedPromptForView(null)}
                     className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
@@ -1231,7 +1231,7 @@ export default function Library() {
                   <h2 className="text-base font-bold text-white tracking-tight">
                     {isCreatingNew ? 'Create New Prompt' : 'Edit Prompt'}
                   </h2>
-                  <button
+                  <button aria-label="Close"
                     onClick={() => { setIsCreatingNew(false); setEditingPrompt(null); }}
                     className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >

@@ -36,6 +36,12 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight text-white;
   }
+
+  /* Keyboard users always get a visible focus outline (mouse clicks are unaffected) */
+  :focus-visible {
+    outline: 2px solid #2c9a8b;
+    outline-offset: 2px;
+  }
 }
 
 @layer utilities {

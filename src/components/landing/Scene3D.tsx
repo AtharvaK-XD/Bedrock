@@ -8,6 +8,8 @@ import { BlendFunction } from 'postprocessing';
 // Pre-flight check for WebGL/WebGL2 capability on client device
 function isWebGLSupported(): boolean {
   if (typeof window === 'undefined') return false;
+  // Skip the animated 3D background for people who asked their system for less motion
+  if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
   try {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');

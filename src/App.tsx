@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AnimatePresence } from 'framer-motion';
@@ -6,20 +6,31 @@ import Lenis from 'lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Landing from './pages/Landing';
-import Dashboard from './pages/Dashboard';
-import Wizard from './pages/Wizard';
-import Result from './pages/Result';
-import BranchingChat from './pages/BranchingChat';
-import PromptTester from './pages/PromptTester';
-import Library from './pages/Library';
-import History from './pages/History';
-import Pricing from './pages/Pricing';
-import Billing from './pages/Billing';
-import SettingsPage from './pages/Settings';
-import Profile from './pages/Profile';
-import Privacy from './pages/Privacy';
-import Terms from './pages/Terms';
 import AuthPage from './pages/Auth';
+import { ErrorBoundary } from './components/layout/ErrorBoundary';
+
+// App pages load on demand so the first visit only downloads what it needs.
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Wizard = lazy(() => import('./pages/Wizard'));
+const Result = lazy(() => import('./pages/Result'));
+const BranchingChat = lazy(() => import('./pages/BranchingChat'));
+const PromptTester = lazy(() => import('./pages/PromptTester'));
+const Library = lazy(() => import('./pages/Library'));
+const History = lazy(() => import('./pages/History'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const Billing = lazy(() => import('./pages/Billing'));
+const SettingsPage = lazy(() => import('./pages/Settings'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh] bg-[#050505]" role="status" aria-label="Loading">
+      <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
+    </div>
+  );
+}
 import { AppLayout } from './components/layout/AppLayout';
 import SSOCallback from './pages/SSOCallback';
 import BrowserAuth from './pages/BrowserAuth';
@@ -209,8 +220,8 @@ function AnimatedRoutes() {
         <Route path="/popup-auth" element={<PopupAuth />} />
         <Route path="/browser-auth" element={<BrowserAuth />} />
         <Route path="/browser-auth-callback" element={<BrowserAuthCallback />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
+        <Route path="/terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
         <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
         
         {/* App Routes (Strictly protected by authentication) */}
@@ -225,6 +236,8 @@ function AnimatedRoutes() {
               <Navigate to={isDesktop ? "/login" : "/"} replace />
             ) : (
               <AppLayout>
+                <ErrorBoundary key={location.pathname}>
+                <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/dashboard" element={<Dashboard />} />
@@ -240,6 +253,8 @@ function AnimatedRoutes() {
                   <Route path="/profile" element={<Profile />} />
                   <Route path="*" element={<Navigate to="/app" replace />} />
                 </Routes>
+                </Suspense>
+                </ErrorBoundary>
               </AppLayout>
             )
           } 
@@ -285,6 +300,7 @@ function App() {
   useEffect(() => {
     // Only initialize smooth scroll on the web landing page; desktop app uses native scroll
     if (isDesktop) return;
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
 
     const lenis = new Lenis({
@@ -318,7 +334,9 @@ function App() {
     <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
       <QueryClientProvider client={queryClient}>
         <RouterComponent>
-          <AnimatedRoutes />
+          <ErrorBoundary>
+            <AnimatedRoutes />
+          </ErrorBoundary>
           <UpdateBanner />
         </RouterComponent>
       </QueryClientProvider>
