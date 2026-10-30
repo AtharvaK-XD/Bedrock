@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
 import { executeAiCompletion } from '../_lib/ai.js';
+import { INPUT_LIMITS, firstLengthError, sendAiFailure } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
 
@@ -28,6 +29,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!prompt) {
     return res.status(400).json({ error: 'prompt is required' });
+  }
+
+  const limitError = firstLengthError([
+    [prompt, INPUT_LIMITS.testPrompt, 'prompt'],
+    [rawSystemPrompt, INPUT_LIMITS.testSystemPrompt, 'systemPrompt'],
+  ]);
+  if (limitError) {
+    return res.status(400).json({ error: limitError });
   }
 
   // Server-side usage quota (per user, or per client IP for anonymous callers); fails closed
@@ -104,9 +113,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: any) {
     await releaseQuota(quota);
     console.error('[Tester] Error:', err);
-    return res.status(500).json({
-      error: 'Prompt test execution failed',
-      message: err.message,
-    });
+    return sendAiFailure(res, err, 'Prompt test execution failed');
   }
 }
