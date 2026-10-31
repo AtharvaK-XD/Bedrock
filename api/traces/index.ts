@@ -5,8 +5,12 @@ import { getDb } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
 import { DATA_LIMITS, sendDbFailure, firstFieldError, clampCount } from '../_lib/dataHttp.js';
 
-/** purge_old_logs() deletes at most one batch per table per call, so it is called until nothing is left. */
-const MAX_PURGE_ROUNDS = 20;
+/**
+ * purge_old_logs() deletes at most one batch (5,000 rows) per table per call, so it is called until nothing
+ * is left or the time budget runs out. The round cap is only a safety stop: 20 rounds cleared just 100,000
+ * rows a day, so a log flood took days to clear (CHG-0015 measured ~73 ms per round).
+ */
+const MAX_PURGE_ROUNDS = 500;
 /** Stay well inside the 60 s function limit (vercel.json maxDuration). */
 const PURGE_TIME_BUDGET_MS = 45_000;
 const PG_UNDEFINED_FUNCTION = '42883';
@@ -77,6 +81,77 @@ function normalizeTraceStatus(status: unknown): string {
   return typeof status === 'string' && status ? status : 'OK';
 }
 
+type TraceTotals = {
+  totalInferences: number;
+  totalTokens: number;
+  avgLatency: number;
+  p99Latency: number;
+  reliability: number;
+  activeModels: string[];
+};
+
+// After a "not applied" answer, use the 100-row totals for this long before checking again
+const TRACE_TOTALS_RECHECK_MS = 5 * 60 * 1000;
+let traceTotalsMissingUntil = 0;
+
+/**
+ * Totals over ALL of the user's traces via trace_totals() (migration 0010). Returns null when the function
+ * is missing or fails, so the caller falls back to adding up the last 100 rows (the older behavior).
+ */
+async function readTraceTotals(sql: ReturnType<typeof getDb>, userId: string): Promise<TraceTotals | null> {
+  if (Date.now() < traceTotalsMissingUntil) return null;
+  try {
+    const [row] = (await sql`SELECT * FROM trace_totals(${userId})`) as any[];
+    if (!row) return null;
+    return {
+      // Neon returns bigint / numeric columns as strings
+      totalInferences: Number(row.total_inferences) || 0,
+      totalTokens: Number(row.total_tokens) || 0,
+      avgLatency: Number(row.avg_latency) || 0,
+      p99Latency: Number(row.p99_latency) || 0,
+      reliability: row.reliability === null || row.reliability === undefined ? 100 : Number(row.reliability),
+      activeModels: Array.isArray(row.active_models) ? row.active_models.filter((m: unknown) => typeof m === 'string') : [],
+    };
+  } catch (err: any) {
+    if (err?.code === PG_UNDEFINED_FUNCTION) {
+      traceTotalsMissingUntil = Date.now() + TRACE_TOTALS_RECHECK_MS;
+      console.warn('[Traces] trace_totals() not found (migration 0010 not applied); totals use the last 100 rows');
+    } else {
+      console.error('[Traces] trace_totals() failed; totals use the last 100 rows:', err?.code || err?.message || err);
+    }
+    return null;
+  }
+}
+
+/** The older totals: only over the rows passed in (the last 100). */
+function totalsFromRows(traces: Array<{ tokens: number; latency: number; status: string; model: string }>): TraceTotals {
+  const totalInferences = traces.length;
+  let totalTokens = 0;
+  let totalLatency = 0;
+  let okCount = 0;
+  const modelSet = new Set<string>();
+  const latencies: number[] = [];
+
+  for (const t of traces) {
+    totalTokens += t.tokens;
+    totalLatency += t.latency;
+    latencies.push(t.latency);
+    if (t.status === 'OK') okCount++;
+    if (t.model) modelSet.add(t.model);
+  }
+
+  latencies.sort((a, b) => a - b);
+  const p99Index = Math.min(latencies.length - 1, Math.floor(latencies.length * 0.99));
+  return {
+    totalInferences,
+    totalTokens,
+    avgLatency: totalInferences > 0 ? Math.round(totalLatency / totalInferences) : 0,
+    p99Latency: latencies.length > 0 ? latencies[p99Index] : 0,
+    reliability: totalInferences > 0 ? Number(((okCount / totalInferences) * 100).toFixed(1)) : 100,
+    activeModels: Array.from(modelSet),
+  };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle log purge action (routed via /api/cron/purge-logs to preserve 12-function Hobby cap)
   if (req.query?.action === 'purge-logs' || req.query?.purge === '1') {
@@ -97,12 +172,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // GET /api/traces: Fetch traces and compute telemetry summary
   if (req.method === 'GET') {
     try {
-      const rows = (await sql`
-        SELECT * FROM "Trace" 
-        WHERE user_id = ${user.id} 
-        ORDER BY created_at DESC 
-        LIMIT 100
-      `) as any[];
+      const [rows, sqlTotals] = await Promise.all([
+        sql`
+          SELECT * FROM "Trace"
+          WHERE user_id = ${user.id}
+          ORDER BY created_at DESC
+          LIMIT 100
+        ` as Promise<any[]>,
+        readTraceTotals(sql, user.id),
+      ]);
 
       const traces = rows.map((r: any) => ({
         id: r.id,
@@ -115,36 +193,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         status: normalizeTraceStatus(r.status),
       }));
 
-      // Compute aggregated metrics for this specific user
-      const totalInferences = traces.length;
-      let totalTokens = 0;
-      let totalLatency = 0;
-      let okCount = 0;
-      const modelSet = new Set<string>();
-      const latencies: number[] = [];
-
-      for (const t of traces) {
-        totalTokens += t.tokens;
-        totalLatency += t.latency;
-        latencies.push(t.latency);
-        if (t.status === 'OK') okCount++;
-        if (t.model) modelSet.add(t.model);
-      }
-
-      latencies.sort((a, b) => a - b);
-      const avgLatency = totalInferences > 0 ? Math.round(totalLatency / totalInferences) : 0;
-      const p99Index = Math.min(latencies.length - 1, Math.floor(latencies.length * 0.99));
-      const p99Latency = latencies.length > 0 ? latencies[p99Index] : 0;
-      const reliability = totalInferences > 0 ? Number(((okCount / totalInferences) * 100).toFixed(1)) : 100;
+      // Totals over all of this user's traces when migration 0010 is applied, else over the 100 rows listed
+      const totals = sqlTotals ?? totalsFromRows(traces);
 
       return res.status(200).json({
-        totalInferences,
-        totalTokens,
-        avgLatency,
-        p99Latency,
-        reliability,
-        activeModelsCount: modelSet.size,
-        activeModels: Array.from(modelSet),
+        ...totals,
+        activeModelsCount: totals.activeModels.length,
         traces,
       });
     } catch (err: any) {

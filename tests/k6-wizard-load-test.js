@@ -27,7 +27,7 @@ export default function () {
   const healthRes = http.get(`${BASE_URL}/api/health`);
   check(healthRes, {
     'Health check returns 200': (r) => r.status === 200,
-    'Database is connected': (r) => r.json().services.database === 'connected',
+    'Database is connected': (r) => r.json().database?.status === 'connected',
   });
 
   sleep(1);
@@ -60,9 +60,10 @@ export default function () {
       { questionId: questions[1]?.id || 'q2', value: 'Zero-knowledge biometric proofs' },
     ];
 
+    // Field names as api/ai/synthesize.ts reads them (idea.rawText) and returns them (promptText)
     const synthesizePayload = JSON.stringify({
       idea: {
-        ideaText: 'A decentralized marketplace for AI prompts with biometric escrow security',
+        rawText: 'A decentralized marketplace for AI prompts with biometric escrow security',
         targetType: 'coding_agent',
       },
       answers,
@@ -72,15 +73,21 @@ export default function () {
     const synthRes = http.post(`${BASE_URL}/api/ai/synthesize`, synthesizePayload, { headers });
     check(synthRes, {
       'Synthesize returns 200': (r) => r.status === 200,
-      'Content is non-empty': (r) => r.json().content && r.json().content.length > 100,
+      'Content is non-empty': (r) => Boolean(r.json().promptText) && r.json().promptText.length > 100,
     });
 
     sleep(2);
 
-    // Step 4: Refine Prompt
+    // Step 4: Refine Prompt (api/ai/refine.ts reads currentPrompt + instruction)
+    let basePrompt = 'Base prompt';
+    try {
+      basePrompt = synthRes.json().promptText.slice(0, 1000) || basePrompt;
+    } catch (e) {
+      // keep the placeholder when synthesis failed
+    }
     const refinePayload = JSON.stringify({
-      currentPrompt: synthRes.json()?.content?.slice(0, 1000) || 'Base prompt',
-      followUp: 'Add strict multi-sig escrow requirements and rate limiting.',
+      currentPrompt: basePrompt,
+      instruction: 'Add strict multi-sig escrow requirements and rate limiting.',
     });
 
     const refineRes = http.post(`${BASE_URL}/api/ai/refine`, refinePayload, { headers });

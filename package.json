@@ -166,6 +166,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.15",
     "@playwright/test": "^1.62.1",
     "@remotion/cli": "^4.0.534",
     "@remotion/google-fonts": "^4.0.534",
@@ -194,7 +195,6 @@
     "zod": "$zod",
     "@vercel/node": {
       "undici": "6.29.1",
-      "path-to-regexp": "6.3.0",
       "path-to-regexp": "6.3.0"
     },
     "@vercel/static-config": {

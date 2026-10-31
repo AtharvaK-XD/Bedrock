@@ -94,12 +94,25 @@ describe('GET /api/cron/purge-logs (via /api/traces?action=purge-logs)', () => {
     });
   });
 
-  it('stops after 20 rounds even if rows remain', async () => {
+  it('keeps going well past 20 rounds on a big backlog, up to the 500-round safety stop', async () => {
     h.state.responder = () => batch(5000, 0, 0, 0);
     const res = mockRes();
     await tracesHandler(mockReq('GET', `Bearer ${SECRET}`), res);
-    expect(h.state.calls).toHaveLength(20);
-    expect(res.body).toMatchObject({ rounds: 20, finished: false });
+    expect(h.state.calls).toHaveLength(500);
+    expect(res.body).toMatchObject({ rounds: 500, finished: false, deleted: { quota_events: 2_500_000 } });
+  });
+
+  it('stops when the 45 s time budget is used up, inside the 60 s function limit', async () => {
+    let now = 1_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    h.state.responder = () => {
+      now += 10_000; // each round takes 10 s
+      return batch(5000, 0, 0, 0);
+    };
+    const res = mockRes();
+    await tracesHandler(mockReq('GET', `Bearer ${SECRET}`), res);
+    expect(h.state.calls).toHaveLength(5); // started at 0, 10, 20, 30, 40 s; not at 50 s
+    expect(res.body).toMatchObject({ rounds: 5, finished: false });
   });
 
   it('answers 503 (not 500) when migration 0004 is not applied yet, without leaking database text', async () => {
