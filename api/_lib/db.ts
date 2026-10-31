@@ -45,6 +45,12 @@ export interface UserRow {
   updated_at: Date;
 }
 
+/** Column limits of "SecurityLog" (migration 0005 `SecurityLog_size_chk`): longer values would make the insert fail. */
+export const SECURITY_LOG_LIMITS = { message: 2000, ipAddress: 64, eventType: 100, endpoint: 200 } as const;
+
+const cut = (value: string | null | undefined, max: number): string | null =>
+  typeof value === 'string' && value ? value.slice(0, max) : null;
+
 export async function logSecurityEvent(params: {
   userId?: string | null;
   eventType: string;
@@ -56,9 +62,11 @@ export async function logSecurityEvent(params: {
   try {
     const sql = getDb();
     const id = `sec_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const eventType = cut(params.eventType, SECURITY_LOG_LIMITS.eventType) || 'UNKNOWN';
+    const message = cut(String(params.message ?? ''), SECURITY_LOG_LIMITS.message) || '';
     await sql`
       INSERT INTO "SecurityLog" (id, user_id, event_type, severity, ip_address, endpoint, message, created_at)
-      VALUES (${id}, ${params.userId || null}, ${params.eventType}, ${params.severity || 'INFO'}, ${params.ipAddress || null}, ${params.endpoint || null}, ${params.message}, NOW())
+      VALUES (${id}, ${params.userId || null}, ${eventType}, ${params.severity || 'INFO'}, ${cut(params.ipAddress, SECURITY_LOG_LIMITS.ipAddress)}, ${cut(params.endpoint, SECURITY_LOG_LIMITS.endpoint)}, ${message}, NOW())
     `;
   } catch (err) {
     console.error('[SecurityLog] Failed to record security event:', err);

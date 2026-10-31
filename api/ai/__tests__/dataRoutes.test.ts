@@ -208,15 +208,71 @@ describe('POST /api/workflows', () => {
 });
 
 describe('/api/traces', () => {
-  it("reports server-recorded 'success' / 'error' traces as OK / ERR so the dashboard counts them correctly", async () => {
-    h.state.responder = () => [
-      { id: '1', created_at: '2026-10-30T10:00:00Z', status: 'success', tokens_used: 10, latency_ms: 100, model_target: 'm' },
-      { id: '2', created_at: '2026-10-30T10:01:00Z', status: 'error', tokens_used: 0, latency_ms: 50, model_target: 'm' },
-    ];
+  const traceRows = () => [
+    { id: '1', created_at: '2026-10-30T10:00:00Z', status: 'success', tokens_used: 10, latency_ms: 100, model_target: 'm' },
+    { id: '2', created_at: '2026-10-30T10:01:00Z', status: 'error', tokens_used: 0, latency_ms: 50, model_target: 'm' },
+  ];
+  const totalsCalls = () => h.state.calls.filter((c) => c.text.includes('trace_totals('));
+
+  // Order matters below: a "function missing" answer pauses trace_totals() for 5 minutes (module state).
+  it('takes the totals over ALL traces from trace_totals() (migration 0010), while the list stays the last 100', async () => {
+    h.state.responder = (text) =>
+      text.includes('trace_totals(')
+        ? [{ total_inferences: 250, total_tokens: '123456789012', avg_latency: 321, p99_latency: 999, reliability: '97.5', active_models: ['a', 'b', 'c'] }]
+        : traceRows();
     const res = mockRes();
     await traces(mockReq('GET'), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toMatchObject({
+      totalInferences: 250,
+      totalTokens: 123456789012,
+      avgLatency: 321,
+      p99Latency: 999,
+      reliability: 97.5,
+      activeModels: ['a', 'b', 'c'],
+      activeModelsCount: 3,
+    });
+    expect(res.body.traces).toHaveLength(2);
+    expect(totalsCalls()[0].values).toEqual(['user_A']);
+    expect(h.state.calls.find((c) => c.text.includes('FROM "Trace"'))!.text).toContain('LIMIT 100');
+  });
+
+  it('falls back to the 100-row totals when trace_totals() fails for another reason, and tries it again next time', async () => {
+    h.state.responder = (text) => {
+      if (text.includes('trace_totals(')) throw Object.assign(new Error('statement timeout'), { code: '57014' });
+      return traceRows();
+    };
+    const res = mockRes();
+    await traces(mockReq('GET'), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toMatchObject({ totalInferences: 2, totalTokens: 10, reliability: 50, activeModelsCount: 1 });
+
+    await traces(mockReq('GET'), mockRes());
+    expect(totalsCalls()).toHaveLength(2);
+  });
+
+  it("reports server-recorded 'success' / 'error' traces as OK / ERR, and uses the 100-row totals until migration 0010 exists", async () => {
+    let now = 5_000_000_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    h.state.responder = (text) => {
+      if (text.includes('trace_totals(')) throw Object.assign(new Error('function trace_totals(text) does not exist'), { code: '42883' });
+      return traceRows();
+    };
+    const res = mockRes();
+    await traces(mockReq('GET'), res);
+    expect(res.statusCode).toBe(200);
     expect(res.body.traces.map((t: any) => t.status)).toEqual(['OK', 'ERR']);
     expect(res.body.reliability).toBe(50);
+    expect(res.body.totalInferences).toBe(2);
+
+    // Not asked again on every request ...
+    await traces(mockReq('GET'), mockRes());
+    expect(totalsCalls()).toHaveLength(1);
+    // ... but checked again after 5 minutes
+    now += 5 * 60 * 1000 + 1;
+    await traces(mockReq('GET'), mockRes());
+    expect(totalsCalls()).toHaveLength(2);
   });
 
   it('keeps client-reported numbers within bounds', async () => {
