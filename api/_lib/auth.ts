@@ -344,11 +344,13 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
         // otherwise anyone who registers an unverified copy of an address could take over that account.
         const emailVerified = claims.email_verified === true || claims.email_verified === 'true';
         const linkEmail = emailVerified && !email.endsWith('@clerk.user') ? email : null;
-        // Exact id match always wins over an email match
+        // Exact id match always wins over an email match. Only the columns used below: never password_hash.
+        // Email compare ignores case (same rule as the "User_email_lower_key" index, migration 0007).
         const existing = await sql`
-          SELECT * FROM "User" WHERE id = ${userId} OR (${linkEmail}::text IS NOT NULL AND email = ${linkEmail})
+          SELECT id, email, name, role, subscription_tier, plan FROM "User"
+          WHERE id = ${userId} OR (${linkEmail}::text IS NOT NULL AND lower(email) = lower(${linkEmail}))
           ORDER BY (id = ${userId}) DESC LIMIT 1
-        ` as UserRow[];
+        ` as Array<Pick<UserRow, 'id' | 'email' | 'name' | 'role' | 'subscription_tier' | 'plan'>>;
 
         if (existing.length > 0 && existing[0]) {
           const user = existing[0];
@@ -369,17 +371,25 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
 
         // Auto-provision user in Neon DB on first authenticated call
         const now = new Date();
-        await sql`
+        const insertUser = (rowEmail: string, rowEmailVerified: boolean) => sql`
           INSERT INTO "User" (
             id, email, password_hash, name, username, plan, role,
             email_verified, mfa_enabled, subscription_tier, created_at, updated_at
           ) VALUES (
-            ${userId}, ${email}, ${'clerk_oauth_external'}, ${name}, ${null},
-            ${'Free Plan'}, ${'Lead Prompt Architect'}, ${true}, ${false},
+            ${userId}, ${rowEmail}, ${'clerk_oauth_external'}, ${name}, ${null},
+            ${'Free Plan'}, ${'Lead Prompt Architect'}, ${rowEmailVerified}, ${false},
             ${'free'}, ${now}, ${now}
           )
           ON CONFLICT (id) DO UPDATE SET updated_at = NOW()
         `;
+        try {
+          await insertUser(email, emailVerified);
+        } catch (insertErr: any) {
+          // The email already belongs to another account and was not linked (not verified): keep this
+          // account separate under a placeholder address instead of leaving it without a database row.
+          if (insertErr?.code !== '23505') throw insertErr;
+          await insertUser(`${userId}@clerk.user`, false);
+        }
 
         return {
           id: userId,

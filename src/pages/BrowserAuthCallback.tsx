@@ -14,9 +14,12 @@ export default function BrowserAuthCallback() {
   const [pending] = useState(loadPendingDesktopAuth);
 
   const nonce = searchParams.get('nonce') || pending?.nonce || '';
-  const rawPort = searchParams.get('port') || pending?.port || '';
-  const port = rawPort && rawPort !== '0' ? rawPort : (typeof window !== 'undefined' ? window.location.port : '') || '0';
   const strategy = searchParams.get('strategy') || pending?.strategy || 'oauth_google';
+  // This page is served by the desktop app's own loopback server: answer that server only, never a
+  // port named in the URL (a crafted link could otherwise hand the token to another local program)
+  const isLoopbackPage =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost');
 
   const [handshakeComplete, setHandshakeComplete] = useState(false);
   const [countdown, setCountdown] = useState(5);
@@ -75,32 +78,38 @@ export default function BrowserAuthCallback() {
 
       deepLinkPayload.current = payload;
 
-      // 1. Post to local loopback server on 127.0.0.1
-      if (port && port !== '0') {
+      // 1. Post to the desktop app's loopback server (this page's own origin)
+      let delivered = false;
+      if (isLoopbackPage) {
         try {
-          await fetch(`http://127.0.0.1:${port}/api/desktop-auth-complete`, {
+          const res = await fetch(`${window.location.origin}/api/desktop-auth-complete`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(payload),
           });
+          delivered = res.ok;
         } catch (fetchErr) {
           console.warn('[BrowserAuth] Direct HTTP callback to 127.0.0.1 failed, falling back to protocol:', fetchErr);
         }
       }
 
-      // 2. Trigger bedrock:// protocol URL
-      try {
-        const protocolUrl = `bedrock://auth-complete?data=${encodeURIComponent(JSON.stringify(payload))}`;
-        const link = document.createElement('a');
-        link.href = protocolUrl;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        setTimeout(() => link.remove(), 1000);
-      } catch (protocolErr) {
-        console.warn('[BrowserAuth] Protocol deep link trigger error:', protocolErr);
+      // 2. Fallback only: a bedrock:// link puts the payload (with the token) on the app's command line
+      if (delivered) {
+        deepLinkPayload.current = null; // "Return to Bedrock Desktop" then only brings the app forward
+      } else {
+        try {
+          const protocolUrl = `bedrock://auth-complete?data=${encodeURIComponent(JSON.stringify(payload))}`;
+          const link = document.createElement('a');
+          link.href = protocolUrl;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => link.remove(), 1000);
+        } catch (protocolErr) {
+          console.warn('[BrowserAuth] Protocol deep link trigger error:', protocolErr);
+        }
       }
 
       clearPendingDesktopAuth();
@@ -116,7 +125,7 @@ export default function BrowserAuthCallback() {
         notifyDesktop(clerkUser);
       }
     }
-  }, [isLoaded, isSignedIn, user, clerk, nonce, port, strategy]);
+  }, [isLoaded, isSignedIn, user, clerk, nonce, strategy, isLoopbackPage]);
 
   useEffect(() => {
     if (!handshakeComplete) return;

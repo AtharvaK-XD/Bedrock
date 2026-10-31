@@ -6,17 +6,57 @@ on:
   pull_request:
     branches: [ main ]
 
+# Read-only token: this workflow never writes to the repository
+permissions:
+  contents: read
+
 jobs:
   security-audit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0 # full history for the git secret scan
+
+      - name: Block secret and database files
+        # A tracked database or key file leaks real data (server/prisma/dev.db did: OPEN-0022)
+        run: |
+          blocked=$(git ls-files | grep -E '(^|/)\.env($|\.)|\.(db|db-journal|sqlite|sqlite3|pem|key|p12|pfx|jks|keystore)$' | grep -vE '(^|/)\.env\.example$' || true)
+          if [ -n "$blocked" ]; then
+            echo "::error::These files must never be committed (secrets or real user data):"
+            echo "$blocked"
+            exit 1
+          fi
+
+      - name: Install gitleaks 8.18.4 (checksum pinned)
+        run: |
+          curl -sSfL -o /tmp/gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz
+          echo "ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+
+      - name: Secret scan of the new commits (blocks)
+        # False positives: add the finding's fingerprint to .gitleaksignore
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            RANGE="-1 $HEAD_SHA"
+          else
+            RANGE="$BASE_SHA..$HEAD_SHA"
+          fi
+          /tmp/gitleaks detect --source . --log-opts="$RANGE" --redact --no-banner --exit-code 1
+
+      - name: Secret scan of the full history (report only)
+        # Make this step blocking (remove continue-on-error) once the dev.db history purge (OPEN-0022) is done
+        continue-on-error: true
+        run: /tmp/gitleaks detect --source . --redact --no-banner --exit-code 1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version: 22 # Node 20 is past end of life (April 2026)
 
       - name: Install Dependencies
         run: npm ci || npm install
@@ -30,6 +70,9 @@ jobs:
 
       - name: Validate TypeScript Compilation
         run: npm run build
+
+      - name: Run Security Tests
+        run: npx vitest run tests/security src/lib/__tests__/desktopAuthHandoff.test.ts
 
       - name: Run Server Typechecks
         working-directory: ./server
