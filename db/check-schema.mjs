@@ -111,14 +111,32 @@ const trg = await sql`SELECT tgrelid::regclass::text AS tbl, tgname FROM pg_trig
 for (const t of trg) console.log(`      trigger ${t.tgname} on ${t.tbl}`);
 const fns = await sql`
   SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args, pg_get_userbyid(p.proowner) AS owner,
-         coalesce(array_to_string(p.proacl, ', '), '(default: PUBLIC may execute)') AS acl
+         coalesce(array_to_string(p.proacl, ', '), '(default: PUBLIC may execute)') AS acl,
+         coalesce(array_to_string(p.proconfig, ' '), '-') AS cfg
   FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace ORDER BY 1
 `;
-for (const f of fns) console.log(`      ${f.proname}(${f.args}) owner=${f.owner} grants=${f.acl}`);
+for (const f of fns) console.log(`      ${f.proname}(${f.args}) owner=${f.owner} grants=${f.acl} settings=${f.cfg}`);
+const guards = trg.filter((t) => /_(guard_update|no_truncate)$/.test(t.tgname)).length;
+console.log(`INFO  row guards / TRUNCATE blocks (0011): ${guards} of 12 present`);
 
 console.log('\n== Roles and table grants');
 const [{ me }] = await sql`SELECT current_user AS me`;
 console.log(`      connected as role: ${me}`);
+console.log(`INFO  PUBLIC may create objects in schema public: ${(await sql`SELECT has_schema_privilege('public', 'public', 'CREATE') AS c`)[0].c ? 'YES (run db/roles.sql)' : 'no'}`);
+const [app] = await sql`
+  SELECT rolname, rolsuper, rolcreaterole, rolcreatedb, rolbypassrls, coalesce(array_to_string(rolconfig, ' '), '-') AS cfg
+  FROM pg_roles WHERE rolname = 'bedrock_app'
+`;
+if (!app) console.log('INFO  role bedrock_app: does not exist yet (db/ROLES.md)');
+else {
+  // pg_has_role() errors for a missing role, so this runs only once the role exists
+  [{ inherits: app.inherits }] = await sql`
+    SELECT string_agg(g.rolname, ',') AS inherits FROM pg_roles g WHERE g.rolname <> 'bedrock_app' AND pg_has_role('bedrock_app', g.oid, 'USAGE')
+  `;
+  const tooPowerful = app.rolsuper || app.rolcreaterole || app.rolcreatedb || app.rolbypassrls || app.inherits;
+  if (tooPowerful) diff(`role bedrock_app is too powerful: super=${app.rolsuper} createrole=${app.rolcreaterole} createdb=${app.rolcreatedb} bypassrls=${app.rolbypassrls} inherits=${app.inherits || '-'}`);
+  console.log(`INFO  role bedrock_app: exists; settings=${app.cfg}; inherits=${app.inherits || 'nothing'}`);
+}
 const grants = await sql`
   SELECT grantee, table_name, string_agg(privilege_type, ',' ORDER BY privilege_type) AS privs
   FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name <> 'PaymentRecord'
@@ -142,6 +160,11 @@ const [facts] = await sql`
     (SELECT count(*)::int FROM "SecurityLog") AS security_logs,
     (SELECT count(*)::int FROM "SecurityLog" WHERE char_length(message) > 2000 OR char_length(coalesce(ip_address,'')) > 64
        OR char_length(event_type) > 100 OR char_length(coalesce(endpoint,'')) > 200) AS security_logs_over_limit,
+    (SELECT count(*)::int FROM "User" WHERE char_length(name) > 1000 OR char_length(email) > 320
+       OR char_length(coalesce(username, '')) > 100 OR char_length(coalesce(bio, '')) > 5000
+       OR char_length(coalesce(location, '')) > 500 OR char_length(coalesce(organization, '')) > 500
+       OR char_length(coalesce(github, '')) > 2000 OR char_length(coalesce(huggingface, '')) > 2000
+       OR char_length(coalesce(website, '')) > 2000) AS users_over_0013_limits,
     (SELECT count(*)::int FROM "Trace") AS traces,
     (SELECT string_agg(DISTINCT status, ',') FROM "Trace") AS trace_statuses
 `;

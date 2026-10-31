@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 // DEV-ONLY load test of purge_old_logs(): fills "SecurityLog" with old fake rows, then purges them in batches and
 // times every round, while a probe keeps writing normal log rows to prove the cleanup does not block the table.
-//   node db/flood-test.mjs --yes [--rows 1000000] [--insert-only | --purge-only]
+//   node db/flood-test.mjs --yes --host <host> [--rows 1000000] [--insert-only | --purge-only]
 // --insert-only lets you run `node db/explain.mjs` on the big table before purging.
 // WARNING: 1,000,000 rows use roughly 150-250 MB on the dev branch until purged. The purge also deletes any other
 // SecurityLog row older than 90 days on that branch (that is its job). Reads only DATABASE_URL_DEV.
 import { neon } from '@neondatabase/serverless';
+import { targetUrl, confirmWrite } from './target.mjs';
 
 const args = process.argv.slice(2);
-const url = (process.env.DATABASE_URL_DEV || '').trim().replace(/^"|"$/g, '');
-if (!url) { console.error('DATABASE_URL_DEV is not set. Nothing was done.'); process.exit(1); }
-console.log(`Target database host: ${new URL(url).host}`);
-if (!args.includes('--yes')) { console.error('Add --yes to write test rows to the host above.'); process.exit(1); }
+const url = targetUrl();
+confirmWrite(url, args, 'write test rows');
 const rowsIdx = args.indexOf('--rows');
 const ROWS = rowsIdx >= 0 ? Number(args[rowsIdx + 1]) : 1_000_000;
 if (!Number.isInteger(ROWS) || ROWS < 1 || ROWS > 2_000_000) { console.error('--rows must be 1..2000000'); process.exit(1); }
