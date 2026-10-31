@@ -17,6 +17,8 @@ const h = vi.hoisted(() => {
     userData: '',
     readyResolve: null as null | (() => void),
     headersHandler: null as null | ((details: any, cb: (r: any) => void) => void),
+    permissionRequest: null as null | ((wc: any, permission: string, cb: (ok: boolean) => void, details: any) => void),
+    permissionCheck: null as null | ((wc: any, permission: string, origin: string) => boolean),
   };
   const shell = { openExternal: vi.fn() };
   const dialog = {
@@ -73,7 +75,13 @@ vi.mock('electron', () => {
     shell,
     dialog,
     safeStorage,
-    session: { defaultSession: { webRequest: { onHeadersReceived: (fn: any) => { state.headersHandler = fn; } } } },
+    session: {
+      defaultSession: {
+        webRequest: { onHeadersReceived: (fn: any) => { state.headersHandler = fn; } },
+        setPermissionRequestHandler: (fn: any) => { state.permissionRequest = fn; },
+        setPermissionCheckHandler: (fn: any) => { state.permissionCheck = fn; },
+      },
+    },
     ipcMain: { handle: (channel: string, fn: any) => state.handlers.set(channel, fn) },
     nativeImage: { createFromPath: () => ({ isEmpty: () => true }) },
   };
@@ -124,6 +132,52 @@ describe('shell.openExternal scheme allow-list', () => {
     willNavigate({ preventDefault() {} }, 'https://docs.example.com/page');
     state.windowOpenHandler!({ url: 'http://example.com/' });
     expect(shell.openExternal).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('in-app navigation', () => {
+  const navigate = (event: string, url: string, ...rest: unknown[]) => {
+    let prevented = false;
+    state.webContentsEvents.get(event)!({ preventDefault() { prevented = true; } }, url, ...rest);
+    return prevented;
+  };
+
+  it('keeps only the app\'s own pages in the app window', () => {
+    expect(navigate('will-navigate', `${base}/#/app`)).toBe(false);
+    // Another program's local server or a file on disk would get the API key bridge: never in-app
+    expect(navigate('will-navigate', 'http://127.0.0.1:8080/')).toBe(true);
+    expect(navigate('will-navigate', 'http://localhost:1/')).toBe(true);
+    expect(navigate('will-navigate', 'file:///C:/Windows/System32/drivers/etc/hosts')).toBe(true);
+    // Web pages still open in the system browser; files are dropped
+    expect(shell.openExternal).toHaveBeenCalledTimes(2);
+  });
+
+  it('blocks server redirects of the main page away from the app', () => {
+    expect(navigate('will-redirect', 'https://evil.example/', false, true)).toBe(true);
+    expect(navigate('will-redirect', `${base}/index.html`, false, true)).toBe(false);
+    expect(navigate('will-redirect', 'https://accounts.google.com/x', false, false)).toBe(false); // sub-frames untouched
+  });
+});
+
+describe('browser permissions', () => {
+  const request = (permission: string, requestingUrl: string) => {
+    let granted: boolean | undefined;
+    state.permissionRequest!({}, permission, (ok) => { granted = ok; }, { requestingUrl });
+    return granted;
+  };
+
+  it('refuses camera, microphone, location, notifications and devices', () => {
+    for (const p of ['media', 'geolocation', 'notifications', 'midiSysex', 'hid', 'serial', 'usb', 'clipboard-read', 'openExternal']) {
+      expect(request(p, `${base}/`)).toBe(false);
+      expect(state.permissionCheck!({}, p, base)).toBe(false);
+    }
+  });
+
+  it('allows clipboard writes for the app pages only', () => {
+    expect(request('clipboard-sanitized-write', `${base}/#/app`)).toBe(true);
+    expect(state.permissionCheck!({}, 'clipboard-sanitized-write', base)).toBe(true);
+    expect(request('clipboard-sanitized-write', 'https://accounts.google.com/')).toBe(false);
+    expect(state.permissionCheck!({}, 'clipboard-sanitized-write', 'http://127.0.0.1:8080')).toBe(false);
   });
 });
 
@@ -224,6 +278,17 @@ describe('desktop sign-in endpoints', () => {
     expect(first.authenticated).toBe(true);
     const second = await (await fetch(`${base}/api/desktop-auth-status?nonce=goodNonce12345`)).json();
     expect(second.authenticated).toBe(false); // readable only once
+  });
+
+  it('passes a desktop sign-in ticket through (string, bounded) and drops non-strings', async () => {
+    await invoke('auth:start-external', { strategy: 'oauth_google', mode: 'login', nonce: 'ticketNonce123' });
+    expect((await post({ nonce: 'ticketNonce123', ticket: 'tkt_abc', token: 42 })).status).toBe(200);
+    expect(state.sent[0][1]).toMatchObject({ nonce: 'ticketNonce123', ticket: 'tkt_abc' });
+    expect(state.sent[0][1]).not.toHaveProperty('token');
+
+    await invoke('auth:start-external', { strategy: 'oauth_google', mode: 'login', nonce: 'ticketNonce456' });
+    expect((await post({ nonce: 'ticketNonce456', ticket: 'x'.repeat(9000) })).status).toBe(200);
+    expect(state.sent[1][1]).not.toHaveProperty('ticket');
   });
 
   it('rejects malformed nonces at start and oversized bodies', async () => {

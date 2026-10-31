@@ -156,6 +156,33 @@ function loopbackCorsHeaders(req) {
 	return isOwnLoopbackOrigin(origin) ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : {};
 }
 
+/**
+ * Pages the app window may show (they get the preload bridges, including the API key store):
+ * our own loopback server, the dev server, or the bundled renderer files. Not other local ports
+ * (another program's server) and not other files on disk.
+ */
+function isAppPageUrl(rawUrl) {
+	try {
+		const parsed = new URL(rawUrl);
+		if (parsed.protocol === "file:") {
+			const root = path.resolve(RENDERER_DIST);
+			const filePath = path.resolve(fileURLToPath(parsed));
+			return filePath === root || filePath.startsWith(root + path.sep);
+		}
+		if (isOwnLoopbackOrigin(parsed.origin)) return true;
+		return Boolean(VITE_DEV_SERVER_URL) && parsed.origin === new URL(VITE_DEV_SERVER_URL).origin;
+	} catch {
+		return false;
+	}
+}
+
+// Browser permissions: the app only writes to the clipboard (Copy buttons). Camera, microphone,
+// location, notifications, USB/serial/HID and the rest are refused, for sign-in popups too.
+const ALLOWED_PAGE_PERMISSIONS = new Set(["clipboard-sanitized-write"]);
+function isAllowedPermission(permission, requestingUrl) {
+	return ALLOWED_PAGE_PERMISSIONS.has(permission) && isAppPageUrl(requestingUrl);
+}
+
 // Folders the user approved for 1-click export (via the native folder picker or a native
 // confirmation dialog). Persisted in the main process, out of reach of page scripts.
 const MAX_EXPORT_CONTENT_CHARS = 2 * 1024 * 1024;
@@ -487,17 +514,18 @@ function createWindow() {
 				handleProtocolUrl(navigationUrl);
 				return;
 			}
-			const parsedUrl = new URL(navigationUrl);
-			const isAllowedHost =
-				parsedUrl.hostname === "localhost" ||
-				parsedUrl.hostname === "127.0.0.1" ||
-				parsedUrl.protocol === "file:";
-
-			if (!isAllowedHost) {
+			if (!isAppPageUrl(navigationUrl)) {
 				event.preventDefault();
-				openExternalSafe(navigationUrl);
+				openExternalSafe(navigationUrl); // http/https only; local files and other schemes are dropped
 			}
 		} catch {
+			event.preventDefault();
+		}
+	});
+
+	// Same rule for server-side redirects of the main page
+	win.webContents.on("will-redirect", (event, redirectUrl, _isInPlace, isMainFrame) => {
+		if (isMainFrame !== false && !isAppPageUrl(redirectUrl)) {
 			event.preventDefault();
 		}
 	});
@@ -1006,6 +1034,13 @@ if (!hasSingleInstanceLock) {
 				}
 			});
 		});
+
+		session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+			callback(isAllowedPermission(permission, details?.requestingUrl || webContents?.getURL?.() || ""));
+		});
+		session.defaultSession.setPermissionCheckHandler((_webContents, permission, requestingOrigin) =>
+			isAllowedPermission(permission, requestingOrigin || "")
+		);
 
 		// Check for protocol launch URL on Windows initial startup
 		if (process.platform === "win32" && Array.isArray(process.argv)) {
