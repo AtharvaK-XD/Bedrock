@@ -1,7 +1,7 @@
-// Database tests for migrations 0001-0010 (db/migrations).
+// Database tests for migrations 0001-0013 (db/migrations).
 // Runs ONLY when DATABASE_URL_DEV points at a Neon DEV branch that already has the migrations applied
-// (node db/migrate.mjs up --yes). Without it every test here is skipped. It never reads DATABASE_URL.
-// Before/after proof: `up --yes --to 0004` -> the 0005-0010 tests fail; `up --yes` -> they pass.
+// (node db/migrate.mjs up --yes --host <host>). Without it every test here is skipped. It never reads DATABASE_URL.
+// Before/after proof: `up ... --to 0004` -> the 0005-0013 tests fail; `up` (all) -> they pass.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { neon } from '@neondatabase/serverless';
 
@@ -340,5 +340,69 @@ run('database migrations (dev branch only)', () => {
       expect(Number(t.reliability)).toBe(100);
       expect(t.active_models).toEqual([]);
     });
+  });
+
+  describe('row guards (0011)', () => {
+    it('a prompt or workflow can never be moved to another owner; the owner can still edit it', async () => {
+      const p = `${tag}_guard_p`;
+      const w = `${tag}_guard_w`;
+      await sql`INSERT INTO "Prompt" (id, user_id, title, snippet, full_content, tags, target_type, created_at, updated_at) VALUES (${p}, ${userA}, 't', 's', 'c', '[]', 'G', NOW(), NOW())`;
+      await sql`INSERT INTO "BranchingTree" (id, user_id, title, nodes, edges, created_at, updated_at) VALUES (${w}, ${userA}, 't', '[]', '[]', NOW(), NOW())`;
+      await expect(sql`UPDATE "Prompt" SET user_id = ${userB} WHERE id = ${p}`).rejects.toThrow(/ROW_IMMUTABLE/);
+      await expect(sql`UPDATE "BranchingTree" SET user_id = ${userB} WHERE id = ${w}`).rejects.toThrow(/ROW_IMMUTABLE/);
+      const edited = await sql`UPDATE "Prompt" SET title = 'edited', updated_at = NOW() WHERE id = ${p} AND user_id = ${userA} RETURNING id`;
+      expect(edited).toHaveLength(1);
+    });
+
+    it('a user id cannot change (it would re-own every row through ON UPDATE CASCADE)', async () => {
+      await expect(sql`UPDATE "User" SET id = ${userA + '_x'} WHERE id = ${userA}`).rejects.toThrow(/ROW_IMMUTABLE/);
+    });
+
+    it('trace, quota and log rows cannot be edited', async () => {
+      await sql`INSERT INTO "Trace" (id, user_id, node_origin, model_target, tokens_used, latency_ms, status, created_at) VALUES (${tag + '_guard_t'}, ${userA}, 'n', 'm', 1, 1, 'OK', NOW())`;
+      await sql`INSERT INTO "SecurityLog" (id, user_id, event_type, message) VALUES (${tag + '_guard_s'}, ${userA}, 'DBTEST', 'm')`;
+      expect(await reserve(`${tag}_guard_q`, userA, `${tag}_ip`, 100, `${tag}_bguard`)).toBe(true);
+      await expect(sql`UPDATE "Trace" SET tokens_used = 999999 WHERE id = ${tag + '_guard_t'}`).rejects.toThrow(/ROW_IMMUTABLE/);
+      await expect(sql`UPDATE "QuotaEvent" SET created_at = created_at - interval '1 day' WHERE id = ${tag + '_guard_q'}`).rejects.toThrow(/ROW_IMMUTABLE/);
+      await expect(sql`UPDATE "SecurityLog" SET message = 'rewritten' WHERE id = ${tag + '_guard_s'}`).rejects.toThrow(/ROW_IMMUTABLE/);
+      await expect(sql`UPDATE "SecurityLog" SET user_id = ${userB} WHERE id = ${tag + '_guard_s'}`).rejects.toThrow(/ROW_IMMUTABLE/);
+    });
+
+    it('TRUNCATE is refused (tried inside a transaction that is always rolled back, so nothing is lost without 0011)', async () => {
+      for (const table of ['User', 'Prompt', 'BranchingTree', 'Trace', 'QuotaEvent', 'SecurityLog']) {
+        await expect(sql.transaction((tx) => [
+          tx.query(`TRUNCATE "${table}" CASCADE`),
+          tx.query('SELECT 1 / 0'),
+        ])).rejects.toThrow(/TRUNCATE_BLOCKED/);
+      }
+    });
+  });
+
+  describe('function hardening (0012)', () => {
+    it('functions pin search_path; reserve_quota and purge_old_logs give up on a stuck lock after 5 s', async () => {
+      const rows = (await sql`
+        SELECT proname, array_to_string(proconfig, ' ') AS cfg FROM pg_proc
+        WHERE proname IN ('reserve_quota', 'purge_old_logs', 'trace_totals', 'bedrock_enforce_row_cap')
+      `) as Array<{ proname: string; cfg: string | null }>;
+      expect(rows).toHaveLength(4);
+      for (const r of rows) expect(r.cfg).toMatch(/search_path=public, pg_temp/);
+      expect(rows.filter((r) => /lock_timeout=5s/.test(r.cfg || '')).map((r) => r.proname).sort()).toEqual(['purge_old_logs', 'reserve_quota']);
+    });
+  });
+
+  describe('"User" text limits (0013)', () => {
+    it('refuses an over-long bio or link, accepts a profile at the API maximum sizes', async () => {
+      await expect(sql`UPDATE "User" SET bio = ${'b'.repeat(5001)} WHERE id = ${userB}`).rejects.toThrow(/User_text_size_chk/);
+      await expect(sql`UPDATE "User" SET website = ${'w'.repeat(2001)} WHERE id = ${userB}`).rejects.toThrow(/User_text_size_chk/);
+      // api/_lib/dataHttp.ts DATA_LIMITS: name 100, bio 1,000, location / organization 100, links 300
+      await sql`
+        UPDATE "User" SET name = ${'n'.repeat(100)}, bio = ${'b'.repeat(1000)}, location = ${'l'.repeat(100)},
+          organization = ${'o'.repeat(100)}, github = ${'g'.repeat(300)}, huggingface = ${'h'.repeat(300)},
+          website = ${'w'.repeat(300)}, updated_at = NOW()
+        WHERE id = ${userB}
+      `;
+      const [c] = (await sql`SELECT convalidated FROM pg_constraint WHERE conname = 'User_text_size_chk'`) as any[];
+      expect(c.convalidated).toBe(true);
+    }, 15_000);
   });
 });
