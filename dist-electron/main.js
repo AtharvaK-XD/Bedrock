@@ -255,7 +255,8 @@ function handleProtocolUrl(rawUrl) {
 			}
 		}
 	} catch (e) {
-		console.warn("[Protocol] Error parsing deep link URL:", e);
+		// Error type only: a JSON parse message quotes part of the input, which can hold a token or ticket
+		console.warn("[Protocol] Could not read deep link payload:", e?.name || "Error");
 	}
 }
 

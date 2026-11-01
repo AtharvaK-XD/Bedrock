@@ -36,7 +36,7 @@ jobs:
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
 
       - name: Secret scan of the new commits (blocks)
-        # False positives: add the finding's fingerprint to .gitleaksignore
+        # Rules: .gitleaks.toml (all defaults + the .env.example placeholders). False positive: add its fingerprint to .gitleaksignore
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -48,9 +48,9 @@ jobs:
           fi
           /tmp/gitleaks detect --source . --log-opts="$RANGE" --redact --no-banner --exit-code 1
 
-      - name: Secret scan of the full history (report only)
-        # Make this step blocking (remove continue-on-error) once the dev.db history purge (OPEN-0022) is done
-        continue-on-error: true
+      - name: Secret scan of the full history (blocks)
+        # Blocking since the dev.db history purge (CHG-0025). A finding here means a secret is in some commit:
+        # rotate it first, then remove it from history (agent-sync/DEV-DB-PURGE-RUNBOOK.md shows how).
         run: /tmp/gitleaks detect --source . --redact --no-banner --exit-code 1
 
       - name: Setup Node.js

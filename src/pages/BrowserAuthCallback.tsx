@@ -100,13 +100,9 @@ export default function BrowserAuthCallback() {
         deepLinkPayload.current = null; // "Return to Bedrock Desktop" then only brings the app forward
       } else {
         try {
-          const protocolUrl = `bedrock://auth-complete?data=${encodeURIComponent(JSON.stringify(payload))}`;
-          const link = document.createElement('a');
-          link.href = protocolUrl;
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          setTimeout(() => link.remove(), 1000);
+          // Opened directly, not through a hidden <a>: a link element and its click would be seen by
+          // PostHog autocapture (it records the href) and Sentry Replay, and this URL carries the token
+          window.location.assign(`bedrock://auth-complete?data=${encodeURIComponent(JSON.stringify(payload))}`);
         } catch (protocolErr) {
           console.warn('[BrowserAuth] Protocol deep link trigger error:', protocolErr);
         }
