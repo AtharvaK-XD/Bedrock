@@ -7,7 +7,7 @@ import { BorderBeam } from 'border-beam';
 import PixelCard from '../components/ui/PixelCard';
 import { EncryptedText } from '../components/ui/encrypted-text';
 import { Button as StatefulButton } from '../components/ui/stateful-button';
-import { generateQuestions, synthesizePrompt, getActiveApiKeys } from '../lib/api';
+import { generateQuestions, synthesizePrompt, getActiveApiKeys, normalizeQuestions } from '../lib/api';
 import type { Question, Answer, IdeaPayload } from '../lib/api';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
 import { cn } from '../lib/utils';
@@ -171,7 +171,7 @@ export default function Wizard() {
       });
       setActivePromptId(createdItem.id);
       const q = await generateQuestions({ ideaText: idea, targetType });
-      setQuestions(q);
+      setQuestions(normalizeQuestions(q));
       setStep(2);
 
       // Record real execution trace in Neon DB
@@ -479,75 +479,95 @@ export default function Wizard() {
                     </div>
                     
                     <form onSubmit={handleSynthesize} className="space-y-12 relative z-10">
-                      {questions.map((q, idx) => (
-                        <div key={q.id} className="space-y-5">
-                          <Label className="text-lg font-medium text-white block flex items-start gap-4">
-                            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 font-mono flex items-center justify-center text-xs font-semibold text-gray-300">
-                              0{idx + 1}
-                            </span>
-                            <span className="pt-1">{q.questionText}</span>
-                          </Label>
-                          
-                          <div className="pl-12">
-                            {q.questionType === 'free_text' && (
-                              <Input 
-                                value={answers[q.id] as string || ''}
-                                maxLength={1000}
-                                onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                                placeholder="Your answer..."
-                                className="bg-[#111] border-white/10 text-white placeholder:text-gray-500 hover:border-white/20 focus-visible:bg-white/5 focus-visible:border-copper-500/50"
-                                required
-                              />
-                            )}
-                            {q.questionType === 'single_select' && (
-                              <div className="relative">
-                                <select 
-                                  className="flex h-12 w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-base text-white transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500/50 hover:border-white/20"
-                                  value={answers[q.id] as string || ''}
-                                  onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                      {questions.map((q, idx) => {
+                        const qId = q.id || `q${idx + 1}`;
+                        const qText = q.questionText || (q as any).question || (q as any).text || (q as any).title || `Clarifying Question ${idx + 1}`;
+                        const rawType = String(q.questionType || (q as any).type || (q as any).question_type || '').toLowerCase();
+                        const rawOptions = q.options || (q as any).choices || (q as any).values;
+                        const qOptions: string[] = Array.isArray(rawOptions) ? rawOptions.map(String) : [];
+                        const hasOptions = qOptions.length > 0;
+
+                        let qType: 'single_select' | 'multi_select' | 'free_text' = 'free_text';
+                        if (rawType.includes('multi') || rawType.includes('checkbox')) {
+                          qType = 'multi_select';
+                        } else if (rawType.includes('single') || rawType.includes('select') || rawType.includes('choice') || (hasOptions && rawType !== 'free_text')) {
+                          qType = 'single_select';
+                        } else if (rawType.includes('free') || rawType.includes('text')) {
+                          qType = 'free_text';
+                        } else if (hasOptions) {
+                          qType = 'single_select';
+                        }
+
+                        return (
+                          <div key={qId} className="space-y-5">
+                            <Label className="text-lg font-medium text-white block flex items-start gap-4">
+                              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 font-mono flex items-center justify-center text-xs font-semibold text-gray-300">
+                                0{idx + 1}
+                              </span>
+                              <span className="pt-1">{qText}</span>
+                            </Label>
+                            
+                            <div className="pl-12">
+                              {qType === 'free_text' && (
+                                <Input 
+                                  value={answers[qId] as string || ''}
+                                  maxLength={1000}
+                                  onChange={(e) => setAnswers(prev => ({ ...prev, [qId]: e.target.value }))}
+                                  placeholder="Your answer..."
+                                  className="bg-[#111] border-white/10 text-white placeholder:text-gray-500 hover:border-white/20 focus-visible:bg-white/5 focus-visible:border-copper-500/50"
                                   required
-                                >
-                                  <option value="" disabled className="bg-[#1a1a1a] text-white">Select an option</option>
-                                  {q.options?.map(opt => (
-                                    <option key={opt} value={opt} className="bg-[#1a1a1a] text-white">{opt}</option>
-                                  ))}
-                                </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 font-mono text-xs">
-                                  ▾
+                                />
+                              )}
+                              {qType === 'single_select' && (
+                                <div className="relative">
+                                  <select 
+                                    className="flex h-12 w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-base text-white transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500/50 hover:border-white/20"
+                                    value={answers[qId] as string || ''}
+                                    onChange={(e) => setAnswers(prev => ({ ...prev, [qId]: e.target.value }))}
+                                    required
+                                  >
+                                    <option value="" disabled className="bg-[#1a1a1a] text-white">Select an option</option>
+                                    {qOptions.map(opt => (
+                                      <option key={opt} value={opt} className="bg-[#1a1a1a] text-white">{opt}</option>
+                                    ))}
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 font-mono text-xs">
+                                    ▾
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                            {q.questionType === 'multi_select' && (
-                              <div className="flex flex-wrap gap-3">
-                                {q.options?.map(opt => {
-                                  const current = (answers[q.id] as string[]) || [];
-                                  const isSelected = current.includes(opt);
-                                  return (
-                                    <button
-                                      type="button"
-                                      key={opt}
-                                      onClick={() => {
-                                        const next = isSelected 
-                                          ? current.filter(c => c !== opt)
-                                          : [...current, opt];
-                                        setAnswers(prev => ({ ...prev, [q.id]: next }));
-                                      }}
-                                      className={cn(
-                                        "px-5 py-3 text-sm rounded-xl border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500 font-medium",
-                                        isSelected 
-                                          ? "bg-copper-500 border-copper-500 text-white shadow-md shadow-copper-500/20" 
-                                          : "bg-[#111] border-white/10 text-gray-300 hover:border-white/20 hover:bg-white/5 hover:text-white"
+                              )}
+                              {qType === 'multi_select' && (
+                                <div className="flex flex-wrap gap-3">
+                                  {qOptions.map(opt => {
+                                    const current = (answers[qId] as string[]) || [];
+                                    const isSelected = current.includes(opt);
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={opt}
+                                        onClick={() => {
+                                          const next = isSelected 
+                                            ? current.filter(c => c !== opt)
+                                            : [...current, opt];
+                                          setAnswers(prev => ({ ...prev, [qId]: next }));
+                                        }}
+                                        className={cn(
+                                          "px-5 py-3 text-sm rounded-xl border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500 font-medium",
+                                          isSelected 
+                                            ? "bg-copper-500 border-copper-500 text-white shadow-md shadow-copper-500/20" 
+                                            : "bg-[#111] border-white/10 text-gray-300 hover:border-white/20 hover:bg-white/5 hover:text-white"
                                       )}
-                                    >
-                                      {opt}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
+                                      >
+                                        {opt}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
 
                       <div className="pt-8 border-t border-white/5 flex justify-end pl-12">
                         <StatefulButton

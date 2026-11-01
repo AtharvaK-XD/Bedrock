@@ -6,6 +6,7 @@ import {
   validateSynthesisOutput,
   buildRepairMessage,
   sanitizePromptOutput,
+  normalizeQuestions,
 } from '../validation';
 
 describe('Prompt Validation & Anti-Hallucination Guardrails', () => {
@@ -396,6 +397,104 @@ blurry, low resolution, artificial plastic texture, waxy sheen, watermark, text,
       expect(callCount).toBe(2);
       expect(validation.isValid).toBe(true);
       expect(validation.data).toHaveLength(3);
+    });
+  });
+  describe('normalizeQuestions & LLM Schema Normalization', () => {
+    it('normalizes DeepSeek format with question, type, and options', () => {
+      const deepSeekRaw = [
+        {
+          id: 1,
+          question: 'What keyboard layout do you envision for this image?',
+          type: 'single_select',
+          options: ['Full-size 104-key', 'Tenkeyless (TKL)', 'Compact 60%'],
+        },
+        {
+          id: 2,
+          question: 'What aesthetic theme or color scheme should the keyboard have?',
+          type: 'single_select',
+          options: ['Cyberpunk neon', 'Retro beige', 'Minimalist matte black'],
+        },
+        {
+          id: 3,
+          question: 'What lighting conditions and angle should be featured?',
+          type: 'choice',
+          choices: ['Top-down flat lay', 'Isometric 3D with dramatic RGB glow'],
+        },
+        {
+          id: 4,
+          question: 'Any specific keycap details or novelty artisan keys?',
+          type: 'free_text',
+        },
+      ];
+
+      const normalized = normalizeQuestions(deepSeekRaw);
+      expect(normalized).toHaveLength(4);
+      expect(normalized[0]).toEqual({
+        id: '1',
+        questionText: 'What keyboard layout do you envision for this image?',
+        questionType: 'single_select',
+        options: ['Full-size 104-key', 'Tenkeyless (TKL)', 'Compact 60%'],
+      });
+      expect(normalized[2].questionType).toBe('single_select');
+      expect(normalized[2].options).toEqual(['Top-down flat lay', 'Isometric 3D with dramatic RGB glow']);
+      expect(normalized[3].questionType).toBe('free_text');
+      expect(normalized[3].options).toBeUndefined();
+    });
+
+    it('handles object wrappers like { questions: [...] } or { data: [...] }', () => {
+      const wrapped = {
+        questions: [
+          { text: 'Which keycap profile do you prefer (Cherry, OEM, SA)?', type: 'single_select', options: ['Cherry', 'OEM', 'SA'] },
+          { prompt: 'Describe the desk surface or background setting', question_type: 'text' },
+        ],
+      };
+
+      const normalized = normalizeQuestions(wrapped);
+      expect(normalized).toHaveLength(2);
+      expect(normalized[0].questionText).toBe('Which keycap profile do you prefer (Cherry, OEM, SA)?');
+      expect(normalized[0].questionType).toBe('single_select');
+      expect(normalized[1].questionText).toBe('Describe the desk surface or background setting');
+      expect(normalized[1].questionType).toBe('free_text');
+    });
+
+    it('handles plain string arrays and empty/null inputs gracefully', () => {
+      expect(normalizeQuestions(null)).toEqual([]);
+      expect(normalizeQuestions([])).toEqual([]);
+      const stringList = ['What layout do you prefer?', 'What color scheme?'];
+      const normalized = normalizeQuestions(stringList);
+      expect(normalized).toHaveLength(2);
+      expect(normalized[0].id).toBe('q1');
+      expect(normalized[0].questionText).toBe('What layout do you prefer?');
+      expect(normalized[0].questionType).toBe('free_text');
+    });
+
+    it('validates and normalizes questions in validateQuestionsOutput even if LLM uses question/type', () => {
+      const rawJson = JSON.stringify([
+        {
+          id: '1',
+          question: 'What keyboard layout do you envision for this image?',
+          type: 'single_select',
+          options: ['Full-size 104-key', 'Tenkeyless (TKL)', 'Compact 60%'],
+        },
+        {
+          id: '2',
+          question: 'What aesthetic theme or color scheme should the keyboard have?',
+          type: 'single_select',
+          options: ['Cyberpunk neon', 'Retro beige', 'Minimalist matte black'],
+        },
+        {
+          id: '3',
+          question: 'What lighting conditions and angle should be featured?',
+          type: 'single_select',
+          options: ['Top-down flat lay', 'Isometric 3D with dramatic RGB glow'],
+        },
+      ]);
+
+      const validation = validateQuestionsOutput(rawJson, 'image_generation', 'I want to create an image of a keyboard');
+      expect(validation.isValid).toBe(true);
+      expect(validation.data).toHaveLength(3);
+      expect(validation.data?.[0].questionText).toBe('What keyboard layout do you envision for this image?');
+      expect(validation.data?.[0].questionType).toBe('single_select');
     });
   });
 });

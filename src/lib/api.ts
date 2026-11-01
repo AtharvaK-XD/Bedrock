@@ -30,6 +30,7 @@ import {
   sanitizePromptOutput,
   detectForbiddenTerms,
   isIdeaRequestingCode,
+  normalizeQuestions,
   type ValidationResult,
   type ValidationIssue,
 } from './validation';
@@ -51,6 +52,7 @@ export type {
   CallLLMResult,
 } from './callLLM';
 export type { ValidationResult, ValidationIssue };
+export { normalizeQuestions };
 export {
   callLLM,
   callLLMWithMeta,
@@ -744,8 +746,9 @@ export const generateQuestions = async (payload: IdeaPayload): Promise<Question[
 
     if (response.ok) {
       const data = await response.json();
-      if (Array.isArray(data) && data.length > 0) {
-        return data as Question[];
+      const normalized = normalizeQuestions(data);
+      if (normalized.length > 0) {
+        return normalized;
       }
     } else {
       serverBusySeconds = await readServerBusySeconds(response);
@@ -788,7 +791,7 @@ Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored 
 
       const qVal = validateQuestionsOutput(raw, payload.targetType, payload.ideaText);
       if (qVal.isValid && qVal.data && qVal.data.length > 0) {
-        return qVal.data;
+        return normalizeQuestions(qVal.data);
       }
 
       const cleaned = raw
@@ -798,18 +801,9 @@ Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored 
         .trim();
 
       const parsed = JSON.parse(cleaned);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const validatedQuestions: Question[] = parsed.map((item, index) => ({
-          id: String(item.id || `q${index + 1}`),
-          questionText: String(item.questionText || `Clarifying Question ${index + 1}`),
-          questionType: ['single_select', 'multi_select', 'free_text'].includes(item.questionType)
-            ? item.questionType
-            : (Array.isArray(item.options) && item.options.length > 0 ? 'single_select' : 'free_text'),
-          options: Array.isArray(item.options) && item.options.length > 0
-            ? item.options.map((opt: any) => String(opt))
-            : undefined,
-        }));
-        return validatedQuestions;
+      const normalized = normalizeQuestions(parsed);
+      if (normalized.length > 0) {
+        return normalized;
       }
     } catch (err: any) {
       if (err.isApiKeyError) {
@@ -829,7 +823,11 @@ Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored 
     });
 
     if (response.ok) {
-      return (await response.json()) as Question[];
+      const data = await response.json();
+      const normalized = normalizeQuestions(data);
+      if (normalized.length > 0) {
+        return normalized;
+      }
     }
     serverBusySeconds = (await readServerBusySeconds(response)) ?? serverBusySeconds;
   } catch (backendErr) {

@@ -38,6 +38,147 @@ export const ClarifyingQuestionsArraySchema = z.array(ClarifyingQuestionItemSche
   .max(6, 'Must generate at most 6 clarifying questions');
 
 /**
+ * Normalizes clarifying questions from any raw LLM response format.
+ * Translates provider variations (e.g. `question` vs `questionText`, `type` vs `questionType`,
+ * `choices` vs `options`, numeric IDs, or string arrays) into standard Bedrock Question objects.
+ */
+export function normalizeQuestions(raw: any): Question[] {
+  if (!raw) return [];
+
+  let list: any[] = [];
+  if (Array.isArray(raw)) {
+    list = raw;
+  } else if (raw && typeof raw === 'object') {
+    if (Array.isArray(raw.questions)) {
+      list = raw.questions;
+    } else if (Array.isArray(raw.data)) {
+      list = raw.data;
+    } else if (Array.isArray(raw.clarifyingQuestions)) {
+      list = raw.clarifyingQuestions;
+    } else if (Array.isArray(raw.result)) {
+      list = raw.result;
+    } else {
+      list = [raw];
+    }
+  } else if (typeof raw === 'string') {
+    try {
+      const cleaned = raw
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+      const parsed = JSON.parse(cleaned);
+      return normalizeQuestions(parsed);
+    } catch {
+      const match = raw.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (match) {
+        try {
+          return normalizeQuestions(JSON.parse(match[0]));
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    }
+  }
+
+  const normalized: Question[] = [];
+
+  list.forEach((item, index) => {
+    if (!item) return;
+
+    if (typeof item === 'string') {
+      const trimmed = item.trim();
+      if (trimmed) {
+        normalized.push({
+          id: `q${index + 1}`,
+          questionText: trimmed.length < 8 ? `${trimmed} (Please specify)` : trimmed,
+          questionType: 'free_text',
+        });
+      }
+      return;
+    }
+
+    if (typeof item !== 'object') return;
+
+    const id = String(item.id ?? item.key ?? item._id ?? item.index ?? `q${index + 1}`);
+
+    const rawText =
+      item.questionText ??
+      item.question ??
+      item.text ??
+      item.title ??
+      item.prompt ??
+      item.label ??
+      item.query ??
+      item.q ??
+      '';
+
+    let questionText = String(rawText).trim();
+    if (!questionText) {
+      questionText = `Clarifying Question ${index + 1}`;
+    } else if (questionText.length < 8) {
+      questionText = `${questionText} (Please specify)`;
+    }
+
+    const rawType = String(
+      item.questionType ??
+      item.type ??
+      item.question_type ??
+      item.kind ??
+      item.inputType ??
+      ''
+    ).toLowerCase();
+
+    const rawOptions = item.options ?? item.choices ?? item.values ?? item.items ?? item.selection;
+    let options: string[] | undefined = undefined;
+
+    if (Array.isArray(rawOptions) && rawOptions.length > 0) {
+      options = rawOptions
+        .map((opt: any) => {
+          if (typeof opt === 'string') return opt.trim();
+          if (opt && typeof opt === 'object') {
+            return String(opt.label ?? opt.text ?? opt.value ?? opt.name ?? JSON.stringify(opt)).trim();
+          }
+          return String(opt).trim();
+        })
+        .filter((opt: string) => opt.length > 0);
+
+      if (options.length === 0) {
+        options = undefined;
+      }
+    }
+
+    let questionType: 'single_select' | 'multi_select' | 'free_text' = 'free_text';
+    if (rawType.includes('multi') || rawType.includes('checkbox') || rawType.includes('multiple')) {
+      questionType = 'multi_select';
+    } else if (
+      rawType.includes('single') ||
+      rawType.includes('select') ||
+      rawType.includes('choice') ||
+      rawType.includes('radio') ||
+      rawType.includes('dropdown') ||
+      (options && options.length > 0 && !rawType.includes('text') && !rawType.includes('free'))
+    ) {
+      questionType = 'single_select';
+    } else if (rawType.includes('free') || rawType.includes('text') || rawType.includes('input') || rawType.includes('string')) {
+      questionType = 'free_text';
+    } else if (options && options.length > 0) {
+      questionType = 'single_select';
+    }
+
+    normalized.push({
+      id,
+      questionText,
+      questionType,
+      options: questionType !== 'free_text' && options && options.length > 0 ? options : undefined,
+    });
+  });
+
+  return normalized;
+}
+
+/**
  * Conversational fluff phrases forbidden across all prompt generation modes.
  */
 export const CONVERSATIONAL_FLUFF_PHRASES = [
@@ -408,7 +549,7 @@ export function validateQuestionsOutput(
   try {
     // If wrapped in object e.g. { questions: [...] }
     const directParse = JSON.parse(cleaned);
-    parsed = Array.isArray(directParse) ? directParse : directParse.questions || directParse.data;
+    parsed = Array.isArray(directParse) ? directParse : directParse.questions || directParse.data || directParse.clarifyingQuestions || [directParse];
   } catch (err: any) {
     // Try regex extraction of array
     const match = cleaned.match(/\[\s*\{[\s\S]*\}\s*\]/);
@@ -424,6 +565,9 @@ export function validateQuestionsOutput(
       return { isValid: false, issues, forbiddenTermsFound: [], missingSections: [] };
     }
   }
+
+  // Normalize questions to standard Bedrock schema
+  parsed = normalizeQuestions(parsed);
 
   // 2. Validate array schema with Zod
   const zodResult = ClarifyingQuestionsArraySchema.safeParse(parsed);
@@ -466,7 +610,7 @@ export function validateQuestionsOutput(
     issues,
     forbiddenTermsFound: forbiddenTerms,
     missingSections: [],
-    data: isValid ? (zodResult.data as Question[]) : undefined,
+    data: isValid ? (zodResult.data as Question[]) : (parsed as Question[]),
   };
 }
 
