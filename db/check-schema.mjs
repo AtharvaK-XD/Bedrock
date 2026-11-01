@@ -74,7 +74,7 @@ for (const [table, expected] of Object.entries(EXPECTED)) {
   for (const col of Object.keys(live[table])) if (!expected[col]) diff(`"${table}".${col} exists live but not in the migrations`);
 }
 for (const t of Object.keys(live)) {
-  if (!EXPECTED[t] && t !== 'schema_migrations' && t !== 'PaymentRecord') diff(`table "${t}" exists live but not in the migrations`);
+  if (!EXPECTED[t] && t !== 'schema_migrations' && t !== 'schema_migrations_lock' && t !== 'bedrock_environment' && t !== 'PaymentRecord') diff(`table "${t}" exists live but not in the migrations`);
 }
 const missingProfile = PROFILE_COLUMNS.filter((c) => !live.User?.[c]);
 console.log(missingProfile.length ? `DIFF  profile GET columns missing: ${missingProfile.join(', ')}` : 'OK    every column of the profile GET exists in "User"');
@@ -118,6 +118,7 @@ const fns = await sql`
 for (const f of fns) console.log(`      ${f.proname}(${f.args}) owner=${f.owner} grants=${f.acl} settings=${f.cfg}`);
 const guards = trg.filter((t) => /_(guard_update|no_truncate)$/.test(t.tgname)).length;
 console.log(`INFO  row guards / TRUNCATE blocks (0011): ${guards} of 12 present`);
+console.log(`INFO  daily usage-record cap (0015): ${trg.some((t) => t.tgname === 'Trace_daily_cap') ? 'present' : 'NOT present'}`);
 
 console.log('\n== Roles and table grants');
 const [{ me }] = await sql`SELECT current_user AS me`;
@@ -165,6 +166,12 @@ const [facts] = await sql`
        OR char_length(coalesce(location, '')) > 500 OR char_length(coalesce(organization, '')) > 500
        OR char_length(coalesce(github, '')) > 2000 OR char_length(coalesce(huggingface, '')) > 2000
        OR char_length(coalesce(website, '')) > 2000) AS users_over_0013_limits,
+    (SELECT count(*)::int FROM "Prompt" WHERE NOT (char_length(id) <= 100 AND char_length(title) <= 500 AND char_length(snippet) <= 2000
+       AND char_length(full_content) <= 200000 AND char_length(tags) <= 5000 AND char_length(target_type) <= 100)) AS prompts_over_limit,
+    (SELECT count(*)::int FROM "BranchingTree" WHERE NOT (char_length(id) <= 100 AND char_length(title) <= 500
+       AND char_length(nodes) <= 1000000 AND char_length(edges) <= 1000000)) AS workflows_over_limit,
+    (SELECT count(*)::int FROM "Trace" WHERE NOT (tokens_used >= 0 AND latency_ms >= 0 AND char_length(id) <= 100
+       AND char_length(node_origin) <= 200 AND char_length(model_target) <= 200 AND char_length(status) <= 32)) AS traces_breaking_rules,
     (SELECT count(*)::int FROM "Trace") AS traces,
     (SELECT string_agg(DISTINCT status, ',') FROM "Trace") AS trace_statuses
 `;

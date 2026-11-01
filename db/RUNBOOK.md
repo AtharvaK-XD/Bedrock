@@ -46,10 +46,22 @@ The API refuses AI calls when `reserve_quota()` errors (it fails closed, on purp
 | `TRUNCATE_BLOCKED` (42501) | someone tried to empty a table (0011) | use DELETE; never drop the trigger to "make it work" |
 | `permission denied for ...` (42501) | `bedrock_app` lacks a right | add the line to `db/roles.sql` on purpose, then run it |
 | `User_email_lower_key` / `User_username_lower_key` (23505) | email / username already used, ignoring case | expected; API answers 409 for usernames |
-| `DUPLICATE_EMAILS`, `DUPLICATE_USERNAMES`, `USER_TEXT_TOO_LONG` | a migration refused because existing data breaks its rule; nothing was changed | decide what to do with those accounts, then run it again |
+| `DUPLICATE_EMAILS`, `DUPLICATE_USERNAMES`, `USER_TEXT_TOO_LONG`, `OLD_ROWS_BREAK_RULE` | a migration refused because existing data breaks its rule; nothing was changed | decide what to do with those rows, then run it again |
+| `DAILY_TRACE_LIMIT` (23514) | an account wrote 5,000 usage records in 24 hours (0015) | expected for abuse; the API should answer 429 |
+| `OTHER_RECORDS` (23001) | `delete_user_data` found records elsewhere that depend on the account; nothing deleted | human decision (section 6) |
+| `Another migration run holds the lock` | a `migrate.mjs` run is active or crashed less than 30 minutes ago | wait, or `DELETE FROM schema_migrations_lock;` if sure no run is active |
+| `was edited after it was applied` | a migration file changed after it ran (checksum) | restore the file; put the change in a NEW migration |
 
-## 6. Regular checks
+## 6. Someone asks to delete their account (right to erasure)
+1. The API calls `SELECT * FROM delete_user_data('<account id>')` (0014). By hand on production: the owner connection, same statement.
+2. It removes the account, prompts, workflows, usage records, usage-limit rows and idempotency keys in one step and returns the counts.
+3. Security log rows stay, WITHOUT the account id, until the 90-day cleanup. Their text can still contain the id: say so in the privacy policy.
+4. If it stops with `OTHER_RECORDS`, another table (outside this plan) still holds records for that account; nothing was deleted. Decide with Atharva what happens to those records, then run it again.
+5. Deleting the person in Clerk is separate (Clerk dashboard or API).
+
+## 7. Regular checks
 - Before each release that changes the database: Neon snapshot branch `pre-<release>-<date>` (README step 0).
+- Once a week and before launch: `node db/stats.mjs` on production. Exit code 1 + a plain-words warning when the daily cleanup is behind, the log table is growing too fast, the database is large, or an account is near a cap.
 - Once a month: create a branch from production as of yesterday and run `node db/check-schema.mjs` on it. That proves
   the restore works and shows the table counts. Delete the branch afterwards.
 - After any change to Vercel env vars: `node db/check-schema.mjs` with the app's string shows `connected as role: bedrock_app`.

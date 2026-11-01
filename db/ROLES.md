@@ -50,7 +50,7 @@ the role itself and also checks that the time limits apply.
 | "Prompt", "BranchingTree" | SELECT, INSERT, UPDATE, DELETE | list, count, owner-checked update, insert, delete |
 | "Trace", "SecurityLog", "QuotaEvent" | SELECT, INSERT, DELETE | add, count, refund, "clear my traces", cleanup; never edit |
 | "IdempotencyKey" | SELECT, DELETE | cleanup of expired keys |
-| reserve_quota, purge_old_logs, trace_totals | EXECUTE | usage limit, cleanup, dashboard totals (PUBLIC loses this right) |
+| reserve_quota, purge_old_logs, trace_totals, delete_user_data | EXECUTE | usage limit, cleanup, dashboard totals, account erasure (PUBLIC loses this right). `delete_user_data` is `SECURITY DEFINER`: it is the ONLY way the app can erase an account (no DELETE right on "User"). The API must check who may erase which account (the signed-in user for their own id, or a verified Clerk webhook): the function trusts the id it is given. |
 | everything else | nothing | no DELETE on "User", no TRUNCATE, no CREATE, nothing on `schema_migrations`; email, password_hash, email_verified, mfa_enabled, role cannot be changed |
 Tables not in this list get no access. A table added for a later feature needs its line in `roles.sql` before Vercel
 uses `bedrock_app` for that feature.

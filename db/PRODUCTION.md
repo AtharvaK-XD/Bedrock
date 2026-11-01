@@ -40,8 +40,10 @@ After each command, the check in the right column must hold before you run the n
 |---|---|
 | `node db/migrate.mjs up --yes --host <prod-host> --to 0004` | Site: sign in, generate one prompt. `status`: 0001-0004 applied. |
 | `node db/migrate.mjs up --yes --host <prod-host> --to 0010` | Site: generate, save + edit + delete a prompt, change your username, dashboard loads. |
-| `node db/migrate.mjs up --yes --host <prod-host>` | Same checks again. `check-schema`: `row guards ... 12 of 12`, `0 difference(s)`. |
-If a step stops with `DUPLICATE_EMAILS`, `DUPLICATE_USERNAMES` or `USER_TEXT_TOO_LONG`: nothing was changed by that
+| `node db/migrate.mjs up --yes --host <prod-host>` | Same checks again, plus: the dashboard lists load. `check-schema`: `row guards ... 12 of 12`, `0 difference(s)`. This stage also applies 0014-0017 (account erasure function, daily usage cap, validation of old size rules, paging indexes). |
+The tool waits at most 5 s for a database lock and retries, so it will not freeze the live site; if it says it gave up,
+run the same command again a little later. If it says another run holds the lock, see `db/RUNBOOK.md` section 5.
+If a step stops with `DUPLICATE_EMAILS`, `DUPLICATE_USERNAMES`, `USER_TEXT_TOO_LONG` or `OLD_ROWS_BREAK_RULE`: nothing was changed by that
 migration; stop and tell the Database session. If anything else breaks, undo the newest migration:
 `node db/migrate.mjs down --yes --host <prod-host>` (repeat per migration, newest first). Data is never deleted by a
 `down`. Worst case: restore from the Step 0 branch (`db/RUNBOOK.md` section 2).

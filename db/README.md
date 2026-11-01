@@ -7,16 +7,23 @@ Statements inside a file are separated by a line `-- migrate:break`.
 Anything that writes needs `--yes` **and** `--host <the exact host it printed>` (see `db/target.mjs`), so a wrong
 value left in `DATABASE_URL_DEV` cannot be written to by a habit-typed `--yes`.
 ```
-node db/migrate.mjs status
+node db/migrate.mjs status                                 # read only: creates and changes nothing
 node db/migrate.mjs up    --yes --host <host> [--to NNNN]  # apply pending migrations (optionally only up to NNNN)
 node db/migrate.mjs down  --yes --host <host> [--all]      # undo the newest migration (or all of them)
 node db/migrate.mjs roles --yes --host <host>              # run db/roles.sql (rights for the bedrock_app role)
 node db/check-app-role.mjs                                 # proves bedrock_app's rights; every check rolled back
+node db/stats.mjs                                          # read only: sizes, growth, "is the cleanup behind?", busiest accounts
+node db/anonymize-dev.mjs --yes --host <host>              # dev only: fake data for real data (needs --mark-dev once)
 node db/check-schema.mjs                                   # read-only: live schema vs migrations, roles, counts only
 node db/explain.mjs                                        # read-only: query plans for the SQL the API runs
 node db/flood-test.mjs --yes --host <host>                 # dev only: 1,000,000-row log flood, timed purge
-npx vitest run tests/db.migrations.test.ts                 # skipped unless DATABASE_URL_DEV is set
+npx vitest run tests/db                                    # in-memory Postgres (PGlite): no secrets, no Neon; also run by CI
+npx vitest run tests/db.migrations.test.ts                 # real Neon dev branch; skipped unless DATABASE_URL_DEV is set
 ```
+The migration tool (`db/lib/migrator.mjs`): every normal statement waits at most 5 s for a lock and retries (it never
+queues the live site behind itself), only one run at a time (a lock row expires after 30 minutes), `CREATE INDEX
+CONCURRENTLY` never blocks, and each applied migration stores a checksum: a migration file edited after it was applied
+shows as `CHANGED` in `status` and `up` refuses to continue. Never edit an applied migration; add a new one.
 Production, step by step: `db/PRODUCTION.md`. What to do when something goes wrong: `db/RUNBOOK.md`.
 Roles: `db/ROLES.md` + `db/roles.sql`.
 
@@ -36,6 +43,10 @@ Roles: `db/ROLES.md` + `db/roles.sql`.
 | 0011_row_guards | Nothing changed. From now on: a prompt/workflow can't move to another owner, a user id can't change, traces / quota rows / logs can't be edited (only added or deleted), `TRUNCATE` refused on 6 tables. Blocked change = error `ROW_IMMUTABLE` / `TRUNCATE_BLOCKED` (42501). |
 | 0012_function_hardening | Nothing changed. Functions use a fixed `search_path`; `reserve_quota()` / `purge_old_logs()` give up after 5 s waiting for a lock. |
 | 0013_user_text_limits | Refuses to run (changes nothing) if an account has a field over the new limit; otherwise adds a size CHECK on "User" text fields and validates it. |
+| 0014_delete_user_data | Adds `delete_user_data(user_id)`: erases an account and its prompts, workflows, traces, usage rows; keeps logs without the account id; stops and changes nothing if another table still holds records for the account. |
+| 0015_trace_daily_cap | At most 5,000 usage records per user per 24 hours (error `DAILY_TRACE_LIMIT`, 23514). Existing rows untouched. |
+| 0016_validate_size_checks | Makes the 0003/0005 size rules cover old rows too. Refuses (changes nothing for that table) if an old row breaks a rule. Down is a no-op. |
+| 0017_paging_indexes | Two indexes (built `CONCURRENTLY`) for stable, fast paging of the prompts and workflows lists (`db/PAGING.md`). |
 
 ## Limits: database vs API (on purpose the database is looser)
 The API refuses first with a clear message; the database limit is a safety net for bugs or direct writes.
@@ -73,7 +84,7 @@ Before anything: all steps below must already have passed on a Neon dev branch (
 | 5 | Only if `check-schema` shows the app connects with the same role that runs migrations (or after step 8): `up ... --to 0006` | One generation works (no 503). | `down` |
 | 6 | `up ... --to 0007` (stops by itself if duplicate emails exist). | `check-schema`: unique index on lower(email) = yes. | `down` |
 | 6b | `up ... --to 0010` (0009 stops by itself if duplicate usernames exist). Then deploy the API change that uses `trace_totals()` (if Backend made it). | A generation still works; profile username change works; a taken username gives 409; dashboard totals load. | `down` per step, newest first |
-| 7 | `up ... --to 0013` (0013 stops by itself if an account is over a limit). | Save + edit + delete a prompt and a workflow; profile save; one generation; `check-schema`: row guards 12 of 12. | `down` per step, newest first (nothing to undo in data) |
+| 7 | `up ... --to 0013` (0013 stops by itself if an account is over a limit). Then the rest: `up ...` (0014-0017; 0016 stops by itself if an old row breaks a size rule). | Save + edit + delete a prompt and a workflow; profile save; one generation; `check-schema`: row guards 12 of 12. | `down` per step, newest first (nothing to undo in data) |
 | 8 | Roles (recommended, `db/ROLES.md`): create `bedrock_app` with plain SQL, `node db/migrate.mjs roles --yes --host <host>` (every line OK), set Vercel `DATABASE_URL` (Preview first) to the `bedrock_app` string, redeploy, repeat the step 7 checks. Then Production. | All step 7 checks pass on the preview first. `check-schema` with the app string: `connected as role: bedrock_app`. | Put the old `DATABASE_URL` back in Vercel and redeploy (rights do no harm if unused). |
 | 9 | Remove `DATABASE_URL_DEV`'s production value from the session. | | |
 

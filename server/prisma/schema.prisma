@@ -1,3 +1,7 @@
+// NOT the source of truth for the database. The live schema is the SQL in db/migrations (see db/README.md).
+// This file does not know the usage table, the case-insensitive indexes, the row guards, the functions or the
+// size checks. NEVER run `prisma db push` or `prisma migrate` against a real database: it would try to make the
+// database match this file and drop what is missing here.
 generator client {
   provider = "prisma-client-js"
 }
