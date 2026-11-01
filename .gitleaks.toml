@@ -1,0 +1,16 @@
+# gitleaks config for the CI secret scans (.github/workflows/security.yml).
+# Uses every default rule. The only exceptions are the documented placeholder lines in the
+# .env.example templates (checked 2026-11-01: they are the only matches in the whole history).
+# Never allowlist a whole file: a real key pasted into an example file must still be caught.
+title = "Bedrock gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholder values in .env.example templates (not real secrets)"
+regexTarget = "line"
+regexes = [
+  '''postgresql://user:password@ep(-pooler)?\.us-east-1\.aws\.neon\.tech/neondb''',
+  '''RAZORPAY_KEY_ID=rzp_live_placeholder\b''',
+]

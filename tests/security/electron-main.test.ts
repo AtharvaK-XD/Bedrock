@@ -159,6 +159,21 @@ describe('in-app navigation', () => {
   });
 });
 
+describe('deep link logging', () => {
+  it('never logs a broken deep link payload (it can hold a token or ticket)', () => {
+    const warn = vi.mocked(console.warn);
+    warn.mockClear();
+    const secret = 'tok_SECRET_must_not_be_logged';
+    // Invalid from the first character: V8's parse error message then quotes the input
+    const data = encodeURIComponent(`${secret}{"nonce":"x"}`);
+    state.webContentsEvents.get('will-navigate')!({ preventDefault() {} }, `bedrock://auth-complete?data=${data}`);
+    expect(warn).toHaveBeenCalled();
+    const logged = warn.mock.calls.flat().map((a) => (a instanceof Error ? `${a.message} ${a.stack}` : String(a))).join(' ');
+    expect(logged).not.toContain('SECRET');
+    expect(state.sent).toHaveLength(0);
+  });
+});
+
 describe('browser permissions', () => {
   const request = (permission: string, requestingUrl: string) => {
     let granted: boolean | undefined;
