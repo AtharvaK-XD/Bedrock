@@ -155,6 +155,46 @@ describe.skipIf(!PGlite)('backend SQL on a real Postgres engine (PGlite + all mi
     expect(row).toEqual({ user_id: 'user_A', nodes: JSON.stringify([{ id: 'n1' }]) });
   });
 
+  it("workflows: the database's own row cap (migration 0003, e.g. two saves racing at the limit) gives 409, not 500", async () => {
+    // The API's count check (200) normally answers first; this attaches the real 0003 trigger function with a
+    // cap of 2 so the database itself refuses, exactly as when parallel saves pass the API check together.
+    await q(`CREATE TRIGGER "test_low_row_cap" BEFORE INSERT ON "BranchingTree" FOR EACH ROW EXECUTE FUNCTION bedrock_enforce_row_cap(2)`);
+    try {
+      as('user_C');
+      expect((await call(workflows, 'POST', { title: 'one', nodes: [], edges: [] })).statusCode).toBe(200);
+      expect((await call(workflows, 'POST', { title: 'two', nodes: [], edges: [] })).statusCode).toBe(200);
+      const third = await call(workflows, 'POST', { title: 'three', nodes: [], edges: [] });
+      expect(third.statusCode).toBe(409);
+      expect(third.body).toMatchObject({ code: 'WORKFLOW_LIMIT_REACHED' });
+      expect(typeof third.body.message).toBe('string');
+      expect(JSON.stringify(third.body)).not.toContain('ROW_LIMIT_EXCEEDED');
+    } finally {
+      await q(`DROP TRIGGER "test_low_row_cap" ON "BranchingTree"`);
+    }
+  });
+
+  it("prompts and workflows: a size check refused by the database (23514) gives 400 with code and message, not 500", async () => {
+    // The real 0003 size limits are above the API's, so a stricter test-only check makes the database refuse first
+    await q(`ALTER TABLE "Prompt" ADD CONSTRAINT "test_small_prompt" CHECK (char_length(full_content) <= 20) NOT VALID`);
+    await q(`ALTER TABLE "BranchingTree" ADD CONSTRAINT "test_small_workflow" CHECK (char_length(nodes) <= 20) NOT VALID`);
+    try {
+      as('user_D');
+      const prompt = await call(prompts, 'POST', { title: 't', fullContent: 'x'.repeat(30) });
+      expect(prompt.statusCode).toBe(400);
+      expect(prompt.body).toMatchObject({ code: 'PROMPT_TOO_LARGE' });
+      expect(typeof prompt.body.message).toBe('string');
+
+      const workflow = await call(workflows, 'POST', { title: 't', nodes: [{ id: 'a-long-node-id-over-20-chars' }], edges: [] });
+      expect(workflow.statusCode).toBe(400);
+      expect(workflow.body).toMatchObject({ code: 'WORKFLOW_TOO_LARGE' });
+      // No table or constraint names in the response
+      expect(JSON.stringify([prompt.body, workflow.body])).not.toMatch(/test_small|constraint|BranchingTree|"Prompt"/);
+    } finally {
+      await q(`ALTER TABLE "Prompt" DROP CONSTRAINT "test_small_prompt"`);
+      await q(`ALTER TABLE "BranchingTree" DROP CONSTRAINT "test_small_workflow"`);
+    }
+  });
+
   it('profile: the column list matches the real User table, and a username taken in any letter case gives 409', async () => {
     as('user_A');
     const mine = await call(profile, 'GET');

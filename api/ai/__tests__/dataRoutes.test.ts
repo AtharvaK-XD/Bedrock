@@ -386,6 +386,20 @@ describe('GET /api/health', () => {
     expect(JSON.stringify(res.body)).not.toContain('neondb_owner');
   });
 
+  it('answers ok with database and Redis connected, in the shape the k6 test and monitors read (no "services" wrapper)', async () => {
+    const health = await loadHealth();
+    h.state.responder = () => [{ alive: 1 }];
+    h.state.redis = { ping: vi.fn(async () => 'PONG') };
+    const res = mockRes();
+    await health(mockReq('GET'), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toMatchObject({ status: 'ok', database: { status: 'connected' }, redis: { status: 'connected' } });
+    expect(res.body.services).toBeUndefined();
+    // tests/k6-wizard-load-test.js: r.json().database?.status === 'connected'
+    expect(res.body.database?.status).toBe('connected');
+  });
+
   it('reuses one result for 10 seconds', async () => {
     const health = await loadHealth();
     h.state.responder = () => [{ alive: 1 }];

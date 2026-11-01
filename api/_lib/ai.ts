@@ -105,6 +105,72 @@ export function stripReasoningText(text: string): string {
     .trimStart();
 }
 
+const THINK_OPEN = '<think>';
+const THINK_CLOSE = '</think>';
+
+/** Length of the longest end of `text` that could be the start of `tag` (a tag split across stream chunks). */
+function partialTagLength(text: string, tag: string): number {
+  for (let n = Math.min(tag.length - 1, text.length); n > 0; n--) {
+    if (text.slice(-n).toLowerCase() === tag.slice(0, n)) return n;
+  }
+  return 0;
+}
+
+/**
+ * Streaming version of stripReasoningText: tokens go to `emit` with `<think>…</think>` removed, also when a
+ * tag arrives split over several chunks. Joined, the emitted text equals stripReasoningText(all chunks)
+ * apart from leading whitespace (the final event's promptText is the exact, cleaned answer).
+ * Call flush() once the provider finished: it releases a held-back "<thi"-style ending that was not a tag.
+ */
+export function createReasoningStreamFilter(emit: (text: string) => void) {
+  let buffer = '';
+  let inThink = false;
+  let sawThink = false;
+  let emittedAny = false;
+
+  const out = (text: string) => {
+    // stripReasoningText trims the start of the answer once a think block was removed
+    const clean = sawThink && !emittedAny ? text.trimStart() : text;
+    if (!clean) return;
+    emittedAny = true;
+    emit(clean);
+  };
+
+  return {
+    push(chunk: string) {
+      buffer += chunk;
+      for (;;) {
+        if (inThink) {
+          const close = /<\/think>/i.exec(buffer);
+          if (!close) {
+            buffer = buffer.slice(buffer.length - partialTagLength(buffer, THINK_CLOSE));
+            return;
+          }
+          buffer = buffer.slice(close.index + THINK_CLOSE.length);
+          inThink = false;
+          continue;
+        }
+        const open = /<think>/i.exec(buffer);
+        if (!open) {
+          const keep = partialTagLength(buffer, THINK_OPEN);
+          out(buffer.slice(0, buffer.length - keep));
+          buffer = buffer.slice(buffer.length - keep);
+          return;
+        }
+        out(buffer.slice(0, open.index));
+        buffer = buffer.slice(open.index + THINK_OPEN.length);
+        inThink = true;
+        sawThink = true;
+      }
+    },
+    flush() {
+      // An unclosed think block is reasoning cut off mid-way: dropped, as stripReasoningText does
+      if (!inThink) out(buffer);
+      buffer = '';
+    },
+  };
+}
+
 /**
  * Transient = worth one more try on the same provider: gateway-level HTTP errors and
  * connection resets. Timeouts (AbortError) are not retried: they already spent their budget.
@@ -529,22 +595,30 @@ export async function executeAiCompletion(
     }
     const attemptTimeoutMs = Math.min(PROVIDER_TIMEOUT_MS, remainingMs);
 
+    // Counts only text that actually reached the client: hidden <think> text does not block a retry or failover
     let tokensEmitted = 0;
-    const trackedOnToken = onToken
+    const emitToClient = onToken
       ? (tok: string) => {
           tokensEmitted++;
           onToken(tok);
         }
       : undefined;
+    const stream: { filter: ReturnType<typeof createReasoningStreamFilter> | null } = { filter: null };
 
     try {
       const rawText = await withTransientRetry(
-        () => dispatchToProvider(provider, trackedOnToken, attemptTimeoutMs),
+        () => {
+          // A fresh filter per attempt (a retry only happens while nothing has reached the client)
+          const filter = emitToClient ? createReasoningStreamFilter(emitToClient) : null;
+          stream.filter = filter;
+          return dispatchToProvider(provider, filter ? (tok) => filter.push(tok) : undefined, attemptTimeoutMs);
+        },
         // Retrying after tokens reached the client would send them twice
         { deadlineAt, canRetry: () => tokensEmitted === 0 }
       );
       const text = stripReasoningText(rawText || '');
       if (text && text.trim().length > 0) {
+        stream.filter?.flush();
         await recordProviderSuccess(provider.id);
         const modelName = `${provider.name} (${provider.model})`;
 
