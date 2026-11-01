@@ -46,12 +46,12 @@ jobs:
           else
             RANGE="$BASE_SHA..$HEAD_SHA"
           fi
-          /tmp/gitleaks detect --source . --log-opts="$RANGE" --redact --no-banner --exit-code 1
+          /tmp/gitleaks detect --source . --log-opts="$RANGE" -v --redact --no-banner --exit-code 1
 
       - name: Secret scan of the full history (blocks)
         # Blocking since the dev.db history purge (CHG-0025). A finding here means a secret is in some commit:
         # rotate it first, then remove it from history (agent-sync/DEV-DB-PURGE-RUNBOOK.md shows how).
-        run: /tmp/gitleaks detect --source . --redact --no-banner --exit-code 1
+        run: /tmp/gitleaks detect --source . -v --redact --no-banner --exit-code 1
 
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
