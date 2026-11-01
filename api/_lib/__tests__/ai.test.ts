@@ -11,7 +11,54 @@ vi.mock('../loadBalancer.js', async () => {
   };
 });
 
-import { executeAiCompletion, AiCompletionError, stripReasoningText } from '../ai.js';
+import { executeAiCompletion, AiCompletionError, stripReasoningText, createReasoningStreamFilter } from '../ai.js';
+
+/** Runs chunks through the stream filter and returns the joined output. */
+function filterChunks(chunks: string[]): string {
+  let out = '';
+  const filter = createReasoningStreamFilter((t) => (out += t));
+  for (const c of chunks) filter.push(c);
+  filter.flush();
+  return out;
+}
+
+describe('createReasoningStreamFilter (streamed answers)', () => {
+  it('passes normal text through unchanged, including "<" and HTML-like tags', () => {
+    const text = '  # Title\nUse a < b and <b>bold</b>, <thin> is not a tag, end with <';
+    expect(filterChunks([text])).toBe(text);
+    expect(filterChunks(text.split(''))).toBe(text);
+  });
+
+  it('removes think blocks even when the tags are split across chunks, in any letter case', () => {
+    expect(filterChunks(['Hel', 'lo <th', 'ink>sec', 'ret</thi', 'nk> world'])).toBe('Hello  world');
+    expect(filterChunks(['<THINK>', 'plan the answer', '</Think>\n\n# Final'])).toBe('# Final');
+    expect(filterChunks(['A<think>x</think>B<think>y</think>C'])).toBe('ABC');
+  });
+
+  it('drops an unclosed think block (reasoning cut off) and keeps the answer before it', () => {
+    expect(filterChunks(['Answer. ', '<think>still reason', 'ing'])).toBe('Answer. ');
+    expect(filterChunks(['<think>only reasoning'])).toBe('');
+  });
+
+  it('gives the same answer as stripReasoningText for every way of splitting the text into two or three chunks', () => {
+    const samples = [
+      '<think>secret plan</think>\n# Prompt\nBody <b>ok</b>',
+      'Intro <think>secret</think> middle <THINK>secret 2</THINK> end',
+      'No reasoning at all, just a < and a >',
+      'Answer first <think>secret cut off',
+      '<think></think>Empty block',
+    ];
+    for (const s of samples) {
+      const expected = stripReasoningText(s).trimStart();
+      for (let i = 0; i <= s.length; i++) {
+        expect(filterChunks([s.slice(0, i), s.slice(i)]).trimStart()).toBe(expected);
+        const j = Math.min(s.length, i + 3);
+        expect(filterChunks([s.slice(0, i), s.slice(i, j), s.slice(j)]).trimStart()).toBe(expected);
+      }
+      expect(filterChunks(s.split(''))).not.toContain('secret');
+    }
+  });
+});
 
 describe('stripReasoningText', () => {
   it('leaves normal text untouched', () => {
@@ -93,6 +140,60 @@ describe('executeAiCompletion', () => {
     fetchMock.mockResolvedValueOnce(okBody('<think>private chain of thought</think>\n# Final prompt'));
     const result = await executeAiCompletion('p', 's');
     expect(result.text).toBe('# Final prompt');
+  });
+
+  /** A provider SSE stream (Groq/OpenAI format) sending the given deltas, optionally breaking afterwards. */
+  const sseBody = (deltas: string[], breakAfter = false) => {
+    const enc = new TextEncoder();
+    let next = 0;
+    return {
+      ok: true,
+      status: 200,
+      // One chunk per read, so every delta is really read before the stream breaks
+      // (controller.error() would otherwise discard chunks still in the queue)
+      body: new ReadableStream({
+        pull(controller) {
+          if (next < deltas.length) {
+            controller.enqueue(enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: deltas[next++] } }] })}\n\n`));
+          } else if (breakAfter) {
+            controller.error(new Error('stream broke'));
+          } else {
+            controller.enqueue(enc.encode('data: [DONE]\n\n'));
+            controller.close();
+          }
+        },
+      }),
+    };
+  };
+
+  it('never streams <think> reasoning to the client, even when the tags arrive split', async () => {
+    fetchMock.mockResolvedValueOnce(sseBody(['<thi', 'nk>private chain', ' of thought</th', 'ink>\n# Final', ' prompt']));
+    const streamed: string[] = [];
+    const result = await executeAiCompletion('idea', 'system', undefined, (t) => streamed.push(t));
+
+    expect(streamed.join('')).toBe('# Final prompt');
+    expect(streamed.join('')).not.toContain('private');
+    expect(result.text).toBe('# Final prompt');
+  });
+
+  it('can still fail over when a provider broke while it was only thinking (nothing reached the client)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(sseBody(['<think>reasoning that never ends'], true))
+      .mockResolvedValueOnce(sseBody(['Answer from ', 'the next model']));
+    const streamed: string[] = [];
+    const result = await executeAiCompletion('idea', 'system', undefined, (t) => streamed.push(t));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(streamed.join('')).toBe('Answer from the next model');
+    expect(result.text).toBe('Answer from the next model');
+  });
+
+  it('still refuses to fail over once real answer text was streamed (it would be sent twice)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(sseBody(['Visible start '], true))
+      .mockResolvedValueOnce(sseBody(['should not be used']));
+    await expect(executeAiCompletion('idea', 'system', undefined, () => {})).rejects.toMatchObject({ code: 'AI_STREAM_INTERRUPTED' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('never returns a provider "reasoning" field as the answer', async () => {
