@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
-import { executeAiCompletion } from '../_lib/ai.js';
+import { executeAiCompletion, testOutputBudget } from '../_lib/ai.js';
 import { INPUT_LIMITS, firstLengthError, sendAiFailure, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
@@ -18,11 +18,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ip = getClientIp(req);
   const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
 
+  // This route runs any prompt the caller sends on Bedrock's provider keys, so it needs a signed-in
+  // account (the app itself only exists behind sign-in). Questions and synthesize stay open.
+  // The local development guest (localhost only) is allowed through.
+  if (!user) {
+    return res.status(401).json({
+      error: 'Sign in required',
+      code: 'AUTH_REQUIRED',
+      message: 'Please sign in to run prompts on Bedrock.',
+      requestId,
+    });
+  }
+
   // Enforce distributed Upstash Redis rate limiting (per-user if authenticated, else IP)
   const allowed = await enforceRateLimit(req, res, 'test', user?.id || ip, isPaid);
   if (!allowed) return;
 
   const body = req.body || {};
+  // The client says how long an answer it needs (up to a ceiling); the server decides the real limit
+  const maxOutputTokens = testOutputBudget(body.maxOutputTokens);
   const prompt = (body.prompt || body.promptText || '').trim();
   const rawSystemPrompt = (body.systemPrompt || '').trim();
   const systemPrompt = rawSystemPrompt
@@ -58,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'X-Accel-Buffering': 'no',
       });
 
-      const { text, model } = await executeAiCompletion(
+      const { text, model, truncated } = await executeAiCompletion(
         prompt,
         systemPrompt,
         user?.id,
@@ -67,7 +81,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (typeof (res as any).flush === 'function') {
             (res as any).flush();
           }
-        }
+        },
+        undefined,
+        { maxOutputTokens }
       );
 
       const latency = Date.now() - startTime;
@@ -84,14 +100,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      res.write(`data: ${JSON.stringify({ done: true, text, modelTarget: model, latencyMs: latency, tokensUsed: tokens, status: 'success' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, text, modelTarget: model, latencyMs: latency, tokensUsed: tokens, status: 'success', ...(truncated ? { truncated: true } : {}) })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
-      logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, stream: true });
+      logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, stream: true, ...(truncated ? { truncated: true } : {}) });
       return;
     }
 
-    const { text, model } = await executeAiCompletion(prompt, systemPrompt, user?.id);
+    const { text, model, truncated } = await executeAiCompletion(prompt, systemPrompt, user?.id, undefined, undefined, { maxOutputTokens });
     const latency = Date.now() - startTime;
     const tokens = Math.max(100, Math.round(text.length / 4));
 
@@ -106,13 +122,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model });
+    logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, ...(truncated ? { truncated: true } : {}) });
     return res.status(200).json({
       text,
       latencyMs: latency,
       tokensUsed: tokens,
       modelTarget: model,
       status: 'success',
+      // Only present when the answer was cut off at the output limit
+      ...(truncated ? { truncated: true } : {}),
     });
   } catch (err: any) {
     await releaseQuota(quota);

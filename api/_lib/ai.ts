@@ -29,15 +29,43 @@ export interface RefineParams {
 
 import { getModelTuning } from './modelTuning.js';
 
+// Server keys only. VITE_* variables are for the browser bundle and must never hold a provider secret.
 function getApiKey(provider: 'groq' | 'gemini' | 'openrouter'): string {
-  if (provider === 'groq') {
-    return process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
-  }
-  if (provider === 'gemini') {
-    return process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
-  }
-  return process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY || '';
+  if (provider === 'groq') return process.env.GROQ_API_KEY || '';
+  if (provider === 'gemini') return process.env.GEMINI_API_KEY || '';
+  return process.env.OPENROUTER_API_KEY || '';
 }
+
+/** What one provider call returns: the text, and whether the provider stopped because the output limit was reached. */
+interface ProviderResult {
+  text: string;
+  truncated: boolean;
+}
+
+/** Output limits (tokens) per kind of call. Callers pass one of these as `maxOutputTokens`. */
+export const AI_OUTPUT_BUDGET = {
+  /** 3 to 4 clarifying questions as JSON */
+  questions: 1_200,
+  /** Full prompt document */
+  synthesize: 4_000,
+  /** Free-form calls (the app's general backend proxy): default and ceiling */
+  testDefault: 3_500,
+  testMax: 6_000,
+  /** Refine rewrites a whole prompt, so it scales with the prompt (see refineOutputBudget) */
+  refineMin: 2_500,
+  refineMax: 8_000,
+} as const;
+const DEFAULT_MAX_OUTPUT_TOKENS: number = AI_OUTPUT_BUDGET.testDefault;
+/**
+ * Gemini's maxOutputTokens also counts its hidden "thinking" tokens. Extra room is added so thinking
+ * does not eat the answer; the total is still bounded.
+ */
+const GEMINI_THINKING_HEADROOM_TOKENS = 4_096;
+
+/** Status codes that mean "this request was bad", not "this provider is unhealthy". */
+const CLIENT_CAUSED_STATUSES: ReadonlySet<number> = new Set([400, 413, 422]);
+/** Status codes that mean the API key (not one model) is refused or out of quota. */
+const KEY_LEVEL_STATUSES: ReadonlySet<number> = new Set([401, 402, 403, 429]);
 
 /** Overall wall-clock budget for one request (Vercel maxDuration is 60 s; leave headroom to respond). */
 export const AI_DEFAULT_BUDGET_MS = 50_000;
@@ -62,7 +90,8 @@ export type AiErrorCode =
   | 'AI_NOT_CONFIGURED'
   | 'AI_ALL_PROVIDERS_FAILED'
   | 'AI_DEADLINE_EXCEEDED'
-  | 'AI_STREAM_INTERRUPTED';
+  | 'AI_STREAM_INTERRUPTED'
+  | 'AI_OUTPUT_TRUNCATED';
 
 /**
  * Error safe to return to clients: the message never contains upstream response bodies,
@@ -82,10 +111,30 @@ const PUBLIC_AI_ERROR_MESSAGES: Record<AiErrorCode, string> = {
   AI_ALL_PROVIDERS_FAILED: 'All AI providers are busy or unavailable. Please try again shortly.',
   AI_DEADLINE_EXCEEDED: 'The AI request took too long. Please try again.',
   AI_STREAM_INTERRUPTED: 'The AI response was interrupted. Please try again.',
+  AI_OUTPUT_TRUNCATED: 'The result was too long to finish. Try a shorter prompt or a smaller change.',
 };
 
 function aiError(code: AiErrorCode): AiCompletionError {
   return new AiCompletionError(code, PUBLIC_AI_ERROR_MESSAGES[code]);
+}
+
+/** For callers that must not return a cut-off answer (e.g. refine would replace the user's prompt with half of one). */
+export function truncatedOutputError(): AiCompletionError {
+  return aiError('AI_OUTPUT_TRUNCATED');
+}
+
+/** Output budget for refine: it rewrites the whole prompt, so it grows with the prompt (about 3 characters per token). */
+export function refineOutputBudget(currentPromptChars: number): number {
+  return Math.min(
+    AI_OUTPUT_BUDGET.refineMax,
+    Math.max(AI_OUTPUT_BUDGET.refineMin, Math.ceil(currentPromptChars / 3) + 1_500)
+  );
+}
+
+/** Output budget for the free-form test route: the client's own `maxOutputTokens` within a safe range. */
+export function testOutputBudget(requested: unknown): number {
+  const n = typeof requested === 'number' && Number.isFinite(requested) ? Math.floor(requested) : AI_OUTPUT_BUDGET.testDefault;
+  return Math.min(AI_OUTPUT_BUDGET.testMax, Math.max(256, n));
 }
 
 function clip(text: string): string {
@@ -220,8 +269,9 @@ async function callGroq(
   model = 'llama-3.3-70b-versatile',
   onToken?: (token: string) => void,
   temperature = 0.5,
-  timeoutMs = PROVIDER_TIMEOUT_MS
-): Promise<string> {
+  timeoutMs = PROVIDER_TIMEOUT_MS,
+  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS
+): Promise<ProviderResult> {
   const key = getApiKey('groq');
   if (!key) throw new Error('GROQ_API_KEY is not configured on the server.');
 
@@ -247,7 +297,7 @@ async function callGroq(
         model,
         messages,
         temperature,
-        max_tokens: 3500,
+        max_tokens: maxTokens,
         stream: isStreaming,
       }),
       signal: controller.signal,
@@ -263,6 +313,7 @@ async function callGroq(
       const decoder = new TextDecoder();
       let accumulated = '';
       let buffer = '';
+      let truncated = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -279,6 +330,7 @@ async function callGroq(
           try {
             const json = JSON.parse(dataStr);
             const chunk = json.choices?.[0]?.delta?.content || '';
+            if (json.choices?.[0]?.finish_reason === 'length') truncated = true;
             if (chunk) {
               accumulated += chunk;
               onToken(chunk);
@@ -288,11 +340,14 @@ async function callGroq(
           }
         }
       }
-      return accumulated;
+      return { text: accumulated, truncated };
     }
 
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || '';
+    return {
+      text: data.choices?.[0]?.message?.content || '',
+      truncated: data.choices?.[0]?.finish_reason === 'length',
+    };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -307,8 +362,9 @@ async function callGemini(
   model = 'gemini-flash-lite-latest',
   onToken?: (token: string) => void,
   temperature = 0.55,
-  timeoutMs = PROVIDER_TIMEOUT_MS
-): Promise<string> {
+  timeoutMs = PROVIDER_TIMEOUT_MS,
+  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS
+): Promise<ProviderResult> {
   const key = getApiKey('gemini');
   if (!key) throw new Error('GEMINI_API_KEY is not configured on the server.');
 
@@ -332,7 +388,8 @@ async function callGemini(
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:${endpoint}${key}`;
       const body: any = {
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature },
+        // Without a limit the answer (and the billed thinking tokens) is unbounded
+        generationConfig: { temperature, maxOutputTokens: maxTokens + GEMINI_THINKING_HEADROOM_TOKENS },
       };
       if (systemPrompt) {
         body.systemInstruction = { parts: [{ text: systemPrompt }] };
@@ -357,6 +414,7 @@ async function callGemini(
         const decoder = new TextDecoder();
         let accumulated = '';
         let buffer = '';
+        let truncated = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -373,6 +431,7 @@ async function callGemini(
             try {
               const json = JSON.parse(dataStr);
               const chunk = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              if (json.candidates?.[0]?.finishReason === 'MAX_TOKENS') truncated = true;
               if (chunk) {
                 accumulated += chunk;
                 onToken(chunk);
@@ -382,11 +441,14 @@ async function callGemini(
             }
           }
         }
-        if (accumulated) return accumulated;
+        if (accumulated) return { text: accumulated, truncated };
       }
 
       const data = await res.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      return {
+        text: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
+        truncated: data.candidates?.[0]?.finishReason === 'MAX_TOKENS',
+      };
     } catch (e: any) {
       lastError = e;
     } finally {
@@ -406,8 +468,9 @@ async function callOpenRouter(
   model = 'openai/gpt-4o-mini',
   onToken?: (token: string) => void,
   temperature = 0.5,
-  timeoutMs = PROVIDER_TIMEOUT_MS
-): Promise<string> {
+  timeoutMs = PROVIDER_TIMEOUT_MS,
+  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS
+): Promise<ProviderResult> {
   const key = getApiKey('openrouter');
   if (!key) throw new Error('OPENROUTER_API_KEY is not configured on the server.');
 
@@ -428,14 +491,14 @@ async function callOpenRouter(
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${key}`,
-        'HTTP-Referer': 'https://bedrock.app',
+        'HTTP-Referer': 'https://bedrock-steel.vercel.app',
         'X-Title': 'Bedrock',
       },
       body: JSON.stringify({
         model,
         messages,
         temperature,
-        max_tokens: 3000,
+        max_tokens: maxTokens,
         stream: isStreaming,
       }),
       signal: controller.signal,
@@ -451,6 +514,7 @@ async function callOpenRouter(
       const decoder = new TextDecoder();
       let accumulated = '';
       let buffer = '';
+      let truncated = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -467,6 +531,7 @@ async function callOpenRouter(
           try {
             const json = JSON.parse(dataStr);
             const chunk = json.choices?.[0]?.delta?.content || '';
+            if (json.choices?.[0]?.finish_reason === 'length') truncated = true;
             if (chunk) {
               accumulated += chunk;
               onToken(chunk);
@@ -476,11 +541,14 @@ async function callOpenRouter(
           }
         }
       }
-      return accumulated;
+      return { text: accumulated, truncated };
     }
 
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || '';
+    return {
+      text: data.choices?.[0]?.message?.content || '',
+      truncated: data.choices?.[0]?.finish_reason === 'length',
+    };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -492,9 +560,26 @@ import {
   selectOptimalProvider,
   recordProviderSuccess,
   recordProviderFailure,
+  orderForFailover,
 } from './loadBalancer.js';
 
 import { recordLangfuseGeneration } from './langfuse.js';
+
+/**
+ * A failure that counts against the provider's circuit breaker. A request the provider refused because
+ * of its own content (400 / 413 / 422) says nothing about the provider's health, and counting it let one
+ * user's oversized input take a provider out for everybody for 30 seconds.
+ */
+function countsAgainstProvider(err: unknown): boolean {
+  return !(err instanceof ProviderHttpError && CLIENT_CAUSED_STATUSES.has(err.status));
+}
+
+/** Rate limited: decided from the HTTP status when there is one, from the message text only otherwise. */
+function isRateLimitError(err: unknown, message: string): boolean {
+  if (err instanceof ProviderHttpError) return err.status === 429;
+  const lower = message.toLowerCase();
+  return message.includes('429') || lower.includes('rate limit') || lower.includes('quota');
+}
 
 /**
  * Multi-provider execution with Upstash Redis distributed load balancing, circuit breaking, and automatic fallback
@@ -508,9 +593,12 @@ export async function executeAiCompletion(
   options?: {
     /** Absolute epoch ms by which this call must finish. Callers making several calls for one request share one value. */
     deadlineAt?: number;
+    /** Most tokens the answer may use (see AI_OUTPUT_BUDGET). Defaults to AI_OUTPUT_BUDGET.testDefault. */
+    maxOutputTokens?: number;
   }
-): Promise<{ text: string; model: string }> {
+): Promise<{ text: string; model: string; truncated?: boolean }> {
   const startTime = new Date();
+  const maxTokens = Math.max(100, Math.floor(options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS));
   const deadlineAt = options?.deadlineAt ?? Date.now() + AI_DEFAULT_BUDGET_MS;
 
   // 1. Gather all candidates that have valid API keys
@@ -537,7 +625,7 @@ export async function executeAiCompletion(
     target: ProviderTarget,
     currentOnToken: ((tok: string) => void) | undefined,
     timeoutMs: number
-  ): Promise<string> => {
+  ): Promise<ProviderResult> => {
     const tuning = getModelTuning(target.model || target.id);
     const tunedSystem = systemPrompt
       ? `${systemPrompt}\n\n${tuning.extraWording}`
@@ -545,38 +633,35 @@ export async function executeAiCompletion(
     const temp = temperatureOverride !== undefined ? temperatureOverride : tuning.temperature;
 
     if (target.id === 'groq-llama-70b') {
-      return await callGroq(prompt, tunedSystem, 'llama-3.3-70b-versatile', currentOnToken, temp, timeoutMs);
+      return await callGroq(prompt, tunedSystem, 'llama-3.3-70b-versatile', currentOnToken, temp, timeoutMs, maxTokens);
     }
     if (target.id === 'groq-llama-8b') {
-      return await callGroq(prompt, tunedSystem, 'llama-3.1-8b-instant', currentOnToken, temp, timeoutMs);
+      return await callGroq(prompt, tunedSystem, 'llama-3.1-8b-instant', currentOnToken, temp, timeoutMs, maxTokens);
     }
     if (target.id === 'gemini-flash') {
-      return await callGemini(prompt, tunedSystem, 'gemini-flash-latest', currentOnToken, temp, timeoutMs);
+      return await callGemini(prompt, tunedSystem, 'gemini-flash-latest', currentOnToken, temp, timeoutMs, maxTokens);
     }
     if (target.id === 'gemini-flash-lite') {
-      return await callGemini(prompt, tunedSystem, 'gemini-flash-lite-latest', currentOnToken, temp, timeoutMs);
+      return await callGemini(prompt, tunedSystem, 'gemini-flash-lite-latest', currentOnToken, temp, timeoutMs, maxTokens);
     }
     if (target.id === 'openrouter-gpt4o') {
-      return await callOpenRouter(prompt, tunedSystem, 'openai/gpt-4o-mini', currentOnToken, temp, timeoutMs);
+      return await callOpenRouter(prompt, tunedSystem, 'openai/gpt-4o-mini', currentOnToken, temp, timeoutMs, maxTokens);
     }
     // Fallback dynamic routing by model identifier
     if (target.model.includes('llama') || target.id.startsWith('groq')) {
-      return await callGroq(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs);
+      return await callGroq(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens);
     }
     if (target.model.includes('gemini') || target.id.startsWith('gemini')) {
-      return await callGemini(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs);
+      return await callGemini(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens);
     }
-    return await callOpenRouter(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs);
+    return await callOpenRouter(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens);
   };
 
   // 2. Select optimal provider via distributed round-robin / circuit health
   const primaryChoice = (await selectOptimalProvider(candidates)) || candidates[0];
 
-  // Order providers starting with the primary choice, followed by healthy alternates
-  const executionOrder = [
-    primaryChoice,
-    ...candidates.filter((c) => c.id !== primaryChoice.id),
-  ];
+  // The chosen provider first, then healthy ones by quality, and providers known to be down last
+  const executionOrder = await orderForFailover(candidates, primaryChoice);
 
   let lastError: Error | null = null;
   const throttledProviders = new Set<string>();
@@ -606,7 +691,7 @@ export async function executeAiCompletion(
     const stream: { filter: ReturnType<typeof createReasoningStreamFilter> | null } = { filter: null };
 
     try {
-      const rawText = await withTransientRetry(
+      const result = await withTransientRetry(
         () => {
           // A fresh filter per attempt (a retry only happens while nothing has reached the client)
           const filter = emitToClient ? createReasoningStreamFilter(emitToClient) : null;
@@ -616,8 +701,11 @@ export async function executeAiCompletion(
         // Retrying after tokens reached the client would send them twice
         { deadlineAt, canRetry: () => tokensEmitted === 0 }
       );
-      const text = stripReasoningText(rawText || '');
+      const text = stripReasoningText(result.text || '');
       if (text && text.trim().length > 0) {
+        if (result.truncated) {
+          console.warn(`[AI] ${provider.name} stopped at the output limit (${maxTokens} tokens); the answer is cut off.`);
+        }
         stream.filter?.flush();
         await recordProviderSuccess(provider.id);
         const modelName = `${provider.name} (${provider.model})`;
@@ -634,26 +722,29 @@ export async function executeAiCompletion(
             providerModel: provider.model,
             inputChars: prompt.length + (systemPrompt?.length ?? 0),
             outputChars: text.length,
+            truncated: result.truncated,
           },
         }).catch((e) => console.warn('[Langfuse] Error in recordLangfuseGeneration:', e));
 
         return {
           text,
           model: modelName,
+          // Only present when true, so normal answers keep exactly the same shape
+          ...(result.truncated ? { truncated: true } : {}),
         };
       }
     } catch (err: any) {
       const errMsg = clip(err?.message || String(err));
+      const rateLimited = isRateLimitError(err, errMsg);
       console.warn(`[LoadBalancer] Provider ${provider.name} failed:`, errMsg);
-      await recordProviderFailure(provider.id, errMsg);
+      // A request the provider refused because of its own content is not a sign the provider is unhealthy
+      if (countsAgainstProvider(err)) {
+        await recordProviderFailure(provider.id, errMsg, { rateLimited });
+      }
       lastError = err;
 
-      // If 429 rate limit or quota exceeded, skip all sibling models from this provider family
-      if (
-        errMsg.includes('429') ||
-        errMsg.toLowerCase().includes('rate limit') ||
-        errMsg.toLowerCase().includes('quota')
-      ) {
+      // Rate limited, or the key itself is refused (401 / 402 / 403): the sibling models share that key, so skip them
+      if (rateLimited || (err instanceof ProviderHttpError && KEY_LEVEL_STATUSES.has(err.status))) {
         throttledProviders.add(provider.provider);
       }
 

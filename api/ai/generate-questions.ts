@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
-import { executeAiCompletion, QuestionOutput } from '../_lib/ai.js';
+import { executeAiCompletion, AI_OUTPUT_BUDGET, QuestionOutput } from '../_lib/ai.js';
 import { INPUT_LIMITS, firstLengthError, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { getUseCaseProfile, classifyUseCase, normalizeQuestions } from '../_lib/useCaseProfiles.js';
@@ -54,7 +54,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   );
 
   try {
-    const { text, model } = await executeAiCompletion(safePrompt, systemPrompt, user?.id);
+    const { text, model } = await executeAiCompletion(safePrompt, systemPrompt, user?.id, undefined, undefined, {
+      maxOutputTokens: AI_OUTPUT_BUDGET.questions,
+    });
 
     // Clean JSON response (strip markdown wrappers if any)
     const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);

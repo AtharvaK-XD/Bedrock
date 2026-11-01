@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
-import { executeAiCompletion, AI_DEFAULT_BUDGET_MS } from '../_lib/ai.js';
+import { executeAiCompletion, AI_DEFAULT_BUDGET_MS, AI_OUTPUT_BUDGET } from '../_lib/ai.js';
 import { INPUT_LIMITS, firstLengthError, sendAiFailure, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { buildSynthesisSystemPrompt } from '../_lib/aiPrompts.js';
@@ -111,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'X-Accel-Buffering': 'no',
       });
 
-      const { text, model } = await executeAiCompletion(
+      const { text, model, truncated } = await executeAiCompletion(
         userContent,
         systemPrompt,
         user?.id,
@@ -122,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         },
         profile.temperature,
-        { deadlineAt }
+        { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize }
       );
 
       // The tokens are already with the client, so a stream cannot be repaired here;
@@ -153,36 +153,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         modelTarget: model,
         latencyMs: Date.now() - startTime,
         profileId: profile.id,
-        validation: validation.valid && streamValidation.isValid ? 'passed' : 'warning',
+        validation: validation.valid && streamValidation.isValid && !truncated ? 'passed' : 'warning',
         flaggedTerms: Array.from(new Set([...validation.foundTerms, ...streamValidation.forbiddenTermsFound])),
         missingSections: streamValidation.missingSections,
         promptText: streamedText.trim(),
+        // Only present when the answer was cut off at the output limit
+        ...(truncated ? { truncated: true } : {}),
       })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
-      logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model, stream: true });
+      logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model, stream: true, ...(truncated ? { truncated: true } : {}) });
       return;
     }
 
-    const { text, model } = await executeAiCompletion(
+    const { text, model, truncated } = await executeAiCompletion(
       userContent,
       systemPrompt,
       user?.id,
       undefined,
       profile.temperature,
-      { deadlineAt }
+      { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize }
     );
 
     let finalText = text;
     let effectiveModel = model;
+    let finalTruncated = Boolean(truncated);
     const sVal = validateSynthesisOutput(finalText, targetType, rawIdea);
 
     const canRepair = deadlineAt - Date.now() >= REPAIR_MIN_REMAINING_MS;
     if (!sVal.isValid && !canRepair) {
       console.warn('[Synthesize] Skipping repair retry: not enough request time left.');
     }
+    if (!sVal.isValid && truncated) {
+      // Rewriting from scratch with the same output limit would be cut off at the same place
+      console.warn('[Synthesize] Skipping repair retry: the answer was cut off at the output limit.');
+    }
 
-    if (!sVal.isValid && canRepair) {
+    if (!sVal.isValid && canRepair && !truncated) {
       console.warn(`[Synthesize] Output failed schema or forbidden-term validation (${sVal.issues.map(i => i.message).join('; ')}). Initiating single repair retry...`);
       const repair = buildRepairMessage({
         previousOutput: finalText,
@@ -198,12 +205,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           user?.id,
           undefined,
           Math.min(0.2, profile.temperature),
-          { deadlineAt }
+          { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize }
         );
         const retryVal = validateSynthesisOutput(retried.text, targetType, rawIdea);
         if (retryVal.isValid || retryVal.issues.length < sVal.issues.length) {
           finalText = retried.text;
           effectiveModel = retried.model;
+          finalTruncated = Boolean(retried.truncated);
           console.log(`[Synthesize] Serverless synthesis repair retry succeeded for "${targetType}"!`);
         }
       } catch (retryErr: any) {
@@ -225,16 +233,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model: effectiveModel });
+    logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model: effectiveModel, ...(finalTruncated ? { truncated: true } : {}) });
     return res.status(200).json({
       promptText: finalText.trim(),
       modelTarget: effectiveModel,
       latencyMs: Date.now() - startTime,
+      // Only present when the answer was cut off at the output limit
+      ...(finalTruncated ? { truncated: true } : {}),
       useCaseProfile: {
         id: profile.id,
         name: profile.name,
         temperature: profile.temperature,
-        validation: finalValidation.isValid ? 'passed' : 'warning',
+        validation: finalValidation.isValid && !finalTruncated ? 'passed' : 'warning',
         flaggedTerms: finalValidation.forbiddenTermsFound,
         missingSections: finalValidation.missingSections,
       },

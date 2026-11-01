@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
-import { executeAiCompletion } from '../_lib/ai.js';
+import { executeAiCompletion, refineOutputBudget, truncatedOutputError } from '../_lib/ai.js';
 import { INPUT_LIMITS, firstLengthError, sendAiFailure, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { buildRefineSystemPrompt, extractRefineResult } from '../_lib/aiPrompts.js';
@@ -49,7 +49,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const safeContent = sanitizeAndDelimitPrompt(payload);
 
   try {
-    const { text, model } = await executeAiCompletion(safeContent, systemPrompt, user?.id);
+    const { text, model, truncated } = await executeAiCompletion(safeContent, systemPrompt, user?.id, undefined, undefined, {
+      maxOutputTokens: refineOutputBudget(currentPrompt.length),
+    });
+    // A rewrite cut off at the output limit would replace the user's prompt with half of one: refuse it instead
+    if (truncated) throw truncatedOutputError();
     const extracted = extractRefineResult(text, currentPrompt, instruction);
 
     if (user?.id) {

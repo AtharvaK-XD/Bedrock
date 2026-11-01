@@ -1,0 +1,16 @@
+{
+  // Strict type check of the backend (api/**), tests included. Run: npx tsc -p tsconfig.api.json
+  // Not part of `tsc -b` (the app build) and not used by Vercel, which compiles api/ without checking types.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": ["api/**/*.ts"]
+}

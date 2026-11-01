@@ -111,10 +111,15 @@ async function filterHealthyProviders(providers: ProviderTarget[]): Promise<Prov
  * Records a failure on an AI provider. Trips circuit breaker if threshold is exceeded.
  * Automatically identifies 429 rate limit errors and cascades cooldown to sibling models sharing the key.
  */
-export async function recordProviderFailure(providerId: string, error?: string): Promise<void> {
+export async function recordProviderFailure(
+  providerId: string,
+  error?: string,
+  opts?: { rateLimited?: boolean }
+): Promise<void> {
   const redis = getRedisClient();
   const errMsg = error || '';
-  const isRateLimit = errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit');
+  // Prefer the HTTP status decided by the caller; fall back to the message text only when it is not known
+  const isRateLimit = opts?.rateLimited ?? (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit'));
   const cooldownMs = isRateLimit ? RATE_LIMIT_COOLDOWN_MS : TRIP_DURATION_MS;
 
   // 1. Update local circuit state
@@ -235,6 +240,26 @@ export async function selectOptimalProvider(
   }
 
   return cycle[index];
+}
+
+/**
+ * Order in which to try providers for one request: the chosen one first, then the others that are
+ * not tripped (best priority first, then by weight), and providers with an open circuit last.
+ * Stops a request from spending its time budget on providers already known to be down.
+ */
+export async function orderForFailover(
+  candidates: ProviderTarget[],
+  primary: ProviderTarget
+): Promise<ProviderTarget[]> {
+  const others = candidates.filter((c) => c.id !== primary.id);
+  const healthy = await filterHealthyProviders(others);
+  const healthyIds = new Set(healthy.map((p) => p.id));
+  const byQuality = (a: ProviderTarget, b: ProviderTarget) => a.priority - b.priority || b.weight - a.weight;
+  return [
+    primary,
+    ...others.filter((p) => healthyIds.has(p.id)).sort(byQuality),
+    ...others.filter((p) => !healthyIds.has(p.id)).sort(byQuality),
+  ];
 }
 
 /**
