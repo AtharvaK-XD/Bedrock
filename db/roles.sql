@@ -31,8 +31,21 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 -- migrate:break
 GRANT USAGE ON SCHEMA public TO bedrock_app;
 -- migrate:break
--- "User": sign-in lookup + first-login insert (api/_lib/auth.ts), profile read/update (api/user/profile.ts). No DELETE.
-GRANT SELECT, INSERT, UPDATE ON "User" TO bedrock_app;
+-- "User": column by column, exactly what api/** uses (checked on main 95bc7c2). No DELETE.
+-- Read: every column EXCEPT password_hash (auth.ts sign-in lookup, profile GET; nothing in the API reads password_hash
+-- since CHG-0023). `SELECT *` or `SELECT password_hash` as bedrock_app now fails with 42501.
+GRANT SELECT (id, email, name, username, avatar_url, avatar_initials, plan, role, bio, location, organization,
+  github, huggingface, website, joined_date, email_verified, mfa_enabled, razorpay_customer_id, razorpay_subscription_id,
+  subscription_tier, created_at, updated_at) ON "User" TO bedrock_app;
+-- migrate:break
+-- Add: the first-login insert in auth.ts (these 12 columns; the rest take their defaults).
+GRANT INSERT (id, email, password_hash, name, username, plan, role, email_verified, mfa_enabled, subscription_tier,
+  created_at, updated_at) ON "User" TO bedrock_app;
+-- migrate:break
+-- Change: profile PUT (name ... website), plan/tier change (plan, subscription_tier), sign-in upsert (updated_at).
+-- email, password_hash, email_verified, mfa_enabled, role, id and created_at cannot be changed by the app.
+GRANT UPDATE (name, username, bio, location, organization, github, huggingface, website, plan, subscription_tier,
+  updated_at) ON "User" TO bedrock_app;
 -- migrate:break
 -- prompts / workflows: list, count, owner-checked update, insert, delete
 GRANT SELECT, INSERT, UPDATE, DELETE ON "Prompt", "BranchingTree" TO bedrock_app;
@@ -67,15 +80,14 @@ ALTER ROLE bedrock_app SET idle_in_transaction_session_timeout = '30s';
 -- Tables not listed above (and any table a future migration adds) give bedrock_app NO access until a line is added
 -- here. Add the rights for a new feature's table in the same change that adds the table, BEFORE Vercel uses bedrock_app.
 --
--- OPTIONAL, only after api/_lib/auth.ts stops using SELECT * on "User" (OPEN-0030): hide password_hash from the app.
---   REVOKE SELECT ON "User" FROM bedrock_app;
---   GRANT SELECT (id, email, name, username, avatar_url, avatar_initials, plan, role, bio, location, organization,
---     github, huggingface, website, joined_date, email_verified, mfa_enabled, subscription_tier, created_at, updated_at)
---     ON "User" TO bedrock_app;
 --
 -- Final check: one row per expected right. The runner prints them and fails if any is wrong.
 SELECT c.item, c.ok FROM (VALUES
-  ('User: read / add / change',              has_table_privilege('bedrock_app', '"User"', 'SELECT,INSERT,UPDATE')),
+  ('User: reads the columns the API uses',   has_column_privilege('bedrock_app', '"User"', 'id', 'SELECT') AND has_column_privilege('bedrock_app', '"User"', 'email', 'SELECT') AND has_column_privilege('bedrock_app', '"User"', 'subscription_tier', 'SELECT') AND has_column_privilege('bedrock_app', '"User"', 'joined_date', 'SELECT')),
+  ('User: cannot read password_hash',        NOT has_column_privilege('bedrock_app', '"User"', 'password_hash', 'SELECT') AND NOT has_table_privilege('bedrock_app', '"User"', 'SELECT')),
+  ('User: first-login insert allowed',       has_column_privilege('bedrock_app', '"User"', 'password_hash', 'INSERT') AND has_column_privilege('bedrock_app', '"User"', 'email_verified', 'INSERT')),
+  ('User: profile / plan / updated_at can change', has_column_privilege('bedrock_app', '"User"', 'bio', 'UPDATE') AND has_column_privilege('bedrock_app', '"User"', 'subscription_tier', 'UPDATE') AND has_column_privilege('bedrock_app', '"User"', 'updated_at', 'UPDATE')),
+  ('User: email / password_hash / email_verified / role cannot change', NOT has_column_privilege('bedrock_app', '"User"', 'email', 'UPDATE') AND NOT has_column_privilege('bedrock_app', '"User"', 'password_hash', 'UPDATE') AND NOT has_column_privilege('bedrock_app', '"User"', 'email_verified', 'UPDATE') AND NOT has_column_privilege('bedrock_app', '"User"', 'role', 'UPDATE')),
   ('User: cannot delete or truncate',        NOT has_table_privilege('bedrock_app', '"User"', 'DELETE') AND NOT has_table_privilege('bedrock_app', '"User"', 'TRUNCATE')),
   ('Prompt: read / add / change / delete',   has_table_privilege('bedrock_app', '"Prompt"', 'SELECT') AND has_table_privilege('bedrock_app', '"Prompt"', 'INSERT') AND has_table_privilege('bedrock_app', '"Prompt"', 'UPDATE') AND has_table_privilege('bedrock_app', '"Prompt"', 'DELETE')),
   ('BranchingTree: read / add / change / delete', has_table_privilege('bedrock_app', '"BranchingTree"', 'SELECT') AND has_table_privilege('bedrock_app', '"BranchingTree"', 'INSERT') AND has_table_privilege('bedrock_app', '"BranchingTree"', 'UPDATE') AND has_table_privilege('bedrock_app', '"BranchingTree"', 'DELETE')),

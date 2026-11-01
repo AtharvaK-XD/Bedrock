@@ -11,12 +11,14 @@ node db/migrate.mjs status
 node db/migrate.mjs up    --yes --host <host> [--to NNNN]  # apply pending migrations (optionally only up to NNNN)
 node db/migrate.mjs down  --yes --host <host> [--all]      # undo the newest migration (or all of them)
 node db/migrate.mjs roles --yes --host <host>              # run db/roles.sql (rights for the bedrock_app role)
+node db/check-app-role.mjs                                 # proves bedrock_app's rights; every check rolled back
 node db/check-schema.mjs                                   # read-only: live schema vs migrations, roles, counts only
 node db/explain.mjs                                        # read-only: query plans for the SQL the API runs
 node db/flood-test.mjs --yes --host <host>                 # dev only: 1,000,000-row log flood, timed purge
 npx vitest run tests/db.migrations.test.ts                 # skipped unless DATABASE_URL_DEV is set
 ```
-What to do when something goes wrong: `db/RUNBOOK.md`. Roles: `db/ROLES.md` + `db/roles.sql`.
+Production, step by step: `db/PRODUCTION.md`. What to do when something goes wrong: `db/RUNBOOK.md`.
+Roles: `db/ROLES.md` + `db/roles.sql`.
 
 ## What each migration does to a database that already has data
 | Migration | Effect on existing rows |
@@ -50,11 +52,14 @@ Tightening the database to the API numbers needs Atharva's OK.
 
 ## Rules for future migrations
 - A new table needs its rights added to `db/roles.sql` in the same change (bedrock_app gets nothing by default).
+- "User" rights are per column: a new "User" column the API reads or writes needs its line in `roles.sql` too, and
+  queries on "User" must name their columns (`SELECT *` fails for bedrock_app because `password_hash` is hidden).
 - `CREATE OR REPLACE FUNCTION` on `reserve_quota`, `purge_old_logs`, `trace_totals` or `bedrock_enforce_row_cap`
   drops the 0012 settings: repeat `SET search_path = public, pg_temp` (and `lock_timeout`) in the new definition.
 - If a feature ever needs to change a guarded field (0011), change the guard in a migration on purpose; never drop it.
 
 ## Production rollout (Atharva runs it; NOT run by any agent)
+Copy-paste version with exact commands: `db/PRODUCTION.md`. The table below is the overview.
 Before anything: all steps below must already have passed on a Neon dev branch (`up`, tests, `down --all`, `up`).
 `<host>` = the host the tool prints; it must be the production host only during this rollout.
 
