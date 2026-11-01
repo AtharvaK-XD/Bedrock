@@ -9,7 +9,7 @@
     "build": "tsc",
     "start": "tsx src/index.ts",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push"
+    "prisma:push": "node -e \"console.error('DISABLED: the live database is managed by db/migrations (see db/README.md). prisma db push would try to drop the usage table, indexes, triggers and functions that are not in this old schema file.'); process.exit(1)\""
   },
   "keywords": [
     "bedrock",

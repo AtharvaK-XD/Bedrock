@@ -66,6 +66,7 @@ const works = {
     `INSERT INTO "SecurityLog"(id,user_id,event_type,severity,ip_address,endpoint,message,created_at) VALUES ('${P}_s',NULL,'DBCHECK','INFO','203.0.113.9','/x','m',now())`,
     `SELECT count(*) FROM "SecurityLog" WHERE ip_address = '203.0.113.9' AND event_type = 'DBCHECK'`,
     `DELETE FROM "SecurityLog" WHERE id = '${P}_s'`],
+  'erase an account through delete_user_data()': [newUser, `SELECT * FROM delete_user_data('${P}')`],
   'quota: reserve_quota, refund, purge_old_logs': [newUser,
     `SELECT reserve_quota('${P}_q', '${P}'::text, '203.0.113.9', 'generation', '/x', 10::int)`,
     `DELETE FROM "QuotaEvent" WHERE id = '${P}_q'`,

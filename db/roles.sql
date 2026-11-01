@@ -63,11 +63,16 @@ REVOKE EXECUTE ON FUNCTION purge_old_logs(integer) FROM PUBLIC;
 -- migrate:break
 REVOKE EXECUTE ON FUNCTION trace_totals(text) FROM PUBLIC;
 -- migrate:break
+REVOKE EXECUTE ON FUNCTION delete_user_data(text) FROM PUBLIC;
+-- migrate:break
 GRANT EXECUTE ON FUNCTION reserve_quota(text, text, text, text, text, integer, interval) TO bedrock_app;
 -- migrate:break
 GRANT EXECUTE ON FUNCTION purge_old_logs(integer) TO bedrock_app;
 -- migrate:break
 GRANT EXECUTE ON FUNCTION trace_totals(text) TO bedrock_app;
+-- migrate:break
+-- The ONLY way the app can erase an account (it has no DELETE right on "User"): SECURITY DEFINER, migration 0014.
+GRANT EXECUTE ON FUNCTION delete_user_data(text) TO bedrock_app;
 -- migrate:break
 -- A runaway query or a stuck transaction from the app is stopped instead of holding the database.
 -- (Takes effect on new connections. Every API query today finishes in well under a second.)
@@ -98,12 +103,14 @@ SELECT c.item, c.ok FROM (VALUES
   ('no table can be truncated by the app',   NOT EXISTS (SELECT 1 FROM pg_tables t WHERE t.schemaname = 'public' AND has_table_privilege('bedrock_app', format('%I.%I', t.schemaname, t.tablename), 'TRUNCATE'))),
   ('no rights on schema_migrations',         CASE WHEN to_regclass('public.schema_migrations') IS NULL THEN true ELSE NOT has_table_privilege('bedrock_app', 'public.schema_migrations', 'SELECT') END),
   ('cannot create objects in the schema',    NOT has_schema_privilege('bedrock_app', 'public', 'CREATE')),
-  ('app can run reserve_quota / purge_old_logs / trace_totals',
+  ('app can run reserve_quota / purge_old_logs / trace_totals / delete_user_data',
      has_function_privilege('bedrock_app', 'reserve_quota(text,text,text,text,text,integer,interval)', 'EXECUTE')
      AND has_function_privilege('bedrock_app', 'purge_old_logs(integer)', 'EXECUTE')
-     AND has_function_privilege('bedrock_app', 'trace_totals(text)', 'EXECUTE')),
+     AND has_function_privilege('bedrock_app', 'trace_totals(text)', 'EXECUTE')
+     AND has_function_privilege('bedrock_app', 'delete_user_data(text)', 'EXECUTE')),
   ('PUBLIC cannot run those functions',
      NOT has_function_privilege('public', 'reserve_quota(text,text,text,text,text,integer,interval)', 'EXECUTE')
      AND NOT has_function_privilege('public', 'purge_old_logs(integer)', 'EXECUTE')
-     AND NOT has_function_privilege('public', 'trace_totals(text)', 'EXECUTE'))
+     AND NOT has_function_privilege('public', 'trace_totals(text)', 'EXECUTE')
+     AND NOT has_function_privilege('public', 'delete_user_data(text)', 'EXECUTE'))
 ) AS c(item, ok);

@@ -1,0 +1,52 @@
+name: Bedrock Database Checks
+
+# Runs the in-memory Postgres tests (tests/db) whenever the database files change. No secrets and no Neon
+# connection are used: the tests run the real migrations on PGlite (a Postgres engine inside Node).
+# The tests against a real Neon dev branch (tests/db.migrations.test.ts) are NOT run here; they need DATABASE_URL_DEV.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'db/**'
+      - 'tests/db/**'
+      - 'tests/db.migrations.test.ts'
+      - 'package-lock.json'
+      - '.github/workflows/database.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'db/**'
+      - 'tests/db/**'
+      - 'tests/db.migrations.test.ts'
+      - 'package-lock.json'
+      - '.github/workflows/database.yml'
+  workflow_dispatch:
+
+# Read-only token: this workflow never writes to the repository
+permissions:
+  contents: read
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Make sure the test engine is installed (otherwise the tests would be skipped and look green)
+        run: node -e "require.resolve('@electric-sql/pglite'); console.log('PGlite found')"
+
+      - name: Syntax-check the database scripts
+        run: |
+          for f in db/*.mjs db/lib/*.mjs; do node --check "$f"; done
+
+      - name: Run the in-memory database tests
+        run: npx vitest run tests/db --testTimeout 120000
