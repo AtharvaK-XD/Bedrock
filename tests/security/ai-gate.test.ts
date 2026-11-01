@@ -7,7 +7,7 @@ const h = vi.hoisted(() => ({ calls: [] as string[], gateOpen: true }));
 vi.mock('../../api/_lib/auth.js', () => ({
   authenticateRequest: vi.fn(async () => {
     h.calls.push('authenticate');
-    return null;
+    return { id: 'usr_test_1', isPaid: false };
   }),
 }));
 vi.mock('../../api/_lib/rateLimiter.js', () => ({
