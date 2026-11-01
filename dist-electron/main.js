@@ -141,6 +141,17 @@ function isOwnLoopbackOrigin(origin) {
 	return origin === `http://127.0.0.1:${localServerPort}` || origin === `http://localhost:${localServerPort}`;
 }
 
+/**
+ * "DNS rebinding" guard: a website can point its own name at 127.0.0.1 and then talk to this server as if
+ * it were same-origin. Those requests carry the website's name in the Host header, so only our own
+ * address is served.
+ */
+function isOwnLoopbackHost(hostHeader) {
+	if (typeof hostHeader !== "string") return false;
+	const host = hostHeader.toLowerCase();
+	return host === `127.0.0.1:${localServerPort}` || host === `localhost:${localServerPort}`;
+}
+
 /** Rejects requests that a browser marks as coming from another website. */
 function isTrustedLocalRequest(req) {
 	const origin = req.headers.origin;
@@ -266,6 +277,12 @@ function startLocalServer() {
 			try {
 				const parsedUrl = new URL(req.url, "http://127.0.0.1");
 
+				// Only our own address is served (DNS rebinding guard)
+				if (!isOwnLoopbackHost(req.headers.host)) {
+					res.writeHead(403, { "Content-Type": "text/plain" });
+					return res.end("Forbidden");
+				}
+
 				// Handle CORS preflight: only our own loopback origins (never "*")
 				if (req.method === "OPTIONS") {
 					const cors = loopbackCorsHeaders(req);
@@ -362,10 +379,19 @@ function startLocalServer() {
 
 				// Handle Backend API Proxying for Desktop Workstation (Synthesize, RAG Grounding, Telemetry, Profiles)
 				if (parsedUrl.pathname.startsWith("/api/")) {
-					const backendHost = process.env.BEDROCK_BACKEND_HOST || "bedrock-steel.vercel.app";
+					// Only the app's own pages may use the proxy, not another website's request to this port
+					if (!isTrustedLocalRequest(req)) {
+						res.writeHead(403, { "Content-Type": "application/json" });
+						return res.end(JSON.stringify({ error: "Forbidden" }));
+					}
+					// Installed builds always talk to the production backend: an environment variable must not
+					// be able to redirect every request (with the user's token) to another server.
+					const hostOverride = app.isPackaged ? undefined : process.env.BEDROCK_BACKEND_HOST;
+					const portOverride = app.isPackaged ? undefined : process.env.BEDROCK_BACKEND_PORT;
+					const backendHost = hostOverride || "bedrock-steel.vercel.app";
 					const isHttps = !backendHost.includes("localhost") && !backendHost.includes("127.0.0.1");
 					const transport = isHttps ? https : http;
-					const port = isHttps ? 443 : (process.env.BEDROCK_BACKEND_PORT ? parseInt(process.env.BEDROCK_BACKEND_PORT, 10) : 3001);
+					const port = isHttps ? 443 : (portOverride ? parseInt(portOverride, 10) : 3001);
 
 					const cleanHeaders = { ...req.headers };
 					delete cleanHeaders.host;

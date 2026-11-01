@@ -4,6 +4,7 @@ import { Resend } from 'resend';
 import { authenticateRequest, isAllowedAppOrigin } from '../_lib/auth.js';
 import { logSecurityEvent } from '../_lib/db.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
+import { fetchClerkIdentity, sessionSubject } from '../_lib/clerkUser.js';
 
 const EMAIL_RE = /^[^\s@<>"'`,;:\\]+@[^\s@<>"'`,;:\\]+\.[^\s@<>"'`,;:\\]+$/;
 
@@ -79,19 +80,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Sign in required' });
   }
 
-  const { email, name, type } = req.body || {};
+  const { email, type } = req.body || {};
 
   if (type !== 'signup' && type !== 'signin') {
     return res.status(400).json({ error: 'type must be "signup" or "signin"' });
   }
 
-  const to = typeof email === 'string' ? email.toLowerCase().trim() : '';
-  if (!to || to.length > 254 || !EMAIL_RE.test(to)) {
-    return res.status(400).json({ error: 'Valid email address is required' });
+  // The recipient and the name in the email come from Clerk (the verified account), never from the
+  // request: a signed-in user could otherwise pick any address and any wording under Bedrock's name.
+  const clerkUserId = sessionSubject(req);
+  if (!clerkUserId) {
+    return res.status(401).json({ error: 'Sign in required' });
+  }
+  const identity = await fetchClerkIdentity(clerkUserId);
+  if (!identity.ok) {
+    if (identity.reason === 'no_verified_email') {
+      return res.status(403).json({ error: 'Your account has no verified email address', code: 'EMAIL_NOT_VERIFIED' });
+    }
+    // Not configured or Clerk unreachable: send nothing (fail closed)
+    return res.status(503).json({ error: 'Email notifications are not available right now', code: 'EMAIL_IDENTITY_UNAVAILABLE' });
+  }
+  const to = identity.identity.email;
+  if (to.length > 254 || !EMAIL_RE.test(to)) {
+    return res.status(403).json({ error: 'Your account has no usable email address', code: 'EMAIL_NOT_VERIFIED' });
   }
 
-  // The caller may only notify their own address (when the account's email is known)
-  if (caller.email && !caller.email.endsWith('@clerk.user') && caller.email.toLowerCase() !== to) {
+  // A request that names a different address is refused and logged (a sign of misuse)
+  if (typeof email === 'string' && email.trim() && email.toLowerCase().trim() !== to) {
     await logSecurityEvent({
       userId: caller.id,
       eventType: 'EMAIL_RECIPIENT_MISMATCH',
@@ -106,8 +121,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Throttle per recipient so the endpoint cannot be used to spam an inbox
   if (!(await enforceRateLimit(req, res, 'emailRecipient', `rcpt:${to}`))) return;
 
-  // Untrusted values are escaped before they are placed into the HTML template
-  const rawName = (typeof name === 'string' && name.replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, 60)) || to.split('@')[0];
+  // The name is Clerk's; it is still escaped before it is placed into the HTML template
+  const rawName = identity.identity.name || to.split('@')[0];
   const displayName = escapeHtml(rawName);
   const safeTo = escapeHtml(to);
   const gmail = getGmailTransporter();

@@ -5,6 +5,7 @@ import { PostHogProvider } from '@posthog/react'
 import './index.css'
 import App from './App.tsx'
 import { initSecureKeyStore } from './lib/secureKeyStore'
+import { tracePropagationTargets } from './lib/sentryTargets'
 
 Sentry.init({
   dsn: 'https://bc8788b769ee7e46499af64ac7672f33@o4512165526437888.ingest.us.sentry.io/4512165536923648',
@@ -19,11 +20,7 @@ Sentry.init({
   ],
   // Performance Monitoring (sampled: less user data leaves the browser)
   tracesSampleRate: 0.2,
-  tracePropagationTargets: [
-    'localhost',
-    /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app/,
-    /^https:\/\/bedrockxai\.com/,
-  ],
+  tracePropagationTargets: tracePropagationTargets(typeof window !== 'undefined' ? window.location.origin : undefined),
   // Session Replay
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,

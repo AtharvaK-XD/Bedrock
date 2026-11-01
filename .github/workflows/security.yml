@@ -59,7 +59,8 @@ jobs:
           node-version: 22 # Node 20 is past end of life (April 2026)
 
       - name: Install Dependencies
-        run: npm ci || npm install
+        # npm ci only: if the lockfile and package.json disagree the build must fail, not quietly install newer, unreviewed versions
+        run: npm ci
 
       - name: Run Secret Leak Scanner
         run: npm run scan:secrets
@@ -72,12 +73,12 @@ jobs:
         run: npm run build
 
       - name: Run Security Tests
-        run: npx vitest run tests/security src/lib/__tests__/desktopAuthHandoff.test.ts
+        run: npx vitest run tests/security src/lib/__tests__
 
       - name: Run Server Typechecks
         working-directory: ./server
         run: |
-          npm ci || npm install
+          npm ci
           npx prisma generate
           npm audit --audit-level=critical || true
           npx tsc --noEmit

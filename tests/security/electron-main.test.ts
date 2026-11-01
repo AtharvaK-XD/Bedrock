@@ -2,6 +2,7 @@
 // `electron` is mocked; the real IPC handlers and the real loopback HTTP server are exercised.
 // Temp folders only; no network beyond 127.0.0.1.
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,6 +20,8 @@ const h = vi.hoisted(() => {
     headersHandler: null as null | ((details: any, cb: (r: any) => void) => void),
     permissionRequest: null as null | ((wc: any, permission: string, cb: (ok: boolean) => void, details: any) => void),
     permissionCheck: null as null | ((wc: any, permission: string, origin: string) => boolean),
+    packaged: false, // what app.isPackaged answers; a test switches it to behave like an installed build
+    httpsRequests: [] as Array<{ hostname?: string; port?: number }>,
   };
   const shell = { openExternal: vi.fn() };
   const dialog = {
@@ -34,6 +37,18 @@ const h = vi.hoisted(() => {
     decryptString: (buf: Buffer) => xor(buf).toString('utf-8'),
   };
   return { state, shell, dialog, safeStorage };
+});
+
+// The production backend is reached over HTTPS: record the call instead of making it
+vi.mock('node:https', async () => {
+  const { PassThrough } = await import('node:stream');
+  const request = (options: { hostname?: string; port?: number }) => {
+    h.state.httpsRequests.push({ hostname: options.hostname, port: options.port });
+    const fake = new PassThrough();
+    setImmediate(() => fake.emit('error', new Error('no real network in tests')));
+    return fake;
+  };
+  return { default: { request }, request };
 });
 
 vi.mock('electron', () => {
@@ -57,7 +72,7 @@ vi.mock('electron', () => {
     loadFile() { return Promise.resolve(); }
   }
   const app = {
-    isPackaged: false,
+    get isPackaged() { return state.packaged; },
     userAgentFallback: '',
     setAppUserModelId: () => {},
     setAsDefaultProtocolClient: () => true,
@@ -156,6 +171,72 @@ describe('in-app navigation', () => {
     expect(navigate('will-redirect', 'https://evil.example/', false, true)).toBe(true);
     expect(navigate('will-redirect', `${base}/index.html`, false, true)).toBe(false);
     expect(navigate('will-redirect', 'https://accounts.google.com/x', false, false)).toBe(false); // sub-frames untouched
+  });
+});
+
+describe('local server: other websites and the backend proxy', () => {
+  /** `fetch` cannot set the Host header, so use a raw request. */
+  const rawGet = (pathAndQuery: string, hostHeader: string) =>
+    new Promise<number>((resolve, reject) => {
+      const url = new URL(base);
+      const req = http.request({ host: url.hostname, port: url.port, path: pathAndQuery, method: 'GET', headers: { Host: hostHeader } }, (res) => {
+        res.resume();
+        resolve(res.statusCode || 0);
+      });
+      req.on('error', reject);
+      req.end();
+    });
+
+  it('only serves requests addressed to its own 127.0.0.1 / localhost address (DNS rebinding)', async () => {
+    const port = new URL(base).port;
+    for (const host of ['evil.example', `evil.example:${port}`, `127.0.0.1.evil.example:${port}`, '127.0.0.1:1', `[::1]:${port}`]) {
+      expect(await rawGet('/api/desktop-auth-status?nonce=abcdefgh1234', host), `Host "${host}"`).toBe(403);
+      expect(await rawGet('/', host), `Host "${host}" on /`).toBe(403);
+    }
+    expect(await rawGet('/api/desktop-auth-status?nonce=abcdefgh1234', `127.0.0.1:${port}`)).toBe(200);
+    expect(await rawGet('/api/desktop-auth-status?nonce=abcdefgh1234', `localhost:${port}`)).toBe(200);
+  });
+
+  it('keeps other websites away from the backend proxy', async () => {
+    state.httpsRequests.length = 0;
+    const foreign = await fetch(`${base}/api/ai/synthesize`, { method: 'POST', headers: { Origin: 'https://evil.example', 'Content-Type': 'application/json' }, body: '{}' });
+    expect(foreign.status).toBe(403);
+    const crossSite = await fetch(`${base}/api/health`, { headers: { 'Sec-Fetch-Site': 'cross-site' } });
+    expect(crossSite.status).toBe(403);
+    expect(state.httpsRequests).toHaveLength(0);
+
+    // The app's own pages still use it (the fake HTTPS call fails with 502; nothing leaves the machine)
+    const own = await fetch(`${base}/api/health`, { headers: { Origin: base } });
+    expect(own.status).toBe(502);
+    expect(state.httpsRequests).toHaveLength(1);
+  });
+
+  it('lets only developer builds redirect the proxy with BEDROCK_BACKEND_HOST', async () => {
+    const seen: string[] = [];
+    const fakeBackend = http.createServer((q, r) => { seen.push(q.url || ''); r.end('ok'); });
+    await new Promise<void>((ok) => fakeBackend.listen(0, '127.0.0.1', () => ok()));
+    const backendPort = (fakeBackend.address() as any).port;
+    const before = { host: process.env.BEDROCK_BACKEND_HOST, port: process.env.BEDROCK_BACKEND_PORT };
+    process.env.BEDROCK_BACKEND_HOST = '127.0.0.1';
+    process.env.BEDROCK_BACKEND_PORT = String(backendPort);
+    try {
+      state.httpsRequests.length = 0;
+      state.packaged = false;
+      await fetch(`${base}/api/health`, { headers: { Origin: base } });
+      expect(seen).toEqual(['/api/health']); // developer build: the override works
+
+      state.packaged = true; // installed build
+      const res = await fetch(`${base}/api/health`, { headers: { Origin: base } });
+      expect(res.status).toBe(502);
+      expect(seen).toHaveLength(1); // the fake backend was not asked again
+      expect(state.httpsRequests).toEqual([{ hostname: 'bedrock-steel.vercel.app', port: 443 }]);
+    } finally {
+      state.packaged = false;
+      for (const [k, v] of [['BEDROCK_BACKEND_HOST', before.host], ['BEDROCK_BACKEND_PORT', before.port]] as const) {
+        if (v === undefined) delete process.env[k]; else process.env[k] = v;
+      }
+      fakeBackend.close();
+    }
   });
 });
 
