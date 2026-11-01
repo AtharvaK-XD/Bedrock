@@ -1,0 +1,46 @@
+name: Bedrock Backend Checks
+
+# Type check and tests for api/** on every push and pull request to main.
+# The real-database tests (api/_lib/__tests__/realSql.test.ts) run on PGlite, an in-memory Postgres:
+# no secrets and no connection to Neon are needed here.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Read-only token: this workflow never writes to the repository
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check api/ (strict)
+        run: npx tsc -p tsconfig.api.json
+
+      - name: Backend tests (includes the real-SQL tests on PGlite)
+        # Fails if the real-SQL file was skipped because PGlite is missing: that would hide database drift
+        run: |
+          npx vitest run api --reporter=default --reporter=json --outputFile=/tmp/vitest-api.json
+          node -e "
+            const r = JSON.parse(require('fs').readFileSync('/tmp/vitest-api.json','utf8'));
+            if (r.numFailedTests > 0) process.exit(1);
+            const skipped = r.numPendingTests;
+            console.log('passed:', r.numPassedTests, 'skipped:', skipped);
+            if (skipped > 0) { console.error('::error::' + skipped + ' backend tests were skipped (is @electric-sql/pglite installed?)'); process.exit(1); }
+          "

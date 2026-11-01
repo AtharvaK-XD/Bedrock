@@ -65,6 +65,103 @@ export const QuestionItemSchema = z.object({
 
 export const QuestionsArraySchema = z.array(QuestionItemSchema).min(2).max(6);
 
+/**
+ * Output contract appended to every profile's questionPrompt. Without exact key names, models answer
+ * with their own ("question", "type") and the wizard shows blank cards. normalizeQuestions() below
+ * repairs the common variants, but the prompt should get the right keys in the first place.
+ */
+export const QUESTION_OUTPUT_FORMAT = `OUTPUT FORMAT (strict): reply with ONLY a JSON array: no markdown fences, no comments, no text before or after it. Use exactly these key names ("questionText", not "question"; "questionType", not "type"), matching this schema:
+[
+  {
+    "id": "q1",
+    "questionText": "Question string here?",
+    "questionType": "single_select",
+    "options": ["Option A", "Option B", "Option C"]
+  }
+]
+Rules: "questionType" must be one of "single_select", "multi_select" or "free_text". "single_select" and "multi_select" need 3 to 5 options (each a short string); "free_text" has no "options" key. Ask 3 to 4 questions and number the ids q1, q2, q3, q4.`;
+
+const QUESTION_TYPES = ['single_select', 'multi_select', 'free_text'] as const;
+type QuestionKind = (typeof QUESTION_TYPES)[number];
+
+// Other names models use for the three kinds, after lower-casing and turning "-" / " " into "_"
+const QUESTION_TYPE_ALIASES: Record<string, QuestionKind> = {
+  select: 'single_select', single: 'single_select', radio: 'single_select', choice: 'single_select',
+  single_choice: 'single_select', multiple_choice: 'single_select', dropdown: 'single_select',
+  multi: 'multi_select', multiselect: 'multi_select', multiple: 'multi_select', multiple_select: 'multi_select',
+  checkbox: 'multi_select', checkboxes: 'multi_select', multi_choice: 'multi_select',
+  text: 'free_text', freetext: 'free_text', open: 'free_text', open_ended: 'free_text', textarea: 'free_text', string: 'free_text',
+};
+
+const MAX_QUESTIONS = 6;
+const MAX_OPTIONS = 8;
+const MAX_QUESTION_CHARS = 500;
+const MAX_OPTION_CHARS = 200;
+
+function questionKind(value: unknown): QuestionKind | null {
+  if (typeof value !== 'string') return null;
+  const key = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if ((QUESTION_TYPES as readonly string[]).includes(key)) return key as QuestionKind;
+  return QUESTION_TYPE_ALIASES[key] ?? null;
+}
+
+/**
+ * Turns the model's parsed JSON into the questions the wizard renders (id, questionText, questionType, options).
+ * Accepts the usual variants: "question" / "text" / "title" for the text, "type" for the kind, a
+ * `{ "questions": [...] }` wrapper, and options given as strings or `{ label | value | text }` objects.
+ * Items without any question text are dropped (a card reading "Clarifying Question 2" helps nobody);
+ * a select question with no options becomes free text, so it never renders as an empty list.
+ */
+export function normalizeQuestions(raw: unknown): QuestionOutput[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { questions?: unknown } | null)?.questions)
+      ? (raw as { questions: unknown[] }).questions
+      : [];
+
+  const questions: QuestionOutput[] = [];
+  const usedIds = new Set<string>();
+
+  list.forEach((item, index) => {
+    if (questions.length >= MAX_QUESTIONS || !item || typeof item !== 'object' || Array.isArray(item)) return;
+    const q = item as Record<string, unknown>;
+
+    const textSource = [q.questionText, q.question, q.text, q.title, q.prompt, q.label].find(
+      (v) => typeof v === 'string' && v.trim().length > 0
+    ) as string | undefined;
+    const questionText = textSource?.trim().slice(0, MAX_QUESTION_CHARS);
+    if (!questionText) return;
+
+    const options = (Array.isArray(q.options) ? q.options : [])
+      .map((opt) => {
+        if (typeof opt === 'string' || typeof opt === 'number') return String(opt);
+        if (opt && typeof opt === 'object') {
+          const o = opt as Record<string, unknown>;
+          const label = [o.label, o.text, o.value, o.name].find((v) => typeof v === 'string' && v.trim());
+          return typeof label === 'string' ? label : '';
+        }
+        return '';
+      })
+      .map((opt) => opt.trim().slice(0, MAX_OPTION_CHARS))
+      .filter((opt, i, all) => opt.length > 0 && all.indexOf(opt) === i)
+      .slice(0, MAX_OPTIONS);
+
+    let kind = questionKind(q.questionType) ?? questionKind(q.type);
+    if (!kind) kind = options.length > 0 ? 'single_select' : 'free_text';
+    if (kind !== 'free_text' && options.length === 0) kind = 'free_text';
+
+    // The wizard keys answers by id, so ids must be unique
+    let id = typeof q.id === 'string' || typeof q.id === 'number' ? String(q.id).trim().slice(0, 100) : '';
+    if (!id || usedIds.has(id)) id = `q${index + 1}`;
+    while (usedIds.has(id)) id = `${id}_`;
+    usedIds.add(id);
+
+    questions.push(kind === 'free_text' ? { id, questionText, questionType: kind } : { id, questionText, questionType: kind, options });
+  });
+
+  return questions;
+}
+
 export const CodingAgentOutputSchema = z.object({
   questions: QuestionsArraySchema,
   synthesis: z.string().min(100),
@@ -130,15 +227,7 @@ FOCUS DIMENSIONS:
 3. State & Edge Case Handling: Optimistic UI with rollback vs pessimistic transactional blocking vs CQRS event sourcing.
 4. Testing & Verification: Vitest unit tests + Playwright E2E vs Jest.
 
-Output MUST be strictly a JSON array of question objects without markdown backticks or comments:
-[
-  {
-    "id": "q1",
-    "questionText": "What primary runtime environment...",
-    "questionType": "single_select",
-    "options": ["Option A", "Option B", "Option C"]
-  }
-]`,
+${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: CODING_AGENT_MASTER_PROMPT,
     zodOutputSchema: CodingAgentOutputSchema,
     fallbackQuestions: [
@@ -235,7 +324,7 @@ FOCUS DIMENSIONS:
 3. Lighting Setup & Environmental Atmosphere: Golden hour warm sunlight, moody neon noir with wet asphalt reflections, dramatic chiaroscuro studio lighting, volumetric god rays.
 4. Color Grading & Film Stock Simulation: Kodak Portra 400, CineStill 800T, Fujifilm Velvia 50, Technicolor 3-strip.
 
-Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: IMAGE_GENERATION_MASTER_PROMPT,
     zodOutputSchema: ImagePromptOutputSchema,
     fallbackQuestions: [
@@ -313,7 +402,7 @@ FOCUS DIMENSIONS:
 3. The Status Quo "Villain": The specific industry myth, cognitive bias, or legacy assumption being dismantled.
 4. Empirical Evidence & Case Studies: Real historical precedents, engineering post-mortems, or economic data to ground the core thesis.
 
-Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: WRITING_MASTER_PROMPT,
     zodOutputSchema: WritingOutputSchema,
     fallbackQuestions: [
@@ -379,7 +468,7 @@ FOCUS DIMENSIONS:
 3. Critical Out-of-Scope Firewalls: Third-party API fees, native mobile apps, ongoing copywriting, or legacy database migrations.
 4. Client Review & Turnaround SLA: 48-hour client review turnaround, sign-off triggers, and post-launch bug warranty period.
 
-Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: FREELANCER_BRIEF_MASTER_PROMPT,
     zodOutputSchema: FreelanceBriefOutputSchema,
     fallbackQuestions: [
@@ -443,7 +532,7 @@ FOCUS DIMENSIONS:
 3. Rapid Prototyping Stack & Shortcuts: Next.js 15 + Aceternity UI, Clerk/Supabase managed auth, Neon serverless Postgres, and pre-seeded mock datasets.
 4. Stage Disaster Fallbacks: Localhost offline mock mode vs pre-recorded 1080p demo video.
 
-Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: HACKATHON_PITCH_MASTER_PROMPT,
     zodOutputSchema: PitchOutputSchema,
     fallbackQuestions: [
@@ -494,7 +583,7 @@ FOCUS DIMENSIONS:
 3. Scene Physics & Environmental Elements: Fluid splashes, particle smoke/dust, rain streak reflections, or cloth dynamics.
 4. Lighting Shifts & Atmospheric Mood: Dynamic headlight sweeps, day-to-night transitions, volumetric beacon rays.
 
-Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: VIDEO_GENERATION_MASTER_PROMPT,
     zodOutputSchema: z.object({ questions: QuestionsArraySchema, synthesis: z.string().min(50) }),
     fallbackQuestions: [
@@ -530,7 +619,7 @@ FOCUS DIMENSIONS:
 3. Automation Orchestration & Webhooks: Multi-step Make.com / Zapier scenarios with error queues and retry handlers.
 4. Security & API Protection: Backend API connector proxies to conceal private API keys from client bundles.
 
-Output MUST be strictly a JSON array of question objects without markdown backticks or comments.`,
+${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: NO_CODE_MASTER_PROMPT,
     zodOutputSchema: z.object({ questions: QuestionsArraySchema, synthesis: z.string().min(50) }),
     fallbackQuestions: [

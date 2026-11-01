@@ -8,6 +8,8 @@ import {
   selectOptimalProvider,
   recordProviderFailure,
   recordProviderSuccess,
+  orderForFailover,
+  isProviderHealthy,
 } from '../loadBalancer.js';
 
 function makeRedis(overrides: Record<string, unknown> = {}) {
@@ -113,5 +115,70 @@ describe('selectOptimalProvider', () => {
     fakeRedis = makeRedis({ mget: vi.fn(async (...keys: string[]) => keys.map(() => 'tripped')) });
     const picked = await selectOptimalProvider(AI_PROVIDERS);
     expect(picked?.id).toBe(AI_PROVIDERS[0].id);
+  });
+});
+
+describe('orderForFailover', () => {
+  const [groq70, geminiFlash, groq8, openrouter, geminiLite] = AI_PROVIDERS;
+  const ids = (list: Array<{ id: string }>) => list.map((p) => p.id);
+
+  beforeEach(() => {
+    fakeRedis = null;
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(async () => {
+    for (const p of AI_PROVIDERS) await recordProviderSuccess(p.id);
+    vi.restoreAllMocks();
+  });
+
+  it('puts the chosen provider first, then the others strongest tier first', async () => {
+    expect(ids(await orderForFailover(AI_PROVIDERS, groq70))).toEqual(ids([groq70, geminiFlash, groq8, openrouter, geminiLite]));
+    expect(ids(await orderForFailover(AI_PROVIDERS, geminiLite))).toEqual(ids([geminiLite, groq70, geminiFlash, groq8, openrouter]));
+  });
+
+  it('tries providers known to be down last, so a healthy backup is never behind a broken one', async () => {
+    // Two failures in a row open the circuit (MAX_FAILURES), without being a rate limit
+    for (const p of [geminiFlash, groq8]) {
+      await recordProviderFailure(p.id, 'Gemini API returned 500', { rateLimited: false });
+      await recordProviderFailure(p.id, 'Gemini API returned 500', { rateLimited: false });
+    }
+    expect(ids(await orderForFailover(AI_PROVIDERS, groq70))).toEqual(ids([groq70, openrouter, geminiLite, geminiFlash, groq8]));
+  });
+
+  it('works with only some providers configured', async () => {
+    const onlyGroq = [groq70, groq8];
+    expect(ids(await orderForFailover(onlyGroq, groq8))).toEqual(ids([groq8, groq70]));
+  });
+});
+
+describe('recordProviderFailure: rate limit decided by the caller', () => {
+  beforeEach(() => {
+    fakeRedis = null;
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(async () => {
+    for (const p of AI_PROVIDERS) await recordProviderSuccess(p.id);
+    vi.restoreAllMocks();
+  });
+
+  it('does not treat "429" inside an unrelated message as a rate limit when the caller says it is not', async () => {
+    await recordProviderFailure('groq-llama-70b', 'Groq API returned 400: request id 4291 invalid', { rateLimited: false });
+    // One ordinary failure does not trip the circuit (needs 2), and the Groq siblings are untouched
+    expect(await isProviderHealthy('groq-llama-70b')).toBe(true);
+    expect(await isProviderHealthy('groq-llama-8b')).toBe(true);
+  });
+
+  it('trips at once, and cools the sibling models, when the caller says it is a rate limit', async () => {
+    await recordProviderFailure('groq-llama-70b', 'upstream said slow down', { rateLimited: true });
+    expect(await isProviderHealthy('groq-llama-70b')).toBe(false);
+    expect(await isProviderHealthy('groq-llama-8b')).toBe(false);
+    expect(await isProviderHealthy('gemini-flash')).toBe(true);
+  });
+
+  it('still reads the message when no flag is given (older callers)', async () => {
+    await recordProviderFailure('groq-llama-70b', 'Groq API returned 429: rate limit');
+    expect(await isProviderHealthy('groq-llama-70b')).toBe(false);
   });
 });

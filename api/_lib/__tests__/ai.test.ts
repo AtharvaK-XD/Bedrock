@@ -11,7 +11,16 @@ vi.mock('../loadBalancer.js', async () => {
   };
 });
 
-import { executeAiCompletion, AiCompletionError, stripReasoningText, createReasoningStreamFilter } from '../ai.js';
+import {
+  executeAiCompletion,
+  AiCompletionError,
+  stripReasoningText,
+  createReasoningStreamFilter,
+  AI_OUTPUT_BUDGET,
+  refineOutputBudget,
+  testOutputBudget,
+} from '../ai.js';
+import { recordProviderFailure } from '../loadBalancer.js';
 
 /** Runs chunks through the stream filter and returns the joined output. */
 function filterChunks(chunks: string[]): string {
@@ -305,5 +314,193 @@ describe('executeAiCompletion', () => {
     expect(tokens).toEqual(['hi']);
     expect(err.code).toBe('AI_STREAM_INTERRUPTED');
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------- Phase 1: output limits, cut-off answers, failover rules, server-only keys ----------
+
+const chatBody = (text: string, finishReason = 'stop') => ({
+  ok: true,
+  status: 200,
+  json: async () => ({ choices: [{ message: { content: text }, finish_reason: finishReason }] }),
+});
+const geminiBody = (text: string, finishReason = 'STOP') => ({
+  ok: true,
+  status: 200,
+  json: async () => ({ candidates: [{ content: { parts: [{ text }] }, finishReason }] }),
+});
+/** Provider SSE stream: the given deltas, then a last chunk carrying the finish reason. */
+const chatStream = (deltas: string[], finishReason: string) => {
+  const enc = new TextEncoder();
+  const chunks = [
+    ...deltas.map((d) => ({ choices: [{ delta: { content: d }, finish_reason: null }] })),
+    { choices: [{ delta: {}, finish_reason: finishReason }] },
+  ];
+  let next = 0;
+  return {
+    ok: true,
+    status: 200,
+    body: new ReadableStream({
+      pull(controller) {
+        if (next < chunks.length) controller.enqueue(enc.encode('data: ' + JSON.stringify(chunks[next++]) + '\n\n'));
+        else {
+          controller.enqueue(enc.encode('data: [DONE]\n\n'));
+          controller.close();
+        }
+      },
+    }),
+  };
+};
+
+describe('AI core: keys, output limits and failover rules', () => {
+  const fetchMock = vi.fn();
+  const sentBody = (call = 0) => JSON.parse(fetchMock.mock.calls[call][1].body);
+  const sentUrl = (call = 0) => String(fetchMock.mock.calls[call][0]);
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.mocked(recordProviderFailure).mockClear();
+    vi.stubGlobal('fetch', fetchMock);
+    for (const name of ['GROQ', 'GEMINI', 'OPENROUTER']) {
+      vi.stubEnv(name + '_API_KEY', '');
+      vi.stubEnv('VITE_' + name + '_API_KEY', '');
+    }
+    vi.stubEnv('GROQ_API_KEY', 'groq-test-key-not-real');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it('never uses a VITE_ variable as a provider key (those belong to the browser bundle)', async () => {
+    vi.stubEnv('GROQ_API_KEY', '');
+    vi.stubEnv('VITE_GROQ_API_KEY', 'secret-sitting-in-a-browser-variable');
+    vi.stubEnv('VITE_GEMINI_API_KEY', 'secret-sitting-in-a-browser-variable');
+    vi.stubEnv('VITE_OPENROUTER_API_KEY', 'secret-sitting-in-a-browser-variable');
+    await expect(executeAiCompletion('p', 's')).rejects.toMatchObject({ code: 'AI_NOT_CONFIGURED' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('sends the requested output limit to Groq and OpenRouter, and 3500 when none is given', async () => {
+    fetchMock.mockResolvedValue(chatBody('ok'));
+    await executeAiCompletion('p', 's', undefined, undefined, undefined, { maxOutputTokens: AI_OUTPUT_BUDGET.questions });
+    expect(sentUrl()).toContain('api.groq.com');
+    expect(sentBody().max_tokens).toBe(1200);
+
+    await executeAiCompletion('p', 's');
+    expect(sentBody(1).max_tokens).toBe(3500);
+
+    vi.stubEnv('GROQ_API_KEY', '');
+    vi.stubEnv('OPENROUTER_API_KEY', 'openrouter-test-key-not-real');
+    await executeAiCompletion('p', 's', undefined, undefined, undefined, { maxOutputTokens: 777 });
+    expect(sentUrl(2)).toContain('openrouter.ai');
+    expect(sentBody(2).max_tokens).toBe(777);
+  });
+
+  it('gives Gemini an output limit too (room for its hidden thinking tokens added), and sends no thinking setting', async () => {
+    vi.stubEnv('GROQ_API_KEY', '');
+    vi.stubEnv('GEMINI_API_KEY', 'gemini-test-key-not-real');
+    fetchMock.mockResolvedValue(geminiBody('answer'));
+    await executeAiCompletion('p', 's', undefined, undefined, undefined, { maxOutputTokens: 1200 });
+
+    expect(sentUrl()).toContain('generativelanguage.googleapis.com');
+    expect(sentBody().generationConfig.maxOutputTokens).toBe(1200 + 4096);
+    expect(sentBody().generationConfig).not.toHaveProperty('thinkingConfig');
+  });
+
+  it('reports a cut-off answer (Groq length, Gemini MAX_TOKENS), and leaves the field out for normal answers', async () => {
+    fetchMock.mockResolvedValueOnce(chatBody('half a doc', 'length'));
+    expect(await executeAiCompletion('p', 's')).toMatchObject({ text: 'half a doc', truncated: true });
+
+    fetchMock.mockResolvedValueOnce(chatBody('whole doc', 'stop'));
+    const normal = await executeAiCompletion('p', 's');
+    expect(normal.text).toBe('whole doc');
+    expect(normal).not.toHaveProperty('truncated');
+
+    vi.stubEnv('GROQ_API_KEY', '');
+    vi.stubEnv('GEMINI_API_KEY', 'gemini-test-key-not-real');
+    fetchMock.mockResolvedValueOnce(geminiBody('half a doc', 'MAX_TOKENS'));
+    expect(await executeAiCompletion('p', 's')).toMatchObject({ text: 'half a doc', truncated: true });
+    fetchMock.mockResolvedValueOnce(geminiBody('whole doc', 'STOP'));
+    expect(await executeAiCompletion('p', 's')).not.toHaveProperty('truncated');
+  });
+
+  it('reports a cut-off answer in a live stream too, using the last chunk', async () => {
+    fetchMock.mockResolvedValueOnce(chatStream(['Part one, ', 'part two'], 'length'));
+    const streamed: string[] = [];
+    const result = await executeAiCompletion('p', 's', undefined, (t) => streamed.push(t));
+    expect(streamed.join('')).toBe('Part one, part two');
+    expect(result).toMatchObject({ text: 'Part one, part two', truncated: true });
+
+    fetchMock.mockResolvedValueOnce(chatStream(['All done'], 'stop'));
+    expect(await executeAiCompletion('p', 's', undefined, () => {})).not.toHaveProperty('truncated');
+  });
+
+  describe('failover', () => {
+    beforeEach(() => {
+      vi.stubEnv('OPENROUTER_API_KEY', 'openrouter-test-key-not-real');
+    });
+
+    it('a request refused for its own content (400) moves on without counting against the provider', async () => {
+      fetchMock.mockResolvedValueOnce(errBody(400, 'prompt is too long for this model')).mockResolvedValueOnce(chatBody('fine'));
+      const result = await executeAiCompletion('p', 's');
+      expect(result.text).toBe('fine');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(recordProviderFailure).not.toHaveBeenCalled();
+    });
+
+    it('a server error counts against the provider, as not rate limited', async () => {
+      fetchMock.mockResolvedValueOnce(errBody(500, 'internal error')).mockResolvedValueOnce(chatBody('fine'));
+      await executeAiCompletion('p', 's');
+      expect(recordProviderFailure).toHaveBeenCalledTimes(1);
+      expect(recordProviderFailure).toHaveBeenCalledWith('groq-llama-70b', expect.stringContaining('500'), { rateLimited: false });
+    });
+
+    it('429 is read from the HTTP status: counted as a rate limit, and the sibling models of that key are skipped', async () => {
+      fetchMock.mockResolvedValueOnce(errBody(429, 'slow down')).mockResolvedValueOnce(chatBody('fine'));
+      await executeAiCompletion('p', 's');
+      expect(recordProviderFailure).toHaveBeenCalledWith('groq-llama-70b', expect.any(String), { rateLimited: true });
+      // The next attempt goes to another provider, not to the second Groq model that shares the key
+      expect(sentUrl(1)).toContain('openrouter.ai');
+    });
+
+    it('a refused key (401) also skips the sibling models, without being called a rate limit', async () => {
+      fetchMock.mockResolvedValueOnce(errBody(401, 'invalid api key')).mockResolvedValueOnce(chatBody('fine'));
+      await executeAiCompletion('p', 's');
+      expect(recordProviderFailure).toHaveBeenCalledWith('groq-llama-70b', expect.any(String), { rateLimited: false });
+      expect(sentUrl(1)).toContain('openrouter.ai');
+    });
+
+    it('the digits 429 inside a 400 message do not look like a rate limit', async () => {
+      fetchMock.mockResolvedValueOnce(errBody(400, 'request id 4291 rejected: 429 tokens over the context window')).mockResolvedValueOnce(chatBody('fine'));
+      await executeAiCompletion('p', 's');
+      // Next attempt is the second Groq model (not skipped), and nothing was counted against Groq
+      expect(sentUrl(1)).toContain('api.groq.com');
+      expect(recordProviderFailure).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('output budgets', () => {
+  it('refine: grows with the prompt (about 3 characters per token), within 2,500 and 8,000', () => {
+    expect(refineOutputBudget(0)).toBe(2_500);
+    expect(refineOutputBudget(3_000)).toBe(2_500);
+    expect(refineOutputBudget(9_000)).toBe(4_500);
+    expect(refineOutputBudget(20_000)).toBe(8_000);
+    expect(refineOutputBudget(1_000_000)).toBe(8_000);
+  });
+
+  it('test route: uses the client value within 256 and 6,000, 3,500 otherwise', () => {
+    expect(testOutputBudget(undefined)).toBe(3_500);
+    expect(testOutputBudget('4096')).toBe(3_500);
+    expect(testOutputBudget(NaN)).toBe(3_500);
+    expect(testOutputBudget(4_096)).toBe(4_096);
+    expect(testOutputBudget(99_999)).toBe(6_000);
+    expect(testOutputBudget(1)).toBe(256);
+    expect(testOutputBudget(-5)).toBe(256);
   });
 });

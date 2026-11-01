@@ -3,8 +3,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const reserveQuota = vi.fn();
 const releaseQuota = vi.fn();
 const executeAiCompletion = vi.fn();
+const authenticateRequest = vi.fn();
 
-vi.mock('../../_lib/auth.js', () => ({ authenticateRequest: vi.fn(async () => null) }));
+vi.mock('../../_lib/auth.js', () => ({ authenticateRequest: (...a: unknown[]) => authenticateRequest(...a) }));
 vi.mock('../../_lib/rateLimiter.js', () => ({
   enforceRateLimit: vi.fn(async () => true),
   getClientIp: vi.fn(() => '203.0.113.7'),
@@ -31,6 +32,7 @@ import refine from '../refine.js';
 import testEndpoint from '../test.js';
 import generateQuestions from '../generate-questions.js';
 import { AiCompletionError } from '../../_lib/ai.js';
+import { getUseCaseProfile } from '../../_lib/useCaseProfiles.js';
 
 function mockReq(body: Record<string, unknown>, headers: Record<string, string> = {}) {
   return { method: 'POST', body, query: {}, headers } as any;
@@ -58,6 +60,9 @@ function mockRes() {
   return res;
 }
 
+const signedInUser = { id: 'user_A', email: 'a@example.com', name: 'A', role: 'r', plan: 'Free Plan', subscriptionTier: 'free', isGuest: false };
+const signIn = () => authenticateRequest.mockResolvedValue(signedInUser);
+
 const failure = () => new AiCompletionError('AI_ALL_PROVIDERS_FAILED', 'All AI providers are busy or unavailable. Please try again shortly.');
 
 describe('AI endpoints', () => {
@@ -65,6 +70,7 @@ describe('AI endpoints', () => {
     reserveQuota.mockReset().mockResolvedValue({ allowed: true, unavailable: false, bucket: 'generation', limit: 10, resetMs: 1, reservationId: 'q1' });
     releaseQuota.mockReset().mockResolvedValue(undefined);
     executeAiCompletion.mockReset();
+    authenticateRequest.mockReset().mockResolvedValue(null);
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -116,6 +122,7 @@ describe('AI endpoints', () => {
       await refine(mockReq({ currentPrompt: 'x', instruction: 'a'.repeat(2001) }), r2);
       expect(r2.statusCode).toBe(400);
 
+      signIn();
       const t1 = mockRes();
       await testEndpoint(mockReq({ prompt: 'a'.repeat(20001) }), t1);
       expect(t1.statusCode).toBe(400);
@@ -205,6 +212,7 @@ describe('AI endpoints', () => {
       reserveQuota.mockResolvedValue({ allowed: true, unavailable: false, bucket: 'assist', limit: 100, resetMs: 1, reservationId: 'q2' });
       executeAiCompletion.mockRejectedValue(failure());
       const res = mockRes();
+      signIn();
       await testEndpoint(mockReq({ prompt: 'hello', stream: true }), res);
       expect(res.status).not.toHaveBeenCalled();
       expect(res.end).toHaveBeenCalledTimes(1);
@@ -224,9 +232,192 @@ describe('AI endpoints', () => {
       reserveQuota.mockResolvedValue({ allowed: true, unavailable: false, bucket: 'assist', limit: 100, resetMs: 1, reservationId: 'q4' });
       executeAiCompletion.mockRejectedValue(failure());
       const res = mockRes();
+      signIn();
       await testEndpoint(mockReq({ prompt: 'hello' }), res);
       expect(res.statusCode).toBe(503);
       expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '15');
+    });
+  });
+
+  describe('generate-questions output shape', () => {
+    const ask = async () => {
+      const res = mockRes();
+      await generateQuestions(mockReq({ ideaText: 'a moody portrait of a lighthouse keeper', targetType: 'image-prompt' }), res);
+      return res;
+    };
+
+    it('repairs a model answer that uses "question" / "type", so no card is blank', async () => {
+      executeAiCompletion.mockResolvedValue({
+        // What DeepSeek / Groq return when the prompt does not name the keys
+        text: '```json\n[{"question":"Which visual style?","type":"single_select","options":["35mm film","Oil painting"]},{"question":"Which mood?","type":"multi_select","options":["Calm","Tense"]},{"question":"Any must-have details?","type":"free_text"}]\n```',
+        model: 'm',
+      });
+      const res = await ask();
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual([
+        { id: 'q1', questionText: 'Which visual style?', questionType: 'single_select', options: ['35mm film', 'Oil painting'] },
+        { id: 'q2', questionText: 'Which mood?', questionType: 'multi_select', options: ['Calm', 'Tense'] },
+        { id: 'q3', questionText: 'Any must-have details?', questionType: 'free_text' },
+      ]);
+      expect(releaseQuota).not.toHaveBeenCalled();
+    });
+
+    it('passes a correctly shaped answer through unchanged', async () => {
+      const good = [
+        { id: 'q1', questionText: 'Which runtime?', questionType: 'single_select', options: ['Node 22', 'Bun'] },
+        { id: 'q2', questionText: 'Constraints?', questionType: 'free_text' },
+      ];
+      executeAiCompletion.mockResolvedValue({ text: JSON.stringify(good), model: 'm' });
+      expect((await ask()).body).toEqual(good);
+    });
+
+    it('sends the output schema to the model in the system prompt', async () => {
+      executeAiCompletion.mockResolvedValue({ text: '[{"question":"A?"},{"question":"B?"}]', model: 'm' });
+      await ask();
+      const systemPrompt = executeAiCompletion.mock.calls[0][1] as string;
+      expect(systemPrompt).toContain('"questionText"');
+      expect(systemPrompt).toContain('"questionType"');
+    });
+
+    it('falls back to the built-in questions (and refunds the quota) when nothing usable came back', async () => {
+      const profile = getUseCaseProfile('image-prompt');
+      for (const text of ['[{"options":["a","b"]},{"id":"q2"}]', 'Sorry, I cannot help with that.', '[{"question":"Only one?"}]']) {
+        releaseQuota.mockClear();
+        executeAiCompletion.mockResolvedValue({ text, model: 'm' });
+        const res = await ask();
+        expect(res.statusCode).toBe(200);
+        expect(res.body).toEqual(profile.fallbackQuestions);
+        expect(releaseQuota).toHaveBeenCalledTimes(1);
+      }
+    });
+  });
+
+  describe('Phase 1: sign-in for the prompt tester, output limits, cut-off answers', () => {
+    const options = (callIndex = 0) => executeAiCompletion.mock.calls[callIndex][5];
+    const sseEvents = (res: any) =>
+      res.written
+        .map((l: string) => l.replace(/^data: /, '').trim())
+        .filter((l: string) => l.startsWith('{'))
+        .map((l: string) => JSON.parse(l));
+
+    describe('POST /api/ai/test needs a signed-in account', () => {
+      it('refuses a signed-out caller with 401 before any quota, rate limit or AI call', async () => {
+        const res = mockRes();
+        await testEndpoint(mockReq({ prompt: 'run this on your keys' }), res);
+
+        expect(res.statusCode).toBe(401);
+        expect(res.body).toMatchObject({ code: 'AUTH_REQUIRED' });
+        expect(typeof res.body.message).toBe('string');
+        expect(reserveQuota).not.toHaveBeenCalled();
+        expect(executeAiCompletion).not.toHaveBeenCalled();
+      });
+
+      it('lets a signed-in user and the local development guest through', async () => {
+        executeAiCompletion.mockResolvedValue({ text: 'answer', model: 'm' });
+        signIn();
+        const user = mockRes();
+        await testEndpoint(mockReq({ prompt: 'hello' }), user);
+        expect(user.statusCode).toBe(200);
+
+        authenticateRequest.mockResolvedValue({ ...signedInUser, id: 'usr_lead_architect_01', isGuest: true });
+        const guest = mockRes();
+        await testEndpoint(mockReq({ prompt: 'hello' }), guest);
+        expect(guest.statusCode).toBe(200);
+      });
+
+      it('uses the answer length the client asks for, within 256 and 6,000 tokens (3,500 when it sends none)', async () => {
+        executeAiCompletion.mockResolvedValue({ text: 'answer', model: 'm' });
+        signIn();
+        await testEndpoint(mockReq({ prompt: 'a', maxOutputTokens: 4096 }), mockRes());
+        await testEndpoint(mockReq({ prompt: 'a', maxOutputTokens: 99999 }), mockRes());
+        await testEndpoint(mockReq({ prompt: 'a', maxOutputTokens: 1 }), mockRes());
+        await testEndpoint(mockReq({ prompt: 'a' }), mockRes());
+        expect([0, 1, 2, 3].map((i) => options(i).maxOutputTokens)).toEqual([4096, 6000, 256, 3500]);
+      });
+
+      it('says so when the answer was cut off, and leaves the field out otherwise (JSON and stream)', async () => {
+        signIn();
+        executeAiCompletion.mockResolvedValueOnce({ text: 'cut', model: 'm', truncated: true });
+        const cut = mockRes();
+        await testEndpoint(mockReq({ prompt: 'a' }), cut);
+        expect(cut.body.truncated).toBe(true);
+
+        executeAiCompletion.mockResolvedValueOnce({ text: 'whole', model: 'm' });
+        const whole = mockRes();
+        await testEndpoint(mockReq({ prompt: 'a' }), whole);
+        expect(whole.body).not.toHaveProperty('truncated');
+
+        executeAiCompletion.mockImplementationOnce(async (_p: string, _s: string, _u: unknown, onToken: (t: string) => void) => {
+          onToken('cut');
+          return { text: 'cut', model: 'm', truncated: true };
+        });
+        const streamed = mockRes();
+        await testEndpoint(mockReq({ prompt: 'a', stream: true }), streamed);
+        expect(sseEvents(streamed).find((e: any) => e.done)).toMatchObject({ truncated: true });
+      });
+    });
+
+    describe('output limits and cut-off answers on the other routes', () => {
+      it('generate-questions asks for at most 1,200 tokens', async () => {
+        executeAiCompletion.mockResolvedValue({ text: '[{"question":"A?"},{"question":"B?"}]', model: 'm' });
+        await generateQuestions(mockReq({ ideaText: 'an idea' }), mockRes());
+        expect(options().maxOutputTokens).toBe(1200);
+      });
+
+      it('refine: the limit grows with the prompt', async () => {
+        executeAiCompletion.mockResolvedValue({ text: '<updated_prompt>new prompt</updated_prompt>', model: 'm' });
+        await refine(mockReq({ currentPrompt: 'a'.repeat(9000), instruction: 'shorter' }), mockRes());
+        await refine(mockReq({ currentPrompt: 'a'.repeat(600), instruction: 'shorter' }), mockRes());
+        expect(options(0).maxOutputTokens).toBe(4500);
+        expect(options(1).maxOutputTokens).toBe(2500);
+      });
+
+      it('refine: a rewrite cut off at the limit is refused (422), never returned in place of the user\'s prompt', async () => {
+        executeAiCompletion.mockResolvedValue({ text: '<updated_prompt>half of the new prom', model: 'm', truncated: true });
+        const res = mockRes();
+        await refine(mockReq({ currentPrompt: 'the original prompt', instruction: 'expand it' }), res);
+
+        expect(res.statusCode).toBe(422);
+        expect(res.body).toMatchObject({ code: 'AI_OUTPUT_TRUNCATED' });
+        expect(res.body).not.toHaveProperty('updatedMarkdown');
+        expect(typeof res.body.message).toBe('string');
+        expect(releaseQuota).toHaveBeenCalledTimes(1);
+      });
+
+      it('synthesize: asks for at most 4,000 tokens, and flags a cut-off answer without repairing it', async () => {
+        executeAiCompletion.mockResolvedValue({ text: 'too short to be valid', model: 'm', truncated: true });
+        const res = mockRes();
+        await synthesize(mockReq({ idea: { rawText: 'an idea' } }), res);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.truncated).toBe(true);
+        expect(res.body.useCaseProfile.validation).toBe('warning');
+        // A repair rewrite with the same limit would be cut off at the same place
+        expect(executeAiCompletion).toHaveBeenCalledTimes(1);
+        expect(options().maxOutputTokens).toBe(4000);
+        expect(typeof options().deadlineAt).toBe('number');
+      });
+
+      it('synthesize: a normal answer has no truncated field; the repair call also gets the 4,000-token limit', async () => {
+        executeAiCompletion.mockResolvedValue({ text: 'too short', model: 'm' });
+        const res = mockRes();
+        await synthesize(mockReq({ idea: { rawText: 'an idea' } }), res);
+        expect(res.body).not.toHaveProperty('truncated');
+        expect(executeAiCompletion).toHaveBeenCalledTimes(2);
+        expect(options(1).maxOutputTokens).toBe(4000);
+      });
+
+      it('synthesize stream: the final event says when the answer was cut off', async () => {
+        executeAiCompletion.mockImplementation(async (_p: string, _s: string, _u: unknown, onToken: (t: string) => void) => {
+          onToken('# Title\n');
+          return { text: '# Title\n', model: 'm', truncated: true };
+        });
+        const res = mockRes();
+        await synthesize(mockReq({ idea: { rawText: 'an idea' }, stream: true }), res);
+        const done = sseEvents(res).find((e: any) => e.done);
+        expect(done).toMatchObject({ truncated: true, validation: 'warning' });
+      });
     });
   });
 

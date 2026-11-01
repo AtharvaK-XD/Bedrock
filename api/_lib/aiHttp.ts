@@ -48,6 +48,8 @@ export function logAiRequest(entry: {
   model?: string;
   code?: string;
   stream?: boolean;
+  /** The provider stopped at the output limit, so the answer is cut off */
+  truncated?: boolean;
 }) {
   const line = JSON.stringify({ type: 'ai_request', ...entry });
   if (entry.outcome === 'success') console.log(line);
@@ -89,5 +91,7 @@ export function sendAiFailure(res: VercelResponse, err: unknown, errorTitle: str
     res.setHeader('Retry-After', String(AI_BUSY_RETRY_AFTER_SECONDS));
     return res.status(503).json(payload);
   }
+  // The input was too big to finish within the output limit: the user can fix it, so not a server error
+  if (code === 'AI_OUTPUT_TRUNCATED') return res.status(422).json(payload);
   return res.status(500).json(payload);
 }
