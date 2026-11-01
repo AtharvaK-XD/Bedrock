@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/react';
 import posthog from 'posthog-js';
 import { BEDROCK_SETTINGS_UPDATED_EVENT, getActivePrivacySettings } from './appSettings';
+import { tracePropagationTargets } from './sentryTargets';
 
 /**
  * Crash reports (Sentry) and usage analytics (PostHog) only run while
@@ -25,11 +26,7 @@ function startSentry(): void {
     ],
     // Performance Monitoring (sampled: less user data leaves the browser)
     tracesSampleRate: 0.2,
-    tracePropagationTargets: [
-      'localhost',
-      /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app/,
-      /^https:\/\/bedrockxai\.com/,
-    ],
+    tracePropagationTargets: tracePropagationTargets(typeof window !== 'undefined' ? window.location.origin : undefined),
     // Session Replay
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
@@ -58,30 +55,31 @@ function startSentry(): void {
   });
 }
 
-/** True when the user allows crash reports and analytics (the default). */
 export function isAnalyticsEnabled(): boolean {
-  return getActivePrivacySettings().telemetry === true;
+  return getActivePrivacySettings().telemetry;
 }
 
-/** Starts or stops Sentry and PostHog to match the current setting. Safe to call repeatedly. */
 export function applyAnalyticsConsent(): void {
-  const enabled = isAnalyticsEnabled();
-  try {
-    if (enabled) {
-      startSentry();
-      if (posthog.has_opted_out_capturing?.()) posthog.opt_in_capturing();
-    } else {
-      if (sentryStarted) {
-        void Sentry.close();
-        sentryStarted = false;
-      }
-      posthog.opt_out_capturing?.();
+  const allowed = isAnalyticsEnabled();
+  if (allowed) {
+    startSentry();
+    try {
+      posthog.opt_in_capturing();
+    } catch {
+      // PostHog might not be initialized yet
     }
-  } catch (e) {
-    console.warn('[Analytics] Could not apply the consent setting:', e);
+  } else {
+    try {
+      posthog.opt_out_capturing();
+    } catch {
+      // PostHog might not be initialized yet
+    }
   }
 }
 
+// React to Settings toggles without requiring a page reload
 if (typeof window !== 'undefined') {
-  window.addEventListener(BEDROCK_SETTINGS_UPDATED_EVENT, applyAnalyticsConsent);
+  window.addEventListener(BEDROCK_SETTINGS_UPDATED_EVENT, () => {
+    applyAnalyticsConsent();
+  });
 }

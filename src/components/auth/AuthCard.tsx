@@ -9,6 +9,7 @@ import { useSignIn, useSignUp } from '@clerk/react/legacy';
 import { useClerk } from '@clerk/react';
 import { isDesktopApp } from '../../lib/platform';
 import { notifyAuthSuccess } from '../../lib/sendAuthNotification';
+import { isTrustedAuthMessage } from '../../lib/authMessage';
 
 interface AuthCardProps {
   initialMode?: 'login' | 'register';
@@ -243,7 +244,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
     };
 
     const handleAuthMessage = (event: MessageEvent) => {
-      if (event.data === 'clerk-auth-complete') {
+      if (isTrustedAuthMessage(event.data, event.origin, window.location.origin)) {
         handleSuccess();
       }
     };

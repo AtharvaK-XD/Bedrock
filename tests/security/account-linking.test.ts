@@ -101,6 +101,21 @@ describe('account linking by email', () => {
     expect(h.inserts[1][7]).toBe(true);
   });
 
+  it('treats the x-user-name header as short plain text for a new account\'s name', async () => {
+    const { authenticateRequest } = await import('../../api/_lib/auth.ts');
+    const withHint = (sub: string, hint: string | string[]) =>
+      ({ headers: { authorization: `Bearer ${sign({ sub, iss: issuer, exp: exp() })}`, host: 'bedrock-steel.vercel.app', 'x-user-name': hint } }) as any;
+    // values of the INSERT: id, email, password_hash, name, ...
+    await authenticateRequest(withHint('user_n1', 'Ada\u0000\u001F Lovelace'));
+    await authenticateRequest(withHint('user_n2', 'x'.repeat(500)));
+    // A repeated header arrives as an array: it used to crash the sign-in, now it is ignored
+    const user = await authenticateRequest(withHint('user_n3', ['Ada', 'Mallory']));
+    expect(h.inserts[0][3]).toBe('Ada Lovelace');
+    expect((h.inserts[1][3] as string).length).toBe(100);
+    expect(user?.id).toBe('user_n3');
+    expect(h.inserts[2][3]).toBe('Prompt Architect');
+  });
+
   it('keeps an unverified copy of a taken email as a separate account with a placeholder address', async () => {
     const { authenticateRequest } = await import('../../api/_lib/auth.ts');
     h.takenEmails.add('victim@example.com');

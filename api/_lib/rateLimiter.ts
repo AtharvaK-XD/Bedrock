@@ -9,6 +9,12 @@ let redisClient: Redis | null = null;
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.VITE_UPSTASH_REDIS_REST_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.VITE_UPSTASH_REDIS_REST_TOKEN;
 
+// A VITE_ name is meant for the browser. The build strips it from the public website code (vite.config.ts),
+// but it should not carry a secret at all: rename the Vercel variables to UPSTASH_REDIS_REST_URL / _TOKEN.
+if (!process.env.UPSTASH_REDIS_REST_TOKEN && process.env.VITE_UPSTASH_REDIS_REST_TOKEN) {
+  console.warn('[Security] Redis is configured through VITE_UPSTASH_REDIS_REST_* variables: rename them to UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in Vercel.');
+}
+
 if (redisUrl && redisToken) {
   try {
     redisClient = new Redis({
@@ -87,7 +93,36 @@ function safeMemoryRateLimit(key: string, limit: number, windowSeconds: number) 
 }
 
 /**
- * Extracts the client IP used for rate limits and anonymous quotas.
+ * The key one visitor is counted under. IPv4: the address itself. IPv6: the /64 network, because a
+ * single home or phone line gets a whole /64 (about 18 quintillion addresses) and can switch
+ * between them freely, which would otherwise give every request a fresh, unused limit.
+ * IPv4-mapped IPv6 (::ffff:1.2.3.4) counts as the IPv4 address.
+ */
+export function normalizeIpForLimits(ip: string): string {
+  const clean = ip.split('%')[0].toLowerCase();
+  if (isIP(clean) !== 6) return ip;
+
+  const mapped = clean.match(/^(?:0*:){2,5}ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (mapped && isIP(mapped[1]) === 4) return mapped[1];
+
+  // Expand "::" and an embedded IPv4 tail to eight 16-bit groups
+  let text = clean;
+  const v4Tail = text.match(/(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (v4Tail) {
+    const [a, b, c, d] = v4Tail[1].split('.').map(Number);
+    text = text.slice(0, -v4Tail[1].length) + ((a << 8) | b).toString(16) + ':' + ((c << 8) | d).toString(16);
+  }
+  const [head, tail] = text.split('::');
+  const headGroups = head ? head.split(':') : [];
+  const tailGroups = tail !== undefined && tail ? tail.split(':') : [];
+  const missing = tail === undefined ? 0 : 8 - headGroups.length - tailGroups.length;
+  const groups = [...headGroups, ...Array(Math.max(0, missing)).fill('0'), ...tailGroups];
+  if (groups.length !== 8) return ip;
+  return `${groups.slice(0, 4).map((g) => parseInt(g || '0', 16).toString(16)).join(':')}::/64`;
+}
+
+/**
+ * Extracts the client IP used for rate limits and anonymous quotas (IPv6 as its /64 network).
  * On Vercel, `x-vercel-forwarded-for` / `x-forwarded-for` are set by the platform, which
  * overwrites client-supplied X-Forwarded-For to prevent spoofing (Vercel request-headers docs).
  * Only syntactically valid IPs are accepted, so a junk header value cannot become a fresh key.
@@ -98,13 +133,14 @@ export function getClientIp(req: VercelRequest): string {
     const raw = Array.isArray(header) ? header[0] : header;
     if (typeof raw !== 'string') continue;
     const first = raw.split(',')[0]?.trim() || '';
-    if (first.length <= 64 && isIP(first)) return first;
+    if (first.length <= 64 && isIP(first)) return normalizeIpForLimits(first);
   }
   const socketIp = req.socket?.remoteAddress || '';
-  return isIP(socketIp) ? socketIp : '127.0.0.1';
+  return isIP(socketIp) ? normalizeIpForLimits(socketIp) : '127.0.0.1';
 }
 
 export type LimiterPreset =
+  | 'aiGate'
   | 'synthesize'
   | 'questions'
   | 'refine'
@@ -123,6 +159,9 @@ interface PresetConfig {
 }
 
 const PRESET_CONFIGS: Record<LimiterPreset, PresetConfig> = {
+  // Runs BEFORE token checking and the user lookup on the AI routes, so a flood costs one counter, not a database query.
+  // Generous on purpose (5 per second per visitor): the real usage limits come after sign-in, and people share networks.
+  aiGate: { requests: 300, windowSeconds: 60, prefix: 'ratelimit:ai:gate' },
   synthesize: { requests: 12, windowSeconds: 60, prefix: 'ratelimit:ai:synthesize' },
   questions: { requests: 24, windowSeconds: 60, prefix: 'ratelimit:ai:questions' },
   refine: { requests: 24, windowSeconds: 60, prefix: 'ratelimit:ai:refine' },
@@ -150,7 +189,7 @@ function getUpstashLimiter(preset: LimiterPreset, requests: number, windowSecond
     redis: redisClient,
     limiter: Ratelimit.slidingWindow(requests, `${windowSeconds} s` as any),
     prefix: `${prefix}:${requests}`,
-    analytics: true,
+    analytics: false, // analytics would cost extra Redis commands on every call (OPEN-0043)
   });
 
   ratelimitInstances.set(cacheKey, instance);

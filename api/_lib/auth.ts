@@ -131,6 +131,72 @@ function getEnvPublicKey(): crypto.KeyObject | null {
   return envPemKey;
 }
 
+// A token with a key id Clerk never issued must not make every request download Clerk's key list again:
+// ask again at most once a minute after a successful download, and after 10 s when Clerk was unreachable.
+const JWKS_MISS_REFETCH_MS = 60 * 1000;
+const JWKS_FAIL_RETRY_MS = 10 * 1000;
+const jwksLastAttempt = new Map<string, { at: number; ok: boolean }>();
+const jwksInFlight = new Map<string, Promise<Map<string, crypto.KeyObject> | null>>();
+
+/** Downloads the key list once, even when many requests ask at the same moment. */
+function downloadJwks(cleanIssuer: string): Promise<Map<string, crypto.KeyObject> | null> {
+  const running = jwksInFlight.get(cleanIssuer);
+  if (running) return running;
+
+  const task = (async () => {
+    const jwksUrl = `${cleanIssuer}/.well-known/jwks.json`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000); // 4s timeout
+    try {
+      const res = await fetch(jwksUrl, {
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+      });
+
+      if (!res.ok) {
+        console.warn(`[Auth] JWKS endpoint returned status ${res.status} from ${jwksUrl}`);
+        jwksLastAttempt.set(cleanIssuer, { at: Date.now(), ok: false });
+        return null;
+      }
+
+      const data = (await res.json()) as { keys?: any[] };
+      if (!Array.isArray(data?.keys)) {
+        jwksLastAttempt.set(cleanIssuer, { at: Date.now(), ok: false });
+        return null;
+      }
+
+      const keyMap = new Map<string, crypto.KeyObject>();
+      for (const jwk of data.keys) {
+        if (jwk.kty === 'RSA' && jwk.n && jwk.e && jwk.kid) {
+          try {
+            const keyObj = crypto.createPublicKey({ key: jwk, format: 'jwk' });
+            keyMap.set(jwk.kid, keyObj);
+          } catch (jwkErr) {
+            console.warn(`[Auth] Failed to parse JWK ${jwk.kid}:`, jwkErr);
+          }
+        }
+      }
+
+      jwksCache.set(cleanIssuer, {
+        keys: keyMap,
+        expiresAt: Date.now() + JWKS_CACHE_TTL_MS,
+      });
+      jwksLastAttempt.set(cleanIssuer, { at: Date.now(), ok: true });
+      return keyMap;
+    } catch (err: any) {
+      console.warn(`[Auth] Failed to fetch JWKS from ${cleanIssuer}:`, err?.message || err);
+      jwksLastAttempt.set(cleanIssuer, { at: Date.now(), ok: false });
+      return null;
+    } finally {
+      clearTimeout(timeout);
+      jwksInFlight.delete(cleanIssuer);
+    }
+  })();
+
+  jwksInFlight.set(cleanIssuer, task);
+  return task;
+}
+
 /**
  * Fetches JWKS from a trusted Clerk issuer and converts each RSA key to a Node crypto KeyObject
  */
@@ -152,48 +218,15 @@ async function getClerkPublicKey(issuer: string, kid: string): Promise<crypto.Ke
     if (key) return key;
   }
 
-  // 4. Fetch JWKS from Clerk
-  try {
-    const jwksUrl = `${cleanIssuer}/.well-known/jwks.json`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000); // 4s timeout
-
-    const res = await fetch(jwksUrl, {
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-    });
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      console.warn(`[Auth] JWKS endpoint returned status ${res.status} from ${jwksUrl}`);
-      return null;
-    }
-
-    const data = (await res.json()) as { keys?: any[] };
-    if (!Array.isArray(data?.keys)) return null;
-
-    const keyMap = new Map<string, crypto.KeyObject>();
-    for (const jwk of data.keys) {
-      if (jwk.kty === 'RSA' && jwk.n && jwk.e && jwk.kid) {
-        try {
-          const keyObj = crypto.createPublicKey({ key: jwk, format: 'jwk' });
-          keyMap.set(jwk.kid, keyObj);
-        } catch (jwkErr) {
-          console.warn(`[Auth] Failed to parse JWK ${jwk.kid}:`, jwkErr);
-        }
-      }
-    }
-
-    jwksCache.set(cleanIssuer, {
-      keys: keyMap,
-      expiresAt: Date.now() + JWKS_CACHE_TTL_MS,
-    });
-
-    return keyMap.get(kid) || null;
-  } catch (err: any) {
-    console.warn(`[Auth] Failed to fetch JWKS from ${cleanIssuer}:`, err?.message || err);
+  // 4. Unknown key id: do not ask Clerk again if we asked a moment ago
+  const last = jwksLastAttempt.get(cleanIssuer);
+  if (last && !jwksInFlight.has(cleanIssuer) && Date.now() - last.at < (last.ok ? JWKS_MISS_REFETCH_MS : JWKS_FAIL_RETRY_MS)) {
     return null;
   }
+
+  // 5. Fetch JWKS from Clerk
+  const keys = await downloadJwks(cleanIssuer);
+  return keys?.get(kid) || null;
 }
 
 const SIGNATURE_FAILURE_LOG_WINDOW_MS = 60 * 1000;
@@ -302,6 +335,31 @@ async function verifyClerkJwt(token: string): Promise<any | null> {
 }
 
 /**
+ * The name the browser suggests for a brand-new account (x-user-name). It is the user's own name and
+ * they can set any name through the profile anyway, so it is kept, but only as short plain text: a
+ * repeated header arrives as an array, and control characters do not belong in a name.
+ */
+function safeDisplayNameHint(value: string | string[] | undefined): string {
+  if (typeof value !== 'string') return '';
+  return value.replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, 100);
+}
+
+const LOCAL_DEV_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]', 'tauri.localhost']);
+
+/**
+ * The anonymous "local architect" account exists only for development on this computer: the Host header
+ * must be exactly a local name, and the code must not be running on Vercel (VERCEL_ENV is "production"
+ * or "preview" there; "vercel dev" sets "development"). A header alone never creates this account.
+ */
+function isLocalDevRequest(req: VercelRequest): boolean {
+  const vercelEnv = process.env.VERCEL_ENV;
+  if (vercelEnv && vercelEnv !== 'development') return false;
+  const hostHeader = typeof req.headers.host === 'string' ? req.headers.host : '';
+  const hostname = hostHeader.replace(/:\d+$/, '').toLowerCase();
+  return LOCAL_DEV_HOSTNAMES.has(hostname);
+}
+
+/**
  * Authenticates request via Clerk JWT or Bearer token, auto-provisioning the user in Neon DB.
  */
 export async function authenticateRequest(req: VercelRequest): Promise<AuthenticatedUser | null> {
@@ -324,7 +382,7 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
     if (claims && claims.sub) {
       const userId = claims.sub;
       const email = claims.email || claims.primary_email || `${userId}@clerk.user`;
-      let name = claims.name || claims.first_name || (req.headers['x-user-name'] as string) || '';
+      let name = claims.name || claims.first_name || safeDisplayNameHint(req.headers['x-user-name']);
       if (!name || name.startsWith('user_') || name.includes('@')) {
         if (email && email.includes('@') && !email.endsWith('@clerk.user')) {
           const handle = email.split('@')[0];
@@ -416,11 +474,8 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
     }
   }
 
-  // 2. Local / Desktop Fallback
-  const host = (req.headers.host || req.headers.origin || '') as string;
-  const isLocal = host.includes('localhost') || host.includes('127.0.0.1') || host.includes('tauri');
-  
-  if (isLocal) {
+  // 2. Local development fallback (never on Vercel's production or preview servers)
+  if (isLocalDevRequest(req)) {
     return {
       id: DEFAULT_DEV_USER_ID,
       email: 'local-architect@bedrock.app',

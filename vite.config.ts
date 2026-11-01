@@ -1,23 +1,14 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { KNOWN_SERVER_ONLY_VITE_VARS, isSecretLikeViteVar } from './viteEnvGuard.ts'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
+  // The known server-only names, plus ANY VITE_ variable whose name looks like a secret (viteEnvGuard.ts)
   const FORBIDDEN_SECRETS = [
-    'VITE_GROQ_API_KEY',
-    'VITE_GEMINI_API_KEY',
-    'VITE_OPENROUTER_API_KEY',
-    'VITE_HUGGINGFACE_API_KEY',
-    'VITE_OPENAI_API_KEY',
-    'VITE_ANTHROPIC_API_KEY',
-    'VITE_DATABASE_URL',
-    'VITE_NEON_DATABASE_URL',
-    'VITE_RAZORPAY_KEY_SECRET',
-    'VITE_UPSTASH_REDIS_REST_TOKEN',
-    'VITE_CLERK_SECRET_KEY',
-    'VITE_RESEND_API_KEY',
+    ...new Set([...KNOWN_SERVER_ONLY_VITE_VARS, ...Object.keys(env).filter(isSecretLikeViteVar)]),
   ];
 
   // Overrides to force empty string for any forbidden secret in the client bundle

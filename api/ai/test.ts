@@ -14,8 +14,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
   const requestId = getRequestId(req);
   res.setHeader('X-Request-Id', requestId);
-  const user = await authenticateRequest(req);
   const ip = getClientIp(req);
+  // Cheap per-visitor brake BEFORE token checking and the user lookup, so a flood of junk tokens cannot reach the database
+  if (!(await enforceRateLimit(req, res, 'aiGate', ip))) return;
+  const user = await authenticateRequest(req);
   const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
 
   // This route runs any prompt the caller sends on Bedrock's provider keys, so it needs a signed-in
