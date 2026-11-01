@@ -51,7 +51,7 @@ export default function BrowserAuth() {
           strategy,
           redirectUrl: callbackUrl,
           redirectUrlComplete: callbackUrl,
-          oidcPrompt: 'select_account consent',
+          ...(strategy === 'oauth_google' ? { oidcPrompt: 'select_account' } : {}),
         });
         return;
       }

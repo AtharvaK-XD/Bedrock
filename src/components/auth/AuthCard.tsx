@@ -296,7 +296,7 @@ export function AuthCard({ initialMode = 'login' }: AuthCardProps) {
             strategy,
             redirectUrl: callbackUrl,
             redirectUrlComplete: targetUrl,
-            oidcPrompt: 'select_account consent',
+            ...(strategy === 'oauth_google' ? { oidcPrompt: 'select_account' } : {}),
           });
           return;
         }

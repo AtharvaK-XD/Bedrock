@@ -42,30 +42,13 @@ export default function PopupAuth() {
         client = (window as any).Clerk?.client;
       }
 
-      // Ensure any lingering session is cleanly signed out so the OAuth provider
-      // presents the fresh account chooser and consent screen
-      const hasLingeringSession = Boolean(
-        (clerk as any)?.session ||
-        (clerk as any)?.user ||
-        (window as any).Clerk?.session ||
-        (window as any).Clerk?.user ||
-        client?.session
-      );
-      if (hasLingeringSession) {
-        try {
-          if (typeof clerk?.signOut === 'function') {
-            await clerk.signOut();
-          } else if (typeof (window as any).Clerk?.signOut === 'function') {
-            await (window as any).Clerk.signOut();
-          }
-        } catch (signOutErr) {
-          console.warn('PopupAuth pre-signout notice:', signOutErr);
-        }
-      }
-
       const targetSignIn = client?.signIn || signIn || (clerk as any).client?.signIn;
       const targetSignUp = client?.signUp || signUp || (clerk as any).client?.signUp;
       const authResource = mode === 'register' ? (targetSignUp || targetSignIn) : (targetSignIn || targetSignUp);
+
+      if (typeof authResource?.authenticateWithRedirect !== 'function') {
+        throw new Error(`Authentication provider is still initializing. Please wait...`);
+      }
 
       const origin = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file'))
         ? window.location.origin
@@ -73,67 +56,40 @@ export default function PopupAuth() {
       const callbackUrl = `${origin}/sso-callback?popup=1`;
       const targetUrl = `${origin}/sso-callback?popup=1`;
 
-      // Redirect to Google / GitHub with explicit account selection & consent prompt
-      if (typeof authResource?.authenticateWithRedirect === 'function') {
-        await authResource.authenticateWithRedirect({
-          strategy,
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: targetUrl,
-          oidcPrompt: 'select_account consent',
-        });
-        return;
+      const redirectParams: any = {
+        strategy,
+        redirectUrl: callbackUrl,
+        redirectUrlComplete: targetUrl,
+      };
+
+      // Only pass oidcPrompt for OpenID Connect providers (Google)
+      if (strategy === 'oauth_google') {
+        redirectParams.oidcPrompt = 'select_account';
       }
 
-      const fallbackResource = authResource === targetSignIn ? targetSignUp : targetSignIn;
-      if (typeof fallbackResource?.authenticateWithRedirect === 'function') {
-        await fallbackResource.authenticateWithRedirect({
-          strategy,
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: targetUrl,
-          oidcPrompt: 'select_account consent',
-        });
-        return;
-      }
-
-      throw new Error(`Failed to initialize ${providerName} authentication redirect.`);
+      await authResource.authenticateWithRedirect(redirectParams);
     } catch (err: any) {
       console.error('PopupAuth error:', err);
       const isAlreadySignedIn = 
         err?.errors?.[0]?.message?.toLowerCase().includes('already signed in') ||
         err?.message?.toLowerCase().includes('already signed in');
 
-      // If Clerk rejected because of an existing session, sign out and retry immediately
+      // If user is already authenticated with Clerk, notify opener and close popup
       if (isAlreadySignedIn) {
         try {
-          if (typeof clerk?.signOut === 'function') {
-            await clerk.signOut();
-          } else if (typeof (window as any).Clerk?.signOut === 'function') {
-            await (window as any).Clerk.signOut();
+          if (typeof window !== 'undefined' && window.opener) {
+            window.opener.postMessage('clerk-auth-complete', '*');
           }
-          let retryClient = (clerk as any)?.client || (window as any).Clerk?.client;
-          const retrySignIn = retryClient?.signIn || signIn;
-          const retrySignUp = retryClient?.signUp || signUp;
-          const retryResource = mode === 'register' ? (retrySignUp || retrySignIn) : (retrySignIn || retrySignUp);
-
-          const origin = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file'))
-            ? window.location.origin
-            : 'https://bedrock-steel.vercel.app';
-          const callbackUrl = `${origin}/sso-callback?popup=1`;
-
-          if (typeof retryResource?.authenticateWithRedirect === 'function') {
-            await retryResource.authenticateWithRedirect({
-              strategy,
-              redirectUrl: callbackUrl,
-              redirectUrlComplete: callbackUrl,
-              oidcPrompt: 'select_account consent',
-            });
-            return;
+          if (typeof window !== 'undefined') {
+            window.close();
           }
-        } catch (retryErr) {
-          console.error('Retry after signout error:', retryErr);
+        } catch {
+          // ignore
         }
+        return;
       }
 
+      attemptedRef.current = false;
       setStatus('error');
       setErrorMessage(err?.message || `Failed to connect with ${providerName}.`);
     }
@@ -141,6 +97,9 @@ export default function PopupAuth() {
 
   useEffect(() => {
     let timer: any = null;
+    let timeoutTimer: any = null;
+    let attempts = 0;
+    const maxAttempts = 120; // 6 seconds at 50ms intervals
 
     const tryLaunch = () => {
       if (attemptedRef.current) return;
@@ -162,7 +121,19 @@ export default function PopupAuth() {
       if (typeof authResource?.authenticateWithRedirect === 'function') {
         attemptedRef.current = true;
         if (timer) clearInterval(timer);
+        if (timeoutTimer) clearTimeout(timeoutTimer);
         executeAuth();
+        return;
+      }
+
+      attempts++;
+      if (attempts >= maxAttempts) {
+        if (timer) clearInterval(timer);
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+        if (!attemptedRef.current) {
+          attemptedRef.current = true;
+          executeAuth();
+        }
       }
     };
 
@@ -172,19 +143,19 @@ export default function PopupAuth() {
       (clerk as any).addOnLoaded(tryLaunch);
     }
 
-    timer = setInterval(tryLaunch, 25);
+    timer = setInterval(tryLaunch, 50);
 
-    const fallbackTimer = setTimeout(() => {
+    timeoutTimer = setTimeout(() => {
       if (!attemptedRef.current) {
         attemptedRef.current = true;
         if (timer) clearInterval(timer);
         executeAuth();
       }
-    }, 1200);
+    }, 6000);
 
     return () => {
       if (timer) clearInterval(timer);
-      clearTimeout(fallbackTimer);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
     };
   }, [clerk, signIn, signUp, mode, executeAuth]);
 
@@ -195,7 +166,10 @@ export default function PopupAuth() {
           <p className="text-sm text-red-400">{errorMessage}</p>
           <button
             type="button"
-            onClick={executeAuth}
+            onClick={() => {
+              attemptedRef.current = false;
+              executeAuth();
+            }}
             className="w-full bg-white text-black py-2.5 rounded-xl font-semibold text-xs hover:bg-zinc-200 transition-all cursor-pointer"
           >
             Retry Connection with {providerName}
