@@ -31,6 +31,7 @@ import refine from '../refine.js';
 import testEndpoint from '../test.js';
 import generateQuestions from '../generate-questions.js';
 import { AiCompletionError } from '../../_lib/ai.js';
+import { getUseCaseProfile } from '../../_lib/useCaseProfiles.js';
 
 function mockReq(body: Record<string, unknown>, headers: Record<string, string> = {}) {
   return { method: 'POST', body, query: {}, headers } as any;
@@ -227,6 +228,60 @@ describe('AI endpoints', () => {
       await testEndpoint(mockReq({ prompt: 'hello' }), res);
       expect(res.statusCode).toBe(503);
       expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '15');
+    });
+  });
+
+  describe('generate-questions output shape', () => {
+    const ask = async () => {
+      const res = mockRes();
+      await generateQuestions(mockReq({ ideaText: 'a moody portrait of a lighthouse keeper', targetType: 'image-prompt' }), res);
+      return res;
+    };
+
+    it('repairs a model answer that uses "question" / "type", so no card is blank', async () => {
+      executeAiCompletion.mockResolvedValue({
+        // What DeepSeek / Groq return when the prompt does not name the keys
+        text: '```json\n[{"question":"Which visual style?","type":"single_select","options":["35mm film","Oil painting"]},{"question":"Which mood?","type":"multi_select","options":["Calm","Tense"]},{"question":"Any must-have details?","type":"free_text"}]\n```',
+        model: 'm',
+      });
+      const res = await ask();
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual([
+        { id: 'q1', questionText: 'Which visual style?', questionType: 'single_select', options: ['35mm film', 'Oil painting'] },
+        { id: 'q2', questionText: 'Which mood?', questionType: 'multi_select', options: ['Calm', 'Tense'] },
+        { id: 'q3', questionText: 'Any must-have details?', questionType: 'free_text' },
+      ]);
+      expect(releaseQuota).not.toHaveBeenCalled();
+    });
+
+    it('passes a correctly shaped answer through unchanged', async () => {
+      const good = [
+        { id: 'q1', questionText: 'Which runtime?', questionType: 'single_select', options: ['Node 22', 'Bun'] },
+        { id: 'q2', questionText: 'Constraints?', questionType: 'free_text' },
+      ];
+      executeAiCompletion.mockResolvedValue({ text: JSON.stringify(good), model: 'm' });
+      expect((await ask()).body).toEqual(good);
+    });
+
+    it('sends the output schema to the model in the system prompt', async () => {
+      executeAiCompletion.mockResolvedValue({ text: '[{"question":"A?"},{"question":"B?"}]', model: 'm' });
+      await ask();
+      const systemPrompt = executeAiCompletion.mock.calls[0][1] as string;
+      expect(systemPrompt).toContain('"questionText"');
+      expect(systemPrompt).toContain('"questionType"');
+    });
+
+    it('falls back to the built-in questions (and refunds the quota) when nothing usable came back', async () => {
+      const profile = getUseCaseProfile('image-prompt');
+      for (const text of ['[{"options":["a","b"]},{"id":"q2"}]', 'Sorry, I cannot help with that.', '[{"question":"Only one?"}]']) {
+        releaseQuota.mockClear();
+        executeAiCompletion.mockResolvedValue({ text, model: 'm' });
+        const res = await ask();
+        expect(res.statusCode).toBe(200);
+        expect(res.body).toEqual(profile.fallbackQuestions);
+        expect(releaseQuota).toHaveBeenCalledTimes(1);
+      }
     });
   });
 

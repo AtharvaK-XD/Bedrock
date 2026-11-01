@@ -4,7 +4,10 @@ import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQu
 import { executeAiCompletion, QuestionOutput } from '../_lib/ai.js';
 import { INPUT_LIMITS, firstLengthError, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
-import { getUseCaseProfile, classifyUseCase } from '../_lib/useCaseProfiles.js';
+import { getUseCaseProfile, classifyUseCase, normalizeQuestions } from '../_lib/useCaseProfiles.js';
+
+/** The profile prompts ask for 3 to 4 questions; fewer than 2 usable ones means the answer is not worth showing. */
+const MIN_QUESTIONS = 2;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -56,7 +59,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Clean JSON response (strip markdown wrappers if any)
     const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
     const jsonStr = jsonMatch ? jsonMatch[0] : text.trim();
-    const questions: QuestionOutput[] = JSON.parse(jsonStr);
+    // Models name the keys their own way ("question", "type"): repair them so no card renders blank
+    const questions: QuestionOutput[] = normalizeQuestions(JSON.parse(jsonStr));
+    if (questions.length < MIN_QUESTIONS) {
+      // Nothing usable (not enough questions with real text): same path as unparsable output
+      throw new Error(`Model returned ${questions.length} usable questions`);
+    }
 
     if (user?.id) {
       await recordExecutionTrace({
