@@ -11,8 +11,16 @@ useDefault = true
 description = "Placeholder values in templates and documentation (not real secrets)"
 regexTarget = "line"
 regexes = [
+  '''CLERK_SECRET_KEY=sk_test_placeholder\b''',
+  '''VITE_CLERK_PUBLISHABLE_KEY=pk_test_placeholder\b''',
+  '''RESEND_API_KEY=re_placeholder\b''',
+  '''RAZORPAY_KEY_ID=rzp_live_placeholder\b''',
   '''postgresql://user:(pass|password)@ep(-[a-z0-9]+)?(-pooler)?\.(us-east-[12])\.aws\.neon\.tech/''',
   '''postgresql://bedrock_app:<password>@''',
   '''postgres://(pglite-in-memory|unit-test-not-a-real-db)''',
-  '''RAZORPAY_KEY_ID=rzp_live_placeholder\b''',
+]
+stopwords = [
+  "sk_test_placeholder",
+  "rzp_live_placeholder",
+  "pk_test_placeholder",
 ]
