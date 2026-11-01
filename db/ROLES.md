@@ -9,7 +9,7 @@ column and change the schema. NOT VERIFIED: `node db/check-schema.mjs` prints `c
 If the app's connection string leaks (a log, a screenshot, a compromised Vercel env), whoever has it can do
 everything that role can. With the limited `bedrock_app` role they **cannot** drop or empty tables, change the
 schema, remove the limits, checks and row guards (0003/0005/0011/0013), replace the quota function, delete accounts,
-or edit usage history and logs. Checked on PGlite: every one of those is refused for `bedrock_app`, and every query
+edit usage history and logs, read `password_hash`, or change an account's email, password hash, verified flag or role. Checked on PGlite: every one of those is refused for `bedrock_app`, and every query
 the API runs still works (`db/README.md`, CHG entry for 0011-0013).
 
 ## Two roles, simplest version
@@ -34,32 +34,38 @@ Use a 32+ character random password. Never paste it in chat, never commit it. If
 ```
 node db/migrate.mjs roles --yes --host <host>
 ```
-It refuses if the role is missing or too powerful, takes away any rights the role already had, gives the list below,
-sets time limits (any app query > 20 s, lock wait > 5 s, open transaction idle > 30 s is stopped), and prints one
-OK/FAIL line per expected right. Safe to run again.
+It refuses if the role is missing or too powerful, takes away any rights the role already had (also an older version
+of these rights, and column rights), gives the list below, sets time limits (any app query > 20 s, lock wait > 5 s,
+open transaction idle > 30 s is stopped), and prints 17 OK/FAIL lines. Safe to run again.
+
+Then prove it: `node db/check-app-role.mjs` runs the API's real queries as `bedrock_app` (8 flows) and 18 dangerous
+actions, each inside a transaction that is always rolled back (nothing is kept). With only `DATABASE_URL_DEV` it uses
+`SET LOCAL ROLE bedrock_app` (if the owner may not switch yet it prints one `GRANT ... WITH INHERIT FALSE, SET TRUE`
+line, or runs it with `--yes --host <host>`); with `DATABASE_URL_APP_DEV` set to the bedrock_app string it logs in as
+the role itself and also checks that the time limits apply.
 
 | Table / function | bedrock_app may | Why (api/**, checked 2026-10-31) |
 |---|---|---|
-| "User" | SELECT, INSERT, UPDATE | sign-in lookup + first-login insert (auth.ts), profile read/update |
+| "User" | SELECT every column except `password_hash`; INSERT the 12 sign-in columns; UPDATE only name, username, bio, location, organization, github, huggingface, website, plan, subscription_tier, updated_at | sign-in lookup + first-login insert (auth.ts, column list since CHG-0023), profile read/update, plan change. `SELECT *` on "User" fails. |
 | "Prompt", "BranchingTree" | SELECT, INSERT, UPDATE, DELETE | list, count, owner-checked update, insert, delete |
 | "Trace", "SecurityLog", "QuotaEvent" | SELECT, INSERT, DELETE | add, count, refund, "clear my traces", cleanup; never edit |
 | "IdempotencyKey" | SELECT, DELETE | cleanup of expired keys |
 | reserve_quota, purge_old_logs, trace_totals | EXECUTE | usage limit, cleanup, dashboard totals (PUBLIC loses this right) |
-| everything else | nothing | no DELETE on "User", no TRUNCATE, no CREATE, nothing on `schema_migrations` |
+| everything else | nothing | no DELETE on "User", no TRUNCATE, no CREATE, nothing on `schema_migrations`; email, password_hash, email_verified, mfa_enabled, role cannot be changed |
 Tables not in this list get no access. A table added for a later feature needs its line in `roles.sql` before Vercel
 uses `bedrock_app` for that feature.
 
-## Step 3 (human): switch Vercel
+## Step 3 (human): switch Vercel (exact steps: `db/PRODUCTION.md` step 6)
 Build the `bedrock_app` connection string from the current pooled `DATABASE_URL` by replacing only the user name and
 password. Set it as `DATABASE_URL` in Vercel **Preview** first, redeploy, test (README step 7 checks), then
 **Production**. Keep the owner string only on your PC for releases.
 Rollback: put the old connection string back in Vercel and redeploy (the rights do no harm if unused).
 After the switch, change the owner role's password in the Neon console (the old one was in Vercel for months).
 
-## Step 4 (optional, later): hide password_hash from the app
-Only after `api/_lib/auth.ts` stops using `SELECT * FROM "User"` (OPEN-0030): run the commented block at the end of
-`db/roles.sql`. Before that, the revoke would make every signed-in request fall back to token data.
-Nothing in the API reads `password_hash` (Clerk handles sign-in; the column holds `clerk_oauth_external` for Clerk users).
+## password_hash is hidden (done in roles.sql since CHG-0027)
+`api/_lib/auth.ts` reads an explicit column list since CHG-0023 (OPEN-0030 closed), so `roles.sql` grants SELECT on
+every "User" column except `password_hash`. The sign-in insert still writes it (constant `clerk_oauth_external`).
+Any future query on "User" must name its columns; `SELECT *` fails with 42501 for `bedrock_app`.
 
 ## Row-Level Security (RLS): evaluation only, not implemented
 RLS would make Postgres itself refuse rows that belong to another user, as a second wall behind the API's
