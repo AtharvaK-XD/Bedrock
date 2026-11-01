@@ -214,8 +214,8 @@ export default function Pricing() {
                 className={cn(
                   "relative flex flex-col p-8 rounded-3xl border transition-all duration-300",
                   tier.isPopular 
-                    ? "bg-[#14181a]/70 border-copper-500/40 shadow-2xl shadow-copper-500/10" 
-                    : "bg-[#0c0e14]/70 border-white/10 hover:border-white/20 hover:bg-[#111]"
+                    ? "bg-sf-14181a/70 border-copper-500/40 shadow-2xl shadow-copper-500/10" 
+                    : "bg-sf-0c0e14/70 border-white/10 hover:border-white/20 hover:bg-sf-111111"
                 )}
               >
                 {tier.isPopular && (
@@ -322,7 +322,7 @@ export default function Pricing() {
               initial={{ scale: 0.95, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              className="relative w-full max-w-lg rounded-3xl bg-[#0c0e14]/95 border border-white/15 p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.85)] text-white font-sans overflow-hidden"
+              className="relative w-full max-w-lg rounded-3xl bg-sf-0c0e14/95 border border-white/15 p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.85)] text-white font-sans overflow-hidden"
             >
               {/* Top ambient glow */}
               <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-copper-400 to-transparent" />

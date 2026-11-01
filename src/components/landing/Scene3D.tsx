@@ -56,7 +56,7 @@ const AmbientVisualFallback = () => {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
       {/* Organic radial ambient light field matching the 3D aesthetic */}
-      <div className="absolute w-[650px] h-[650px] rounded-full bg-gradient-to-tr from-copper-500/15 via-[#2c9a8b]/10 to-transparent blur-[160px] animate-pulse" />
+      <div className="absolute w-[650px] h-[650px] rounded-full bg-gradient-to-tr from-copper-500/15 via-copper-500/10 to-transparent blur-[160px] animate-pulse" />
       <div className="absolute w-[420px] h-[420px] rounded-full border border-white/5 bg-gradient-to-b from-white/[0.04] to-transparent backdrop-blur-3xl shadow-[0_0_100px_rgba(44,154,139,0.12)]" />
     </div>
   );

@@ -59,7 +59,7 @@ export function ExpandableChatbox({ onSubmit, className }: ExpandableChatboxProp
       }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
       className={cn(
-        "relative bg-[#111318]/95 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden transition-colors duration-300",
+        "relative bg-sf-111318/95 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden transition-colors duration-300",
         isExpanded ? "ring-1 ring-copper-500/40 border-copper-500/30" : "hover:border-white/20",
         className
       )}

@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return (
       <div
         role="alert"
-        className="min-h-[60vh] w-full flex items-center justify-center p-6 bg-[#050505] text-white font-sans"
+        className="min-h-[60vh] w-full flex items-center justify-center p-6 bg-sf-050505 text-white font-sans"
       >
         <div className="w-full max-w-md bg-zinc-950/90 border border-white/10 rounded-3xl p-8 text-center space-y-5 shadow-2xl">
           <h2 className="text-2xl font-display font-bold tracking-tight">Something went wrong</h2>

@@ -1,3 +1,5 @@
+import { version as packageVersion } from '../../package.json';
+
 export interface UpdateStatus {
   status: 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'up-to-date' | 'error';
   version?: string;
@@ -8,7 +10,11 @@ export interface UpdateStatus {
   downloadUrl?: string;
 }
 
-export const CURRENT_APP_VERSION = '1.3.3';
+/**
+ * The version of the app that is running. On the website and as a starting value it comes from package.json
+ * (so it can never drift from the release), and the desktop app replaces it with its own exact version below.
+ */
+export let CURRENT_APP_VERSION: string = packageVersion;
 
 type UpdateListener = (status: UpdateStatus) => void;
 const listeners = new Set<UpdateListener>();
@@ -57,6 +63,18 @@ export function sanitizeUpdaterError(error?: string): string | undefined {
     return 'Unable to fetch release details from GitHub. Please try again later.';
   }
   return error.split('\n')[0];
+}
+
+// Desktop: ask the app itself which version is installed
+if (typeof window !== 'undefined' && (window as any).electronUpdater?.getVersion) {
+  Promise.resolve((window as any).electronUpdater.getVersion())
+    .then((v: unknown) => {
+      if (typeof v === 'string' && v && v !== CURRENT_APP_VERSION) {
+        CURRENT_APP_VERSION = v;
+        notifyListeners({ ...currentStatus, currentVersion: v });
+      }
+    })
+    .catch(() => {});
 }
 
 // Hook into Electron autoUpdater IPC if available

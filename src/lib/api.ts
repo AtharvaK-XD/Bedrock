@@ -39,6 +39,7 @@ import {
   checkTokenBudgetGuard,
   recordTokenUsage,
   createStreamingPacer,
+  isLocalVaultOnly,
 } from './appSettings';
 import { isDesktopApp } from './platform';
 import { reportSyncProblem, describeSaveLimit } from './syncNotice';
@@ -1216,14 +1217,16 @@ export const testPromptWithMetrics = async (
 const WORKFLOWS_STORAGE_KEY = 'bedrock_saved_workflows';
 
 export const loadWorkflows = async () => {
-  try {
-    const authHeaders = await getAuthHeaders();
-    const response = await fetch('/api/workflows', { headers: authHeaders });
-    if (response.ok) {
-      return await response.json();
+  if (!isLocalVaultOnly()) {
+    try {
+      const authHeaders = await getAuthHeaders();
+      const response = await fetch('/api/workflows', { headers: authHeaders });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch {
+      // Offline / desktop fallback
     }
-  } catch {
-    // Offline / desktop fallback
   }
 
   try {
@@ -1235,20 +1238,22 @@ export const loadWorkflows = async () => {
 };
 
 export const saveWorkflow = async (workflow: { id?: string; title: string; nodes: any[]; edges: any[] }) => {
-  try {
-    const authHeaders = await getAuthHeaders();
-    const response = await fetch('/api/workflows', {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify(workflow),
-    });
-    if (response.ok) {
-      return await response.json();
+  if (!isLocalVaultOnly()) {
+    try {
+      const authHeaders = await getAuthHeaders();
+      const response = await fetch('/api/workflows', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify(workflow),
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+      const limitMessage = await describeSaveLimit(response);
+      if (limitMessage) reportSyncProblem(limitMessage);
+    } catch {
+      // Offline / desktop fallback
     }
-    const limitMessage = await describeSaveLimit(response);
-    if (limitMessage) reportSyncProblem(limitMessage);
-  } catch {
-    // Offline / desktop fallback
   }
 
   try {
@@ -1265,17 +1270,19 @@ export const saveWorkflow = async (workflow: { id?: string; title: string; nodes
 };
 
 export const deleteWorkflow = async (id: string) => {
-  try {
-    const authHeaders = await getAuthHeaders();
-    const response = await fetch(`/api/workflows?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: authHeaders,
-    });
-    if (response.ok) {
-      return await response.json();
+  if (!isLocalVaultOnly()) {
+    try {
+      const authHeaders = await getAuthHeaders();
+      const response = await fetch(`/api/workflows?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch {
+      // Offline / desktop fallback
     }
-  } catch {
-    // Offline / desktop fallback
   }
 
   try {

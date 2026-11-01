@@ -292,7 +292,7 @@ export function NetworkTopology2D() {
       </div>
 
       {/* SVG Canvas Container */}
-      <div className="relative w-full overflow-x-auto overflow-y-hidden bg-gradient-to-b from-[#070910]/95 via-[#04060a]/98 to-[#070910]/95 flex items-center justify-center p-3 sm:p-5 min-h-[340px]">
+      <div className="relative w-full overflow-x-auto overflow-y-hidden bg-gradient-to-b from-sf-070910/95 via-sf-04060a/98 to-sf-070910/95 flex items-center justify-center p-3 sm:p-5 min-h-[340px]">
         <svg
           viewBox="0 0 920 340"
           className="w-full h-auto max-w-[920px] select-none"

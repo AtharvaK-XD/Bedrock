@@ -50,7 +50,7 @@ export function QuotaLimitModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 16 }}
             transition={{ type: 'spring', duration: 0.3 }}
-            className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-[#0c0e14]/95 p-6 sm:p-8 backdrop-blur-2xl border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.15)] text-white z-10"
+            className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-sf-0c0e14/95 p-6 sm:p-8 backdrop-blur-2xl border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.15)] text-white z-10"
             data-lenis-prevent="true"
           >
             {/* Top specular hairline */}

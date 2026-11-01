@@ -72,7 +72,7 @@ export function UpgradeModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.2 }}
-          className="relative w-full max-w-lg rounded-3xl bg-[#0c0e14]/95 border border-white/10 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.95),0_0_40px_rgba(44,154,139,0.2)] overflow-hidden z-10 p-6 sm:p-8"
+          className="relative w-full max-w-lg rounded-3xl bg-sf-0c0e14/95 border border-white/10 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.95),0_0_40px_rgba(44,154,139,0.2)] overflow-hidden z-10 p-6 sm:p-8"
         >
           {/* Ambient Glows */}
           <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-copper-400/50 to-transparent pointer-events-none" />

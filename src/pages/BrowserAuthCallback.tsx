@@ -154,7 +154,7 @@ export default function BrowserAuthCallback() {
   };
 
   return (
-    <PageTransition className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+    <PageTransition className="min-h-screen bg-sf-050505 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-emerald-500/10 blur-[180px] pointer-events-none rounded-full" />
 
@@ -190,7 +190,7 @@ export default function BrowserAuthCallback() {
                 <button
                   type="button"
                   onClick={handleManualOpenApp}
-                  className="w-full flex items-center justify-center gap-2 bg-[#2C9A8B] text-white rounded-xl py-3.5 font-semibold hover:bg-[#1F7A6E] transition-all focus:outline-none focus:ring-2 focus:ring-copper-400/50 cursor-pointer text-sm shadow-lg shadow-[#2C9A8B]/25 active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-2 bg-copper-500 text-white rounded-xl py-3.5 font-semibold hover:bg-copper-600 transition-all focus:outline-none focus:ring-2 focus:ring-copper-400/50 cursor-pointer text-sm shadow-lg shadow-copper-500/25 active:scale-[0.98]"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Return to Bedrock Desktop

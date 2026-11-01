@@ -272,7 +272,7 @@ const DeletableEdge = ({
           className="nodrag nopan"
         >
           <button
-            className="w-5 h-5 flex items-center justify-center bg-[#1a1a1a] border border-white/20 rounded-full text-gray-400 hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/10 transition-colors shadow-lg font-mono text-xs leading-none"
+            className="w-5 h-5 flex items-center justify-center bg-sf-1a1a1a border border-white/20 rounded-full text-gray-400 hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/10 transition-colors shadow-lg font-mono text-xs leading-none"
             onClick={onEdgeClick}
             title="Delete Connection"
           >
@@ -534,37 +534,37 @@ ${upstreamText || data.description}`;
     switch (data.nodeType) {
       case 'system':
         return cn(
-          "w-[290px] rounded-t-[28px] rounded-b-xl border bg-gradient-to-b from-[#101624]/95 via-[#0e121b]/95 to-[#0b0e14]/95",
+          "w-[290px] rounded-t-[28px] rounded-b-xl border bg-gradient-to-b from-[#101624]/95 via-sf-0e121b/95 to-sf-0b0e14/95",
           selected ? "border-blue-400 shadow-[0_0_35px_rgba(59,130,246,0.35)] ring-1 ring-blue-400/50" : "border-blue-500/30 hover:border-blue-500/60 shadow-[0_4px_25px_rgba(59,130,246,0.12)]"
         );
       case 'prompt':
         return cn(
-          "w-[290px] rounded-2xl rounded-bl-xs border bg-gradient-to-b from-[#211612]/95 via-[#181210]/95 to-[#120f0d]/95",
+          "w-[290px] rounded-2xl rounded-bl-xs border bg-gradient-to-b from-[#211612]/95 via-sf-181210/95 to-sf-120f0d/95",
           selected ? "border-copper-400 shadow-[0_0_35px_rgba(255,155,113,0.35)] ring-1 ring-copper-400/50" : "border-copper-500/35 hover:border-copper-500/65 shadow-[0_4px_25px_rgba(255,155,113,0.15)]"
         );
       case 'output':
         return cn(
-          "w-[300px] rounded-2xl border-2 bg-gradient-to-b from-[#0b1712]/95 via-[#08120e]/95 to-[#050b08]/95",
+          "w-[300px] rounded-2xl border-2 bg-gradient-to-b from-sf-0b1712/95 via-sf-08120e/95 to-sf-050b08/95",
           selected ? "border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.35)] ring-1 ring-emerald-400/50" : "border-emerald-500/40 hover:border-emerald-500/70 shadow-[0_0_25px_rgba(16,185,129,0.16)]"
         );
       case 'data':
         return cn(
-          "w-[290px] rounded-tl-2xl rounded-br-2xl rounded-tr-md rounded-bl-md border bg-gradient-to-br from-[#1b1126]/95 via-[#140e1d]/95 to-[#0d0914]/95",
+          "w-[290px] rounded-tl-2xl rounded-br-2xl rounded-tr-md rounded-bl-md border bg-gradient-to-br from-[#1b1126]/95 via-[#140e1d]/95 to-sf-0d0914/95",
           selected ? "border-purple-400 shadow-[0_0_35px_rgba(168,85,247,0.35)] ring-1 ring-purple-400/50" : "border-purple-500/30 hover:border-purple-500/60 shadow-[0_4px_25px_rgba(168,85,247,0.14)]"
         );
       case 'condition':
         return cn(
-          "w-[300px] rounded-xl border relative bg-gradient-to-b from-[#20180d]/95 via-[#171109]/95 to-[#110d06]/95",
+          "w-[300px] rounded-xl border relative bg-gradient-to-b from-[#20180d]/95 via-sf-171109/95 to-sf-110d06/95",
           selected ? "border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.35)] ring-1 ring-amber-400/50" : "border-amber-500/40 hover:border-amber-500/70 shadow-[0_4px_25px_rgba(245,158,11,0.15)]"
         );
       case 'code':
         return cn(
-          "w-[300px] rounded-tr-xl rounded-b-xl rounded-tl-none border-l-4 border-l-rose-500 border-t border-r border-b bg-[#0e1014]/95",
+          "w-[300px] rounded-tr-xl rounded-b-xl rounded-tl-none border-l-4 border-l-rose-500 border-t border-r border-b bg-sf-0e1014/95",
           selected ? "border-rose-400 shadow-[0_0_35px_rgba(244,63,94,0.35)] ring-1 ring-rose-400/50" : "border-rose-500/30 hover:border-rose-500/60 shadow-[0_4px_25px_rgba(244,63,94,0.14)]"
         );
       case 'merge':
         return cn(
-          "w-[290px] rounded-l-3xl rounded-r-lg border bg-gradient-to-r from-teal-950/40 via-[#0e1818]/95 to-[#101417]/95",
+          "w-[290px] rounded-l-3xl rounded-r-lg border bg-gradient-to-r from-teal-950/40 via-sf-0e1818/95 to-sf-101417/95",
           selected ? "border-teal-400 shadow-[0_0_35px_rgba(20,184,166,0.35)] ring-1 ring-teal-400/50" : "border-teal-500/30 hover:border-teal-500/60 shadow-[0_4px_25px_rgba(20,184,166,0.14)]"
         );
       case 'evaluation':
@@ -573,7 +573,7 @@ ${upstreamText || data.description}`;
           selected ? "border-indigo-400 shadow-[0_0_40px_rgba(99,102,241,0.35)] ring-1 ring-indigo-400/50" : "border-indigo-500/35 hover:border-indigo-500/65 shadow-[0_4px_30px_rgba(99,102,241,0.2)]"
         );
       default:
-        return "w-[280px] rounded-xl border bg-[#1a1a1a]/95 border-white/10";
+        return "w-[280px] rounded-xl border bg-sf-1a1a1a/95 border-white/10";
     }
   };
 
@@ -591,13 +591,13 @@ ${upstreamText || data.description}`;
             type="target"
             id="left"
             position={Position.Left}
-            className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-amber-400 hover:!bg-amber-500/20 transition-all cursor-crosshair z-30"
+            className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-zinc-400 hover:!border-amber-400 hover:!bg-amber-500/20 transition-all cursor-crosshair z-30"
           />
           <Handle
             type="target"
             id="top"
             position={Position.Top}
-            className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-amber-400 hover:!bg-amber-500/20 transition-all cursor-crosshair z-30"
+            className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-zinc-400 hover:!border-amber-400 hover:!bg-amber-500/20 transition-all cursor-crosshair z-30"
           />
           <Handle
             type="source"
@@ -617,7 +617,7 @@ ${upstreamText || data.description}`;
             type="source"
             id="bottom"
             position={Position.Bottom}
-            className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-amber-400 hover:!bg-amber-500/20 transition-all cursor-crosshair z-30"
+            className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-zinc-400 hover:!border-amber-400 hover:!bg-amber-500/20 transition-all cursor-crosshair z-30"
           />
         </>
       ) : data.nodeType === 'merge' ? (
@@ -640,19 +640,19 @@ ${upstreamText || data.description}`;
             type="target"
             id="top"
             position={Position.Top}
-            className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-teal-400 hover:!bg-teal-500/20 transition-all cursor-crosshair z-30"
+            className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-zinc-400 hover:!border-teal-400 hover:!bg-teal-500/20 transition-all cursor-crosshair z-30"
           />
           <Handle
             type="source"
             id="right"
             position={Position.Right}
-            className="!w-3 !h-3 !bg-[#121417] !border-2 !border-teal-400 hover:!bg-teal-400 hover:scale-125 transition-all cursor-crosshair z-30"
+            className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-teal-400 hover:!bg-teal-400 hover:scale-125 transition-all cursor-crosshair z-30"
           />
           <Handle
             type="source"
             id="bottom"
             position={Position.Bottom}
-            className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-teal-400 hover:!bg-teal-500/20 transition-all cursor-crosshair z-30"
+            className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-zinc-400 hover:!border-teal-400 hover:!bg-teal-500/20 transition-all cursor-crosshair z-30"
           />
         </>
       ) : (
@@ -661,25 +661,25 @@ ${upstreamText || data.description}`;
             type="target"
             id="left"
             position={Position.Left}
-            className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-30"
+            className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-30"
           />
           <Handle
             type="target"
             id="top"
             position={Position.Top}
-            className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-30"
+            className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-30"
           />
           <Handle
             type="source"
             id="right"
             position={Position.Right}
-            className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-30"
+            className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-30"
           />
           <Handle
             type="source"
             id="bottom"
             position={Position.Bottom}
-            className="!w-3 !h-3 !bg-[#121417] !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-30"
+            className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-zinc-400 hover:!border-copper-400 hover:!bg-copper-500/20 transition-all cursor-crosshair z-30"
           />
         </>
       )}
@@ -727,7 +727,7 @@ ${upstreamText || data.description}`;
             {data.mergeStrategy || 'CONCAT'}
           </span>
         ) : (
-          <div className="flex items-center gap-1.5 bg-[#111] px-2 py-0.5 rounded-md border border-white/5">
+          <div className="flex items-center gap-1.5 bg-sf-111111 px-2 py-0.5 rounded-md border border-white/5">
             <AgentIcon agent={agent} model={model.id} className="w-3.5 h-3.5" badgeClassName="w-3.5 h-3.5" />
             <span className="text-[10px] font-mono text-gray-400 truncate max-w-[75px]">{model.name}</span>
           </div>
@@ -976,7 +976,7 @@ function CustomSelect({
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.15 }}
             onWheel={(e) => e.stopPropagation()}
-            className="absolute z-50 w-full mt-1.5 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-x-hidden max-h-[240px] overflow-y-auto custom-scrollbar flex flex-col p-1.5 nowheel nopan nodrag"
+            className="absolute z-50 w-full mt-1.5 bg-sf-1a1a1a/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-x-hidden max-h-[240px] overflow-y-auto custom-scrollbar flex flex-col p-1.5 nowheel nopan nodrag"
           >
             {options.map((option) => (
               <button
@@ -1776,7 +1776,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
           activeNode ? "left-[404px]" : "left-6"
         )}
       >
-        <div className="flex items-center gap-2.5 px-3 py-2 bg-[#1a1a1a]/90 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-xl shadow-black/40">
+        <div className="flex items-center gap-2.5 px-3 py-2 bg-sf-1a1a1a/90 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-xl shadow-black/40">
           <button
             onClick={onBackToDashboard}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white transition-all text-xs font-sans font-medium active:scale-[0.97] shrink-0 border border-white/5"
@@ -1810,9 +1810,9 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                 }}
                 value={workflowId || ''}
               >
-                <option value="" className="bg-[#1a1a1a]">Load Saved...</option>
+                <option value="" className="bg-sf-1a1a1a">Load Saved...</option>
                 {savedWorkflows.map(w => (
-                  <option key={w.id} value={w.id} className="bg-[#1a1a1a]">{w.title}</option>
+                  <option key={w.id} value={w.id} className="bg-sf-1a1a1a">{w.title}</option>
                 ))}
               </select>
               <div className="w-[1px] h-4 bg-white/15"></div>
@@ -1873,7 +1873,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
               key={type}
               onClick={() => addNode(type as keyof typeof NODE_CONFIG)}
               className={cn(
-                "group flex items-center p-2 rounded-xl border bg-[#1a1a1a]/90 backdrop-blur-xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap shrink-0",
+                "group flex items-center p-2 rounded-xl border bg-sf-1a1a1a/90 backdrop-blur-xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap shrink-0",
                 "w-[52px] hover:w-[250px]",
                 item.bg, item.border, item.hoverBorder
               )}
@@ -1914,7 +1914,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
             exit={{ x: -450, opacity: 0 }}
             transition={{ type: "spring", stiffness: 350, damping: 32 }}
             onWheel={(e) => e.stopPropagation()}
-            className="absolute top-4 left-4 bottom-4 w-[380px] max-w-[calc(100vw-32px)] bg-[#16181d]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-30 overflow-hidden nowheel nopan nodrag"
+            className="absolute top-4 left-4 bottom-4 w-[380px] max-w-[calc(100vw-32px)] bg-sf-16181d/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-30 overflow-hidden nowheel nopan nodrag"
           >
             <div className="flex flex-col h-full w-full">
               {/* Header */}

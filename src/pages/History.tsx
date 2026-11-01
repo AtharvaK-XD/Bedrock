@@ -326,7 +326,7 @@ export default function HistoryPage() {
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="w-full max-w-md bg-[#0e1015] border border-white/15 rounded-2xl p-6 shadow-2xl space-y-4"
+                className="w-full max-w-md bg-sf-0e1015 border border-white/15 rounded-2xl p-6 shadow-2xl space-y-4"
                 data-lenis-prevent="true"
               >
                 <div className="flex items-center gap-3 text-rose-400">
@@ -483,7 +483,7 @@ export default function HistoryPage() {
                       "p-3.5 rounded-2xl border transition-all cursor-pointer group relative overflow-hidden text-left",
                       isSelected
                         ? "bg-white/[0.08] border-copper-500/40 shadow-lg shadow-black/40 ring-1 ring-copper-500/30"
-                        : "bg-[#0b0d13]/70 hover:bg-white/[0.04] border-white/[0.06] hover:border-white/15"
+                        : "bg-sf-0b0d13/70 hover:bg-white/[0.04] border-white/[0.06] hover:border-white/15"
                     )}
                   >
                     {/* Header Row: Target Badge + Timestamp + Pin */}
@@ -554,7 +554,7 @@ export default function HistoryPage() {
             {/* Right Column: Prompt Detail Inspector (7 cols on lg) */}
             <div className="lg:col-span-7">
               {activeItem ? (
-                <div className="bg-[#0b0d13] border border-white/[0.1] rounded-2xl p-5 sm:p-6 shadow-2xl relative space-y-6">
+                <div className="bg-sf-0b0d13 border border-white/[0.1] rounded-2xl p-5 sm:p-6 shadow-2xl relative space-y-6">
                   
                   {/* Top Inspector Bar */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.08]">

@@ -130,7 +130,7 @@ function GeneratorHistorySidebarContent({
   return (
     <aside
       className={cn(
-        "fixed top-0 bottom-0 z-30 w-64 sm:w-72 bg-[#0c0d10] border-r border-white/[0.08] flex flex-col transition-transform duration-300 ease-in-out select-none shadow-[6px_0_32px_rgba(0,0,0,0.65)]",
+        "fixed top-0 bottom-0 z-30 w-64 sm:w-72 bg-sf-0c0d10 border-r border-white/[0.08] flex flex-col transition-transform duration-300 ease-in-out select-none shadow-[6px_0_32px_rgba(0,0,0,0.65)]",
         isDesktop ? "left-64" : "left-0",
         isCollapsed ? "-translate-x-full pointer-events-none" : "translate-x-0 pointer-events-auto"
       )}
@@ -224,7 +224,7 @@ function GeneratorHistorySidebarContent({
                     className={cn(
                       "group relative flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px] transition-all cursor-pointer",
                       isActive
-                        ? "bg-[#1f2025] text-white font-medium shadow-sm"
+                        ? "bg-sf-1f2025 text-white font-medium shadow-sm"
                         : "text-neutral-300 hover:text-white hover:bg-white/[0.04]"
                     )}
                   >
@@ -293,7 +293,7 @@ function GeneratorHistorySidebarContent({
                   className={cn(
                     "group relative flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px] transition-all cursor-pointer",
                     isActive
-                      ? "bg-[#1f2025] text-white font-medium shadow-sm"
+                      ? "bg-sf-1f2025 text-white font-medium shadow-sm"
                       : "text-neutral-300 hover:text-white hover:bg-white/[0.04]"
                   )}
                 >
@@ -347,7 +347,7 @@ function GeneratorHistorySidebarContent({
 
       {/* Bottom User & Utility Bar - Hidden on desktop app, preserved on website */}
       {!isDesktop && (
-        <div className="relative border-t border-white/[0.08] px-3 py-2.5 flex items-center justify-between bg-[#0c0d10] shrink-0">
+        <div className="relative border-t border-white/[0.08] px-3 py-2.5 flex items-center justify-between bg-sf-0c0d10 shrink-0">
           
           {/* User Profile Pill Button */}
           <div className="relative" ref={userMenuRef}>
@@ -356,7 +356,7 @@ function GeneratorHistorySidebarContent({
               onClick={() => setIsUserMenuOpen(prev => !prev)}
               className="flex items-center gap-2 px-1.5 py-1 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer group text-left"
             >
-              <div className="w-6 h-6 rounded-full bg-[#24262c] border border-white/10 flex items-center justify-center text-[11px] font-semibold text-neutral-200 shrink-0">
+              <div className="w-6 h-6 rounded-full bg-sf-24262c border border-white/10 flex items-center justify-center text-[11px] font-semibold text-neutral-200 shrink-0">
                 {displayInitial}
               </div>
               <span className="text-xs text-neutral-300 group-hover:text-white font-medium max-w-[120px] truncate">
@@ -370,7 +370,7 @@ function GeneratorHistorySidebarContent({
 
             {/* User Popover Menu */}
             {isUserMenuOpen && (
-              <div className="absolute bottom-full left-0 mb-2 w-48 bg-[#14151a] border border-white/10 rounded-xl shadow-2xl p-1.5 z-50 text-xs space-y-0.5 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <div className="absolute bottom-full left-0 mb-2 w-48 bg-sf-14151a border border-white/10 rounded-xl shadow-2xl p-1.5 z-50 text-xs space-y-0.5 animate-in fade-in slide-in-from-bottom-2 duration-150">
                 <button
                   type="button"
                   onClick={() => {

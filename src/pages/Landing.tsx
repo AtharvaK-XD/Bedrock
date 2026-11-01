@@ -355,7 +355,7 @@ export default function Landing() {
               { icon: <Database className="w-5 h-5" />, title: "Tactile Physics Deck", desc: "Interactive blueprint catalog featuring infinite zoom from 5% to 300%, freeform 1:1 momentum physics, and curated engineering patterns." },
               { icon: <Globe className="w-5 h-5" />, title: "15-Target Exporters", desc: "Export directly into .cursorrules, CLAUDE.md, Windsurf, Copilot, Vercel AI SDK, Python, cURL, and typed JSON API payloads." }
             ].map((feature, idx) => (
-              <div key={idx} data-cursor="hover" className="feature-card group flex flex-col p-8 rounded-3xl bg-[#0a0a0a]/80 backdrop-blur-md border border-white/5 hover:border-white/10 transition-colors duration-500">
+              <div key={idx} data-cursor="hover" className="feature-card group flex flex-col p-8 rounded-3xl bg-sf-0a0a0a/80 backdrop-blur-md border border-white/5 hover:border-white/10 transition-colors duration-500">
                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-300 mb-6 group-hover:text-copper-400 group-hover:bg-copper-500/10 transition-colors duration-500">
                   {feature.icon}
                 </div>

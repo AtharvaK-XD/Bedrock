@@ -255,7 +255,7 @@ export default function Result() {
       </div>
 
       {/* Bottom Chat Input */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-sf-0a0a0a via-sf-0a0a0a to-transparent">
         <RefinementInput 
           onSubmit={async (text) => {
             const nextHistory = [...chatHistory, { role: 'user', content: text }];
@@ -351,7 +351,7 @@ export default function Result() {
               "px-3 py-1.5 border transition-colors rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer",
               copied 
                 ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300" 
-                : "bg-[#222] border-white/10 hover:bg-white/10 text-gray-200"
+                : "bg-sf-222222 border-white/10 hover:bg-white/10 text-gray-200"
             )}
           >
             {copied ? (
@@ -369,7 +369,7 @@ export default function Result() {
           <button 
             type="button"
             onClick={handleDownload} 
-            className="px-3 py-1.5 bg-[#222] border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-xs font-semibold text-gray-200 uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 bg-sf-222222 border border-white/10 hover:bg-white/10 transition-colors rounded-lg text-xs font-semibold text-gray-200 uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
           >
             <Download className="w-3 h-3 text-gray-400" />
             <span>Download</span>
@@ -379,7 +379,7 @@ export default function Result() {
 
       {/* Document Content */}
       <div className="flex-1 overflow-y-auto p-8 custom-scrollbar relative" data-lenis-prevent="true">
-        <div className={`max-w-4xl mx-auto prose prose-invert prose-copper prose-p:leading-relaxed prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-white/10 prose-headings:font-display transition-opacity duration-300 ${isRefining ? 'opacity-30' : 'opacity-100'}`}>
+        <div className={`max-w-4xl mx-auto prose prose-invert prose-copper prose-p:leading-relaxed prose-pre:bg-sf-1a1a1a prose-pre:border prose-pre:border-white/10 prose-headings:font-display transition-opacity duration-300 ${isRefining ? 'opacity-30' : 'opacity-100'}`}>
           <ReactMarkdown>{sanitizeRenderedPrompt(promptText)}</ReactMarkdown>
         </div>
       </div>
@@ -423,7 +423,7 @@ export default function Result() {
           defaultSize="45%" 
           minSize="30%" 
           maxSize="70%" 
-          className="relative overflow-hidden bg-[#0a0a0a]"
+          className="relative overflow-hidden bg-sf-0a0a0a"
         >
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.div
@@ -432,7 +432,7 @@ export default function Result() {
               animate={{ x: 0, scale: 1, opacity: 1 }}
               exit={{ x: "100%", scale: 0.95, opacity: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 40 }}
-              className={`absolute inset-0 flex flex-col w-full h-full ${isSwapped ? 'bg-[#161616]' : 'bg-[#0a0a0a]'}`}
+              className={`absolute inset-0 flex flex-col w-full h-full ${isSwapped ? 'bg-sf-161616' : 'bg-sf-0a0a0a'}`}
             >
               {isSwapped ? docPaneContent : chatPaneContent}
             </motion.div>
@@ -440,7 +440,7 @@ export default function Result() {
         </Panel>
 
         {/* RESIZER HANDLE */}
-        <PanelResizeHandle className="w-2 bg-[#0a0a0a] border-x border-white/5 flex items-center justify-center hover:bg-copper-500/20 active:bg-copper-500/40 transition-colors cursor-col-resize group z-10 relative">
+        <PanelResizeHandle className="w-2 bg-sf-0a0a0a border-x border-white/5 flex items-center justify-center hover:bg-copper-500/20 active:bg-copper-500/40 transition-colors cursor-col-resize group z-10 relative">
           <div className="w-1 h-12 bg-white/10 group-hover:bg-copper-500 rounded-full transition-colors" />
         </PanelResizeHandle>
 
@@ -450,7 +450,7 @@ export default function Result() {
           defaultSize="55%" 
           minSize="30%" 
           maxSize="70%" 
-          className="relative overflow-hidden bg-[#161616]"
+          className="relative overflow-hidden bg-sf-161616"
         >
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.div
@@ -459,7 +459,7 @@ export default function Result() {
               animate={{ x: 0, scale: 1, opacity: 1 }}
               exit={{ x: "-100%", scale: 0.95, opacity: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 40 }}
-              className={`absolute inset-0 flex flex-col w-full h-full ${isSwapped ? 'bg-[#0a0a0a]' : 'bg-[#161616]'}`}
+              className={`absolute inset-0 flex flex-col w-full h-full ${isSwapped ? 'bg-sf-0a0a0a' : 'bg-sf-161616'}`}
             >
               {isSwapped ? chatPaneContent : docPaneContent}
             </motion.div>

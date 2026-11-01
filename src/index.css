@@ -39,7 +39,7 @@
 
   /* Keyboard users always get a visible focus outline (mouse clicks are unaffected) */
   :focus-visible {
-    outline: 2px solid #2c9a8b;
+    outline: 2px solid rgb(var(--copper-500));
     outline-offset: 2px;
   }
 }
@@ -77,7 +77,7 @@
 
   /* Obsidian & Luxury Dark Frosted Glass Design System */
   .glass-card {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%), rgba(8, 11, 17, 0.75);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%), rgba(calc(8 + var(--g-dr)), calc(11 + var(--g-dg)), calc(17 + var(--g-db)), 0.75);
     backdrop-filter: blur(28px) saturate(190%);
     -webkit-backdrop-filter: blur(28px) saturate(190%);
     border: 1px solid rgba(255, 255, 255, 0.10);
@@ -88,7 +88,7 @@
   }
 
   .glass-panel-luxury {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.01) 60%, rgba(255, 255, 255, 0.02) 100%), rgba(9, 12, 18, 0.68);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.01) 60%, rgba(255, 255, 255, 0.02) 100%), rgba(calc(9 + var(--g-dr)), calc(12 + var(--g-dg)), calc(18 + var(--g-db)), 0.68);
     backdrop-filter: blur(32px) saturate(190%);
     -webkit-backdrop-filter: blur(32px) saturate(190%);
     border: 1px solid rgba(255, 255, 255, 0.11);
@@ -100,7 +100,7 @@
   }
 
   .glass-subcard {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.01) 100%), rgba(12, 15, 22, 0.6);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.01) 100%), rgba(calc(12 + var(--g-dr)), calc(15 + var(--g-dg)), calc(22 + var(--g-db)), 0.6);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -110,7 +110,7 @@
   }
 
   .glass-subcard-interactive {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.01) 100%), rgba(12, 15, 22, 0.6);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.01) 100%), rgba(calc(12 + var(--g-dr)), calc(15 + var(--g-dg)), calc(22 + var(--g-db)), 0.6);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -131,7 +131,7 @@
   }
 
   .glass-pill {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(12, 16, 24, 0.7);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(calc(12 + var(--g-dr)), calc(16 + var(--g-dg)), calc(24 + var(--g-db)), 0.7);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.10);
@@ -141,7 +141,7 @@
   }
 
   .glass-pill-button {
-    background: rgba(14, 18, 26, 0.65);
+    background: rgba(calc(14 + var(--g-dr)), calc(18 + var(--g-dg)), calc(26 + var(--g-db)), 0.65);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.10);
@@ -221,47 +221,110 @@
   animation-play-state: running !important;
 }
 
-/* Custom Appearance Themes */
-[data-theme="obsidian"] body {
-  background-color: #000000 !important;
+/* Theme presets (Settings > Appearance). Each one sets the page background and nudges every dark surface slightly.
+   --g-d* are small colour offsets added to the base surface colours, so the default theme is unchanged. */
+:root {
+  --theme-black: 0 0 0;
+  --g-dr: 0;
+  --g-dg: 0;
+  --g-db: 0;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
 }
-[data-theme="slate"] body {
-  background-color: #070a12 !important;
-}
-[data-theme="amber"] body {
-  background-color: #0c0906 !important;
-}
-[data-theme="emerald"] body {
-  background-color: #040d08 !important;
-}
-[data-theme="violet"] body {
-  background-color: #0b0714 !important;
+[data-theme="obsidian"] { --theme-black: 0 0 0; --g-dr: 0; --g-dg: 0; --g-db: 0; }
+[data-theme="slate"] { --theme-black: 7 10 18; --g-dr: -2; --g-dg: 1; --g-db: 7; }
+[data-theme="amber"] { --theme-black: 12 9 6; --g-dr: 7; --g-dg: 3; --g-db: -3; }
+[data-theme="emerald"] { --theme-black: 4 13 8; --g-dr: -3; --g-dg: 5; --g-db: 0; }
+[data-theme="violet"] { --theme-black: 11 7 20; --g-dr: 4; --g-dg: -2; --g-db: 8; }
+
+body {
+  background-color: rgb(var(--theme-black));
 }
 
-/* Accent Color Directives */
+/* Accent colours: --copper-* is the colour scale behind every "copper" class in the app */
+:root,
 [data-accent="copper"] {
-  --accent-base: #f59e0b;
-  --accent-glow: rgba(245, 158, 11, 0.25);
+  --copper-50: 242 251 249;
+  --copper-100: 216 245 238;
+  --copper-200: 178 235 223;
+  --copper-300: 124 219 203;
+  --copper-400: 79 176 161;
+  --copper-500: 44 154 139;
+  --copper-600: 31 122 110;
+  --copper-700: 25 99 89;
+  --copper-800: 20 79 72;
+  --copper-900: 16 63 58;
+  --copper-950: 8 37 34;
 }
+
 [data-accent="cyan"] {
-  --accent-base: #06b6d4;
-  --accent-glow: rgba(6, 182, 212, 0.25);
+  --copper-50: 236 254 255;
+  --copper-100: 207 250 254;
+  --copper-200: 165 243 252;
+  --copper-300: 103 232 249;
+  --copper-400: 34 211 238;
+  --copper-500: 6 182 212;
+  --copper-600: 8 145 178;
+  --copper-700: 14 116 144;
+  --copper-800: 21 94 117;
+  --copper-900: 22 78 99;
+  --copper-950: 8 51 68;
 }
+
 [data-accent="emerald"] {
-  --accent-base: #10b981;
-  --accent-glow: rgba(16, 185, 129, 0.25);
+  --copper-50: 236 253 245;
+  --copper-100: 209 250 229;
+  --copper-200: 167 243 208;
+  --copper-300: 110 231 183;
+  --copper-400: 52 211 153;
+  --copper-500: 16 185 129;
+  --copper-600: 5 150 105;
+  --copper-700: 4 120 87;
+  --copper-800: 6 95 70;
+  --copper-900: 6 78 59;
+  --copper-950: 2 44 34;
 }
+
 [data-accent="violet"] {
-  --accent-base: #8b5cf6;
-  --accent-glow: rgba(139, 92, 246, 0.25);
+  --copper-50: 245 243 255;
+  --copper-100: 237 233 254;
+  --copper-200: 221 214 254;
+  --copper-300: 196 181 253;
+  --copper-400: 167 139 250;
+  --copper-500: 139 92 246;
+  --copper-600: 124 58 237;
+  --copper-700: 109 40 217;
+  --copper-800: 91 33 182;
+  --copper-900: 76 29 149;
+  --copper-950: 46 16 101;
 }
+
 [data-accent="rose"] {
-  --accent-base: #f43f5e;
-  --accent-glow: rgba(244, 63, 94, 0.25);
+  --copper-50: 255 241 242;
+  --copper-100: 255 228 230;
+  --copper-200: 254 205 211;
+  --copper-300: 253 164 175;
+  --copper-400: 251 113 133;
+  --copper-500: 244 63 94;
+  --copper-600: 225 29 72;
+  --copper-700: 190 18 60;
+  --copper-800: 159 18 57;
+  --copper-900: 136 19 55;
+  --copper-950: 76 5 25;
 }
+
 [data-accent="amber"] {
-  --accent-base: #d97706;
-  --accent-glow: rgba(217, 119, 6, 0.25);
+  --copper-50: 255 251 235;
+  --copper-100: 254 243 199;
+  --copper-200: 253 230 138;
+  --copper-300: 252 211 77;
+  --copper-400: 251 191 36;
+  --copper-500: 245 158 11;
+  --copper-600: 217 119 6;
+  --copper-700: 180 83 9;
+  --copper-800: 146 64 14;
+  --copper-900: 120 53 15;
+  --copper-950: 69 26 3;
 }
 
 /* Glass Intensity Modifiers */
@@ -288,15 +351,22 @@
   -webkit-backdrop-filter: blur(36px) saturate(210%) !important;
 }
 
-/* Custom Font Family Modes */
-.font-sans-mode {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-}
+/* Interface font family (Settings > Appearance): swaps the sans and heading fonts everywhere */
 .font-editorial-mode {
-  font-family: 'Playfair Display', Georgia, serif !important;
+  --font-sans: 'Playfair Display', Georgia, serif;
+  --font-display: 'Playfair Display', Georgia, serif;
 }
 .font-mono-mode {
-  font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace !important;
+  --font-sans: 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+  --font-display: 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Short colour fade while the theme or accent changes (class is added by applyAppearanceToDom) */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: background-color 0.4s ease, border-color 0.4s ease, color 0.4s ease, fill 0.4s ease, stroke 0.4s ease, box-shadow 0.4s ease !important;
 }
 
 /* Reduced Motion Mode: disable non-essential animations, but keep loading indicators and border beam spinning */

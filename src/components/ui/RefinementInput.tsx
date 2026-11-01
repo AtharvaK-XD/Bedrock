@@ -279,7 +279,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
 
                   {isModelDropdownOpen && (
                     <div 
-                      className="absolute bottom-full right-0 mb-3 w-64 max-h-[320px] overflow-y-auto custom-scrollbar bg-[#11141c]/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-[999] py-2"
+                      className="absolute bottom-full right-0 mb-3 w-64 max-h-[320px] overflow-y-auto custom-scrollbar bg-sf-11141c/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-[999] py-2"
                       data-lenis-prevent="true"
                     >
                       {AI_AGENTS.map((agent) => (
@@ -319,7 +319,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                     "min-w-[90px] px-4 py-1.5 rounded-xl transition-all text-xs font-semibold uppercase tracking-wider",
                     isLimitReached
                       ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
-                      : "bg-[#2C9A8B] hover:bg-[#1F7A6E] text-white shadow-sm shadow-[#2C9A8B]/20 cursor-pointer"
+                      : "bg-copper-500 hover:bg-copper-600 text-white shadow-sm shadow-copper-500/20 cursor-pointer"
                   )}
                   title={isLimitReached ? `Limit reached. Resets in ${timeUntilSession}` : undefined}
                 >

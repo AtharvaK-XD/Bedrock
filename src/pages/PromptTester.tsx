@@ -256,7 +256,7 @@ export default function PromptTester() {
           <button
             type="button"
             onClick={() => setActiveDropdown(isActive ? null : dropdownId)}
-            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#0e1117]/70 backdrop-blur-xl border border-white/10 rounded-xl text-xs font-medium text-white hover:bg-white/10 hover:border-white/20 transition-all shadow-md shadow-black/20"
+            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-sf-0e1117/70 backdrop-blur-xl border border-white/10 rounded-xl text-xs font-medium text-white hover:bg-white/10 hover:border-white/20 transition-all shadow-md shadow-black/20"
           >
             <div className="flex items-center gap-2 truncate">
               <AgentIcon agent={currentAgent} className="w-4 h-4" badgeClassName="w-4 h-4" />
@@ -266,7 +266,7 @@ export default function PromptTester() {
           </button>
           
           {isActive && (
-            <div className="absolute top-full mt-2 left-0 w-64 bg-[#0e1117]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
+            <div className="absolute top-full mt-2 left-0 w-64 bg-sf-0e1117/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
               <div className="max-h-[300px] overflow-y-auto px-1 custom-scrollbar" data-lenis-prevent="true">
                 {AI_AGENTS.map((a) => (
                   <button
@@ -308,7 +308,7 @@ export default function PromptTester() {
         <button
           type="button"
           onClick={() => setActiveDropdown(isActive ? null : dropdownId)}
-          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#0e1117]/70 backdrop-blur-xl border border-white/10 rounded-xl text-xs font-medium text-white hover:bg-white/10 hover:border-white/20 transition-all shadow-md shadow-black/20 font-mono"
+          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-sf-0e1117/70 backdrop-blur-xl border border-white/10 rounded-xl text-xs font-medium text-white hover:bg-white/10 hover:border-white/20 transition-all shadow-md shadow-black/20 font-mono"
         >
           <div className="flex items-center gap-2 truncate">
             <AgentIcon agent={currentAgent} model={currentModel.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
@@ -318,7 +318,7 @@ export default function PromptTester() {
         </button>
 
         {isActive && (
-          <div className="absolute top-full mt-2 left-0 w-full bg-[#0e1117]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-2xl z-50 py-2 font-mono">
+          <div className="absolute top-full mt-2 left-0 w-full bg-sf-0e1117/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-2xl z-50 py-2 font-mono">
             <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-white/10 mb-2 flex items-center gap-1.5">
               <AgentIcon agent={currentAgent} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
               <span>{currentAgent.name} Models</span>
@@ -418,7 +418,7 @@ export default function PromptTester() {
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 lg:gap-8 min-h-[720px] relative z-10">
           {/* Left: Input Glass Card */}
           <div className="flex flex-col gap-4 h-full">
-            <div className="relative rounded-3xl p-5 sm:p-6 flex flex-col flex-1 overflow-hidden group bg-gradient-to-b from-white/[0.05] via-white/[0.015] to-white/[0.025] bg-[#0c0e14]/75 backdrop-blur-3xl border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.18),0_20px_50px_rgba(0,0,0,0.55)]">
+            <div className="relative rounded-3xl p-5 sm:p-6 flex flex-col flex-1 overflow-hidden group bg-gradient-to-b from-white/[0.05] via-white/[0.015] to-white/[0.025] bg-sf-0c0e14/75 backdrop-blur-3xl border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.18),0_20px_50px_rgba(0,0,0,0.55)]">
               {/* Glass specular top rim */}
               <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
               {/* Ambient glass sheen */}
@@ -473,7 +473,7 @@ export default function PromptTester() {
             <StatefulButton
               onClick={handleTest}
               disabled={!prompt.trim() || isTesting}
-              className="w-full rounded-xl px-8 py-4 text-sm font-semibold uppercase tracking-wider bg-[#2C9A8B] hover:bg-[#1F7A6E] text-white shadow-md shadow-[#2C9A8B]/25 active:scale-[0.98] transition-all"
+              className="w-full rounded-xl px-8 py-4 text-sm font-semibold uppercase tracking-wider bg-copper-500 hover:bg-copper-600 text-white shadow-md shadow-copper-500/25 active:scale-[0.98] transition-all"
             >
               {isTesting ? 'Benchmarking Battle...' : 'Run Arena Duel'}
             </StatefulButton>
@@ -487,7 +487,7 @@ export default function PromptTester() {
                 {renderDropdown('agent', 1, agent1, model1, setAgent1Id, setModel1Id)}
                 {renderDropdown('model', 1, agent1, model1, setAgent1Id, setModel1Id)}
               </div>
-              <div className="relative rounded-3xl p-5 sm:p-6 flex flex-col flex-1 overflow-hidden group transition-all duration-300 bg-gradient-to-b from-white/[0.05] via-white/[0.015] to-white/[0.025] bg-[#0c0e14]/75 backdrop-blur-3xl border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.18),0_24px_60px_rgba(0,0,0,0.55)]">
+              <div className="relative rounded-3xl p-5 sm:p-6 flex flex-col flex-1 overflow-hidden group transition-all duration-300 bg-gradient-to-b from-white/[0.05] via-white/[0.015] to-white/[0.025] bg-sf-0c0e14/75 backdrop-blur-3xl border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.18),0_24px_60px_rgba(0,0,0,0.55)]">
                 {/* Glass specular top rim */}
                 <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
                 {/* Ambient glass sheen */}
@@ -602,7 +602,7 @@ export default function PromptTester() {
                 {renderDropdown('agent', 2, agent2, model2, setAgent2Id, setModel2Id)}
                 {renderDropdown('model', 2, agent2, model2, setAgent2Id, setModel2Id)}
               </div>
-              <div className="relative rounded-3xl p-5 sm:p-6 flex flex-col flex-1 overflow-hidden group transition-all duration-300 bg-gradient-to-b from-white/[0.05] via-white/[0.015] to-white/[0.025] bg-[#0c0e14]/75 backdrop-blur-3xl border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.18),0_24px_60px_rgba(0,0,0,0.55)]">
+              <div className="relative rounded-3xl p-5 sm:p-6 flex flex-col flex-1 overflow-hidden group transition-all duration-300 bg-gradient-to-b from-white/[0.05] via-white/[0.015] to-white/[0.025] bg-sf-0c0e14/75 backdrop-blur-3xl border border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.18),0_24px_60px_rgba(0,0,0,0.55)]">
                 {/* Glass specular top rim */}
                 <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
                 {/* Ambient glass sheen */}

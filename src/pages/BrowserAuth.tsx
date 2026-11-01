@@ -132,7 +132,7 @@ export default function BrowserAuth() {
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6 font-sans">
+      <div className="min-h-screen bg-sf-050505 text-white flex flex-col items-center justify-center p-6 font-sans">
         <div className="max-w-md w-full bg-zinc-950 border border-white/10 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
           <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mx-auto text-lg font-bold">
             !
@@ -153,7 +153,7 @@ export default function BrowserAuth() {
 
   // Instant seamless redirector screen without intermediate cards
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center font-sans select-none">
+    <div className="min-h-screen bg-sf-050505 text-white flex flex-col items-center justify-center font-sans select-none">
       <div className="flex flex-col items-center gap-4">
         <div className="w-9 h-9 border-2 border-white/10 border-t-emerald-400 rounded-full animate-spin" />
         <span className="text-xs font-mono text-zinc-500 tracking-wider">

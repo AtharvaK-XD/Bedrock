@@ -90,7 +90,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
   }, []);
 
   return (
-    <aside className="w-64 h-full border-r border-white/[0.08] bg-[#07090e]/95 backdrop-blur-2xl flex flex-col shrink-0 select-none z-30 relative shadow-[4px_0_24px_rgba(0,0,0,0.5)]">
+    <aside className="w-64 h-full border-r border-white/[0.08] bg-sf-07090e/95 backdrop-blur-2xl flex flex-col shrink-0 select-none z-30 relative shadow-[4px_0_24px_rgba(0,0,0,0.5)]">
       {/* Specular top-right edge highlight */}
       <div className="absolute top-0 right-0 w-[1px] h-full bg-gradient-to-b from-white/20 via-white/5 to-transparent pointer-events-none" />
 

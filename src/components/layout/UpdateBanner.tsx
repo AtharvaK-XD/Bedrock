@@ -61,7 +61,7 @@ export function UpdateBanner() {
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: -50, opacity: 0, scale: 0.95 }}
         transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-        className="fixed top-6 right-6 z-[999] max-w-sm w-full bg-[#0d0f13]/95 backdrop-blur-2xl border border-copper-500/40 shadow-2xl shadow-black/90 rounded-2xl p-4 text-white overflow-hidden"
+        className="fixed top-6 right-6 z-[999] max-w-sm w-full bg-sf-0d0f13/95 backdrop-blur-2xl border border-copper-500/40 shadow-2xl shadow-black/90 rounded-2xl p-4 text-white overflow-hidden"
       >
         {/* Ambient background glow */}
         <div className="absolute -top-12 -right-12 w-28 h-28 bg-copper-500/15 rounded-full blur-2xl pointer-events-none" />

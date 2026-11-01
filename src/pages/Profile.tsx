@@ -16,7 +16,7 @@ const BANNER_THEMES = [
   {
     id: 'copper',
     name: 'Bedrock Aurora',
-    gradient: 'from-[#0a1816] via-[#122622] to-[#0a1318]',
+    gradient: 'from-sf-0a1816 via-[#122622] to-sf-0a1318',
     radial1: 'from-copper-500/30 via-emerald-500/10 to-transparent',
     radial2: 'from-copper-600/20 via-transparent to-transparent',
     gridColor: '#4FB0A1',
@@ -28,7 +28,7 @@ const BANNER_THEMES = [
   {
     id: 'cyber',
     name: 'Cyber Emerald',
-    gradient: 'from-[#051a13] via-[#0a291f] to-[#071514]',
+    gradient: 'from-[#051a13] via-[#0a291f] to-sf-071514',
     radial1: 'from-emerald-400/30 via-teal-500/10 to-transparent',
     radial2: 'from-emerald-600/20 via-transparent to-transparent',
     gridColor: '#34d399',
@@ -52,7 +52,7 @@ const BANNER_THEMES = [
   {
     id: 'solar',
     name: 'Solar Amber',
-    gradient: 'from-[#201407] via-[#2c1c0b] to-[#120d09]',
+    gradient: 'from-[#201407] via-[#2c1c0b] to-sf-120d09',
     radial1: 'from-amber-500/30 via-orange-500/10 to-transparent',
     radial2: 'from-amber-600/20 via-transparent to-transparent',
     gridColor: '#fbbf24',
@@ -353,7 +353,7 @@ export default function Profile() {
         </div>
 
         {/* HERO PROFILE CARD */}
-        <div className="relative rounded-3xl border border-white/10 bg-[#121417]/85 backdrop-blur-2xl overflow-hidden shadow-2xl mb-8 group/card transition-all duration-300">
+        <div className="relative rounded-3xl border border-white/10 bg-sf-121417/85 backdrop-blur-2xl overflow-hidden shadow-2xl mb-8 group/card transition-all duration-300">
           {/* Ambient Banner Backdrop */}
           <div className="relative h-44 sm:h-52 w-full z-10 pointer-events-none">
             {/* Background layers clipped to banner top rounded corners */}
@@ -377,7 +377,7 @@ export default function Profile() {
                 </button>
 
                 {showThemePicker && (
-                  <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-[#15181b]/98 backdrop-blur-2xl border border-white/20 p-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 space-y-1 font-mono">
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-sf-15181b/98 backdrop-blur-2xl border border-white/20 p-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 space-y-1 font-mono">
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 px-2.5 py-1">Banner Theme</p>
                     {BANNER_THEMES.map((theme) => (
                       <button
@@ -491,7 +491,7 @@ export default function Profile() {
                       type="button"
                       onClick={handleRemovePhoto}
                       title="Remove custom photo"
-                      className="absolute -top-1.5 -right-1.5 z-30 p-1.5 rounded-full bg-[#121417] text-gray-400 hover:text-rose-400 border border-white/20 hover:border-rose-500/40 shadow-lg text-xs font-mono leading-none opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                      className="absolute -top-1.5 -right-1.5 z-30 p-1.5 rounded-full bg-sf-121417 text-gray-400 hover:text-rose-400 border border-white/20 hover:border-rose-500/40 shadow-lg text-xs font-mono leading-none opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -717,7 +717,7 @@ export default function Profile() {
                   <PromptActivityHeatmap activityTimestamps={prompts.map(p => p.createdAt)} />
 
                   {/* Recent Pipeline & Prompt Runs */}
-                  <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl shadow-sm">
+                  <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm">
                     <div className="flex items-center justify-between mb-5">
                       <h2 className="text-base font-bold text-white">
                         Recent Pipeline & Prompt Runs
@@ -782,7 +782,7 @@ export default function Profile() {
                 {/* Right Column: Model Allocation & Quota */}
                 <div className="space-y-8">
                   {/* Model Distribution Card */}
-                  <div className="p-6 rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl shadow-sm">
+                  <div className="p-6 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm">
                     <h2 className="text-base font-bold text-white mb-1">
                       Model Utilization
                     </h2>
@@ -821,7 +821,7 @@ export default function Profile() {
                   </div>
 
                   {/* Monthly Resource Quota Widget */}
-                  <div className="p-6 rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl shadow-sm">
+                  <div className="p-6 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-base font-bold text-white">
                         Plan Resource Usage
@@ -888,7 +888,7 @@ export default function Profile() {
                   </div>
 
                   {/* Connected Accounts */}
-                  <div className="p-6 rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl shadow-sm">
+                  <div className="p-6 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm">
                     <h2 className="text-base font-bold text-white mb-4">
                       Connected Integrations
                     </h2>
@@ -952,7 +952,7 @@ export default function Profile() {
               transition={{ duration: 0.2 }}
               className="max-w-3xl mx-auto"
             >
-              <div className="p-6 sm:p-10 rounded-3xl border border-white/10 bg-[#121417]/80 backdrop-blur-xl shadow-xl">
+              <div className="p-6 sm:p-10 rounded-3xl border border-white/10 bg-sf-121417/80 backdrop-blur-xl shadow-xl">
                 <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
                   <div>
                     <h2 className="text-xl font-bold text-white">Edit Profile Details</h2>
@@ -1215,7 +1215,7 @@ export default function Profile() {
             >
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Current Active Plan */}
-                <div className="md:col-span-2 p-8 rounded-3xl border border-white/10 bg-[#121417]/80 backdrop-blur-xl shadow-xl space-y-6">
+                <div className="md:col-span-2 p-8 rounded-3xl border border-white/10 bg-sf-121417/80 backdrop-blur-xl shadow-xl space-y-6">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                       <span className="text-xs font-mono text-copper-400 font-bold tracking-wider uppercase">Active Subscription</span>
@@ -1303,7 +1303,7 @@ export default function Profile() {
                 </div>
 
                 {/* Pro Tier Pitch */}
-                <div className="p-8 rounded-3xl border border-copper-500/30 bg-gradient-to-b from-copper-950/20 via-[#121417]/80 to-[#121417] backdrop-blur-xl shadow-xl flex flex-col justify-between relative overflow-hidden font-mono">
+                <div className="p-8 rounded-3xl border border-copper-500/30 bg-gradient-to-b from-copper-950/20 via-sf-121417/80 to-sf-121417 backdrop-blur-xl shadow-xl flex flex-col justify-between relative overflow-hidden font-mono">
                   <div className="space-y-6 relative z-10">
                     <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-copper-500/20 text-copper-300 border border-copper-500/30">
                       RECOMMENDED
@@ -1360,7 +1360,7 @@ export default function Profile() {
               transition={{ duration: 0.2 }}
               className="max-w-4xl mx-auto space-y-6"
             >
-              <div className="p-6 sm:p-8 rounded-3xl border border-white/10 bg-[#121417]/80 backdrop-blur-xl shadow-xl space-y-6">
+              <div className="p-6 sm:p-8 rounded-3xl border border-white/10 bg-sf-121417/80 backdrop-blur-xl shadow-xl space-y-6">
                 <div>
                   <h2 className="text-xl font-bold text-white">Default Model Preferences</h2>
                   <p className="text-xs text-gray-400 mt-1 font-mono">Primary foundation models for prompt synthesis and arena benchmarks.</p>

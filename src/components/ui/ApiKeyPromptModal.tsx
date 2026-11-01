@@ -89,7 +89,7 @@ export function ApiKeyPromptModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="relative w-full max-w-lg bg-[#0e1014] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/90 overflow-hidden text-white"
+          className="relative w-full max-w-lg bg-sf-0e1014 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/90 overflow-hidden text-white"
         >
           {/* Subtle Ambient Background Glow */}
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-copper-500/15 rounded-full blur-3xl pointer-events-none" />

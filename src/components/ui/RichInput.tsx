@@ -631,7 +631,7 @@ export function RichInput({
               "px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-400/50 active:scale-[0.98]",
               isLimitReached
                 ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
-                : "bg-[#2C9A8B] hover:bg-[#1F7A6E] text-white hover:ring-2 hover:ring-copper-400/50 shadow-md shadow-[#2C9A8B]/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                : "bg-copper-500 hover:bg-copper-600 text-white hover:ring-2 hover:ring-copper-400/50 shadow-md shadow-copper-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
             )}
             title={isLimitReached ? `Limit reached. Resets in ${timeUntilSession}` : undefined}
           >

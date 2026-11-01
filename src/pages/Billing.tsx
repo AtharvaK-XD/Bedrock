@@ -101,7 +101,7 @@ export default function Billing() {
 
           {/* Hero Confirmation Banner */}
           {isFree ? (
-            <div className="relative rounded-3xl border border-copper-500/30 bg-gradient-to-r from-copper-500/10 via-[#121417] to-black p-6 sm:p-8 overflow-hidden shadow-2xl">
+            <div className="relative rounded-3xl border border-copper-500/30 bg-gradient-to-r from-copper-500/10 via-sf-121417 to-black p-6 sm:p-8 overflow-hidden shadow-2xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-start sm:items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-copper-500/15 border border-copper-500/30 flex items-center justify-center text-copper-400 shrink-0">
@@ -134,7 +134,7 @@ export default function Billing() {
               </div>
             </div>
           ) : (
-            <div className="relative rounded-3xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-[#121417] to-black p-6 sm:p-8 overflow-hidden shadow-2xl">
+            <div className="relative rounded-3xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-sf-121417 to-black p-6 sm:p-8 overflow-hidden shadow-2xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-start sm:items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
@@ -177,7 +177,7 @@ export default function Billing() {
             <div className="lg:col-span-2 space-y-6">
               
               {/* Active Subscription Details */}
-              <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl shadow-sm space-y-6">
+              <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm space-y-6">
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
                   <div>
                     <h2 className="text-base font-bold text-white">Workspace Entitlements</h2>
@@ -234,7 +234,7 @@ export default function Billing() {
 
               {/* Payment Method Card */}
               {!isFree && (
-                <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl shadow-sm space-y-4">
+                <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-white/5 pb-4">
                     <h2 className="text-base font-bold text-white">Payment Method</h2>
                     <span className="text-[11px] font-mono text-neutral-400 flex items-center gap-1.5">
@@ -262,7 +262,7 @@ export default function Billing() {
               )}
 
               {/* Invoice History */}
-              <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-[#121417]/60 backdrop-blur-xl shadow-sm space-y-4">
+              <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
                   <h2 className="text-base font-bold text-white">Billing History</h2>
                   <span className="text-xs font-mono text-neutral-500">
@@ -313,7 +313,7 @@ export default function Billing() {
 
             {/* Right Column: Order Receipt Breakdown Card */}
             <div className="space-y-6">
-              <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-[#121417]/80 backdrop-blur-xl shadow-sm space-y-5">
+              <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-sf-121417/80 backdrop-blur-xl shadow-sm space-y-5">
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
                   <h2 className="text-base font-bold text-white">Account Summary</h2>
                   <span className="text-xs font-mono text-neutral-400">#BDRK-{currentTier.toUpperCase()}</span>

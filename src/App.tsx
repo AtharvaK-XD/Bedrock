@@ -26,7 +26,7 @@ const Terms = lazy(() => import('./pages/Terms'));
 
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center min-h-[60vh] bg-[#050505]" role="status" aria-label="Loading">
+    <div className="flex items-center justify-center min-h-[60vh] bg-sf-050505" role="status" aria-label="Loading">
       <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
     </div>
   );
@@ -56,7 +56,7 @@ const queryClient = new QueryClient();
 
 function BrowserDesktopNotice() {
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans select-none">
+    <div className="min-h-screen bg-sf-050505 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans select-none">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-emerald-500/10 blur-[180px] pointer-events-none rounded-full" />
       <div className="relative z-10 w-full max-w-md bg-zinc-950/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 sm:p-10 shadow-2xl text-center space-y-6">
         <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 p-2.5 mx-auto flex items-center justify-center shadow-xl ring-1 ring-white/10">
@@ -78,7 +78,7 @@ function BrowserDesktopNotice() {
           <button
             type="button"
             onClick={() => { window.location.href = 'bedrock://'; }}
-            className="w-full flex items-center justify-center gap-2 bg-[#2C9A8B] text-white rounded-xl py-3.5 font-semibold hover:bg-[#1F7A6E] transition-all cursor-pointer text-sm shadow-lg shadow-[#2C9A8B]/25 active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 bg-copper-500 text-white rounded-xl py-3.5 font-semibold hover:bg-copper-600 transition-all cursor-pointer text-sm shadow-lg shadow-copper-500/25 active:scale-[0.98]"
           >
             <ExternalLink className="w-4 h-4" />
             Return to Bedrock Desktop
@@ -180,7 +180,7 @@ function AnimatedRoutes() {
           path="/" 
           element={
             !isLoaded ? (
-              <div className="flex items-center justify-center min-h-screen bg-[#050505]">
+              <div className="flex items-center justify-center min-h-screen bg-sf-050505">
                 <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
               </div>
             ) : isLoggedIn ? (
@@ -237,7 +237,7 @@ function AnimatedRoutes() {
           path="/app/*" 
           element={
             !isLoaded ? (
-              <div className="flex items-center justify-center min-h-screen bg-[#050505]">
+              <div className="flex items-center justify-center min-h-screen bg-sf-050505">
                 <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
               </div>
             ) : !isLoggedIn ? (

@@ -1,5 +1,6 @@
 import type { HistoryPromptItem } from './generatorHistory';
-import { getActivePrivacySettings, scrubSecrets, getSessionTokensCount } from './appSettings';
+import { getActivePrivacySettings, scrubSecrets, getSessionTokensCount, isLocalVaultOnly } from './appSettings';
+import { announceRunFinished } from './notify';
 import { reportSyncProblem, describeSaveLimit } from './syncNotice';
 
 // Only server-side trouble (5xx) or rate limiting (429) is worth interrupting the user for.
@@ -71,9 +72,12 @@ export async function recordExecutionTrace(params: {
   latency?: number;
   status?: 'OK' | 'ERR';
 }): Promise<void> {
+  // Notifications (slow response, finished run, chime) do not depend on the diagnostics switch
+  announceRunFinished({ latencyMs: params.latency ?? 0, ok: (params.status || 'OK') === 'OK' });
+
   const privacy = getActivePrivacySettings();
   if (!privacy.telemetry) {
-    // User disabled telemetry in Settings > Privacy & Data Controls
+    // User turned off diagnostics in Settings > Privacy & Security
     return;
   }
 
@@ -160,8 +164,8 @@ export async function savePromptToDb(prompt: {
   tags?: string[];
 }): Promise<void> {
   const privacy = getActivePrivacySettings();
-  if (!privacy.saveHistory) {
-    // User disabled prompt history persistence
+  if (!privacy.saveHistory || privacy.localVaultOnly) {
+    // History saving is off, or the user keeps everything on this device only
     return;
   }
 
@@ -200,6 +204,7 @@ export async function savePromptToDb(prompt: {
  * Fetch user's saved prompts from Neon DB
  */
 export async function fetchUserPromptsFromDb(): Promise<HistoryPromptItem[]> {
+  if (isLocalVaultOnly()) return [];
   try {
     const headers = await getAuthHeader();
     const res = await fetch('/api/prompts', {
@@ -231,6 +236,7 @@ export async function fetchUserPromptsFromDb(): Promise<HistoryPromptItem[]> {
 }
 
 export async function deletePromptFromDb(id: string): Promise<void> {
+  if (isLocalVaultOnly()) return;
   try {
     const headers = await getAuthHeader();
     const res = await fetch(`/api/prompts?id=${encodeURIComponent(id)}`, {

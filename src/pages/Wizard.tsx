@@ -326,7 +326,7 @@ export default function Wizard() {
               <button
                 type="button"
                 onClick={toggleSidebar}
-                className="fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d10]/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200 top-22 left-4"
+                className="fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sf-0c0d10/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200 top-22 left-4"
                 title="Show previous prompts"
               >
                 <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
@@ -514,7 +514,7 @@ export default function Wizard() {
                                   maxLength={1000}
                                   onChange={(e) => setAnswers(prev => ({ ...prev, [qId]: e.target.value }))}
                                   placeholder="Your answer..."
-                                  className="bg-[#111] border-white/10 text-white placeholder:text-gray-500 hover:border-white/20 focus-visible:bg-white/5 focus-visible:border-copper-500/50"
+                                  className="bg-sf-111111 border-white/10 text-white placeholder:text-gray-500 hover:border-white/20 focus-visible:bg-white/5 focus-visible:border-copper-500/50"
                                   required
                                 />
                               )}
@@ -526,9 +526,9 @@ export default function Wizard() {
                                     onChange={(e) => setAnswers(prev => ({ ...prev, [qId]: e.target.value }))}
                                     required
                                   >
-                                    <option value="" disabled className="bg-[#1a1a1a] text-white">Select an option</option>
+                                    <option value="" disabled className="bg-sf-1a1a1a text-white">Select an option</option>
                                     {qOptions.map(opt => (
-                                      <option key={opt} value={opt} className="bg-[#1a1a1a] text-white">{opt}</option>
+                                      <option key={opt} value={opt} className="bg-sf-1a1a1a text-white">{opt}</option>
                                     ))}
                                   </select>
                                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 font-mono text-xs">
@@ -555,7 +555,7 @@ export default function Wizard() {
                                           "px-5 py-3 text-sm rounded-xl border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500 font-medium",
                                           isSelected 
                                             ? "bg-copper-500 border-copper-500 text-white shadow-md shadow-copper-500/20" 
-                                            : "bg-[#111] border-white/10 text-gray-300 hover:border-white/20 hover:bg-white/5 hover:text-white"
+                                            : "bg-sf-111111 border-white/10 text-gray-300 hover:border-white/20 hover:bg-white/5 hover:text-white"
                                       )}
                                       >
                                         {opt}
@@ -573,7 +573,7 @@ export default function Wizard() {
                         <StatefulButton
                           type="submit"
                           disabled={isSynthesizing}
-                          className="rounded-xl px-8 py-4 text-base font-semibold bg-[#2C9A8B] hover:bg-[#1F7A6E] text-white shadow-lg shadow-[#2C9A8B]/25 w-full sm:w-auto transition-all active:scale-[0.98]"
+                          className="rounded-xl px-8 py-4 text-base font-semibold bg-copper-500 hover:bg-copper-600 text-white shadow-lg shadow-copper-500/25 w-full sm:w-auto transition-all active:scale-[0.98]"
                         >
                           Synthesize Prompt
                         </StatefulButton>

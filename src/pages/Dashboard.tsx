@@ -170,7 +170,7 @@ export default function Dashboard() {
           </div>
 
           {/* SUBSCRIPTION & QUOTA GLASS BANNER */}
-          <div className="relative rounded-3xl p-5 sm:p-6 bg-[#0e1117]/80 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
+          <div className="relative rounded-3xl p-5 sm:p-6 bg-sf-0e1117/80 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
             <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
               <div className="flex items-center gap-4">

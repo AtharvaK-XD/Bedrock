@@ -642,7 +642,7 @@ export default function Library() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search prompts by keyword or tag..."
-                className="w-full pl-10 pr-4 py-2.5 bg-[#141414] border border-white/10 rounded-xl text-white placeholder:text-neutral-500 focus:outline-none focus:border-white/25 text-sm shadow-sm transition-colors"
+                className="w-full pl-10 pr-4 py-2.5 bg-sf-141414 border border-white/10 rounded-xl text-white placeholder:text-neutral-500 focus:outline-none focus:border-white/25 text-sm shadow-sm transition-colors"
               />
               <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               {search && (
@@ -656,7 +656,7 @@ export default function Library() {
             </div>
 
             {/* View Mode Toggle: Grid vs Physics Deck */}
-            <div className="flex items-center p-1 rounded-xl bg-[#141414] border border-white/10 shadow-sm text-xs">
+            <div className="flex items-center p-1 rounded-xl bg-sf-141414 border border-white/10 shadow-sm text-xs">
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
@@ -707,7 +707,7 @@ export default function Library() {
                 "whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-mono font-medium transition-all uppercase tracking-wider cursor-pointer",
                 activeCategory === category
                   ? "bg-white text-black shadow-sm font-semibold"
-                  : "bg-[#141414] border border-white/10 text-neutral-400 hover:bg-white/10 hover:text-white shadow-sm"
+                  : "bg-sf-141414 border border-white/10 text-neutral-400 hover:bg-white/10 hover:text-white shadow-sm"
               )}
             >
               {category}
@@ -719,11 +719,11 @@ export default function Library() {
           <div 
             ref={deckContainerRef}
             data-lenis-prevent="true"
-            className="w-full -mx-1 sm:-mx-3 lg:-mx-6 w-[calc(100%+0.5rem)] sm:w-[calc(100%+1.5rem)] lg:w-[calc(100%+3rem)] relative min-h-[780px] lg:min-h-[850px] h-[calc(100vh-210px)] max-h-[1200px] rounded-3xl border border-white/10 bg-[#08090d] shadow-[0_32px_100px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl overflow-hidden p-6 select-none bg-[radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:28px_28px]"
+            className="w-full -mx-1 sm:-mx-3 lg:-mx-6 w-[calc(100%+0.5rem)] sm:w-[calc(100%+1.5rem)] lg:w-[calc(100%+3rem)] relative min-h-[780px] lg:min-h-[850px] h-[calc(100vh-210px)] max-h-[1200px] rounded-3xl border border-white/10 bg-sf-08090d shadow-[0_32px_100px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl overflow-hidden p-6 select-none bg-[radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:28px_28px]"
           >
 
             {/* Top Right Zoom Controls HUD */}
-            <div className="absolute top-5 right-5 z-20 flex items-center gap-2 bg-[#0d0f17]/95 px-2.5 py-1.5 rounded-2xl border border-white/15 backdrop-blur-xl shadow-2xl">
+            <div className="absolute top-5 right-5 z-20 flex items-center gap-2 bg-sf-0d0f17/95 px-2.5 py-1.5 rounded-2xl border border-white/15 backdrop-blur-xl shadow-2xl">
               <span className="text-[10px] font-mono text-neutral-400 px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 hidden sm:inline">
                 Ctrl + Scroll to Zoom
               </span>
@@ -801,7 +801,7 @@ export default function Library() {
                       zoomScale={deckZoom}
                       initialRotate={config.rotate}
                       className={cn(
-                        "absolute w-80 sm:w-[350px] min-h-[460px] p-6 rounded-2xl bg-[#13151f]/95 border border-white/15 shadow-2xl backdrop-blur-xl cursor-grab active:cursor-grabbing flex flex-col justify-between",
+                        "absolute w-80 sm:w-[350px] min-h-[460px] p-6 rounded-2xl bg-sf-13151f/95 border border-white/15 shadow-2xl backdrop-blur-xl cursor-grab active:cursor-grabbing flex flex-col justify-between",
                         config.pos
                       )}
                     >
@@ -880,7 +880,7 @@ export default function Library() {
                         </div>
                         <button
                           onClick={() => setSelectedPromptForView(prompt)}
-                          className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-[#2C9A8B] hover:text-white text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.98]"
+                          className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-copper-500 hover:text-white text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.98]"
                         >
                           <span>Inspect Blueprint</span>
                           <ArrowUpRight className="w-4 h-4" />
@@ -912,7 +912,7 @@ export default function Library() {
               }}
               whileHover={{ scale: 1.01 }}
               onClick={() => setSelectedPromptForView(prompt)}
-              className="bg-[#141414]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-7 hover:bg-[#181818] hover:border-white/20 transition-all group flex flex-col shadow-lg relative overflow-hidden cursor-pointer"
+              className="bg-sf-141414/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-7 hover:bg-sf-181818 hover:border-white/20 transition-all group flex flex-col shadow-lg relative overflow-hidden cursor-pointer"
             >
               {/* Card Header */}
               <div className="flex justify-between items-start mb-3 gap-3">
@@ -934,7 +934,7 @@ export default function Library() {
                   {activeMenuId === prompt.id && (
                     <div
                       ref={menuRef}
-                      className="absolute right-0 top-7 w-40 bg-[#1c1c1c] border border-white/15 rounded-xl shadow-2xl p-1 z-30 flex flex-col text-xs"
+                      className="absolute right-0 top-7 w-40 bg-sf-1c1c1c border border-white/15 rounded-xl shadow-2xl p-1 z-30 flex flex-col text-xs"
                     >
                       <button
                         onClick={(e) => handleOpenEdit(prompt, e)}
@@ -1088,11 +1088,11 @@ export default function Library() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.96 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-[#121212] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+                className="bg-sf-121212 border border-white/15 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
                 data-lenis-prevent="true"
               >
                 {/* Modal Header */}
-                <div className="px-6 py-4 border-b border-white/10 flex items-start justify-between gap-4 shrink-0 bg-[#161616]">
+                <div className="px-6 py-4 border-b border-white/10 flex items-start justify-between gap-4 shrink-0 bg-sf-161616">
                   <div>
                     <h2 className="text-lg font-bold text-white tracking-tight">
                       {selectedPromptForView.title}
@@ -1168,7 +1168,7 @@ export default function Library() {
                 </div>
 
                 {/* Modal Footer */}
-                <div className="px-6 py-3.5 border-t border-white/10 bg-[#161616] flex items-center justify-between shrink-0">
+                <div className="px-6 py-3.5 border-t border-white/10 bg-sf-161616 flex items-center justify-between shrink-0">
                   <button
                     onClick={() => handleOpenEdit(selectedPromptForView)}
                     className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -1223,11 +1223,11 @@ export default function Library() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.96 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-[#121212] border border-white/15 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+                className="bg-sf-121212 border border-white/15 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
                 data-lenis-prevent="true"
               >
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-[#161616]">
+                <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-sf-161616">
                   <h2 className="text-base font-bold text-white tracking-tight">
                     {isCreatingNew ? 'Create New Prompt' : 'Edit Prompt'}
                   </h2>
@@ -1273,7 +1273,7 @@ export default function Library() {
                           className="w-full px-3.5 py-2 bg-black/60 border border-white/10 rounded-xl text-white focus:outline-none focus:border-copper-500/50 text-xs font-mono cursor-pointer"
                         >
                           {ALL_CATEGORIES.filter(c => c !== 'All').map(c => (
-                            <option key={c} value={c} className="bg-[#141414] text-white">
+                            <option key={c} value={c} className="bg-sf-141414 text-white">
                               {c}
                             </option>
                           ))}
@@ -1327,7 +1327,7 @@ export default function Library() {
                   </div>
 
                   {/* Footer */}
-                  <div className="px-6 py-3.5 border-t border-white/10 bg-[#161616] flex items-center justify-end gap-2 shrink-0">
+                  <div className="px-6 py-3.5 border-t border-white/10 bg-sf-161616 flex items-center justify-end gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={() => { setIsCreatingNew(false); setEditingPrompt(null); }}
@@ -1337,7 +1337,7 @@ export default function Library() {
                     </button>
                     <StatefulButton
                       type="submit"
-                      className="min-w-[130px] px-5 py-2 rounded-xl bg-[#2C9A8B] hover:bg-[#1F7A6E] text-white font-semibold text-xs shadow-md shadow-[#2C9A8B]/25 active:scale-[0.98] transition-all"
+                      className="min-w-[130px] px-5 py-2 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-semibold text-xs shadow-md shadow-copper-500/25 active:scale-[0.98] transition-all"
                     >
                       {isCreatingNew ? 'Create Prompt' : 'Save Changes'}
                     </StatefulButton>

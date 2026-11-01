@@ -145,11 +145,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: 'spring', damping: 30, stiffness: 350 }}
-            className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl bg-[#0f1115] border border-white/10 shadow-2xl overflow-hidden z-10"
+            className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl bg-sf-0f1115 border border-white/10 shadow-2xl overflow-hidden z-10"
             data-lenis-prevent="true"
           >
             {/* Header */}
-            <div className="px-6 py-5 border-b border-white/10 flex items-start justify-between gap-4 shrink-0 bg-[#13161c]">
+            <div className="px-6 py-5 border-b border-white/10 flex items-start justify-between gap-4 shrink-0 bg-sf-13161c">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 shrink-0">
                   <Code2 className="w-5 h-5" />
@@ -180,7 +180,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
 
             {/* Category Tabs */}
-            <div className="px-6 pt-4 pb-2 border-b border-white/5 bg-[#0f1115] shrink-0">
+            <div className="px-6 pt-4 pb-2 border-b border-white/5 bg-sf-0f1115 shrink-0">
               <div className="flex items-center gap-2">
                 {CATEGORIES.map((cat) => {
                   const Icon = cat.icon;
@@ -242,7 +242,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
 
             {/* Target Settings Bar & Variable Indicators */}
-            <div className="px-6 py-3 bg-[#13161c]/80 border-b border-white/5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+            <div className="px-6 py-3 bg-sf-13161c/80 border-b border-white/5 flex flex-wrap items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2">
                 <AgentIcon model={currentTarget.id} className="w-4 h-4" badgeClassName="w-4 h-4" />
                 <span className="text-xs font-semibold text-white">{currentTarget.filename}</span>
@@ -274,7 +274,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 5 }}
                         data-lenis-prevent="true"
-                        className="absolute right-0 top-full mt-1.5 w-60 rounded-2xl bg-[#14161c] border border-white/10 shadow-2xl p-1.5 z-50 space-y-0.5"
+                        className="absolute right-0 top-full mt-1.5 w-60 rounded-2xl bg-sf-14161c border border-white/10 shadow-2xl p-1.5 z-50 space-y-0.5"
                       >
                         {EXPORT_MODELS.map((m) => (
                           <button
@@ -332,12 +332,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <div 
               ref={codeContainerRef}
               onWheel={handleCodeWheel}
-              className="flex-1 min-h-0 overflow-y-auto p-6 custom-scrollbar bg-[#0b0c0f] overscroll-contain"
+              className="flex-1 min-h-0 overflow-y-auto p-6 custom-scrollbar bg-sf-0b0c0f overscroll-contain"
               data-lenis-prevent="true"
             >
               <div className="relative group">
                 <pre 
-                  className="w-full p-5 bg-[#07080a] border border-white/10 rounded-2xl text-neutral-200 font-mono text-xs leading-relaxed overflow-x-auto selection:bg-copper-500/30"
+                  className="w-full p-5 bg-sf-07080a border border-white/10 rounded-2xl text-neutral-200 font-mono text-xs leading-relaxed overflow-x-auto selection:bg-copper-500/30"
                   data-lenis-prevent="true"
                 >
                   <code data-lenis-prevent="true">{generatedCode}</code>
@@ -346,7 +346,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
 
             {/* Footer Actions */}
-            <div className="px-6 py-4 border-t border-white/10 bg-[#13161c] flex items-center justify-between shrink-0">
+            <div className="px-6 py-4 border-t border-white/10 bg-sf-13161c flex items-center justify-between shrink-0">
               <div className="text-xs text-neutral-500 font-mono hidden sm:block">
                 <span>{generatedCode.split('\n').length} lines</span>
                 <span className="mx-2">·</span>
