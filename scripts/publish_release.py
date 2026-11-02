@@ -34,6 +34,7 @@ The unified workstation for frontier prompt engineering. Synthesize autonomous a
 
 assets = [
     ('release/Bedrock Setup 1.4.3.exe', 'Bedrock Setup 1.4.3.exe', 'application/vnd.microsoft.portable-executable'),
+    ('release/Bedrock-Setup-1.4.3.exe', 'Bedrock-Setup-1.4.3.exe', 'application/vnd.microsoft.portable-executable'),
     ('release/Bedrock-Setup.exe', 'Bedrock-Setup.exe', 'application/vnd.microsoft.portable-executable'),
     ('release/Bedrock Setup 1.4.3.exe.blockmap', 'Bedrock Setup 1.4.3.exe.blockmap', 'application/octet-stream'),
     ('release/latest.yml', 'latest.yml', 'text/yaml'),
