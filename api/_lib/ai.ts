@@ -1,30 +1,8 @@
-export interface GenerateQuestionsParams {
-  ideaText: string;
-  targetType: string;
-}
-
 export interface QuestionOutput {
   id: string;
   questionText: string;
   questionType: 'single_select' | 'multi_select' | 'free_text';
   options?: string[];
-}
-
-export interface SynthesizeParams {
-  idea: {
-    rawText: string;
-    targetType: string;
-  };
-  answers: Array<{
-    questionId: string;
-    value: string | string[];
-  }>;
-  questions: QuestionOutput[];
-}
-
-export interface RefineParams {
-  currentPrompt: string;
-  instruction: string;
 }
 
 import { getModelTuning } from './modelTuning.js';
@@ -36,10 +14,68 @@ function getApiKey(provider: 'groq' | 'gemini' | 'openrouter'): string {
   return process.env.OPENROUTER_API_KEY || '';
 }
 
-/** What one provider call returns: the text, and whether the provider stopped because the output limit was reached. */
+/** Tokens a call really used, as reported by the provider (not a guess from the text length). */
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
+/** What one provider call returns: the text, whether it stopped at the output limit, and the real token counts when sent. */
 interface ProviderResult {
   text: string;
   truncated: boolean;
+  usage?: TokenUsage;
+}
+
+const asCount = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.round(v) : 0);
+
+/** OpenAI-style usage (Groq, OpenRouter): { prompt_tokens, completion_tokens, total_tokens }. */
+function openAiUsage(raw: any): TokenUsage | undefined {
+  const u = raw?.usage ?? raw?.x_groq?.usage;
+  if (!u || typeof u !== 'object') return undefined;
+  const inputTokens = asCount(u.prompt_tokens);
+  const outputTokens = asCount(u.completion_tokens);
+  const totalTokens = asCount(u.total_tokens) || inputTokens + outputTokens;
+  return totalTokens > 0 ? { inputTokens, outputTokens, totalTokens } : undefined;
+}
+
+/** Gemini usageMetadata. Hidden "thinking" tokens are billed as output, so they are counted as output. */
+function geminiUsage(raw: any): TokenUsage | undefined {
+  const u = raw?.usageMetadata;
+  if (!u || typeof u !== 'object') return undefined;
+  const inputTokens = asCount(u.promptTokenCount);
+  const outputTokens = asCount(u.candidatesTokenCount) + asCount(u.thoughtsTokenCount);
+  const totalTokens = asCount(u.totalTokenCount) || inputTokens + outputTokens;
+  return totalTokens > 0 ? { inputTokens, outputTokens, totalTokens } : undefined;
+}
+
+/** Adds up the usage of several calls (e.g. a synthesis and its repair); undefined only when none reported any. */
+export function sumUsage(...parts: Array<TokenUsage | undefined>): TokenUsage | undefined {
+  const known = parts.filter((p): p is TokenUsage => Boolean(p));
+  if (known.length === 0) return undefined;
+  return known.reduce((a, b) => ({
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+    totalTokens: a.totalTokens + b.totalTokens,
+  }));
+}
+
+/** Tokens to store for a trace: the real count when the provider sent one, the caller's estimate otherwise. */
+export function tokensForTrace(usage: TokenUsage | undefined, estimate: number): number {
+  return usage ? usage.totalTokens : estimate;
+}
+
+/** Cancels `controller` when `external` (the caller's client disconnecting) aborts. Returns the cleanup function. */
+function linkSignal(controller: AbortController, external?: AbortSignal): () => void {
+  if (!external) return () => {};
+  if (external.aborted) {
+    controller.abort();
+    return () => {};
+  }
+  const onAbort = () => controller.abort();
+  external.addEventListener('abort', onAbort, { once: true });
+  return () => external.removeEventListener('abort', onAbort);
 }
 
 /** Output limits (tokens) per kind of call. Callers pass one of these as `maxOutputTokens`. */
@@ -91,7 +127,8 @@ export type AiErrorCode =
   | 'AI_ALL_PROVIDERS_FAILED'
   | 'AI_DEADLINE_EXCEEDED'
   | 'AI_STREAM_INTERRUPTED'
-  | 'AI_OUTPUT_TRUNCATED';
+  | 'AI_OUTPUT_TRUNCATED'
+  | 'AI_CLIENT_ABORTED';
 
 /**
  * Error safe to return to clients: the message never contains upstream response bodies,
@@ -99,10 +136,13 @@ export type AiErrorCode =
  */
 export class AiCompletionError extends Error {
   code: AiErrorCode;
-  constructor(code: AiErrorCode, message: string) {
+  /** Name of the last provider tried (set when every provider failed), for failed-call traces. */
+  model?: string;
+  constructor(code: AiErrorCode, message: string, model?: string) {
     super(message);
     this.name = 'AiCompletionError';
     this.code = code;
+    this.model = model;
   }
 }
 
@@ -112,6 +152,7 @@ const PUBLIC_AI_ERROR_MESSAGES: Record<AiErrorCode, string> = {
   AI_DEADLINE_EXCEEDED: 'The AI request took too long. Please try again.',
   AI_STREAM_INTERRUPTED: 'The AI response was interrupted. Please try again.',
   AI_OUTPUT_TRUNCATED: 'The result was too long to finish. Try a shorter prompt or a smaller change.',
+  AI_CLIENT_ABORTED: 'The request was cancelled.',
 };
 
 function aiError(code: AiErrorCode): AiCompletionError {
@@ -270,7 +311,8 @@ async function callGroq(
   onToken?: (token: string) => void,
   temperature = 0.5,
   timeoutMs = PROVIDER_TIMEOUT_MS,
-  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS
+  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS,
+  signal?: AbortSignal
 ): Promise<ProviderResult> {
   const key = getApiKey('groq');
   if (!key) throw new Error('GROQ_API_KEY is not configured on the server.');
@@ -285,6 +327,7 @@ async function callGroq(
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const unlink = linkSignal(controller, signal);
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -314,6 +357,7 @@ async function callGroq(
       let accumulated = '';
       let buffer = '';
       let truncated = false;
+      let usage: TokenUsage | undefined;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -331,6 +375,7 @@ async function callGroq(
             const json = JSON.parse(dataStr);
             const chunk = json.choices?.[0]?.delta?.content || '';
             if (json.choices?.[0]?.finish_reason === 'length') truncated = true;
+            usage = openAiUsage(json) ?? usage;
             if (chunk) {
               accumulated += chunk;
               onToken(chunk);
@@ -340,16 +385,18 @@ async function callGroq(
           }
         }
       }
-      return { text: accumulated, truncated };
+      return { text: accumulated, truncated, usage };
     }
 
     const data = await res.json();
     return {
       text: data.choices?.[0]?.message?.content || '',
       truncated: data.choices?.[0]?.finish_reason === 'length',
+      usage: openAiUsage(data),
     };
   } finally {
     clearTimeout(timeoutId);
+    unlink();
   }
 }
 
@@ -363,7 +410,8 @@ async function callGemini(
   onToken?: (token: string) => void,
   temperature = 0.55,
   timeoutMs = PROVIDER_TIMEOUT_MS,
-  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS
+  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS,
+  signal?: AbortSignal
 ): Promise<ProviderResult> {
   const key = getApiKey('gemini');
   if (!key) throw new Error('GEMINI_API_KEY is not configured on the server.');
@@ -382,10 +430,12 @@ async function callGemini(
     if (attemptMs < 1_000) break;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), attemptMs);
+    const unlink = linkSignal(controller, signal);
 
     try {
-      const endpoint = isStreaming ? 'streamGenerateContent?alt=sse&key=' : 'generateContent?key=';
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:${endpoint}${key}`;
+      // The key travels in a header (documented by Google), not in the URL where proxies and logs keep it
+      const endpoint = isStreaming ? 'streamGenerateContent?alt=sse' : 'generateContent';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:${endpoint}`;
       const body: any = {
         contents: [{ parts: [{ text: prompt }] }],
         // Without a limit the answer (and the billed thinking tokens) is unbounded
@@ -397,7 +447,7 @@ async function callGemini(
 
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify(body),
         signal: controller.signal,
       });
@@ -415,6 +465,7 @@ async function callGemini(
         let accumulated = '';
         let buffer = '';
         let truncated = false;
+        let usage: TokenUsage | undefined;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -432,6 +483,7 @@ async function callGemini(
               const json = JSON.parse(dataStr);
               const chunk = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
               if (json.candidates?.[0]?.finishReason === 'MAX_TOKENS') truncated = true;
+              usage = geminiUsage(json) ?? usage;
               if (chunk) {
                 accumulated += chunk;
                 onToken(chunk);
@@ -441,18 +493,20 @@ async function callGemini(
             }
           }
         }
-        if (accumulated) return { text: accumulated, truncated };
+        if (accumulated) return { text: accumulated, truncated, usage };
       }
 
       const data = await res.json();
       return {
         text: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
         truncated: data.candidates?.[0]?.finishReason === 'MAX_TOKENS',
+        usage: geminiUsage(data),
       };
     } catch (e: any) {
       lastError = e;
     } finally {
       clearTimeout(timeoutId);
+      unlink();
     }
   }
 
@@ -469,7 +523,8 @@ async function callOpenRouter(
   onToken?: (token: string) => void,
   temperature = 0.5,
   timeoutMs = PROVIDER_TIMEOUT_MS,
-  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS
+  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS,
+  signal?: AbortSignal
 ): Promise<ProviderResult> {
   const key = getApiKey('openrouter');
   if (!key) throw new Error('OPENROUTER_API_KEY is not configured on the server.');
@@ -484,6 +539,7 @@ async function callOpenRouter(
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const unlink = linkSignal(controller, signal);
 
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -515,6 +571,7 @@ async function callOpenRouter(
       let accumulated = '';
       let buffer = '';
       let truncated = false;
+      let usage: TokenUsage | undefined;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -532,6 +589,7 @@ async function callOpenRouter(
             const json = JSON.parse(dataStr);
             const chunk = json.choices?.[0]?.delta?.content || '';
             if (json.choices?.[0]?.finish_reason === 'length') truncated = true;
+            usage = openAiUsage(json) ?? usage;
             if (chunk) {
               accumulated += chunk;
               onToken(chunk);
@@ -541,16 +599,18 @@ async function callOpenRouter(
           }
         }
       }
-      return { text: accumulated, truncated };
+      return { text: accumulated, truncated, usage };
     }
 
     const data = await res.json();
     return {
       text: data.choices?.[0]?.message?.content || '',
       truncated: data.choices?.[0]?.finish_reason === 'length',
+      usage: openAiUsage(data),
     };
   } finally {
     clearTimeout(timeoutId);
+    unlink();
   }
 }
 
@@ -595,8 +655,10 @@ export async function executeAiCompletion(
     deadlineAt?: number;
     /** Most tokens the answer may use (see AI_OUTPUT_BUDGET). Defaults to AI_OUTPUT_BUDGET.testDefault. */
     maxOutputTokens?: number;
+    /** Aborts the provider call when the caller's client disconnects (see clientAbortSignal in aiHttp.ts). */
+    signal?: AbortSignal;
   }
-): Promise<{ text: string; model: string; truncated?: boolean }> {
+): Promise<{ text: string; model: string; truncated?: boolean; usage?: TokenUsage }> {
   const startTime = new Date();
   const maxTokens = Math.max(100, Math.floor(options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS));
   const deadlineAt = options?.deadlineAt ?? Date.now() + AI_DEFAULT_BUDGET_MS;
@@ -633,28 +695,28 @@ export async function executeAiCompletion(
     const temp = temperatureOverride !== undefined ? temperatureOverride : tuning.temperature;
 
     if (target.id === 'groq-llama-70b') {
-      return await callGroq(prompt, tunedSystem, 'llama-3.3-70b-versatile', currentOnToken, temp, timeoutMs, maxTokens);
+      return await callGroq(prompt, tunedSystem, 'llama-3.3-70b-versatile', currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
     }
     if (target.id === 'groq-llama-8b') {
-      return await callGroq(prompt, tunedSystem, 'llama-3.1-8b-instant', currentOnToken, temp, timeoutMs, maxTokens);
+      return await callGroq(prompt, tunedSystem, 'llama-3.1-8b-instant', currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
     }
     if (target.id === 'gemini-flash') {
-      return await callGemini(prompt, tunedSystem, 'gemini-flash-latest', currentOnToken, temp, timeoutMs, maxTokens);
+      return await callGemini(prompt, tunedSystem, 'gemini-flash-latest', currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
     }
     if (target.id === 'gemini-flash-lite') {
-      return await callGemini(prompt, tunedSystem, 'gemini-flash-lite-latest', currentOnToken, temp, timeoutMs, maxTokens);
+      return await callGemini(prompt, tunedSystem, 'gemini-flash-lite-latest', currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
     }
     if (target.id === 'openrouter-gpt4o') {
-      return await callOpenRouter(prompt, tunedSystem, 'openai/gpt-4o-mini', currentOnToken, temp, timeoutMs, maxTokens);
+      return await callOpenRouter(prompt, tunedSystem, 'openai/gpt-4o-mini', currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
     }
     // Fallback dynamic routing by model identifier
     if (target.model.includes('llama') || target.id.startsWith('groq')) {
-      return await callGroq(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens);
+      return await callGroq(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
     }
     if (target.model.includes('gemini') || target.id.startsWith('gemini')) {
-      return await callGemini(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens);
+      return await callGemini(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
     }
-    return await callOpenRouter(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens);
+    return await callOpenRouter(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
   };
 
   // 2. Select optimal provider via distributed round-robin / circuit health
@@ -664,10 +726,14 @@ export async function executeAiCompletion(
   const executionOrder = await orderForFailover(candidates, primaryChoice);
 
   let lastError: Error | null = null;
+  let lastAttempted: ProviderTarget | null = null;
   const throttledProviders = new Set<string>();
   let deadlineExceeded = false;
 
   for (const provider of executionOrder) {
+    // The client left: stop before starting another paid call
+    if (options?.signal?.aborted) throw aiError('AI_CLIENT_ABORTED');
+
     // If this provider's entire family hit 429 rate limit, skip sibling models sharing the same key
     if (throttledProviders.has(provider.provider)) {
       continue;
@@ -681,6 +747,7 @@ export async function executeAiCompletion(
     const attemptTimeoutMs = Math.min(PROVIDER_TIMEOUT_MS, remainingMs);
 
     // Counts only text that actually reached the client: hidden <think> text does not block a retry or failover
+    lastAttempted = provider;
     let tokensEmitted = 0;
     const emitToClient = onToken
       ? (tok: string) => {
@@ -723,17 +790,24 @@ export async function executeAiCompletion(
             inputChars: prompt.length + (systemPrompt?.length ?? 0),
             outputChars: text.length,
             truncated: result.truncated,
+            ...(result.usage
+              ? { inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens }
+              : {}),
           },
         }).catch((e) => console.warn('[Langfuse] Error in recordLangfuseGeneration:', e));
 
         return {
           text,
           model: modelName,
-          // Only present when true, so normal answers keep exactly the same shape
+          // Only present when true / known, so normal answers keep exactly the same shape
           ...(result.truncated ? { truncated: true } : {}),
+          ...(result.usage ? { usage: result.usage } : {}),
         };
       }
     } catch (err: any) {
+      // The client left and cancelled the call: that says nothing about the provider, and nothing more should be tried
+      if (options?.signal?.aborted) throw aiError('AI_CLIENT_ABORTED');
+
       const errMsg = clip(err?.message || String(err));
       const rateLimited = isRateLimitError(err, errMsg);
       console.warn(`[LoadBalancer] Provider ${provider.name} failed:`, errMsg);
@@ -772,5 +846,7 @@ export async function executeAiCompletion(
   console.error(
     `[AI] ${deadlineExceeded ? 'Deadline reached before a provider succeeded' : 'All providers failed'}. Last error: ${clip(lastError?.message || 'Unknown provider error')}`
   );
-  throw aiError(failureCode);
+  const failure = aiError(failureCode);
+  failure.model = (lastAttempted ?? primaryChoice).name;
+  throw failure;
 }

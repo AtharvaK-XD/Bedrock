@@ -1,8 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
-import { executeAiCompletion, AI_DEFAULT_BUDGET_MS, AI_OUTPUT_BUDGET } from '../_lib/ai.js';
-import { INPUT_LIMITS, firstLengthError, sendAiFailure, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
+import { executeAiCompletion, AI_DEFAULT_BUDGET_MS, AI_OUTPUT_BUDGET, sumUsage, tokensForTrace } from '../_lib/ai.js';
+import {
+  INPUT_LIMITS,
+  firstLengthError,
+  sendAiFailure,
+  getRequestId,
+  logAiRequest,
+  clientAbortSignal,
+  isPaidUser,
+  recordAiFailureTrace,
+  usageFields,
+  failureOutcome,
+} from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { buildSynthesisSystemPrompt } from '../_lib/aiPrompts.js';
 import { getUseCaseProfile, validatePromptAgainstForbiddenTerms } from '../_lib/useCaseProfiles.js';
@@ -49,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('X-Request-Id', requestId);
   const user = await authenticateRequest(req);
   const ip = getClientIp(req);
-  const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
+  const isPaid = isPaidUser(user);
 
   // Enforce distributed Upstash Redis rate limiting (per-user if authenticated, else IP)
   const allowed = await enforceRateLimit(req, res, 'synthesize', user?.id || ip, isPaid);
@@ -101,6 +112,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // One budget for the whole request (initial call + any repair), under Vercel's 60 s function limit
   const deadlineAt = startTime + AI_DEFAULT_BUDGET_MS;
+  // Stops the paid provider call when the user closes the tab or cancels
+  const signal = clientAbortSignal(res);
 
   try {
     if (wantsStream) {
@@ -111,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'X-Accel-Buffering': 'no',
       });
 
-      const { text, model, truncated } = await executeAiCompletion(
+      const { text, model, truncated, usage } = await executeAiCompletion(
         userContent,
         systemPrompt,
         user?.id,
@@ -122,7 +135,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         },
         profile.temperature,
-        { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize }
+        { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize, signal }
       );
 
       // The tokens are already with the client, so a stream cannot be repaired here;
@@ -142,7 +155,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           userId: user.id,
           nodeOrigin: 'Wizard.synthesize',
           modelTarget: model,
-          tokensUsed: Math.max(500, Math.round(text.length / 3.5)),
+          tokensUsed: tokensForTrace(usage, Math.max(500, Math.round(text.length / 3.5))),
           latencyMs: Date.now() - startTime,
           status: 'success',
         });
@@ -162,19 +175,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
-      logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model, stream: true, ...(truncated ? { truncated: true } : {}) });
+      logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model, stream: true, ...(truncated ? { truncated: true } : {}), ...usageFields(usage) });
       return;
     }
 
-    const { text, model, truncated } = await executeAiCompletion(
+    const { text, model, truncated, usage } = await executeAiCompletion(
       userContent,
       systemPrompt,
       user?.id,
       undefined,
       profile.temperature,
-      { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize }
+      { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize, signal }
     );
 
+    // A repair call is paid too, so the trace counts both calls
+    let totalUsage = usage;
     let finalText = text;
     let effectiveModel = model;
     let finalTruncated = Boolean(truncated);
@@ -205,8 +220,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           user?.id,
           undefined,
           Math.min(0.2, profile.temperature),
-          { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize }
+          { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize, signal }
         );
+        totalUsage = sumUsage(totalUsage, retried.usage);
         const retryVal = validateSynthesisOutput(retried.text, targetType, rawIdea);
         if (retryVal.isValid || retryVal.issues.length < sVal.issues.length) {
           finalText = retried.text;
@@ -227,13 +243,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         userId: user.id,
         nodeOrigin: 'Wizard.synthesize',
         modelTarget: effectiveModel,
-        tokensUsed: Math.max(500, Math.round(finalText.length / 3.5)),
+        tokensUsed: tokensForTrace(totalUsage, Math.max(500, Math.round(finalText.length / 3.5))),
         latencyMs: Date.now() - startTime,
         status: 'success',
       });
     }
 
-    logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model: effectiveModel, ...(finalTruncated ? { truncated: true } : {}) });
+    logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model: effectiveModel, ...(finalTruncated ? { truncated: true } : {}), ...usageFields(totalUsage) });
     return res.status(200).json({
       promptText: finalText.trim(),
       modelTarget: effectiveModel,
@@ -250,9 +266,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
   } catch (err: any) {
-    await releaseQuota(quota);
-    console.error('[Synthesize] Error:', err);
-    logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'error', latencyMs: Date.now() - startTime, code: err?.code, stream: wantsStream });
+    const outcome = failureOutcome(err);
+    // A user who left keeps their quota decision as is (refunding it would make "start and cancel" free)
+    if (outcome === 'error') {
+      await releaseQuota(quota);
+      await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Wizard.synthesize', err, latencyMs: Date.now() - startTime });
+      console.error('[Synthesize] Error:', err);
+    }
+    logAiRequest({ route: 'ai/synthesize', requestId, outcome, latencyMs: Date.now() - startTime, code: err?.code, stream: wantsStream });
     return sendAiFailure(res, err, 'Prompt synthesis failed on server', requestId);
   }
 }

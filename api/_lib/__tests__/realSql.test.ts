@@ -195,6 +195,120 @@ describe.skipIf(!PGlite)('backend SQL on a real Postgres engine (PGlite + all mi
     }
   });
 
+  describe('paged lists on a real database', () => {
+    // 120 prompts. Groups of three share one updated_at, so a page boundary (50, 100) cuts through a tie.
+    const expectedOrder = Array.from({ length: 120 }, (_, i) => i + 1)
+      .sort((a, b) => Math.floor(b / 3) - Math.floor(a / 3) || b - a)
+      .map((g) => `pg_${String(g).padStart(3, '0')}`);
+
+    async function walk(handler: (req: any, res: any) => unknown, query: Record<string, string>, between?: (page: number) => Promise<void>) {
+      const ids: string[] = [];
+      let cursor: string | null = null;
+      let pages = 0;
+      do {
+        const res: any = await call(handler, 'GET', {}, cursor ? { ...query, cursor } : query);
+        expect(res.statusCode).toBe(200);
+        ids.push(...res.body.items.map((i: any) => i.id));
+        cursor = res.body.nextCursor;
+        pages++;
+        if (between && cursor) await between(pages);
+      } while (cursor && pages < 20);
+      return { ids, pages };
+    }
+
+    beforeAll(async () => {
+      await q(`INSERT INTO "User" (id, email, password_hash, name, updated_at) VALUES ('user_P', 'user_P@example.com', 'x', 'Pager', now())`);
+      await q(`
+        INSERT INTO "Prompt" (id, user_id, title, snippet, full_content, tags, target_type, created_at, updated_at)
+        SELECT 'pg_' || lpad(g::text, 3, '0'), 'user_P', 'title ' || g, 's', repeat('x', g), '[]', 'General', now(),
+               timestamp '2026-01-01 00:00:00' + ((g / 3) || ' minutes')::interval
+        FROM generate_series(1, 120) g
+      `);
+      await q(`
+        INSERT INTO "BranchingTree" (id, user_id, title, nodes, edges, created_at, updated_at)
+        SELECT 'wf_pg_' || g, 'user_P', 'workflow ' || g, '[{"id":"n' || g || '"}]', '[]', now(),
+               timestamp '2026-01-01 00:00:00' + ((g / 2) || ' minutes')::interval
+        FROM generate_series(1, 7) g
+      `);
+    });
+
+    it('prompts: three pages of 50 show every prompt exactly once, newest first, with no gap at the tied timestamps', async () => {
+      as('user_P');
+      const { ids, pages } = await walk(prompts, { limit: '50', summary: '1' });
+      expect(pages).toBe(3);
+      expect(ids).toHaveLength(120);
+      expect(new Set(ids).size).toBe(120);
+      expect(ids).toEqual(expectedOrder);
+    });
+
+    it('prompts: the summary has no text but the right length; the full list and ?id= have the text', async () => {
+      as('user_P');
+      const first: any = await call(prompts, 'GET', {}, { limit: '1', summary: '1' });
+      expect(first.body.items[0]).toMatchObject({ id: expectedOrder[0], contentLength: 120 });
+      expect(first.body.items[0]).not.toHaveProperty('fullContent');
+
+      const full: any = await call(prompts, 'GET', {}, { limit: '1' });
+      expect(full.body.items[0].fullContent).toBe('x'.repeat(120));
+
+      const one: any = await call(prompts, 'GET', {}, { id: 'pg_007' });
+      expect(one.statusCode).toBe(200);
+      expect(one.body).toMatchObject({ id: 'pg_007', fullContent: 'x'.repeat(7), title: 'title 7' });
+
+      const plain: any = await call(prompts, 'GET');
+      expect(Array.isArray(plain.body)).toBe(true);
+      expect(plain.body).toHaveLength(120);
+    });
+
+    it('prompts: another user cannot read them by id or see them in a page', async () => {
+      as('user_B');
+      expect((await call(prompts, 'GET', {}, { id: 'pg_007' })).statusCode).toBe(404);
+      const page: any = await call(prompts, 'GET', {}, { limit: '50' });
+      expect(page.body.items.some((i: any) => String(i.id).startsWith('pg_'))).toBe(false);
+    });
+
+    it('prompts: saving and deleting between pages neither repeats nor skips the prompts still to come', async () => {
+      as('user_P');
+      const { ids } = await walk(prompts, { limit: '50', summary: '1' }, async (page) => {
+        if (page !== 1) return;
+        await q(`DELETE FROM "Prompt" WHERE id = $1`, [expectedOrder[0]]); // one already shown disappears
+        await q(
+          `INSERT INTO "Prompt" (id, user_id, title, snippet, full_content, tags, target_type, created_at, updated_at)
+           VALUES ('pg_brand_new', 'user_P', 'new', 's', 'x', '[]', 'General', now(), now())`
+        ); // a new one arrives, newer than everything
+      });
+      // the first page was read before the changes: 50 old ones, then the rest. The new prompt is newer than the
+      // cursor, so it is not part of the pages after it, and nothing is repeated.
+      expect(ids.slice(0, 50)).toEqual(expectedOrder.slice(0, 50));
+      expect(ids.slice(50)).toEqual(expectedOrder.slice(50));
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('workflows: pages of 3 over 7 tied workflows, summary without the graph, ?id= with it', async () => {
+      as('user_P');
+      const expected = Array.from({ length: 7 }, (_, i) => i + 1)
+        .sort((a, b) => Math.floor(b / 2) - Math.floor(a / 2) || b - a)
+        .map((g) => `wf_pg_${g}`);
+
+      const { ids, pages } = await walk(workflows, { limit: '3', summary: '1' });
+      expect(pages).toBe(3);
+      expect(ids).toEqual(expected);
+
+      const summary: any = await call(workflows, 'GET', {}, { limit: '2', summary: '1' });
+      expect(summary.body.items[0]).not.toHaveProperty('nodes');
+      // wf_pg_N has nodes '[{"id":"nN"}]' (13 characters) and edges '[]' (2)
+      expect(summary.body.items[0].sizeChars).toBe(15);
+
+      const full: any = await call(workflows, 'GET', {}, { limit: '2' });
+      expect(full.body.items[0].nodes).toHaveLength(1);
+
+      const one: any = await call(workflows, 'GET', {}, { id: 'wf_pg_3' });
+      expect(one.body).toMatchObject({ id: 'wf_pg_3', nodes: [{ id: 'n3' }], edges: [] });
+
+      as('user_B');
+      expect((await call(workflows, 'GET', {}, { id: 'wf_pg_3' })).statusCode).toBe(404);
+    });
+  });
+
   it('profile: the column list matches the real User table, and a username taken in any letter case gives 409', async () => {
     as('user_A');
     const mine = await call(profile, 'GET');

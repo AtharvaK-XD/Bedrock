@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import {
   CODING_AGENT_MASTER_PROMPT,
   IMAGE_GENERATION_MASTER_PROMPT,
@@ -49,21 +48,9 @@ export interface UseCaseProfile {
   forbiddenTerms: string[];
   questionPrompt: string;
   synthesisPrompt: string;
-  zodOutputSchema: z.ZodType<any>;
   fewShotExamples: FewShotExample[];
   fallbackQuestions: QuestionOutput[];
 }
-
-// ----------------- Output Zod Schemas -----------------
-
-export const QuestionItemSchema = z.object({
-  id: z.string().min(1),
-  questionText: z.string().min(3),
-  questionType: z.enum(['single_select', 'multi_select', 'free_text']),
-  options: z.array(z.string()).optional(),
-});
-
-export const QuestionsArraySchema = z.array(QuestionItemSchema).min(2).max(6);
 
 /**
  * Output contract appended to every profile's questionPrompt. Without exact key names, models answer
@@ -162,31 +149,6 @@ export function normalizeQuestions(raw: unknown): QuestionOutput[] {
   return questions;
 }
 
-export const CodingAgentOutputSchema = z.object({
-  questions: QuestionsArraySchema,
-  synthesis: z.string().min(100),
-});
-
-export const ImagePromptOutputSchema = z.object({
-  questions: QuestionsArraySchema,
-  synthesis: z.string().min(80),
-});
-
-export const WritingOutputSchema = z.object({
-  questions: QuestionsArraySchema,
-  synthesis: z.string().min(100),
-});
-
-export const FreelanceBriefOutputSchema = z.object({
-  questions: QuestionsArraySchema,
-  synthesis: z.string().min(100),
-});
-
-export const PitchOutputSchema = z.object({
-  questions: QuestionsArraySchema,
-  synthesis: z.string().min(100),
-});
-
 // ----------------- Profiles Configuration -----------------
 
 export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
@@ -218,18 +180,17 @@ Your task is to analyze the user's software engineering concept and generate exa
 
 STRICT ANTI-HALLUCINATION & RELEVANCE RULES:
 1. Stay strictly grounded in the user's domain. Never ask generic questions like "What color should buttons be?" or "Should the app be user friendly?".
-2. Every option provided in the options array must be a concrete, real, currently supported technology (e.g. Next.js 15, Vite + React 19, FastAPI, Drizzle ORM, Prisma, PostgreSQL 16).
+2. Every option provided in the options array must be a concrete, real, currently supported technology (e.g. Next.js 16, Vite + React 19, FastAPI, Drizzle ORM, Prisma, PostgreSQL 18).
 3. Probe exact runtime constraints, data contracts, and failure handling modes.
 
 FOCUS DIMENSIONS:
-1. Architectural Deployment & Runtime: Next.js 15 App Router vs Vite React 19 SPA vs FastAPI / Node REST.
-2. Data Layer & Schema Contracts: PostgreSQL 16+ with Drizzle ORM vs Prisma ORM vs Supabase RLS vs Neon Serverless Postgres.
+1. Architectural Deployment & Runtime: Next.js 16 App Router vs Vite React 19 SPA vs FastAPI / Node REST.
+2. Data Layer & Schema Contracts: PostgreSQL 17+ with Drizzle ORM vs Prisma ORM vs Supabase RLS vs Neon Serverless Postgres.
 3. State & Edge Case Handling: Optimistic UI with rollback vs pessimistic transactional blocking vs CQRS event sourcing.
 4. Testing & Verification: Vitest unit tests + Playwright E2E vs Jest.
 
 ${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: CODING_AGENT_MASTER_PROMPT,
-    zodOutputSchema: CodingAgentOutputSchema,
     fallbackQuestions: [
       {
         id: 'tech_stack',
@@ -237,7 +198,7 @@ ${QUESTION_OUTPUT_FORMAT}`,
         questionType: 'single_select',
         options: [
           'React 19 / TypeScript 5.5+ / Vite (Strict Mode)',
-          'Next.js 15 App Router + Server Actions + Drizzle ORM',
+          'Next.js 16 App Router + Server Actions + Drizzle ORM',
           'Node.js / Express / TypeScript REST Backend',
           'Python / FastAPI / Pydantic AI Agents',
           'Mobile (React Native Expo + TypeScript)',
@@ -290,7 +251,7 @@ ${QUESTION_OUTPUT_FORMAT}`,
     name: 'Image Prompt',
     tag: 'IMG',
     badgeColor: 'fuchsia',
-    description: 'Expert visual prompt crafting for Midjourney v6.1, FLUX.1 [dev/pro], DALL-E 3, and Stable Diffusion XL with cinematography and optical parameters.',
+    description: 'Expert visual prompt crafting for Midjourney, FLUX, DALL-E, and Stable Diffusion XL with cinematography and optical parameters.',
     aliases: ['image_generation', 'image-generation', 'image-prompt', 'img', 'midjourney', 'flux'],
     temperature: 0.75,
     forbiddenTerms: [
@@ -326,7 +287,6 @@ FOCUS DIMENSIONS:
 
 ${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: IMAGE_GENERATION_MASTER_PROMPT,
-    zodOutputSchema: ImagePromptOutputSchema,
     fallbackQuestions: [
       {
         id: 'visual_style',
@@ -356,7 +316,7 @@ ${QUESTION_OUTPUT_FORMAT}`,
         title: 'Cyberpunk Neo-Tokyo Street Ramen Stall at Midnight',
         inputIdea: 'A cozy midnight ramen stall in a rainy futuristic cyberpunk city alleyway with glowing neon signs.',
         clarifyingQuestions: [],
-        synthesizedOutputSnippet: `# Midnight Cyberpunk Ramen Stall - Visual Art Direction Master System\n\n### Master Midjourney v6.1 Prompt\n\`\`\`text\nCinematic street photography of a cozy weathered wooden ramen stall in Neo-Tokyo alleyway, midnight rain, warm amber paper lanterns, wet reflective asphalt reflecting neon signs, 35mm CineStill 800T, Leica M11 --ar 16:9 --v 6.1 --style raw --stylize 250\n\`\`\``,
+        synthesizedOutputSnippet: `# Midnight Cyberpunk Ramen Stall - Visual Art Direction Master System\n\n### Master Midjourney Prompt\n\`\`\`text\nCinematic street photography of a cozy weathered wooden ramen stall in Neo-Tokyo alleyway, midnight rain, warm amber paper lanterns, wet reflective asphalt reflecting neon signs, 35mm CineStill 800T, Leica M11 --ar 16:9 --style raw --stylize 250\n\`\`\``,
       },
     ],
   },
@@ -404,7 +364,6 @@ FOCUS DIMENSIONS:
 
 ${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: WRITING_MASTER_PROMPT,
-    zodOutputSchema: WritingOutputSchema,
     fallbackQuestions: [
       {
         id: 'audience_depth',
@@ -470,7 +429,6 @@ FOCUS DIMENSIONS:
 
 ${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: FREELANCER_BRIEF_MASTER_PROMPT,
-    zodOutputSchema: FreelanceBriefOutputSchema,
     fallbackQuestions: [
       {
         id: 'deliverables',
@@ -496,9 +454,9 @@ ${QUESTION_OUTPUT_FORMAT}`,
     fewShotExamples: [
       {
         title: 'Headless Next.js Storefront SOW',
-        inputIdea: 'Shopify migration to Next.js 15 with headless store.',
+        inputIdea: 'Shopify migration to Next.js 16 with headless store.',
         clarifyingQuestions: [],
-        synthesizedOutputSnippet: `# Scope of Work (SOW): Headless Next.js 15 Storefront\n\n### Deliverables & Acceptance Criteria\n| Milestone | Deliverable | Criteria |\n|---|---|---|\n| M1 | Next.js 15 Foundation | Full catalog hydration |`,
+        synthesizedOutputSnippet: `# Scope of Work (SOW): Headless Next.js 16 Storefront\n\n### Deliverables & Acceptance Criteria\n| Milestone | Deliverable | Criteria |\n|---|---|---|\n| M1 | Next.js 16 Foundation | Full catalog hydration |`,
       },
     ],
   },
@@ -529,12 +487,11 @@ STRICT ANTI-HALLUCINATION & RELEVANCE RULES:
 FOCUS DIMENSIONS:
 1. Target Prize Track & Evaluation Focus: Grand Prize Overall Innovation, Best Autonomous AI Agent Architecture, or Best UI/UX Polish.
 2. The 15-Second "Jaw-Drop" Demo Wow Moment: The single climactic live screen action that will shock judges and win the room.
-3. Rapid Prototyping Stack & Shortcuts: Next.js 15 + Aceternity UI, Clerk/Supabase managed auth, Neon serverless Postgres, and pre-seeded mock datasets.
+3. Rapid Prototyping Stack & Shortcuts: Next.js 16 + Aceternity UI, Clerk/Supabase managed auth, Neon serverless Postgres, and pre-seeded mock datasets.
 4. Stage Disaster Fallbacks: Localhost offline mock mode vs pre-recorded 1080p demo video.
 
 ${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: HACKATHON_PITCH_MASTER_PROMPT,
-    zodOutputSchema: PitchOutputSchema,
     fallbackQuestions: [
       {
         id: 'hackathon_track',
@@ -567,12 +524,12 @@ ${QUESTION_OUTPUT_FORMAT}`,
     name: 'Video Generation',
     tag: 'VIDEO',
     badgeColor: 'violet',
-    description: 'Cinematic video prompting for Runway Gen-3 Alpha, OpenAI Sora, Luma Dream Machine, Kling AI, and Pika.',
+    description: 'Cinematic video prompting for Runway, Luma Dream Machine, Kling AI, Pika, and Google Veo.',
     aliases: ['video_generation', 'video-generation', 'video', 'sora', 'runway'],
     temperature: 0.7,
     forbiddenTerms: ['code', 'function', 'class', 'import', 'npm', 'database', 'typescript', 'react'],
     questionPrompt: `You are Bedrock's Hollywood Virtual Production Director and Cinematic AI Video Specialist.
-Your task is to analyze the user's video concept and generate exactly 3 to 4 high-leverage clarifying questions for Runway Gen-3, OpenAI Sora, and Luma Dream Machine.
+Your task is to analyze the user's video concept and generate exactly 3 to 4 high-leverage clarifying questions for Runway, Luma Dream Machine, Kling AI, and other current video engines.
 
 CRITICAL MANDATE (STRICT ZERO CODE):
 - ABSOLUTELY ZERO SOFTWARE CODE, ZERO PROGRAMMING SYNTAX, ZERO WEB DEV TERMINOLOGY.
@@ -585,13 +542,29 @@ FOCUS DIMENSIONS:
 
 ${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: VIDEO_GENERATION_MASTER_PROMPT,
-    zodOutputSchema: z.object({ questions: QuestionsArraySchema, synthesis: z.string().min(50) }),
     fallbackQuestions: [
       {
         id: 'camera_motion',
         questionText: 'What cinematic camera movement and framing should anchor the shot?',
         questionType: 'single_select',
         options: ['Dynamic FPV Drone Sweeping Fly-Through', 'Smooth Steadicam Tracking Shot', 'Cinematic Slow Orbital Pan (360°)'],
+      },
+      {
+        id: 'visual_style',
+        questionText: 'What visual style and color grade should the video have?',
+        questionType: 'single_select',
+        options: ['Photorealistic cinematic (35mm film look)', 'Moody neon noir with wet reflections', 'Stylized hand-drawn animation', 'Documentary handheld realism'],
+      },
+      {
+        id: 'duration_format',
+        questionText: 'What duration, aspect ratio and pacing do you want?',
+        questionType: 'single_select',
+        options: ['5-second seamless loop, 16:9, slow and smooth', '10-second clip, 16:9, steady build', '10-second vertical clip, 9:16, fast cuts'],
+      },
+      {
+        id: 'key_action',
+        questionText: 'Describe the main subject and the key action that happens in the shot.',
+        questionType: 'free_text',
       },
     ],
     fewShotExamples: [],
@@ -621,13 +594,29 @@ FOCUS DIMENSIONS:
 
 ${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: NO_CODE_MASTER_PROMPT,
-    zodOutputSchema: z.object({ questions: QuestionsArraySchema, synthesis: z.string().min(50) }),
     fallbackQuestions: [
       {
         id: 'platform',
         questionText: 'What is your primary visual builder platform?',
         questionType: 'single_select',
         options: ['Bubble.io (Fullstack Web App)', 'FlutterFlow (Native iOS & Android)', 'Webflow + Wized / Xano'],
+      },
+      {
+        id: 'data_layer',
+        questionText: 'Where should the app data live?',
+        questionType: 'single_select',
+        options: ['The builder platform\'s built-in database (fastest to start)', 'External PostgreSQL / Supabase with row-level security', 'Xano or another no-code backend API'],
+      },
+      {
+        id: 'automations',
+        questionText: 'Which automations and integrations must run in the background?',
+        questionType: 'multi_select',
+        options: ['Email and notification workflows', 'User sign-up and onboarding flows', 'Third-party API syncs and webhooks', 'Scheduled reports and clean-up jobs'],
+      },
+      {
+        id: 'roles_permissions',
+        questionText: 'Who can see or change what? Describe the user roles and permissions.',
+        questionType: 'free_text',
       },
     ],
     fewShotExamples: [],

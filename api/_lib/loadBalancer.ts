@@ -156,6 +156,17 @@ export async function recordProviderFailure(
       if (isRateLimit || failureCount >= MAX_FAILURES) {
         await redis.set(`circuit:ai:${providerId}`, 'tripped', { ex: Math.round(cooldownMs / 1000) });
         console.warn(`[LoadBalancer] Distributed circuit for ${providerId} TRIPPED in Redis.`);
+
+        // The models sharing this API key are rate limited too: tell the other server instances as well,
+        // not only this one (the local cascade above only protects this instance)
+        const prefix = providerId.split('-')[0];
+        if (isRateLimit && prefix) {
+          for (const p of AI_PROVIDERS) {
+            if (p.id.startsWith(prefix) && p.id !== providerId) {
+              await redis.set(`circuit:ai:${p.id}`, 'tripped', { ex: Math.round(cooldownMs / 1000) });
+            }
+          }
+        }
       }
     } catch (err) {
       console.warn(`[LoadBalancer] Failed to update Redis circuit for ${providerId}:`, err);
@@ -165,6 +176,8 @@ export async function recordProviderFailure(
 
 /**
  * Records a successful response on an AI provider, resetting failures.
+ * One Redis command (DEL takes both keys): this runs after every successful AI call, and Upstash bills and
+ * limits per command. A per-provider success counter used to be written here too; nothing ever read it.
  */
 export async function recordProviderSuccess(providerId: string): Promise<void> {
   localCircuitMap.set(providerId, { trippedUntil: 0, failures: 0 });
@@ -172,9 +185,7 @@ export async function recordProviderSuccess(providerId: string): Promise<void> {
   const redis = getRedisClient();
   if (redis) {
     try {
-      await redis.del(`failures:ai:${providerId}`);
-      await redis.del(`circuit:ai:${providerId}`);
-      await redis.incr(`metrics:ai:${providerId}:successes`);
+      await redis.del(`failures:ai:${providerId}`, `circuit:ai:${providerId}`);
     } catch {
       // Ignore
     }
@@ -260,39 +271,4 @@ export async function orderForFailover(
     ...others.filter((p) => healthyIds.has(p.id)).sort(byQuality),
     ...others.filter((p) => !healthyIds.has(p.id)).sort(byQuality),
   ];
-}
-
-/**
- * Gets load balancing and circuit status for observability and health endpoints.
- */
-export async function getLoadBalancerMetrics() {
-  const redis = getRedisClient();
-  const statuses: Record<string, { healthy: boolean; distributedState: string }> = {};
-
-  for (const p of AI_PROVIDERS) {
-    const isHealthy = await isProviderHealthy(p.id);
-    let distState = 'unknown';
-
-    if (redis) {
-      try {
-        const val = await redis.get(`circuit:ai:${p.id}`);
-        distState = val ? 'tripped' : 'active';
-      } catch {
-        distState = 'redis-unreachable';
-      }
-    } else {
-      distState = 'local-only';
-    }
-
-    statuses[p.id] = {
-      healthy: isHealthy,
-      distributedState: distState,
-    };
-  }
-
-  return {
-    strategy: 'Upstash Distributed Round-Robin & Circuit Breaker',
-    redisConnected: Boolean(redis),
-    providers: statuses,
-  };
 }

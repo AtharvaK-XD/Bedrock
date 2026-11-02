@@ -33,6 +33,7 @@ import prompts from '../../prompts/index.js';
 import workflows from '../../workflows/index.js';
 import traces from '../../traces/index.js';
 import profile from '../../user/profile.js';
+import { encodeCursor, decodeCursor } from '../../_lib/dataHttp.js';
 
 function mockReq(method: string, body: Record<string, unknown> = {}, query: Record<string, string> = {}) {
   return { method, body, query, headers: {} } as any;
@@ -67,6 +68,215 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+});
+
+describe('paged lists: GET /api/prompts and GET /api/workflows', () => {
+  const promptRow = (n: number, extra: Record<string, unknown> = {}) => ({
+    id: `p${n}`,
+    title: `title ${n}`,
+    snippet: `snippet ${n}`,
+    full_content: `full text ${n}`,
+    content_length: 11,
+    tags: '["a"]',
+    target_type: 'General',
+    created_at: '2026-11-02T05:00:00.000Z',
+    updated_at: `2026-11-02T05:00:0${n}.000Z`,
+    cursor_ts: `2026-11-02 05:00:0${n}.${n}00`,
+    ...extra,
+  });
+  const workflowRow = (n: number, extra: Record<string, unknown> = {}) => ({
+    id: `w${n}`,
+    title: `workflow ${n}`,
+    nodes: '[{"id":"n1"}]',
+    edges: '[]',
+    size_chars: 15,
+    created_at: '2026-11-02T05:00:00.000Z',
+    updated_at: `2026-11-02T05:00:0${n}.000Z`,
+    cursor_ts: `2026-11-02 05:00:0${n}.${n}00`,
+    ...extra,
+  });
+  const lastQuery = () => h.state.calls[h.state.calls.length - 1];
+
+  describe('prompts', () => {
+    it('with no parameters answers the whole list as a plain array, exactly as before', async () => {
+      h.state.responder = () => [promptRow(2), promptRow(1)];
+      const res = mockRes();
+      await prompts(mockReq('GET'), res);
+
+      expect(res.statusCode).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body).toHaveLength(2);
+      expect(res.body[0]).toMatchObject({ id: 'p2', title: 'title 2', fullContent: 'full text 2', tags: ['a'], targetType: 'General' });
+      expect(lastQuery().text).toBe('SELECT * FROM "Prompt" WHERE user_id = $ ORDER BY updated_at DESC');
+    });
+
+    it('?limit= answers one page { items, nextCursor }: one extra row is read to know whether more exist', async () => {
+      h.state.responder = () => [promptRow(3), promptRow(2), promptRow(1)];
+      const res = mockRes();
+      await prompts(mockReq('GET', {}, { limit: '2' }), res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.items.map((i: any) => i.id)).toEqual(['p3', 'p2']);
+      expect(res.body.items[0].fullContent).toBe('full text 3');
+      // the cursor points at the LAST item shown (p2), not at the extra row
+      expect(decodeCursor(res.body.nextCursor)).toEqual({ ts: '2026-11-02 05:00:02.200', id: 'p2' });
+      // user id, no cursor (twice, null), no cursor id, limit + 1
+      expect(lastQuery().values).toEqual(['user_A', null, null, null, 3]);
+      expect(lastQuery().text).toContain('ORDER BY updated_at DESC, id DESC');
+    });
+
+    it('the last page has no nextCursor', async () => {
+      h.state.responder = () => [promptRow(2), promptRow(1)];
+      const res = mockRes();
+      await prompts(mockReq('GET', {}, { limit: '2' }), res);
+      expect(res.body.items).toHaveLength(2);
+      expect(res.body.nextCursor).toBeNull();
+
+      h.state.responder = () => [];
+      const empty = mockRes();
+      await prompts(mockReq('GET', {}, { limit: '2' }), empty);
+      expect(empty.body).toEqual({ items: [], nextCursor: null });
+    });
+
+    it('?cursor= continues after that row: the timestamp and id go to the database as values, never into the SQL text', async () => {
+      const cursor = encodeCursor('2026-11-02 05:00:02.200', 'p2');
+      h.state.responder = () => [promptRow(1)];
+      const res = mockRes();
+      await prompts(mockReq('GET', {}, { limit: '5', cursor }), res);
+
+      expect(res.body.items.map((i: any) => i.id)).toEqual(['p1']);
+      expect(lastQuery().values).toEqual(['user_A', '2026-11-02 05:00:02.200', '2026-11-02 05:00:02.200', 'p2', 6]);
+      expect(lastQuery().text).not.toContain('05:00:02');
+    });
+
+    it('?summary=1 leaves the prompt text out and says how long it is', async () => {
+      h.state.responder = () => [promptRow(1)];
+      const res = mockRes();
+      await prompts(mockReq('GET', {}, { limit: '5', summary: '1' }), res);
+
+      expect(lastQuery().text).toContain('char_length(full_content) AS content_length');
+      expect(lastQuery().text).not.toMatch(/\bfull_content,/);
+      expect(res.body.items[0]).toMatchObject({ id: 'p1', contentLength: 11, snippet: 'snippet 1' });
+      expect(res.body.items[0]).not.toHaveProperty('fullContent');
+
+      // also without paging: a plain array without the text
+      const plain = mockRes();
+      await prompts(mockReq('GET', {}, { summary: '1' }), plain);
+      expect(Array.isArray(plain.body)).toBe(true);
+      expect(plain.body[0]).not.toHaveProperty('fullContent');
+    });
+
+    it('clamps a very large limit to 100', async () => {
+      h.state.responder = () => [];
+      await prompts(mockReq('GET', {}, { limit: '5000' }), mockRes());
+      expect(lastQuery().values.at(-1)).toBe(101);
+    });
+
+    it('rejects a bad limit or cursor with 400 and runs no query', async () => {
+      const badQueries: Array<Record<string, string>> = [{ limit: '0' }, { limit: 'abc' }, { limit: '-3' }, { limit: '2', cursor: 'garbage' }];
+      for (const query of badQueries) {
+        const res = mockRes();
+        await prompts(mockReq('GET', {}, query), res);
+        expect(res.statusCode, JSON.stringify(query)).toBe(400);
+        expect(res.body.code).toBe('INVALID_LIST_QUERY');
+      }
+      expect(h.state.calls).toHaveLength(0);
+    });
+
+    it('?id= returns one prompt with its full text, only if it is the caller\'s', async () => {
+      h.state.responder = () => [promptRow(1)];
+      const found = mockRes();
+      await prompts(mockReq('GET', {}, { id: 'p1' }), found);
+      expect(found.statusCode).toBe(200);
+      expect(found.body).toMatchObject({ id: 'p1', fullContent: 'full text 1' });
+      expect(lastQuery().values).toEqual(['p1', 'user_A']);
+      expect(lastQuery().text).toContain('user_id =');
+
+      h.state.responder = () => [];
+      const missing = mockRes();
+      await prompts(mockReq('GET', {}, { id: 'someone_elses' }), missing);
+      expect(missing.statusCode).toBe(404);
+      expect(missing.body.code).toBe('PROMPT_NOT_FOUND');
+    });
+
+    it('a prompt with damaged tags does not break the list', async () => {
+      h.state.responder = () => [promptRow(2, { tags: '{not json' }), promptRow(1)];
+      const res = mockRes();
+      await prompts(mockReq('GET'), res);
+      expect(res.statusCode).toBe(200);
+      expect(res.body[0].tags).toEqual([]);
+      expect(res.body[1].tags).toEqual(['a']);
+    });
+  });
+
+  describe('workflows', () => {
+    it('with no parameters answers the whole list as a plain array, exactly as before', async () => {
+      h.state.responder = () => [workflowRow(2), workflowRow(1)];
+      const res = mockRes();
+      await workflows(mockReq('GET'), res);
+
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body[0]).toMatchObject({ id: 'w2', name: 'workflow 2', title: 'workflow 2', nodes: [{ id: 'n1' }], edges: [] });
+      expect(lastQuery().text).toBe('SELECT * FROM "BranchingTree" WHERE user_id = $ ORDER BY updated_at DESC');
+    });
+
+    it('pages like prompts do, with the cursor on the last shown row', async () => {
+      h.state.responder = () => [workflowRow(3), workflowRow(2), workflowRow(1)];
+      const res = mockRes();
+      await workflows(mockReq('GET', {}, { limit: '2' }), res);
+      expect(res.body.items.map((i: any) => i.id)).toEqual(['w3', 'w2']);
+      expect(res.body.items[0].nodes).toEqual([{ id: 'n1' }]);
+      expect(decodeCursor(res.body.nextCursor)).toEqual({ ts: '2026-11-02 05:00:02.200', id: 'w2' });
+      expect(lastQuery().values).toEqual(['user_A', null, null, null, 3]);
+    });
+
+    it('?summary=1 leaves nodes and edges out and says how big they are', async () => {
+      h.state.responder = () => [workflowRow(1)];
+      const res = mockRes();
+      await workflows(mockReq('GET', {}, { limit: '5', summary: '1' }), res);
+      // the graph is measured in the database, never selected
+      expect(lastQuery().text).toContain('char_length(nodes) + char_length(edges) AS size_chars');
+      expect(lastQuery().text).not.toMatch(/SELECT id, title, nodes/);
+      expect(res.body.items[0]).toMatchObject({ id: 'w1', name: 'workflow 1', sizeChars: 15 });
+      expect(res.body.items[0]).not.toHaveProperty('nodes');
+      expect(res.body.items[0]).not.toHaveProperty('edges');
+
+      // also without paging
+      const plain = mockRes();
+      await workflows(mockReq('GET', {}, { summary: '1' }), plain);
+      expect(Array.isArray(plain.body)).toBe(true);
+      expect(plain.body[0]).toMatchObject({ sizeChars: 15 });
+      expect(plain.body[0]).not.toHaveProperty('nodes');
+    });
+
+    it('?id= returns one workflow with its graph, or 404', async () => {
+      h.state.responder = () => [workflowRow(1)];
+      const found = mockRes();
+      await workflows(mockReq('GET', {}, { id: 'w1' }), found);
+      expect(found.body).toMatchObject({ id: 'w1', nodes: [{ id: 'n1' }] });
+      expect(lastQuery().values).toEqual(['w1', 'user_A']);
+
+      h.state.responder = () => [];
+      const missing = mockRes();
+      await workflows(mockReq('GET', {}, { id: 'nope' }), missing);
+      expect(missing.statusCode).toBe(404);
+      expect(missing.body.code).toBe('WORKFLOW_NOT_FOUND');
+    });
+
+    it('rejects a bad limit with 400, and a workflow with a damaged graph does not break the list', async () => {
+      const bad = mockRes();
+      await workflows(mockReq('GET', {}, { limit: '0' }), bad);
+      expect(bad.statusCode).toBe(400);
+      expect(h.state.calls).toHaveLength(0);
+
+      h.state.responder = () => [workflowRow(2, { nodes: '{broken', edges: 'also broken' }), workflowRow(1)];
+      const res = mockRes();
+      await workflows(mockReq('GET'), res);
+      expect(res.statusCode).toBe(200);
+      expect(res.body[0]).toMatchObject({ id: 'w2', nodes: [], edges: [] });
+      expect(res.body[1].nodes).toEqual([{ id: 'n1' }]);
+    });
+  });
 });
 
 describe('POST /api/prompts', () => {
@@ -275,6 +485,29 @@ describe('/api/traces', () => {
     expect(totalsCalls()).toHaveLength(2);
   });
 
+  it('answers 429 (not 500) when the account hit its daily usage-record limit (migration 0015)', async () => {
+    h.state.responder = () => {
+      throw Object.assign(new Error('DAILY_TRACE_LIMIT: at most 5000 usage records per user per 24 hours'), { code: '23514' });
+    };
+    const res = mockRes();
+    await traces(mockReq('POST', { node: 'n', model: 'm', tokens: 1, latency: 1 }), res);
+
+    expect(res.statusCode).toBe(429);
+    expect(res.body).toMatchObject({ code: 'DAILY_TRACE_LIMIT' });
+    expect(typeof res.body.message).toBe('string');
+    expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '3600');
+    expect(JSON.stringify(res.body)).not.toContain('5000');
+
+    // any other database refusal is still a plain 500 without database text
+    h.state.responder = () => {
+      throw Object.assign(new Error('violates check constraint "Trace_sanity_chk"'), { code: '23514' });
+    };
+    const other = mockRes();
+    await traces(mockReq('POST', { node: 'n' }), other);
+    expect(other.statusCode).toBe(500);
+    expect(JSON.stringify(other.body)).not.toContain('Trace_sanity_chk');
+  });
+
   it('keeps client-reported numbers within bounds', async () => {
     const res = mockRes();
     await traces(mockReq('POST', { node: 'n', model: 'm', tokens: -5, latency: 1e12 }), res);
@@ -384,6 +617,33 @@ describe('GET /api/health', () => {
     expect(Object.keys(res.body).sort()).toEqual(['database', 'redis', 'status', 'timestamp']);
     expect(res.body).toMatchObject({ status: 'degraded', database: { status: 'error' }, redis: { status: 'connected' } });
     expect(JSON.stringify(res.body)).not.toContain('neondb_owner');
+  });
+
+  it('says which version is live (first 7 characters of the deployed commit), and nothing when Vercel sets none', async () => {
+    try {
+      vi.stubEnv('VERCEL_GIT_COMMIT_SHA', '4f2a9c81d0e5b7a3c6d1f8e2b9a04c7d5e3f1a2b');
+      h.state.responder = () => [{ alive: 1 }];
+      const health = await loadHealth();
+      const res = mockRes();
+      await health(mockReq('GET'), res);
+      expect(res.body.version).toBe('4f2a9c8');
+      expect(res.body).toMatchObject({ status: 'ok', database: { status: 'connected' } });
+
+      // something that is not a commit id never reaches the answer
+      vi.stubEnv('VERCEL_GIT_COMMIT_SHA', '<script>alert(1)</script>');
+      const odd = await loadHealth();
+      const oddRes = mockRes();
+      await odd(mockReq('GET'), oddRes);
+      expect(JSON.stringify(oddRes.body)).not.toContain('script');
+
+      vi.stubEnv('VERCEL_GIT_COMMIT_SHA', '');
+      const none = await loadHealth();
+      const noneRes = mockRes();
+      await none(mockReq('GET'), noneRes);
+      expect(noneRes.body).not.toHaveProperty('version');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('answers ok with database and Redis connected, in the shape the k6 test and monitors read (no "services" wrapper)', async () => {

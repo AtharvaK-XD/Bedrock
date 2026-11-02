@@ -1,8 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
-import { executeAiCompletion, refineOutputBudget, truncatedOutputError } from '../_lib/ai.js';
-import { INPUT_LIMITS, firstLengthError, sendAiFailure, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
+import { executeAiCompletion, refineOutputBudget, truncatedOutputError, tokensForTrace } from '../_lib/ai.js';
+import {
+  INPUT_LIMITS,
+  firstLengthError,
+  sendAiFailure,
+  getRequestId,
+  logAiRequest,
+  clientAbortSignal,
+  isPaidUser,
+  recordAiFailureTrace,
+  usageFields,
+  failureOutcome,
+} from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { buildRefineSystemPrompt, extractRefineResult } from '../_lib/aiPrompts.js';
 
@@ -16,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('X-Request-Id', requestId);
   const user = await authenticateRequest(req);
   const ip = getClientIp(req);
-  const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
+  const isPaid = isPaidUser(user);
 
   // Enforce distributed Upstash Redis rate limiting (per-user if authenticated, else IP)
   const allowed = await enforceRateLimit(req, res, 'refine', user?.id || ip, isPaid);
@@ -49,11 +60,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const safeContent = sanitizeAndDelimitPrompt(payload);
 
   try {
-    const { text, model, truncated } = await executeAiCompletion(safeContent, systemPrompt, user?.id, undefined, undefined, {
+    const { text, model, truncated, usage } = await executeAiCompletion(safeContent, systemPrompt, user?.id, undefined, undefined, {
       maxOutputTokens: refineOutputBudget(currentPrompt.length),
+      signal: clientAbortSignal(res),
     });
     // A rewrite cut off at the output limit would replace the user's prompt with half of one: refuse it instead
-    if (truncated) throw truncatedOutputError();
+    if (truncated) {
+      const cutOff = truncatedOutputError();
+      cutOff.model = model; // so the failed-call trace names the model that was cut off
+      throw cutOff;
+    }
     const extracted = extractRefineResult(text, currentPrompt, instruction);
 
     if (user?.id) {
@@ -61,22 +77,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         userId: user.id,
         nodeOrigin: 'RefineModal.refine',
         modelTarget: model,
-        tokensUsed: Math.max(400, Math.round(extracted.updatedMarkdown.length / 3.5)),
+        tokensUsed: tokensForTrace(usage, Math.max(400, Math.round(extracted.updatedMarkdown.length / 3.5))),
         latencyMs: Date.now() - startTime,
         status: 'success',
       });
     }
 
-    logAiRequest({ route: 'ai/refine', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model });
+    logAiRequest({ route: 'ai/refine', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model, ...usageFields(usage) });
     return res.status(200).json({
       updatedMarkdown: extracted.updatedMarkdown,
       summary: extracted.summary,
       modelTarget: model,
     });
   } catch (err: any) {
-    await releaseQuota(quota);
-    console.error('[Refine] Error:', err);
-    logAiRequest({ route: 'ai/refine', requestId, outcome: 'error', latencyMs: Date.now() - startTime, code: err?.code });
+    const outcome = failureOutcome(err);
+    if (outcome === 'error') {
+      await releaseQuota(quota);
+      await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'RefineModal.refine', err, latencyMs: Date.now() - startTime });
+      console.error('[Refine] Error:', err);
+    }
+    logAiRequest({ route: 'ai/refine', requestId, outcome, latencyMs: Date.now() - startTime, code: err?.code });
     return sendAiFailure(res, err, 'Prompt refinement failed', requestId);
   }
 }

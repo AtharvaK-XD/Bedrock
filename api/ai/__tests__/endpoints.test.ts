@@ -4,10 +4,12 @@ const reserveQuota = vi.fn();
 const releaseQuota = vi.fn();
 const executeAiCompletion = vi.fn();
 const authenticateRequest = vi.fn();
+const enforceRateLimit = vi.fn(async (..._args: unknown[]) => true);
+const recordExecutionTrace = vi.fn(async (..._args: unknown[]) => {});
 
 vi.mock('../../_lib/auth.js', () => ({ authenticateRequest: (...a: unknown[]) => authenticateRequest(...a) }));
 vi.mock('../../_lib/rateLimiter.js', () => ({
-  enforceRateLimit: vi.fn(async () => true),
+  enforceRateLimit: (...a: unknown[]) => enforceRateLimit(...a),
   getClientIp: vi.fn(() => '203.0.113.7'),
   getRedisClient: () => null,
 }));
@@ -18,7 +20,7 @@ vi.mock('../../_lib/security.js', async () => {
     reserveQuota: (...a: unknown[]) => reserveQuota(...a),
     releaseQuota: (...a: unknown[]) => releaseQuota(...a),
     sendQuotaDenied: vi.fn(),
-    recordExecutionTrace: vi.fn(async () => {}),
+    recordExecutionTrace: (...a: unknown[]) => recordExecutionTrace(...a),
     checkPromptInjection: vi.fn(() => false),
   };
 });
@@ -70,7 +72,9 @@ describe('AI endpoints', () => {
     reserveQuota.mockReset().mockResolvedValue({ allowed: true, unavailable: false, bucket: 'generation', limit: 10, resetMs: 1, reservationId: 'q1' });
     releaseQuota.mockReset().mockResolvedValue(undefined);
     executeAiCompletion.mockReset();
+    recordExecutionTrace.mockClear();
     authenticateRequest.mockReset().mockResolvedValue(null);
+    enforceRateLimit.mockReset().mockResolvedValue(true);
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -273,7 +277,7 @@ describe('AI endpoints', () => {
     });
 
     it('sends the output schema to the model in the system prompt', async () => {
-      executeAiCompletion.mockResolvedValue({ text: '[{"question":"A?"},{"question":"B?"}]', model: 'm' });
+      executeAiCompletion.mockResolvedValue({ text: '[{"question":"Which runtime fits best?"},{"question":"Who will use it daily?"}]', model: 'm' });
       await ask();
       const systemPrompt = executeAiCompletion.mock.calls[0][1] as string;
       expect(systemPrompt).toContain('"questionText"');
@@ -360,7 +364,7 @@ describe('AI endpoints', () => {
 
     describe('output limits and cut-off answers on the other routes', () => {
       it('generate-questions asks for at most 1,200 tokens', async () => {
-        executeAiCompletion.mockResolvedValue({ text: '[{"question":"A?"},{"question":"B?"}]', model: 'm' });
+        executeAiCompletion.mockResolvedValue({ text: '[{"question":"Which runtime fits best?"},{"question":"Who will use it daily?"}]', model: 'm' });
         await generateQuestions(mockReq({ ideaText: 'an idea' }), mockRes());
         expect(options().maxOutputTokens).toBe(1200);
       });
@@ -418,6 +422,260 @@ describe('AI endpoints', () => {
         const done = sseEvents(res).find((e: any) => e.done);
         expect(done).toMatchObject({ truncated: true, validation: 'warning' });
       });
+    });
+  });
+
+  describe('Phase 2: failed-call traces, real token counts, client disconnect', () => {
+    const traces = () => recordExecutionTrace.mock.calls.map((c) => c[0] as any);
+    const logLines = () =>
+      [...(console.log as any).mock.calls, ...(console.error as any).mock.calls]
+        .map((c: unknown[]) => String(c[0]))
+        .filter((l: string) => l.includes('"type":"ai_request"'))
+        .map((l: string) => JSON.parse(l));
+    const aborted = () => new AiCompletionError('AI_CLIENT_ABORTED', 'The request was cancelled.');
+    const failedWithModel = () => {
+      const err = new AiCompletionError('AI_ALL_PROVIDERS_FAILED', 'All AI providers are busy or unavailable. Please try again shortly.');
+      err.model = 'Groq LLaMA 3.1 8B';
+      return err;
+    };
+
+    describe('a failed call is stored as an error trace (signed-in users only)', () => {
+      it.each([
+        ['synthesize', 'Wizard.synthesize', () => synthesize(mockReq({ idea: { rawText: 'an idea' } }), mockRes())],
+        ['synthesize stream', 'Wizard.synthesize', () => synthesize(mockReq({ idea: { rawText: 'an idea' }, stream: true }), mockRes())],
+        ['refine', 'RefineModal.refine', () => refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), mockRes())],
+        ['test', 'Tester.test', () => testEndpoint(mockReq({ prompt: 'hello' }), mockRes())],
+        ['generate-questions', 'Wizard.generateQuestions', () => generateQuestions(mockReq({ ideaText: 'an idea' }), mockRes())],
+      ])('%s', async (_name, nodeOrigin, call) => {
+        signIn();
+        executeAiCompletion.mockRejectedValue(failedWithModel());
+        await call();
+        expect(traces()).toEqual([
+          { userId: 'user_A', nodeOrigin, modelTarget: 'Groq LLaMA 3.1 8B', tokensUsed: 0, latencyMs: expect.any(Number), status: 'error' },
+        ]);
+        expect(releaseQuota).toHaveBeenCalledTimes(1);
+      });
+
+      it('a signed-out caller leaves no trace', async () => {
+        executeAiCompletion.mockRejectedValue(failedWithModel());
+        await synthesize(mockReq({ idea: { rawText: 'an idea' } }), mockRes());
+        expect(traces()).toEqual([]);
+      });
+
+      it('an unexpected error with no model is still stored, as "unavailable"', async () => {
+        signIn();
+        executeAiCompletion.mockRejectedValue(new Error('something broke'));
+        await refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), mockRes());
+        expect(traces()[0]).toMatchObject({ modelTarget: 'unavailable', status: 'error' });
+      });
+
+      it('questions the model answered but that were unusable are stored with that model', async () => {
+        signIn();
+        executeAiCompletion.mockResolvedValue({ text: 'Sorry, I cannot do that.', model: 'Gemini Flash (gemini-flash-latest)' });
+        const res = mockRes();
+        await generateQuestions(mockReq({ ideaText: 'an idea' }), res);
+        expect(res.statusCode).toBe(200); // the built-in questions
+        expect(traces()).toEqual([expect.objectContaining({ modelTarget: 'Gemini Flash (gemini-flash-latest)', status: 'error', tokensUsed: 0 })]);
+      });
+
+      it('a cut-off refine is stored against the model that was cut off', async () => {
+        signIn();
+        executeAiCompletion.mockResolvedValue({ text: '<updated_prompt>half', model: 'Groq LLaMA 3.3 70B (llama-3.3-70b-versatile)', truncated: true });
+        const res = mockRes();
+        await refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), res);
+        expect(res.statusCode).toBe(422);
+        expect(traces()).toEqual([expect.objectContaining({ modelTarget: 'Groq LLaMA 3.3 70B (llama-3.3-70b-versatile)', status: 'error' })]);
+      });
+    });
+
+    describe('the trace and the log carry the real token count when the provider sent one', () => {
+      it('synthesize (JSON): counts the first call and the repair call', async () => {
+        signIn();
+        executeAiCompletion
+          .mockResolvedValueOnce({ text: 'too short', model: 'm', usage: { inputTokens: 100, outputTokens: 40, totalTokens: 140 } })
+          .mockResolvedValueOnce({ text: 'still too short', model: 'm', usage: { inputTokens: 90, outputTokens: 30, totalTokens: 120 } });
+        await synthesize(mockReq({ idea: { rawText: 'an idea' } }), mockRes());
+        expect(executeAiCompletion).toHaveBeenCalledTimes(2);
+        expect(traces()[0]).toMatchObject({ tokensUsed: 260, status: 'success' });
+        expect(logLines().find((l: any) => l.route === 'ai/synthesize')).toMatchObject({ inputTokens: 190, outputTokens: 70 });
+      });
+
+      it.each([
+        ['synthesize stream', () => synthesize(mockReq({ idea: { rawText: 'an idea' }, stream: true }), mockRes())],
+        ['refine', () => refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), mockRes())],
+        ['test', () => testEndpoint(mockReq({ prompt: 'hello' }), mockRes())],
+        ['generate-questions', () => generateQuestions(mockReq({ ideaText: 'an idea' }), mockRes())],
+      ])('%s', async (_name, call) => {
+        signIn();
+        const text = '[{"question":"Which runtime fits best?"},{"question":"Who will use it daily?"}]<updated_prompt>new</updated_prompt>';
+        executeAiCompletion.mockImplementation(async (_p: string, _s: string, _u: unknown, onToken?: (t: string) => void) => {
+          onToken?.('x');
+          return { text, model: 'm', usage: { inputTokens: 700, outputTokens: 300, totalTokens: 1000 } };
+        });
+        await call();
+        expect(traces()[0]).toMatchObject({ tokensUsed: 1000, status: 'success' });
+        expect(logLines().some((l: any) => l.inputTokens === 700 && l.outputTokens === 300)).toBe(true);
+      });
+
+      it('falls back to the old estimate when the provider sent no numbers', async () => {
+        signIn();
+        executeAiCompletion.mockResolvedValue({ text: 'a'.repeat(4000), model: 'm' });
+        await testEndpoint(mockReq({ prompt: 'hello' }), mockRes());
+        expect(traces()[0]).toMatchObject({ tokensUsed: 1000 }); // 4000 characters / 4
+        expect(logLines()[0]).not.toHaveProperty('inputTokens');
+      });
+    });
+
+    describe('when the client disconnects', () => {
+      it.each([
+        ['synthesize', () => synthesize(mockReq({ idea: { rawText: 'an idea' } }), mockRes())],
+        ['refine', () => refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), mockRes())],
+        ['test', () => testEndpoint(mockReq({ prompt: 'hello' }), mockRes())],
+        ['generate-questions', () => generateQuestions(mockReq({ ideaText: 'an idea' }), mockRes())],
+      ])('%s: no error trace, no refund, logged as "aborted" (not "error")', async (route, call) => {
+        signIn();
+        executeAiCompletion.mockRejectedValue(aborted());
+        await call();
+        expect(traces()).toEqual([]);
+        expect(releaseQuota).not.toHaveBeenCalled();
+        const line = logLines().find((l: any) => l.route === `ai/${route}`);
+        expect(line).toMatchObject({ outcome: 'aborted', code: 'AI_CLIENT_ABORTED' });
+        expect(logLines().some((l: any) => l.outcome === 'error')).toBe(false);
+      });
+
+      it('answers nothing (closes the response) instead of sending an error body', async () => {
+        signIn();
+        executeAiCompletion.mockRejectedValue(aborted());
+        const res = mockRes();
+        await synthesize(mockReq({ idea: { rawText: 'an idea' } }), res);
+        expect(res.end).toHaveBeenCalled();
+        expect(res.json).not.toHaveBeenCalled();
+      });
+
+      it.each([
+        ['synthesize', () => synthesize(mockReq({ idea: { rawText: 'an idea' } }), mockRes())],
+        ['synthesize stream', () => synthesize(mockReq({ idea: { rawText: 'an idea' }, stream: true }), mockRes())],
+        ['refine', () => refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), mockRes())],
+        ['test', () => testEndpoint(mockReq({ prompt: 'hello' }), mockRes())],
+        ['generate-questions', () => generateQuestions(mockReq({ ideaText: 'an idea' }), mockRes())],
+      ])('%s passes a cancel signal to the AI call', async (_name, call) => {
+        signIn();
+        executeAiCompletion.mockResolvedValue({ text: '[{"question":"Which runtime fits best?"},{"question":"Who will use it daily?"}]', model: 'm' });
+        await call();
+        const opts = executeAiCompletion.mock.calls[0][5];
+        expect(opts.signal).toBeInstanceOf(AbortSignal);
+        expect(opts.signal.aborted).toBe(false);
+      });
+
+      it('the signal fires when the response closes before it was finished, and not after a finished one', async () => {
+        signIn();
+        executeAiCompletion.mockResolvedValue({ text: 'answer', model: 'm' });
+
+        // A response that closes early (client left)
+        const leaving = mockRes();
+        let closeHandler: () => void = () => {};
+        leaving.on = vi.fn((event: string, handler: () => void) => {
+          if (event === 'close') closeHandler = handler;
+        });
+        leaving.writableEnded = false;
+        await testEndpoint(mockReq({ prompt: 'hello' }), leaving);
+        const earlySignal: AbortSignal = executeAiCompletion.mock.calls[0][5].signal;
+        expect(earlySignal.aborted).toBe(false);
+        closeHandler();
+        expect(earlySignal.aborted).toBe(true);
+
+        // A response that finished normally ('close' also fires then)
+        const finished = mockRes();
+        finished.on = vi.fn((event: string, handler: () => void) => {
+          if (event === 'close') closeHandler = handler;
+        });
+        finished.writableEnded = true;
+        await testEndpoint(mockReq({ prompt: 'hello' }), finished);
+        const lateSignal: AbortSignal = executeAiCompletion.mock.calls[1][5].signal;
+        closeHandler();
+        expect(lateSignal.aborted).toBe(false);
+      });
+    });
+  });
+
+  describe('Phase 3: question quality, one paid-tier rule', () => {
+    const ask = async (body: Record<string, unknown>) => {
+      const res = mockRes();
+      await generateQuestions(mockReq(body), res);
+      return res;
+    };
+    const answer = (questions: Array<Record<string, unknown>>) => executeAiCompletion.mockResolvedValue({ text: JSON.stringify(questions), model: 'm' });
+    const good = [
+      { question: 'Which lighting mood do you want?', type: 'single_select', options: ['Golden hour', 'Neon noir'] },
+      { question: 'Which lens and framing should it use?', type: 'single_select', options: ['35mm wide', '85mm portrait'] },
+    ];
+
+    it('shows good questions, and falls back (refund + error trace) when one is too short to mean anything', async () => {
+      signIn();
+      answer(good);
+      const ok = await ask({ ideaText: 'a lighthouse keeper at dusk', targetType: 'image-prompt' });
+      expect(ok.body.map((x: any) => x.questionText)).toEqual(['Which lighting mood do you want?', 'Which lens and framing should it use?']);
+
+      answer([good[0], { question: 'Why?', type: 'free_text' }]);
+      const short = await ask({ ideaText: 'a lighthouse keeper at dusk', targetType: 'image-prompt' });
+      expect(short.statusCode).toBe(200);
+      expect(short.body).toEqual(getUseCaseProfile('image-prompt').fallbackQuestions);
+      expect(releaseQuota).toHaveBeenCalledTimes(1);
+      expect(recordExecutionTrace.mock.calls.at(-1)![0]).toMatchObject({ status: 'error', modelTarget: 'm' });
+    });
+
+    it('rejects coding questions for an image or video profile, but not when the idea itself is about code', async () => {
+      const coding = [
+        { question: 'Which React version should the scene use?', type: 'free_text' },
+        { question: 'Which lighting mood do you want?', type: 'free_text' },
+      ];
+      answer(coding);
+      const image = await ask({ ideaText: 'a lighthouse keeper at dusk', targetType: 'image-prompt' });
+      expect(image.body).toEqual(getUseCaseProfile('image-prompt').fallbackQuestions);
+      const video = await ask({ ideaText: 'a drone flight over a canyon', targetType: 'video-generation' });
+      expect(video.body).toEqual(getUseCaseProfile('video-generation').fallbackQuestions);
+
+      // the same questions are fine for a coding profile, and for a media idea that really is about React code
+      expect((await ask({ ideaText: 'a todo app', targetType: 'coding-agent' })).body.map((x: any) => x.id)).toEqual(['q1', 'q2']);
+      expect((await ask({ ideaText: 'a react component library demo reel', targetType: 'image-prompt' })).body[0].questionText).toContain('React');
+    });
+
+    it('rejects chatty filler inside a question', async () => {
+      answer([good[0], { question: 'Sure, here is a question: what mood?', type: 'free_text' }]);
+      const res = await ask({ ideaText: 'a lighthouse keeper at dusk', targetType: 'image-prompt' });
+      expect(res.body).toEqual(getUseCaseProfile('image-prompt').fallbackQuestions);
+    });
+
+    it.each([
+      ['pro', true],
+      ['ultimate', true],
+      ['advanced', true],
+      ['free', false],
+      [undefined, false],
+    ])('paid plan %s gets the larger limit: %s (the same rule in all four AI routes)', async (tier, paid) => {
+      authenticateRequest.mockResolvedValue({ ...signedInUser, subscriptionTier: tier });
+      executeAiCompletion.mockResolvedValue({ text: 'ok', model: 'm' });
+      for (const call of [
+        () => synthesize(mockReq({ idea: { rawText: 'an idea' } }), mockRes()),
+        () => refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), mockRes()),
+        () => testEndpoint(mockReq({ prompt: 'hello' }), mockRes()),
+        () => generateQuestions(mockReq({ ideaText: 'an idea' }), mockRes()),
+      ]) {
+        enforceRateLimit.mockClear();
+        await call();
+        expect(enforceRateLimit.mock.calls[0][4], `${tier}`).toBe(paid);
+      }
+    });
+
+    it('a guest or signed-out caller is never paid', async () => {
+      executeAiCompletion.mockResolvedValue({ text: 'ok', model: 'm' });
+      authenticateRequest.mockResolvedValue({ ...signedInUser, subscriptionTier: 'pro', isGuest: true });
+      await refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), mockRes());
+      expect(enforceRateLimit.mock.calls[0][4]).toBe(false);
+      enforceRateLimit.mockClear();
+      authenticateRequest.mockResolvedValue(null);
+      await refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), mockRes());
+      expect(enforceRateLimit.mock.calls[0][4]).toBe(false);
     });
   });
 
