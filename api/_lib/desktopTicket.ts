@@ -21,7 +21,7 @@ const CLERK_SIGN_IN_TOKENS_URL = 'https://api.clerk.com/v1/sign_in_tokens';
 const TICKET_TTL_SECONDS = 120;
 const CLERK_TIMEOUT_MS = 5000;
 /** Clerk user ids look like "user_2abc...". Anything else is not passed to Clerk. */
-const CLERK_USER_ID_RE = /^user_[A-Za-z0-9]{1,64}$/;
+export const CLERK_USER_ID_RE = /^user_[A-Za-z0-9]{1,64}$/;
 
 // Best-effort brake on top of the route's general rate limit (per instance only: serverless instances do not share memory).
 const MAX_TICKETS_PER_WINDOW = 6;
@@ -47,8 +47,9 @@ function overTicketLimit(userId: string, now = Date.now()): boolean {
 /**
  * Reads `sub` from the Bearer token. The signature was already verified by authenticateRequest()
  * for this same header; this only reads the claim, so a cookie session or a guest never gets here.
+ * Only call it AFTER authenticateRequest() returned a non-guest user for this request.
  */
-function verifiedClerkSubject(req: VercelRequest): string | null {
+export function verifiedClerkSubject(req: VercelRequest): string | null {
   const header = req.headers.authorization;
   if (typeof header !== 'string' || !header.startsWith('Bearer ')) return null;
   const parts = header.slice(7).trim().split('.');
