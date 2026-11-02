@@ -48,9 +48,19 @@ describe.skipIf(!PGlite)('growth report (db/stats.mjs)', () => {
     await db.query(`INSERT INTO "Prompt"(id,user_id,title,snippet,full_content,tags,target_type,created_at,updated_at)
       SELECT 'bp'||g,'busyuser_123456789','t','s','c','[]','G',now(),now() FROM generate_series(1,1850) g`);
     const s = await collectStats(neonLike(db));
-    expect(s.topUsers[0]).toMatchObject({ user: 'busyus...', prompts: 1850 });
+    expect(s.topUsers[0]).toMatchObject({ user: 'busyu...6789', prompts: 1850 });
     expect(JSON.stringify(s)).not.toMatch(/busyuser_123456789|busy@x\.test/);
-    expect(s.warnings.join(' ')).toMatch(/busyus\.\.\. has 1850 saved prompts/);
+    expect(s.warnings.join(' ')).toMatch(/busyu\.\.\.6789 has 1850 saved prompts/);
+  });
+
+  it('accounts whose ids share the same start (all Clerk ids begin with "user_") stay distinguishable', async () => {
+    await db.query(`INSERT INTO "User"(id,email,password_hash,name,updated_at) VALUES
+      ('user_3aaaaaaaaaaaaaa111','p1@x.test','x','p',now()),('user_3aaaaaaaaaaaaaa222','p2@x.test','x','p',now())`);
+    await db.query(`INSERT INTO "Prompt"(id,user_id,title,snippet,full_content,tags,target_type,created_at,updated_at)
+      VALUES ('cp1','user_3aaaaaaaaaaaaaa111','t','s','c','[]','G',now(),now()),('cp2','user_3aaaaaaaaaaaaaa222','t','s','c','[]','G',now(),now())`);
+    const labels = (await collectStats(neonLike(db))).topUsers.map((u: any) => u.user);
+    expect(labels).toContain('user_...a111');
+    expect(labels).toContain('user_...a222');
   });
 });
 

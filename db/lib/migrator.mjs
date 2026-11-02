@@ -126,13 +126,15 @@ export async function migrateUp(sql, { dir, upTo = null, log = console.log, hold
       }
     }
     // 2. apply the pending ones in order
-    for (const name of names.filter((n) => !state.applied.has(n) && (!upTo || n.slice(0, 4) <= upTo))) {
+    const pending = names.filter((n) => !state.applied.has(n) && (!upTo || n.slice(0, 4) <= upTo));
+    for (const name of pending) {
       log(`applying ${name} ...`);
       const text = await readFile(path.join(dir, `${name}.up.sql`), 'utf8');
       await runText(sql, text, { log, wait });
       await sql.query('INSERT INTO schema_migrations(name, checksum) VALUES ($1, $2)', [name, checksum(text)]);
     }
     log('done');
+    if (pending.length) await remindRoles(sql, log);
   } finally {
     await releaseLock(sql);
   }
@@ -151,7 +153,21 @@ export async function migrateDown(sql, { dir, all = false, log = console.log, ho
       await sql.query('DELETE FROM schema_migrations WHERE name = $1', [name]);
     }
     log('done');
+    await remindRoles(sql, log);
   } finally {
     await releaseLock(sql);
+  }
+}
+
+/**
+ * A migration that drops and re-creates a function (any `down` of 0004/0010/0014, then `up`) also drops the app
+ * role's right to run it: the app then gets "permission denied" and every AI request fails (seen on the dev branch,
+ * 2026-11-02). When the role exists, say so loudly after every up/down that changed something.
+ */
+async function remindRoles(sql, log) {
+  const [r] = await sql.query(`SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bedrock_app') AS e`);
+  if (r?.e) {
+    log('IMPORTANT: role bedrock_app exists. Run `node db/migrate.mjs roles --yes --host <host>` now, or the app may lose '
+      + 'the right to run re-created functions (AI requests would fail with 503).');
   }
 }

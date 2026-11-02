@@ -6,6 +6,32 @@ Before you start:
 - This round of `db/` (CHG-0027: column-level "User" rights in `roles.sql`, `check-app-role.mjs`) is merged into
   `main`. Run everything from `C:\Users\ATHARVA\Desktop\Bedrock` on an up-to-date `main` (it has `node_modules`).
 - About 30-45 minutes. Users can keep using the site: every step is additive, and indexes build without blocking.
+- Rehearsed on 2026-11-02 on `dev-db-test`, a fresh copy of production (CHG-0047): before = 0 of 17 migrations
+  applied, no table except `QuotaEvent` missing, 12 accounts, no duplicates, no row over any limit. `up --to 0004`
+  took 13 s, the rest (0005-0017) 21 s; 35/35 Neon tests and `check-app-role.mjs` passed afterwards.
+- NEVER run `tests/db.migrations.test.ts`, `db/flood-test.mjs` or `db/anonymize-dev.mjs` against production. The tests
+  write and delete their own test rows and run the log cleanup; they are for the dev branch only.
+
+## Backend and migrations: which order, what switches on when
+The backend on `main` is safe with or without these migrations: every new feature checks for its database part and
+falls back (VERIFIED in the code on 2026-11-02, `api/_lib/security.ts`, `api/traces/index.ts`,
+`api/_lib/accountDeletion.ts`). So the order is free; recommended: **snapshot -> migrations -> deploy the backend**, so
+each feature works the moment it is live.
+| Migration | What turns on in the app | Before it is applied, the app... |
+|---|---|---|
+| 0001-0002 | faster lists, usage counts, cleanup (indexes) | works, slower |
+| 0003 | size limits + 2,000 prompts / 500 workflows per account (API answers 400/409) | has no database limits |
+| 0004 | race-proof usage limits (`reserve_quota`), daily log cleanup (`purge_old_logs`) | counts usage the old way (parallel requests can overshoot); the cron reports "apply 0004 first" |
+| 0005 | log line size limit (the API already cuts lines to fit) | accepts any size |
+| 0006 | only the app may run the usage/cleanup functions | anyone with a database login could |
+| 0007, 0009 | one account per email / username, ignoring case | allows `Bob@x` and `bob@x` |
+| 0008 | the 3 usage-limit loopholes closed | loopholes open |
+| 0010 | dashboard totals over ALL runs (`trace_totals`) | shows totals of the last 100 runs |
+| 0011-0013 | row guards (no owner change, no log edits, no TRUNCATE), safe functions, profile size limits | none of these walls |
+| 0014 | "delete my account" and the Clerk `user.deleted` webhook (`delete_user_data`) | both answer 503 `ACCOUNT_DELETION_NOT_READY` (nothing deleted) |
+| 0015 | max 5,000 usage records per account per 24 h (`POST /api/traces` answers 429) | no cap |
+| 0016 | old rows checked against the size rules | old rows unchecked |
+| 0017 | fast paging of the prompts / workflows lists (0.24 ms per page on the production copy) | paging works, but reads the whole library |
 
 ## Step 0: safety net (must be done first)
 1. Neon console -> your project -> Branches -> create a branch **from production, at "now"**, named
@@ -23,7 +49,7 @@ Set-Clipboard -Value ' '                   # clear the clipboard
 node db/migrate.mjs status
 ```
 Check the first line `Target database host: ...`: it must be the **production** host, NOT
-`ep-quiet-forest-b8mmgq6p-pooler...` (that is dev). Write the host down; below it is `<prod-host>`.
+`ep-soft-tooth-b86b7rci-pooler...` (that is the dev branch `dev-db-test` since CHG-0045). Write the host down; below it is `<prod-host>`.
 (`status` only reads; `--host` is not needed for it, adding it does nothing.)
 
 ## Step 2: read-only check
@@ -61,7 +87,9 @@ Do not create it on the console's Roles page (those roles get `neon_superuser` p
 node db/migrate.mjs roles --yes --host <prod-host>
 ```
 Good = 17 lines `OK` and `done: every check passed`. Running it again is safe.
-Optional, safe (every check is rolled back, nothing is kept): log in as the app role and prove it end to end:
+Optional, safe (every check is rolled back, nothing is kept): log in as the app role and prove it end to end.
+Use the real login below (not the owner + `SET ROLE` way used on dev, which needs an extra `GRANT` you do not want on
+production):
 ```powershell
 $env:DATABASE_URL_APP_DEV = Get-Clipboard   # the bedrock_app string from step 6, copied first
 node db/check-app-role.mjs                  # good = "every check passed", incl. the role time limits line
@@ -82,6 +110,9 @@ Order:
    redeploy a preview -> on the preview URL: sign in, generate, save/edit/delete a prompt and a workflow, profile save,
    dashboard. All must work.
 2. Same for **Production** -> redeploy -> same checks on the live site.
+   The backend must be a version that reads "User" by column name (`main` since CHG-0023): with `bedrock_app`,
+   `SELECT * FROM "User"` is refused on purpose (password hashes are hidden). An older deployment would fall back to
+   token data at sign-in.
 3. The API also falls back to `NEON_DATABASE_URL` and `DATABASE_URL_UNPOOLED` (api/_lib/db.ts). If either exists in
    Vercel with the owner password, delete it (or, if Neon's Vercel integration manages it, change the integration to
    the `bedrock_app` role). Same for `PGPASSWORD` / `POSTGRES_*` variables if present. Otherwise the owner key is
