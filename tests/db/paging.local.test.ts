@@ -7,7 +7,8 @@ const PGlite = await loadPglite();
 
 function sqlBlocks(): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const m of readDbFile('PAGING.md').matchAll(/```sql\n-- name: (\w+)\n([\s\S]*?)```/g)) out[m[1]] = m[2].trim();
+  const doc = readDbFile('PAGING.md').replace(/\r\n/g, '\n');
+  for (const m of doc.matchAll(/`sql\n-- name: (\w+)\n([\s\S]*?)`/g)) out[m[1]] = m[2].trim();
   return out;
 }
 
