@@ -19,6 +19,8 @@ import {
   AI_OUTPUT_BUDGET,
   refineOutputBudget,
   testOutputBudget,
+  sumUsage,
+  tokensForTrace,
 } from '../ai.js';
 import { recordProviderFailure } from '../loadBalancer.js';
 
@@ -330,11 +332,11 @@ const geminiBody = (text: string, finishReason = 'STOP') => ({
   json: async () => ({ candidates: [{ content: { parts: [{ text }] }, finishReason }] }),
 });
 /** Provider SSE stream: the given deltas, then a last chunk carrying the finish reason. */
-const chatStream = (deltas: string[], finishReason: string) => {
+const chatStream = (deltas: string[], finishReason: string, lastChunkExtra: Record<string, unknown> = {}) => {
   const enc = new TextEncoder();
   const chunks = [
     ...deltas.map((d) => ({ choices: [{ delta: { content: d }, finish_reason: null }] })),
-    { choices: [{ delta: {}, finish_reason: finishReason }] },
+    { choices: [{ delta: {}, finish_reason: finishReason }], ...lastChunkExtra },
   ];
   let next = 0;
   return {
@@ -502,5 +504,200 @@ describe('output budgets', () => {
     expect(testOutputBudget(99_999)).toBe(6_000);
     expect(testOutputBudget(1)).toBe(256);
     expect(testOutputBudget(-5)).toBe(256);
+  });
+});
+
+// ---------- Phase 2: real token counts, Gemini key header, stopping when the client leaves ----------
+
+describe('AI core Phase 2', () => {
+  const fetchMock = vi.fn();
+  const GEMINI_KEY = 'gemini-test-key-not-real';
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.mocked(recordProviderFailure).mockClear();
+    vi.stubGlobal('fetch', fetchMock);
+    for (const name of ['GROQ', 'GEMINI', 'OPENROUTER']) {
+      vi.stubEnv(name + '_API_KEY', '');
+      vi.stubEnv('VITE_' + name + '_API_KEY', '');
+    }
+    vi.stubEnv('GROQ_API_KEY', 'groq-test-key-not-real');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  describe('real token counts', () => {
+    it('reads the provider\'s usage (Groq / OpenRouter style) and leaves it out when none is sent', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: 'answer' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 120, completion_tokens: 80, total_tokens: 200 },
+        }),
+      });
+      expect(await executeAiCompletion('p', 's')).toMatchObject({ usage: { inputTokens: 120, outputTokens: 80, totalTokens: 200 } });
+
+      fetchMock.mockResolvedValueOnce(chatBody('answer'));
+      expect(await executeAiCompletion('p', 's')).not.toHaveProperty('usage');
+    });
+
+    it('reads usage from the last chunk of a live stream (usage or x_groq.usage)', async () => {
+      fetchMock.mockResolvedValueOnce(chatStream(['Hel', 'lo'], 'stop', { x_groq: { usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } } }));
+      const viaGroq = await executeAiCompletion('p', 's', undefined, () => {});
+      expect(viaGroq.usage).toEqual({ inputTokens: 10, outputTokens: 5, totalTokens: 15 });
+
+      fetchMock.mockResolvedValueOnce(chatStream(['Hi'], 'stop', { usage: { prompt_tokens: 3, completion_tokens: 2 } }));
+      const viaUsage = await executeAiCompletion('p', 's', undefined, () => {});
+      // total is worked out from the two parts when the provider does not send it
+      expect(viaUsage.usage).toEqual({ inputTokens: 3, outputTokens: 2, totalTokens: 5 });
+    });
+
+    it('counts Gemini\'s hidden thinking tokens as output, because they are billed', async () => {
+      vi.stubEnv('GROQ_API_KEY', '');
+      vi.stubEnv('GEMINI_API_KEY', GEMINI_KEY);
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: 'answer' }] }, finishReason: 'STOP' }],
+          usageMetadata: { promptTokenCount: 5, candidatesTokenCount: 7, thoughtsTokenCount: 3, totalTokenCount: 15 },
+        }),
+      });
+      expect((await executeAiCompletion('p', 's')).usage).toEqual({ inputTokens: 5, outputTokens: 10, totalTokens: 15 });
+    });
+
+    it('ignores nonsense usage values instead of storing them', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: 'answer' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 'many', completion_tokens: -4, total_tokens: null },
+        }),
+      });
+      expect(await executeAiCompletion('p', 's')).not.toHaveProperty('usage');
+    });
+
+    it('sumUsage adds calls up and tokensForTrace prefers the real number', () => {
+      expect(sumUsage(undefined, undefined)).toBeUndefined();
+      expect(sumUsage({ inputTokens: 1, outputTokens: 2, totalTokens: 3 }, undefined, { inputTokens: 10, outputTokens: 20, totalTokens: 30 })).toEqual({
+        inputTokens: 11,
+        outputTokens: 22,
+        totalTokens: 33,
+      });
+      expect(tokensForTrace({ inputTokens: 1, outputTokens: 2, totalTokens: 3 }, 999)).toBe(3);
+      expect(tokensForTrace(undefined, 999)).toBe(999);
+    });
+  });
+
+  describe('Gemini key', () => {
+    beforeEach(() => {
+      vi.stubEnv('GROQ_API_KEY', '');
+      vi.stubEnv('GEMINI_API_KEY', GEMINI_KEY);
+    });
+
+    it('is sent in the x-goog-api-key header, never in the URL (non-stream and stream)', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ candidates: [{ content: { parts: [{ text: 'answer' }] }, finishReason: 'STOP' }] }),
+      });
+      await executeAiCompletion('p', 's');
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(String(url)).toContain('generateContent');
+      expect(String(url)).not.toContain('key=');
+      expect(String(url)).not.toContain(GEMINI_KEY);
+      expect(init.headers['x-goog-api-key']).toBe(GEMINI_KEY);
+
+      const enc = new TextEncoder();
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(enc.encode('data: ' + JSON.stringify({ candidates: [{ content: { parts: [{ text: 'hi' }] } }] }) + '\n\n'));
+            controller.close();
+          },
+        }),
+      });
+      await executeAiCompletion('p', 's', undefined, () => {});
+      const [streamUrl, streamInit] = fetchMock.mock.calls[1];
+      expect(String(streamUrl)).toContain('streamGenerateContent?alt=sse');
+      expect(String(streamUrl)).not.toContain(GEMINI_KEY);
+      expect(streamInit.headers['x-goog-api-key']).toBe(GEMINI_KEY);
+    });
+
+    it('is not leaked in the error that is thrown when Gemini fails', async () => {
+      fetchMock.mockResolvedValue(errBody(500, 'upstream failure'));
+      const error: any = await executeAiCompletion('p', 's').catch((e) => e);
+      expect(error).toBeInstanceOf(AiCompletionError);
+      expect(JSON.stringify(error.message)).not.toContain(GEMINI_KEY);
+    });
+  });
+
+  describe('client disconnect', () => {
+    /** A fetch that never answers on its own and rejects like the real one when its signal aborts. */
+    const hangingFetch = () =>
+      fetchMock.mockImplementation(
+        (_url: string, init: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            init.signal.addEventListener('abort', () => reject(Object.assign(new Error('The operation was aborted'), { name: 'AbortError' })), { once: true });
+          })
+      );
+
+    it('stops the provider call, tries no other provider, and does not blame the provider', async () => {
+      vi.stubEnv('OPENROUTER_API_KEY', 'openrouter-test-key-not-real');
+      hangingFetch();
+      const client = new AbortController();
+      const pending = executeAiCompletion('p', 's', undefined, undefined, undefined, { signal: client.signal });
+      const outcome = pending.catch((e) => e);
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      client.abort();
+
+      const error: any = await outcome;
+      expect(error).toBeInstanceOf(AiCompletionError);
+      expect(error.code).toBe('AI_CLIENT_ABORTED');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(recordProviderFailure).not.toHaveBeenCalled();
+    });
+
+    it('does not start any call when the client is already gone', async () => {
+      const client = new AbortController();
+      client.abort();
+      await expect(executeAiCompletion('p', 's', undefined, undefined, undefined, { signal: client.signal })).rejects.toMatchObject({ code: 'AI_CLIENT_ABORTED' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('cleans up: a finished call leaves no listener on the client signal that could cancel a later call', async () => {
+      fetchMock.mockResolvedValueOnce(chatBody('fine'));
+      const client = new AbortController();
+      const result = await executeAiCompletion('p', 's', undefined, undefined, undefined, { signal: client.signal });
+      expect(result.text).toBe('fine');
+      // aborting afterwards must not throw or change anything
+      expect(() => client.abort()).not.toThrow();
+    });
+
+    it('works without a signal exactly as before', async () => {
+      fetchMock.mockResolvedValueOnce(chatBody('fine'));
+      expect((await executeAiCompletion('p', 's')).text).toBe('fine');
+    });
+  });
+
+  describe('failed calls name the model that was tried last', () => {
+    it('when every provider fails', async () => {
+      fetchMock.mockResolvedValue(errBody(500, 'internal error'));
+      const error: any = await executeAiCompletion('p', 's').catch((e) => e);
+      expect(error.code).toBe('AI_ALL_PROVIDERS_FAILED');
+      expect(error.model).toMatch(/Groq/);
+    });
   });
 });

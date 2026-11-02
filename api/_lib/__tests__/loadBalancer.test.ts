@@ -182,3 +182,41 @@ describe('recordProviderFailure: rate limit decided by the caller', () => {
     expect(await isProviderHealthy('groq-llama-70b')).toBe(false);
   });
 });
+
+describe('Redis use (Upstash bills and limits per command)', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(async () => {
+    fakeRedis = null;
+    for (const p of AI_PROVIDERS) await recordProviderSuccess(p.id);
+    vi.restoreAllMocks();
+  });
+
+  it('a successful call costs one Redis command: both keys reset with one DEL, no counter written', async () => {
+    fakeRedis = makeRedis();
+    await recordProviderSuccess('groq-llama-70b');
+    expect(fakeRedis.del).toHaveBeenCalledTimes(1);
+    expect(fakeRedis.del).toHaveBeenCalledWith('failures:ai:groq-llama-70b', 'circuit:ai:groq-llama-70b');
+    expect(fakeRedis.incr).not.toHaveBeenCalled();
+    expect(fakeRedis.set).not.toHaveBeenCalled();
+  });
+
+  it('a rate limit trips the whole key family in Redis, so other server instances stop using it too', async () => {
+    fakeRedis = makeRedis();
+    await recordProviderFailure('groq-llama-70b', 'Groq API returned 429', { rateLimited: true });
+    const tripped = fakeRedis.set.mock.calls.map((c: unknown[]) => c[0]).sort();
+    expect(tripped).toEqual(['circuit:ai:groq-llama-70b', 'circuit:ai:groq-llama-8b']);
+    expect(fakeRedis.set).toHaveBeenCalledWith('circuit:ai:groq-llama-8b', 'tripped', { ex: 15 });
+  });
+
+  it('an ordinary failure trips only that provider, and only on the second failure in a minute', async () => {
+    let failures = 0;
+    fakeRedis = makeRedis({ incr: vi.fn(async () => ++failures) });
+    await recordProviderFailure('groq-llama-70b', 'Groq API returned 500', { rateLimited: false });
+    expect(fakeRedis.set).not.toHaveBeenCalled();
+    await recordProviderFailure('groq-llama-70b', 'Groq API returned 500', { rateLimited: false });
+    expect(fakeRedis.set.mock.calls.map((c: unknown[]) => c[0])).toEqual(['circuit:ai:groq-llama-70b']);
+  });
+});

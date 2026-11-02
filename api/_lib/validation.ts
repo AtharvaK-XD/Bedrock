@@ -1,4 +1,3 @@
-import { z } from 'zod';
 
 export interface Question {
   id: string;
@@ -23,16 +22,67 @@ export interface ValidationResult<T = string> {
   data?: T;
 }
 
-export const ClarifyingQuestionItemSchema = z.object({
-  id: z.string().min(1, 'Question ID must not be empty'),
-  questionText: z.string().min(8, 'Question text must be at least 8 characters long'),
-  questionType: z.enum(['single_select', 'multi_select', 'free_text']),
-  options: z.array(z.string().min(1)).optional(),
-});
+const QUESTION_KINDS = ['single_select', 'multi_select', 'free_text'] as const;
+const MIN_QUESTIONS = 2;
+const MAX_QUESTIONS = 6;
+const MIN_QUESTION_TEXT_CHARS = 8;
 
-export const ClarifyingQuestionsArraySchema = z.array(ClarifyingQuestionItemSchema)
-  .min(2, 'Must generate at least 2 clarifying questions')
-  .max(6, 'Must generate at most 6 clarifying questions');
+/**
+ * Checks the shape of a parsed list of clarifying questions: 2 to 6 items, each with an id, question text of at
+ * least 8 characters, one of the three question types, and (optionally) a list of non-empty option strings.
+ * Plain checks instead of a schema library: this file is loaded by every AI route, and zod alone was about half
+ * of the largest routes' size.
+ */
+export function checkQuestionShape(parsed: unknown): { ok: true; data: Question[] } | { ok: false; issues: Array<{ path: string; message: string }> } {
+  const issues: Array<{ path: string; message: string }> = [];
+  if (!Array.isArray(parsed)) {
+    return { ok: false, issues: [{ path: '', message: 'Expected an array of questions' }] };
+  }
+  if (parsed.length < MIN_QUESTIONS) issues.push({ path: '', message: `Must generate at least ${MIN_QUESTIONS} clarifying questions` });
+  if (parsed.length > MAX_QUESTIONS) issues.push({ path: '', message: `Must generate at most ${MAX_QUESTIONS} clarifying questions` });
+
+  parsed.forEach((item, i) => {
+    const at = (field: string) => `${i}.${field}`;
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      issues.push({ path: String(i), message: 'Expected a question object' });
+      return;
+    }
+    const q = item as Record<string, unknown>;
+    if (typeof q.id !== 'string' || q.id.length < 1) issues.push({ path: at('id'), message: 'Question ID must not be empty' });
+    if (typeof q.questionText !== 'string' || q.questionText.length < MIN_QUESTION_TEXT_CHARS) {
+      issues.push({ path: at('questionText'), message: `Question text must be at least ${MIN_QUESTION_TEXT_CHARS} characters long` });
+    }
+    if (!(QUESTION_KINDS as readonly unknown[]).includes(q.questionType)) {
+      issues.push({ path: at('questionType'), message: `Invalid option: expected one of ${QUESTION_KINDS.map((k) => `"${k}"`).join('|')}` });
+    }
+    if (q.options !== undefined) {
+      if (!Array.isArray(q.options)) issues.push({ path: at('options'), message: 'Expected an array of options' });
+      else q.options.forEach((o, j) => {
+        if (typeof o !== 'string' || o.length < 1) issues.push({ path: `${at('options')}.${j}`, message: 'Option must be a non-empty string' });
+      });
+    }
+  });
+
+  return issues.length === 0 ? { ok: true, data: parsed as Question[] } : { ok: false, issues };
+}
+
+/**
+ * Why a set of questions (already repaired by normalizeQuestions) should not be shown to the user, or an empty list
+ * when they are fine: wrong shape (2 to 6 questions with real text), coding terms in an image or video profile
+ * (the profiles forbid them), or chatty filler. Messages never repeat the user's text.
+ * detectForbiddenTerms only knows the spellings image_generation / video_generation, hence the mapping.
+ */
+export function checkQuestionQuality(questions: unknown, profileId: string, userIdea?: string): string[] {
+  const shape = checkQuestionShape(questions);
+  if (!shape.ok) return shape.issues.map((i) => (i.path ? `${i.path}: ${i.message}` : i.message));
+
+  const target = profileId === 'image-prompt' ? 'image_generation' : profileId === 'video-generation' ? 'video_generation' : profileId;
+  const { forbiddenTerms, fluffTerms } = detectForbiddenTerms(JSON.stringify(shape.data), target, userIdea);
+  return [
+    ...forbiddenTerms.map((t) => `contains the coding term "${t}", which the ${profileId} profile forbids`),
+    ...fluffTerms.map((t) => `contains conversational filler "${t}"`),
+  ];
+}
 
 export const CONVERSATIONAL_FLUFF_PHRASES = [
   'sure, here is',
@@ -131,7 +181,7 @@ export const TARGET_BLUEPRINT_SECTIONS: Record<string, BlueprintSectionRequireme
     {
       name: 'Master Prompt Block',
       patterns: [/master\s+(?:midjourney|flux|dall-e|prompt)/i, /copy-paste/i, /```/i],
-      description: 'Copy-pasteable prompt block for Midjourney, FLUX.1, or DALL-E 3',
+      description: 'Copy-pasteable prompt block for Midjourney, FLUX, or DALL-E',
     },
     {
       name: 'Optical & Cinematography Specifications',
@@ -164,7 +214,7 @@ export const TARGET_BLUEPRINT_SECTIONS: Record<string, BlueprintSectionRequireme
     {
       name: 'Master Video Generation Prompt Block',
       patterns: [/master\s+(?:runway|sora|luma|kling|video\s+prompt)/i, /copy-paste/i, /```/i],
-      description: 'Copy-pasteable video prompt block for Runway Gen-3, Sora, or Luma',
+      description: 'Copy-pasteable video prompt block for Runway, Luma, Kling, or Veo',
     },
     {
       name: 'Camera Motion & Shot Choreography',
@@ -393,12 +443,12 @@ export function validateQuestionsOutput(
     }
   }
 
-  const zodResult = ClarifyingQuestionsArraySchema.safeParse(parsed);
-  if (!zodResult.success) {
-    for (const error of zodResult.error.issues) {
+  const shape = checkQuestionShape(parsed);
+  if (!shape.ok) {
+    for (const error of shape.issues) {
       issues.push({
         type: 'schema',
-        message: `${error.path.join('.')}: ${error.message}`,
+        message: error.path ? `${error.path}: ${error.message}` : error.message,
       });
     }
   }
@@ -426,13 +476,13 @@ export function validateQuestionsOutput(
     }
   }
 
-  const isValid = issues.length === 0 && zodResult.success;
+  const isValid = issues.length === 0 && shape.ok;
   return {
     isValid,
     issues,
     forbiddenTermsFound: forbiddenTerms,
     missingSections: [],
-    data: isValid ? (zodResult.data as Question[]) : undefined,
+    data: isValid && shape.ok ? shape.data : undefined,
   };
 }
 

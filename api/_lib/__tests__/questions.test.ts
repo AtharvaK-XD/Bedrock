@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeQuestions, QUESTION_OUTPUT_FORMAT, QuestionsArraySchema, getUseCaseProfile, USE_CASE_PROFILES } from '../useCaseProfiles.js';
+import { normalizeQuestions, QUESTION_OUTPUT_FORMAT, getUseCaseProfile, USE_CASE_PROFILES } from '../useCaseProfiles.js';
+import { checkQuestionShape } from '../validation.js';
 
 // The wizard shows blank cards when a model answers with its own key names ("question", "type").
 // normalizeQuestions() repairs the answer; QUESTION_OUTPUT_FORMAT asks for the right keys in the first place.
@@ -128,7 +129,7 @@ describe('normalizeQuestions', () => {
       { question: 'Which style?', type: 'single_select', options: ['A', 'B'] },
       { question: 'Anything else?', type: 'text' },
     ]);
-    expect(QuestionsArraySchema.safeParse(out).success).toBe(true);
+    expect(checkQuestionShape(out).ok).toBe(true);
   });
 });
 

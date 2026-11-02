@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { DATA_LIMITS, sendDbFailure, firstFieldError, clampCount } from '../_lib/dataHttp.js';
+import { DATA_LIMITS, sendDbFailure, firstFieldError, clampCount, isDailyTraceLimit } from '../_lib/dataHttp.js';
 
 /**
  * purge_old_logs() deletes at most one batch (5,000 rows) per table per call, so it is called until nothing
@@ -237,6 +237,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({ success: true, id });
     } catch (err: any) {
+      // Migration 0015: an account may write 5,000 usage records per 24 hours. Expected only for abuse.
+      if (isDailyTraceLimit(err)) {
+        res.setHeader('Retry-After', '3600');
+        return res.status(429).json({
+          error: 'Daily usage-record limit reached',
+          code: 'DAILY_TRACE_LIMIT',
+          message: 'Too many usage records were saved today. Please try again later.',
+        });
+      }
       return sendDbFailure(res, '[Traces] POST error:', 'Failed to record execution trace', err);
     }
   }

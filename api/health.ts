@@ -10,6 +10,8 @@ interface HealthBody {
   timestamp: string;
   database: { status: 'connected' | 'error' };
   redis: { status: 'connected' | 'error' | 'unconfigured' };
+  /** First 7 characters of the deployed commit (Vercel sets it): tells you which version is live. Absent locally. */
+  version?: string;
 }
 
 let cached: { at: number; body: HealthBody } | null = null;
@@ -30,6 +32,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (cached && Date.now() - cached.at < HEALTH_CACHE_MS) {
     return res.status(200).json(cached.body);
   }
+
+  const commit = (process.env.VERCEL_GIT_COMMIT_SHA || '').replace(/[^0-9a-f]/gi, '').slice(0, 7);
 
   let dbStatus: HealthBody['database']['status'] = 'error';
   try {
@@ -61,6 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     timestamp: new Date().toISOString(),
     database: { status: dbStatus },
     redis: { status: redisStatus },
+    ...(commit ? { version: commit } : {}),
   };
   cached = { at: Date.now(), body };
   return res.status(200).json(body);

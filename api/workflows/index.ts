@@ -2,7 +2,30 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText, dbLimitKind } from '../_lib/dataHttp.js';
+import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText, dbLimitKind, parseListQuery, encodeCursor } from '../_lib/dataHttp.js';
+
+/** Nodes and edges are stored as JSON text; a damaged value must not break the whole list. */
+function readJsonList(raw: unknown): unknown {
+  if (typeof raw !== 'string') return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function mapWorkflow(r: any, summary: boolean) {
+  return {
+    id: r.id,
+    name: r.title,
+    title: r.title,
+    // Summary lists leave the (large) graph out but say how big it is (the screen can show "large workflow");
+    // GET ?id= returns the graph
+    ...(summary ? { sizeChars: Number(r.size_chars) || 0 } : { nodes: readJsonList(r.nodes), edges: readJsonList(r.edges) }),
+    updatedAt: r.updated_at,
+    createdAt: r.created_at,
+  };
+}
 
 function sendWorkflowLimitReached(res: VercelResponse) {
   return res.status(409).json({
@@ -25,22 +48,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const sql = getDb();
 
-  // GET /api/workflows: list workflows/branching trees for user
+  // GET /api/workflows
+  //   (no parameters)          every workflow as a plain array, as before
+  //   ?id=<id>                 one workflow with its nodes and edges (404 when it is not yours)
+  //   ?limit=&cursor=&summary=1  one page: { items, nextCursor }, newest first; summary leaves nodes and edges out
   if (req.method === 'GET') {
+    const list = parseListQuery(req.query);
+    if (!list.ok) {
+      return res.status(400).json({ error: list.error, code: 'INVALID_LIST_QUERY' });
+    }
+
     try {
-      const rows = (await sql`
-        SELECT * FROM "BranchingTree" WHERE user_id = ${user.id} ORDER BY updated_at DESC
-      `) as any[];
-      const workflows = rows.map((r: any) => ({
-        id: r.id,
-        name: r.title,
-        title: r.title,
-        nodes: typeof r.nodes === 'string' ? JSON.parse(r.nodes) : r.nodes,
-        edges: typeof r.edges === 'string' ? JSON.parse(r.edges) : r.edges,
-        updatedAt: r.updated_at,
-        createdAt: r.created_at,
-      }));
-      return res.status(200).json(workflows);
+      if (list.id) {
+        const [row] = (await sql`
+          SELECT id, title, nodes, edges, created_at, updated_at
+          FROM "BranchingTree" WHERE id = ${list.id} AND user_id = ${user.id} LIMIT 1
+        `) as any[];
+        if (!row) return res.status(404).json({ error: 'Workflow not found', code: 'WORKFLOW_NOT_FOUND' });
+        return res.status(200).json(mapWorkflow(row, false));
+      }
+
+      if (list.paged) {
+        const afterTs = list.after?.ts ?? null;
+        const afterId = list.after?.id ?? null;
+        // One extra row tells whether another page exists. Keyset paging on (updated_at, id): stays correct
+        // while workflows are saved or deleted between pages, and uses the (user_id, updated_at) index.
+        const rows = (list.summary
+          ? await sql`
+              SELECT id, title, created_at, updated_at, char_length(nodes) + char_length(edges) AS size_chars,
+                updated_at::text AS cursor_ts
+              FROM "BranchingTree"
+              WHERE user_id = ${user.id}
+                AND (${afterTs}::text IS NULL OR (updated_at, id) < (${afterTs}::timestamp, ${afterId}::text))
+              ORDER BY updated_at DESC, id DESC
+              LIMIT ${list.limit + 1}::int
+            `
+          : await sql`
+              SELECT id, title, nodes, edges, created_at, updated_at, updated_at::text AS cursor_ts
+              FROM "BranchingTree"
+              WHERE user_id = ${user.id}
+                AND (${afterTs}::text IS NULL OR (updated_at, id) < (${afterTs}::timestamp, ${afterId}::text))
+              ORDER BY updated_at DESC, id DESC
+              LIMIT ${list.limit + 1}::int
+            `) as any[];
+        const page = rows.slice(0, list.limit);
+        const last = page[page.length - 1];
+        return res.status(200).json({
+          items: page.map((r: any) => mapWorkflow(r, list.summary)),
+          nextCursor: rows.length > list.limit && last ? encodeCursor(String(last.cursor_ts), String(last.id)) : null,
+        });
+      }
+
+      const rows = (list.summary
+        ? await sql`
+            SELECT id, title, created_at, updated_at, char_length(nodes) + char_length(edges) AS size_chars
+            FROM "BranchingTree" WHERE user_id = ${user.id} ORDER BY updated_at DESC
+          `
+        : await sql`
+            SELECT * FROM "BranchingTree" WHERE user_id = ${user.id} ORDER BY updated_at DESC
+          `) as any[];
+      return res.status(200).json(rows.map((r: any) => mapWorkflow(r, list.summary)));
     } catch (err: any) {
       return sendDbFailure(res, '[Workflows] GET error:', 'Failed to fetch workflows', err);
     }

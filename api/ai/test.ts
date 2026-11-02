@@ -1,8 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
-import { executeAiCompletion, testOutputBudget } from '../_lib/ai.js';
-import { INPUT_LIMITS, firstLengthError, sendAiFailure, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
+import { executeAiCompletion, testOutputBudget, tokensForTrace } from '../_lib/ai.js';
+import {
+  INPUT_LIMITS,
+  firstLengthError,
+  sendAiFailure,
+  getRequestId,
+  logAiRequest,
+  clientAbortSignal,
+  isPaidUser,
+  recordAiFailureTrace,
+  usageFields,
+  failureOutcome,
+} from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
 
@@ -18,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Cheap per-visitor brake BEFORE token checking and the user lookup, so a flood of junk tokens cannot reach the database
   if (!(await enforceRateLimit(req, res, 'aiGate', ip))) return;
   const user = await authenticateRequest(req);
-  const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
+  const isPaid = isPaidUser(user);
 
   // This route runs any prompt the caller sends on Bedrock's provider keys, so it needs a signed-in
   // account (the app itself only exists behind sign-in). Questions and synthesize stay open.
@@ -39,6 +50,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = req.body || {};
   // The client says how long an answer it needs (up to a ceiling); the server decides the real limit
   const maxOutputTokens = testOutputBudget(body.maxOutputTokens);
+  // Stops the paid provider call when the user closes the tab or cancels
+  const signal = clientAbortSignal(res);
   const prompt = (body.prompt || body.promptText || '').trim();
   const rawSystemPrompt = (body.systemPrompt || '').trim();
   const systemPrompt = rawSystemPrompt
@@ -74,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'X-Accel-Buffering': 'no',
       });
 
-      const { text, model, truncated } = await executeAiCompletion(
+      const { text, model, truncated, usage } = await executeAiCompletion(
         prompt,
         systemPrompt,
         user?.id,
@@ -85,11 +98,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         },
         undefined,
-        { maxOutputTokens }
+        { maxOutputTokens, signal }
       );
 
       const latency = Date.now() - startTime;
-      const tokens = Math.max(100, Math.round(text.length / 4));
+      const tokens = tokensForTrace(usage, Math.max(100, Math.round(text.length / 4)));
 
       if (user?.id) {
         await recordExecutionTrace({
@@ -105,13 +118,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.write(`data: ${JSON.stringify({ done: true, text, modelTarget: model, latencyMs: latency, tokensUsed: tokens, status: 'success', ...(truncated ? { truncated: true } : {}) })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
-      logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, stream: true, ...(truncated ? { truncated: true } : {}) });
+      logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, stream: true, ...(truncated ? { truncated: true } : {}), ...usageFields(usage) });
       return;
     }
 
-    const { text, model, truncated } = await executeAiCompletion(prompt, systemPrompt, user?.id, undefined, undefined, { maxOutputTokens });
+    const { text, model, truncated, usage } = await executeAiCompletion(prompt, systemPrompt, user?.id, undefined, undefined, { maxOutputTokens, signal });
     const latency = Date.now() - startTime;
-    const tokens = Math.max(100, Math.round(text.length / 4));
+    const tokens = tokensForTrace(usage, Math.max(100, Math.round(text.length / 4)));
 
     if (user?.id) {
       await recordExecutionTrace({
@@ -124,7 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, ...(truncated ? { truncated: true } : {}) });
+    logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, ...(truncated ? { truncated: true } : {}), ...usageFields(usage) });
     return res.status(200).json({
       text,
       latencyMs: latency,
@@ -135,9 +148,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(truncated ? { truncated: true } : {}),
     });
   } catch (err: any) {
-    await releaseQuota(quota);
-    console.error('[Tester] Error:', err);
-    logAiRequest({ route: 'ai/test', requestId, outcome: 'error', latencyMs: Date.now() - startTime, code: err?.code, stream: wantsStream });
+    const outcome = failureOutcome(err);
+    if (outcome === 'error') {
+      await releaseQuota(quota);
+      await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Tester.test', err, latencyMs: Date.now() - startTime });
+      console.error('[Tester] Error:', err);
+    }
+    logAiRequest({ route: 'ai/test', requestId, outcome, latencyMs: Date.now() - startTime, code: err?.code, stream: wantsStream });
     return sendAiFailure(res, err, 'Prompt test execution failed', requestId);
   }
 }

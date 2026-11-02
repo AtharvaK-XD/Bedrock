@@ -1,13 +1,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
-import { executeAiCompletion, AI_OUTPUT_BUDGET, QuestionOutput } from '../_lib/ai.js';
-import { INPUT_LIMITS, firstLengthError, getRequestId, logAiRequest } from '../_lib/aiHttp.js';
+import { executeAiCompletion, AI_OUTPUT_BUDGET, tokensForTrace, QuestionOutput } from '../_lib/ai.js';
+import {
+  INPUT_LIMITS,
+  firstLengthError,
+  getRequestId,
+  logAiRequest,
+  clientAbortSignal,
+  isPaidUser,
+  recordAiFailureTrace,
+  usageFields,
+  failureOutcome,
+} from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { getUseCaseProfile, classifyUseCase, normalizeQuestions } from '../_lib/useCaseProfiles.js';
-
-/** The profile prompts ask for 3 to 4 questions; fewer than 2 usable ones means the answer is not worth showing. */
-const MIN_QUESTIONS = 2;
+import { checkQuestionQuality } from '../_lib/validation.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -21,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Cheap per-visitor brake BEFORE token checking and the user lookup, so a flood of junk tokens cannot reach the database
   if (!(await enforceRateLimit(req, res, 'aiGate', ip))) return;
   const user = await authenticateRequest(req);
-  const isPaid = user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'ultimate' || user?.subscriptionTier === 'advanced';
+  const isPaid = isPaidUser(user);
 
   // Enforce distributed Upstash Redis rate limiting (per-user if authenticated, else IP)
   const allowed = await enforceRateLimit(req, res, 'questions', user?.id || ip, isPaid);
@@ -55,19 +63,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `Selected Profile: ${profile.name} (${profile.tag})\nConfirmed: ${classification.isConfirmed}\n\nProject Idea: ${ideaText}`
   );
 
+  // Known once the model has answered, so a failure after that (unusable answer) is stored with its model
+  let answeredBy: string | undefined;
   try {
-    const { text, model } = await executeAiCompletion(safePrompt, systemPrompt, user?.id, undefined, undefined, {
+    const { text, model, usage } = await executeAiCompletion(safePrompt, systemPrompt, user?.id, undefined, undefined, {
       maxOutputTokens: AI_OUTPUT_BUDGET.questions,
+      signal: clientAbortSignal(res),
     });
+    answeredBy = model;
 
     // Clean JSON response (strip markdown wrappers if any)
     const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
     const jsonStr = jsonMatch ? jsonMatch[0] : text.trim();
     // Models name the keys their own way ("question", "type"): repair them so no card renders blank
     const questions: QuestionOutput[] = normalizeQuestions(JSON.parse(jsonStr));
-    if (questions.length < MIN_QUESTIONS) {
-      // Nothing usable (not enough questions with real text): same path as unparsable output
-      throw new Error(`Model returned ${questions.length} usable questions`);
+    // Not enough questions with real text, coding terms in an image/video profile, or chatty filler:
+    // the built-in questions are better than a bad set, so this takes the same path as unparsable output
+    const problems = checkQuestionQuality(questions, profile.id, ideaText);
+    if (problems.length > 0) {
+      console.warn(`[GenerateQuestions] Questions rejected (${problems.length}): ${problems.slice(0, 5).join('; ')}`);
+      throw Object.assign(new Error(`Questions failed the quality check (${problems.length} problems)`), { code: 'QUESTIONS_UNUSABLE' });
     }
 
     if (user?.id) {
@@ -75,18 +90,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         userId: user.id,
         nodeOrigin: 'Wizard.generateQuestions',
         modelTarget: model,
-        tokensUsed: 400,
+        tokensUsed: tokensForTrace(usage, 400),
         latencyMs: Date.now() - startTime,
         status: 'success',
       });
     }
 
-    logAiRequest({ route: 'ai/generate-questions', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model });
+    logAiRequest({ route: 'ai/generate-questions', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model, ...usageFields(usage) });
     return res.status(200).json(questions);
   } catch (err: any) {
-    await releaseQuota(quota);
-    console.error('[GenerateQuestions] Error:', err);
-    logAiRequest({ route: 'ai/generate-questions', requestId, outcome: 'fallback', latencyMs: Date.now() - startTime, code: err?.code });
+    // 'fallback' when the built-in questions are sent instead, 'aborted' when the user already left
+    const aborted = failureOutcome(err) === 'aborted';
+    if (!aborted) {
+      await releaseQuota(quota);
+      await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Wizard.generateQuestions', err, latencyMs: Date.now() - startTime, model: answeredBy });
+      console.error('[GenerateQuestions] Error:', err);
+    }
+    logAiRequest({ route: 'ai/generate-questions', requestId, outcome: aborted ? 'aborted' : 'fallback', latencyMs: Date.now() - startTime, code: err?.code });
     return res.status(200).json(profile.fallbackQuestions);
   }
 }

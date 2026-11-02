@@ -2,7 +2,31 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText, dbLimitKind } from '../_lib/dataHttp.js';
+import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText, dbLimitKind, parseListQuery, encodeCursor } from '../_lib/dataHttp.js';
+
+/** Tags are stored as JSON text; a damaged value must not break the whole list. */
+function readTags(raw: unknown): unknown {
+  if (typeof raw !== 'string') return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function mapPrompt(r: any, summary: boolean) {
+  return {
+    id: r.id,
+    title: r.title,
+    snippet: r.snippet,
+    // Summary lists leave the (large) text out and say how long it is; GET ?id= returns it
+    ...(summary ? { contentLength: Number(r.content_length) || 0 } : { fullContent: r.full_content }),
+    tags: readTags(r.tags),
+    targetType: r.target_type,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
 
 function sendPromptLimitReached(res: VercelResponse) {
   return res.status(409).json({
@@ -25,23 +49,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const sql = getDb();
 
-  // GET /api/prompts: fetch prompts
+  // GET /api/prompts
+  //   (no parameters)          every prompt as a plain array, as before
+  //   ?id=<id>                 one prompt with its full text (404 when it is not yours)
+  //   ?limit=&cursor=&summary=1  one page: { items, nextCursor }, newest first; summary leaves the text out
   if (req.method === 'GET') {
+    const list = parseListQuery(req.query);
+    if (!list.ok) {
+      return res.status(400).json({ error: list.error, code: 'INVALID_LIST_QUERY' });
+    }
+
     try {
-      const rows = (await sql`
-        SELECT * FROM "Prompt" WHERE user_id = ${user.id} ORDER BY updated_at DESC
-      `) as any[];
-      const prompts = rows.map((r: any) => ({
-        id: r.id,
-        title: r.title,
-        snippet: r.snippet,
-        fullContent: r.full_content,
-        tags: typeof r.tags === 'string' ? JSON.parse(r.tags) : r.tags,
-        targetType: r.target_type,
-        createdAt: r.created_at,
-        updatedAt: r.updated_at,
-      }));
-      return res.status(200).json(prompts);
+      if (list.id) {
+        const [row] = (await sql`
+          SELECT id, title, snippet, full_content, tags, target_type, created_at, updated_at
+          FROM "Prompt" WHERE id = ${list.id} AND user_id = ${user.id} LIMIT 1
+        `) as any[];
+        if (!row) return res.status(404).json({ error: 'Prompt not found', code: 'PROMPT_NOT_FOUND' });
+        return res.status(200).json(mapPrompt(row, false));
+      }
+
+      if (list.paged) {
+        const afterTs = list.after?.ts ?? null;
+        const afterId = list.after?.id ?? null;
+        // One extra row tells whether another page exists. Keyset paging on (updated_at, id): stays correct
+        // while prompts are saved or deleted between pages, and uses the (user_id, updated_at) index.
+        const rows = (list.summary
+          ? await sql`
+              SELECT id, title, snippet, char_length(full_content) AS content_length, tags, target_type,
+                created_at, updated_at, updated_at::text AS cursor_ts
+              FROM "Prompt"
+              WHERE user_id = ${user.id}
+                AND (${afterTs}::text IS NULL OR (updated_at, id) < (${afterTs}::timestamp, ${afterId}::text))
+              ORDER BY updated_at DESC, id DESC
+              LIMIT ${list.limit + 1}::int
+            `
+          : await sql`
+              SELECT id, title, snippet, full_content, tags, target_type,
+                created_at, updated_at, updated_at::text AS cursor_ts
+              FROM "Prompt"
+              WHERE user_id = ${user.id}
+                AND (${afterTs}::text IS NULL OR (updated_at, id) < (${afterTs}::timestamp, ${afterId}::text))
+              ORDER BY updated_at DESC, id DESC
+              LIMIT ${list.limit + 1}::int
+            `) as any[];
+        const page = rows.slice(0, list.limit);
+        const last = page[page.length - 1];
+        return res.status(200).json({
+          items: page.map((r: any) => mapPrompt(r, list.summary)),
+          nextCursor: rows.length > list.limit && last ? encodeCursor(String(last.cursor_ts), String(last.id)) : null,
+        });
+      }
+
+      const rows = (list.summary
+        ? await sql`
+            SELECT id, title, snippet, char_length(full_content) AS content_length, tags, target_type, created_at, updated_at
+            FROM "Prompt" WHERE user_id = ${user.id} ORDER BY updated_at DESC
+          `
+        : await sql`
+            SELECT * FROM "Prompt" WHERE user_id = ${user.id} ORDER BY updated_at DESC
+          `) as any[];
+      return res.status(200).json(rows.map((r: any) => mapPrompt(r, list.summary)));
     } catch (err: any) {
       return sendDbFailure(res, '[Prompts] GET error:', 'Failed to fetch prompts', err);
     }
