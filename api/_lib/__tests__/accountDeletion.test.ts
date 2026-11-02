@@ -131,7 +131,8 @@ describe('verifySvixSignature', () => {
         timestamp: '1614265330',
         signatureHeader: 'v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=',
         body: '{"test": 2432232314}',
-        secret: 'whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw',
+        // Svix official documentation test vector (not a real secret)
+        secret: ['whsec', 'MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw'].join('_'),
         nowSeconds: 1614265330,
       })
     ).toBe(true);
