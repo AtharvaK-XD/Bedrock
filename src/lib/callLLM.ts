@@ -621,12 +621,22 @@ export function buildTunedPrompt(
   examplesUsedCount: number;
 } {
   const modelSettings = getActiveModelSettings();
+  let customTemp: number | undefined;
+  try {
+    if (typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function') {
+      const raw = localStorage.getItem('bedrock_model_settings');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.temperature === 'number') customTemp = parsed.temperature;
+      }
+    }
+  } catch {}
 
-  // 1. Resolve Temperature: explicit option > model settings configured temperature > model tuned default
+  // 1. Resolve Temperature: explicit option > custom user configured temperature > model tuned default
   const targetType = options?.targetType || 'coding_agent';
   let rawTemp = options?.temperature !== undefined
     ? options.temperature
-    : (modelSettings.temperature !== undefined ? modelSettings.temperature : modelTuning.temperature);
+    : (customTemp !== undefined ? customTemp : modelTuning.temperature);
   let temperature = rawTemp;
   if (options?.targetType) {
     if (targetType === 'coding_agent' || targetType === 'full_stack' || targetType === 'cli_tool' || targetType === 'coding-agent') {
@@ -1949,7 +1959,7 @@ async function callBackendProxy(
   });
 
   if (response.ok) {
-    const contentType = response.headers.get('content-type') || '';
+    const contentType = response.headers?.get?.('content-type') || '';
     if (isStreaming && contentType.includes('text/event-stream') && response.body) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -1983,7 +1993,7 @@ async function callBackendProxy(
     }
 
     const data = await response.json();
-    return data.text || data.content || '';
+    return data.text || data.content || data.promptText || data.choices?.[0]?.message?.content || '';
   }
 
   throw new ApiError(

@@ -348,7 +348,9 @@ export function resetTokenCounters(): void {
       localStorage.removeItem(k)
     );
     budgetWarningShown = false;
-    window.dispatchEvent(new CustomEvent(BEDROCK_TOKENS_UPDATED_EVENT, { detail: { sessionTokens: 0, weeklyTokens: 0 } }));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(BEDROCK_TOKENS_UPDATED_EVENT, { detail: { sessionTokens: 0, weeklyTokens: 0 } }));
+    }
   } catch (e) {
     console.error('[Settings] Failed to reset token counters:', e);
   }
@@ -365,11 +367,13 @@ export function recordTokenUsage(tokens: number): void {
     if (!localStorage.getItem(STORAGE_KEY_SESSION_STARTED)) localStorage.setItem(STORAGE_KEY_SESSION_STARTED, Date.now().toString());
     if (!localStorage.getItem(STORAGE_KEY_WEEK_STARTED)) localStorage.setItem(STORAGE_KEY_WEEK_STARTED, Date.now().toString());
 
-    window.dispatchEvent(
-      new CustomEvent(BEDROCK_TOKENS_UPDATED_EVENT, {
-        detail: { sessionTokens: currentSession, weeklyTokens: currentWeekly },
-      })
-    );
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent(BEDROCK_TOKENS_UPDATED_EVENT, {
+          detail: { sessionTokens: currentSession, weeklyTokens: currentWeekly },
+        })
+      );
+    }
   } catch (e) {
     console.error('[Settings] Failed to persist token usage:', e);
   }
