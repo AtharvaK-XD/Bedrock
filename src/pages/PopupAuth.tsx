@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useClerk } from '@clerk/react';
-import { useSignIn, useSignUp } from '@clerk/react/legacy';
+import { useSignIn, useSignUp } from '@clerk/react';
 
 export default function PopupAuth() {
   const [searchParams] = useSearchParams();
@@ -62,12 +62,23 @@ export default function PopupAuth() {
         redirectUrlComplete: targetUrl,
       };
 
-      // Only pass oidcPrompt for OpenID Connect providers (Google)
-      if (strategy === 'oauth_google') {
-        redirectParams.oidcPrompt = 'select_account';
+      // Prompt account selection for Google, consent screen for GitHub
+      redirectParams.oidcPrompt = strategy === 'oauth_github' ? 'consent' : 'select_account';
+
+      if (typeof authResource?.authenticateWithRedirect === 'function') {
+        await authResource.authenticateWithRedirect(redirectParams);
+        return;
       }
 
-      await authResource.authenticateWithRedirect(redirectParams);
+      if (typeof (clerk as any)?.redirectToSignIn === 'function') {
+        await (clerk as any).redirectToSignIn({
+          signInFallbackRedirectUrl: callbackUrl,
+          signInForceRedirectUrl: targetUrl,
+        });
+        return;
+      }
+
+      throw new Error(`Authentication client failed to initialize redirect with ${providerName}.`);
     } catch (err: any) {
       console.error('PopupAuth error:', err);
       const isAlreadySignedIn = 

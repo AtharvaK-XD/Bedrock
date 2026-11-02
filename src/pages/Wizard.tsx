@@ -488,23 +488,23 @@ export default function Wizard() {
                         const hasOptions = qOptions.length > 0;
 
                         let qType: 'single_select' | 'multi_select' | 'free_text' = 'free_text';
-                        if (rawType.includes('multi') || rawType.includes('checkbox')) {
-                          qType = 'multi_select';
-                        } else if (rawType.includes('single') || rawType.includes('select') || rawType.includes('choice') || (hasOptions && rawType !== 'free_text')) {
-                          qType = 'single_select';
-                        } else if (rawType.includes('free') || rawType.includes('text')) {
+                        if (hasOptions) {
+                          if (rawType.includes('multi') || rawType.includes('checkbox')) {
+                            qType = 'multi_select';
+                          } else {
+                            qType = 'single_select';
+                          }
+                        } else {
                           qType = 'free_text';
-                        } else if (hasOptions) {
-                          qType = 'single_select';
                         }
 
                         return (
                           <div key={qId} className="space-y-5">
-                            <Label className="text-lg font-medium text-white block flex items-start gap-4">
+                            <Label className="text-lg font-medium text-white flex items-start gap-4">
                               <span className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 font-mono flex items-center justify-center text-xs font-semibold text-gray-300">
                                 0{idx + 1}
                               </span>
-                              <span className="pt-1">{qText}</span>
+                              <span className="pt-1 text-white font-medium">{qText}</span>
                             </Label>
                             
                             <div className="pl-12">
@@ -514,7 +514,7 @@ export default function Wizard() {
                                   maxLength={1000}
                                   onChange={(e) => setAnswers(prev => ({ ...prev, [qId]: e.target.value }))}
                                   placeholder="Your answer..."
-                                  className="bg-sf-111111 border-white/10 text-white placeholder:text-gray-500 hover:border-white/20 focus-visible:bg-white/5 focus-visible:border-copper-500/50"
+                                  className="bg-[#111111] border-white/10 text-white placeholder:text-gray-500 hover:border-white/20 focus-visible:bg-white/5 focus-visible:border-copper-500/50"
                                   required
                                 />
                               )}
@@ -555,7 +555,7 @@ export default function Wizard() {
                                           "px-5 py-3 text-sm rounded-xl border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-500 font-medium",
                                           isSelected 
                                             ? "bg-copper-500 border-copper-500 text-white shadow-md shadow-copper-500/20" 
-                                            : "bg-sf-111111 border-white/10 text-gray-300 hover:border-white/20 hover:bg-white/5 hover:text-white"
+                                            : "bg-[#111111] border-white/10 text-gray-300 hover:border-white/20 hover:bg-white/5 hover:text-white"
                                       )}
                                       >
                                         {opt}

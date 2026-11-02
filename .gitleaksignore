@@ -1,0 +1,3 @@
+# Gitleaks ignore file
+# False positive in historical commit bae60de for placeholder in .env.example
+bae60de279ede33494080299a18869bc02c2e8c9:.env.example:stripe-access-token:21

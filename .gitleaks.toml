@@ -9,6 +9,9 @@ useDefault = true
 
 [allowlist]
 description = "Placeholder values in templates and documentation (not real secrets)"
+commits = [
+  "bae60de279ede33494080299a18869bc02c2e8c9",
+]
 regexTarget = "line"
 regexes = [
   '''CLERK_SECRET_KEY=sk_test_placeholder\b''',
