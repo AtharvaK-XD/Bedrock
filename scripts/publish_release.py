@@ -119,3 +119,4 @@ for repo in repos:
                 print(f'Upload failed for {file_name}: {err.code} {err_body}')
 
 print('Release publishing complete!')
+

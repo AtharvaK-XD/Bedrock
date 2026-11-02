@@ -587,6 +587,44 @@ describe('PUT /api/user/profile', () => {
     await profile(mockReq('GET'), mockRes());
     expect(h.authenticateRequest).not.toHaveBeenCalled();
   });
+  it('deletes user data and returns erased counts via DELETE', async () => {
+    h.state.responder = () => [
+      {
+        deleted_user: true,
+        prompts: 5,
+        workflows: 2,
+        traces: 10,
+        quota_events: 4,
+        idempotency_keys: 1,
+        logs_unlinked: 3,
+      },
+    ];
+    const res = mockRes();
+    await profile(mockReq('DELETE'), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toMatchObject({
+      success: true,
+      erased: {
+        prompts: 5,
+        workflows: 2,
+        traces: 10,
+        quotaEvents: 4,
+        idempotencyKeys: 1,
+        logsUnlinked: 3,
+      },
+    });
+    expect(h.state.calls[0].text).toContain('delete_user_data');
+  });
+
+  it('answers 409 when delete_user_data raises OTHER_RECORDS', async () => {
+    h.state.responder = () => {
+      throw Object.assign(new Error('OTHER_RECORDS: 2 record(s) depend on this account'), { code: '23001' });
+    };
+    const res = mockRes();
+    await profile(mockReq('POST', {}, { action: 'delete-account' }), res);
+    expect(res.statusCode).toBe(409);
+    expect((res.body as any).code).toBe('OTHER_RECORDS_EXIST');
+  });
 });
 
 describe('GET /api/health', () => {

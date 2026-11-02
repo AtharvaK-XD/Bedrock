@@ -22,6 +22,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const sql = getDb();
 
+  // Account erasure / delete account (OPEN-0044 b / OPEN-0049 O3)
+  if (req.method === 'DELETE' || req.query?.action === 'delete-account') {
+    try {
+      const rows = (await sql`
+        SELECT deleted_user, prompts, workflows, traces, quota_events, idempotency_keys, logs_unlinked
+        FROM delete_user_data(${user.id})
+      `) as Array<{
+        deleted_user: boolean;
+        prompts: number;
+        workflows: number;
+        traces: number;
+        quota_events: number;
+        idempotency_keys: number;
+        logs_unlinked: number;
+      }>;
+
+      const result = rows[0];
+      if (!result || !result.deleted_user) {
+        return res.status(404).json({
+          error: 'User not found or already deleted',
+          code: 'USER_NOT_FOUND',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Account and associated data deleted successfully.',
+        erased: {
+          prompts: result.prompts,
+          workflows: result.workflows,
+          traces: result.traces,
+          quotaEvents: result.quota_events,
+          idempotencyKeys: result.idempotency_keys,
+          logsUnlinked: result.logs_unlinked,
+        },
+      });
+    } catch (err: any) {
+      if (String(err?.message || '').includes('OTHER_RECORDS')) {
+        return res.status(409).json({
+          error: 'Account cannot be automatically deleted due to linked records. Please contact support.',
+          code: 'OTHER_RECORDS_EXIST',
+          message: err.message,
+        });
+      }
+      return sendDbFailure(res, '[Profile] DELETE error:', 'Failed to delete account data', err);
+    }
+  }
+
   // GET: Fetch profile
   if (req.method === 'GET') {
     try {
