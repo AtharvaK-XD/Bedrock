@@ -3,12 +3,19 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, UserRow } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
 import { handleDesktopTicket } from '../_lib/desktopTicket.js';
+import { handleDeleteAccount, handleClerkWebhook } from '../_lib/accountDeletion.js';
 import { DATA_LIMITS, PG_UNIQUE_VIOLATION, sendDbFailure, firstFieldError, isUnsafeLink } from '../_lib/dataHttp.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enforce distributed Upstash Redis rate limiting
   const allowed = await enforceRateLimit(req, res, 'general');
   if (!allowed) return;
+
+  // Clerk's "user.deleted" webhook: called by Clerk, not by a signed-in user, so it comes before the sign-in
+  // check. Its own Svix signature check is the gate. (Routed here to stay inside the 12-function Hobby cap.)
+  if (req.query?.action === 'clerk-webhook') {
+    return handleClerkWebhook(req, res);
+  }
 
   const user = await authenticateRequest(req);
   if (!user) {
@@ -18,6 +25,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Desktop sign-in ticket (routed here, not a new file, to stay inside the 12-function Hobby cap)
   if (req.query?.action === 'desktop-ticket') {
     return handleDesktopTicket(req, res, user);
+  }
+
+  // "Delete my account": erases the caller's own data, then their sign-in account at Clerk
+  if (req.query?.action === 'delete-account') {
+    return handleDeleteAccount(req, res, user);
   }
 
   const sql = getDb();
