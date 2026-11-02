@@ -37,6 +37,7 @@ import { MODEL_GROUPS } from '../lib/modelCatalog';
 import { checkProviderKey, type KeyCheckResult } from '../lib/keyCheck';
 import { showToast, osNotificationsSupported, requestOsNotificationPermission } from '../lib/notify';
 import { applyAnalyticsConsent } from '../lib/analyticsConsent';
+import { isBackupKey } from '../lib/backupPolicy';
 import { ChoiceButton, SettingCard, SettingRow, Switch, TabHeading } from '../components/settings/controls';
 import {
   STORAGE_KEY_API_KEYS,
@@ -92,16 +93,8 @@ const DEFAULT_API_KEYS: ApiKeysState = {
   ollamaHost: 'http://localhost:11434',
 };
 
-// Workspace backup: keys that identify the signed-in user or hold credentials are never written
-// to the backup file and never restored from one (same rule on web and desktop)
-const BACKUP_IMPORT_BLOCKED_KEYS = new Set([
-  STORAGE_KEY_API_KEYS,
-  'bedrock_token',
-  'bedrock_auth_token',
-  'bedrock_auth_session',
-  'bedrock_auth_event',
-  'bedrock_active_user_id',
-]);
+// Workspace backup: keys that identify the signed-in user, hold credentials or record consent are never
+// written to the backup file and never restored from one (same rule on web and desktop): see isBackupKey
 const BACKUP_IMPORT_MAX_VALUE_CHARS = 2_000_000;
 
 function getStoredApiKeys(): ApiKeysState {
@@ -391,7 +384,7 @@ export default function Settings() {
       const data: Record<string, string | null> = {};
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('bedrock_') && !BACKUP_IMPORT_BLOCKED_KEYS.has(key)) {
+        if (key && isBackupKey(key)) {
           data[key] = localStorage.getItem(key);
         }
       }
@@ -419,7 +412,7 @@ export default function Settings() {
           // Restore Bedrock settings only. Login tokens and API keys are never taken from a file:
           // a crafted backup could otherwise sign the user into another account or swap in
           // someone else's API key (which would send the user's prompts to that account).
-          if (!k.startsWith('bedrock_') || BACKUP_IMPORT_BLOCKED_KEYS.has(k)) continue;
+          if (!isBackupKey(k)) continue;
           const value = typeof v === 'string' ? v : JSON.stringify(v);
           if (value.length > BACKUP_IMPORT_MAX_VALUE_CHARS) continue;
           localStorage.setItem(k, value);

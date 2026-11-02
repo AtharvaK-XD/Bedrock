@@ -1534,8 +1534,9 @@ async function callGeminiDirect(
 
   for (const model of uniqueModels) {
     try {
-      const endpoint = isStreaming ? 'streamGenerateContent?alt=sse&key=' : 'generateContent?key=';
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}${apiKey}`;
+      // The key goes in a header, never in the URL: URLs end up in browser history, proxies and crash-report breadcrumbs
+      const endpoint = isStreaming ? 'streamGenerateContent?alt=sse' : 'generateContent';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}`;
       const body: any = {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
@@ -1551,7 +1552,7 @@ async function callGeminiDirect(
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey || '' },
         body: JSON.stringify(body),
       });
 

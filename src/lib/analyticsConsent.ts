@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/react';
 import posthog from 'posthog-js';
 import { BEDROCK_SETTINGS_UPDATED_EVENT, getActivePrivacySettings } from './appSettings';
 import { tracePropagationTargets } from './sentryTargets';
+import { scrubDeep } from './scrubUrl';
 
 /**
  * Crash reports (Sentry) and usage analytics (PostHog) only run while
@@ -22,8 +23,13 @@ function startSentry(): void {
         maskAllText: true,
         maskAllInputs: true,
         blockAllMedia: false,
+        // Recorded network entries carry request URLs: hide secret-looking parameters (scrubUrl.ts)
+        beforeAddRecordingEvent: (recordingEvent) => scrubDeep(recordingEvent),
       }),
     ],
+    // Request URLs in breadcrumbs, errors and performance spans: hide keys, tokens and sign-in codes
+    beforeBreadcrumb: (breadcrumb) => scrubDeep(breadcrumb),
+    beforeSendTransaction: (transaction) => scrubDeep(transaction),
     // Performance Monitoring (sampled: less user data leaves the browser)
     tracesSampleRate: 0.2,
     tracePropagationTargets: tracePropagationTargets(typeof window !== 'undefined' ? window.location.origin : undefined),
@@ -50,7 +56,7 @@ function startSentry(): void {
           return null;
         }
       }
-      return event;
+      return scrubDeep(event);
     },
   });
 }

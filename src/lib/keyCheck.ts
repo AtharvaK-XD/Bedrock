@@ -20,8 +20,9 @@ function buildPlan(providerId: string, key: string): CheckPlan | null {
   switch (providerId) {
     case 'gemini':
       return {
-        url: `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${encodeURIComponent(key)}`,
-        init: { method: 'GET' },
+        // Key in a header, never in the URL (URLs reach browser history and crash-report breadcrumbs)
+        url: 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1',
+        init: { method: 'GET', headers: { 'x-goog-api-key': key } },
       };
     case 'groq':
       return { url: 'https://api.groq.com/openai/v1/models', init: { method: 'GET', headers: { Authorization: `Bearer ${key}` } } };
