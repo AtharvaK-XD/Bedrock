@@ -36,11 +36,10 @@ describe('app settings: defaults', () => {
     vi.resetModules();
   });
 
-  it('keeps cloud sync on and diagnostics on by default, and the starfield and sounds off', async () => {
+  it('keeps cloud sync on and diagnostics on by default, and the sounds off', async () => {
     const s = await import('../appSettings');
     expect(s.getActivePrivacySettings().localVaultOnly).toBe(false);
     expect(s.getActivePrivacySettings().telemetry).toBe(true);
-    expect(s.getActiveAppearanceSettings().particleEffects).toBe(false);
     expect(s.getActiveAppearanceSettings().soundFeedback).toBe(false);
     expect(s.isLocalVaultOnly()).toBe(false);
   });

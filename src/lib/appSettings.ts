@@ -4,7 +4,7 @@
  * Centralized, reactive state for all user configuration:
  * - Model & Inference parameters (Temperature, Max Output Tokens, Top-P, Stream Speed, System Directives, Auto-Fallback, Strict JSON)
  * - Tokens & Budget guardrails (Session Limit, Hard Stop, Warning Threshold, Currency)
- * - Appearance & UI (Theme, Accent, Font Scale, Font Family, Glass Intensity, Starfield, Click sounds, Reduced Motion)
+ * - Appearance & UI (Theme, Accent, Font Scale, Font Family, Glass Intensity, Click sounds, Reduced Motion)
  * - Notification alerts
  * - Privacy controls (Diagnostics, History saving, Secret scrubbing, Local-only vault)
  */
@@ -66,7 +66,6 @@ export interface AppearanceSettings {
   fontFamily: 'sans' | 'editorial' | 'mono';
   codeTheme: 'tokyo-night' | 'dracula' | 'monokai' | 'github-dark' | 'one-dark';
   glassIntensity: 'none' | 'subtle' | 'luxury';
-  particleEffects: boolean;
   soundFeedback: boolean;
   reducedMotion: boolean;
 }
@@ -136,7 +135,6 @@ export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
   fontFamily: 'sans',
   codeTheme: 'tokyo-night',
   glassIntensity: 'luxury',
-  particleEffects: false,
   soundFeedback: false,
   reducedMotion: false,
 };
@@ -222,7 +220,6 @@ export function applyAppearanceToDom(settings?: AppearanceSettings): void {
     root.setAttribute('data-accent', current.accentColor);
     root.setAttribute('data-font-scale', current.fontScale);
     root.setAttribute('data-glass', current.glassIntensity);
-    root.setAttribute('data-particles', current.particleEffects ? 'on' : 'off');
 
     root.style.fontSize = current.fontScale === 'compact' ? '14px' : current.fontScale === 'roomy' ? '17px' : '16px';
 

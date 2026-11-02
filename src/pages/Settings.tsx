@@ -1276,9 +1276,6 @@ export default function Settings() {
                     </SettingCard>
 
                     <div className="space-y-3">
-                      <SettingRow title="Starfield background" description="Slow-moving stars behind the app. Off by default.">
-                        <Switch checked={appearance.particleEffects} onChange={(v) => updateAppearance({ particleEffects: v })} label="Starfield background" />
-                      </SettingRow>
                       <SettingRow title="Interface sounds" description="A soft click when you press buttons and links.">
                         <Switch
                           checked={appearance.soundFeedback}
