@@ -4,7 +4,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useUserProfile } from '../../lib/useUserProfile';
 import { useAuth, hasApiKeysConfigured } from '../../lib/useAuth';
 import { useUser } from '@clerk/react';
-import { isMacOS, isDesktopApp } from '../../lib/platform';
+import { isMacOS, isDesktopApp, modKeyLabel } from '../../lib/platform';
+import { CURRENT_APP_VERSION } from '../../lib/updater';
+import { motion } from 'framer-motion';
 import { AppleLogo } from '../ui/ModelLogos';
 import { 
   LayoutDashboard,
@@ -20,12 +22,12 @@ import {
 } from 'lucide-react';
 
 const desktopNavItems = [
-  { label: 'Dashboard', path: '/app', icon: LayoutDashboard, shortcut: '⌘1' },
-  { label: 'Generator', path: '/app/generator', icon: Wand2, shortcut: '⌘2' },
-  { label: 'Branching', path: '/app/branching', icon: GitBranch, shortcut: '⌘3' },
-  { label: 'Prompt Tester', path: '/app/tester', icon: FlaskConical, shortcut: '⌘4' },
-  { label: 'Library', path: '/app/library', icon: Bookmark, shortcut: '⌘5' },
-  { label: 'History', path: '/app/history', icon: HistoryIcon, shortcut: '⌘6' },
+  { label: 'Dashboard', path: '/app', icon: LayoutDashboard, shortcut: '1' },
+  { label: 'Generator', path: '/app/generator', icon: Wand2, shortcut: '2' },
+  { label: 'Branching', path: '/app/branching', icon: GitBranch, shortcut: '3' },
+  { label: 'Prompt Tester', path: '/app/tester', icon: FlaskConical, shortcut: '4' },
+  { label: 'Library', path: '/app/library', icon: Bookmark, shortcut: '5' },
+  { label: 'History', path: '/app/history', icon: HistoryIcon, shortcut: '6' },
 ];
 
 interface SidebarProps {
@@ -43,38 +45,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
 
   const [hasKeys, setHasKeys] = useState(false);
 
-  // Keyboard navigation shortcuts: ⌘1 to ⌘6
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
-
-      if (e.metaKey || e.ctrlKey) {
-        const keyMap: Record<string, string> = {
-          '1': '/app',
-          '2': '/app/generator',
-          '3': '/app/branching',
-          '4': '/app/tester',
-          '5': '/app/library',
-          '6': '/app/history',
-        };
-        if (keyMap[e.key]) {
-          e.preventDefault();
-          navigate(keyMap[e.key]);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
+  // The keyboard shortcuts (Cmd/Ctrl + 1 to 6) are handled once, in AppLayout.
 
   useEffect(() => {
     const checkKeys = () => {
@@ -109,7 +80,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
           </div>
         </Link>
         <span className="px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-[10px] font-mono text-copper-300">
-          v1.3.3
+          v{CURRENT_APP_VERSION}
         </span>
       </div>
 
@@ -130,18 +101,23 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
                   key={item.label}
                   to={item.path}
                   className={cn(
-                    "group flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border",
-                    isActive
-                      ? "bg-white/[0.12] text-white border-white/15 shadow-[0_2px_10px_rgba(0,0,0,0.4)] font-semibold"
-                      : "text-gray-400 border-transparent hover:text-white hover:bg-white/[0.05]"
+                    "group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-200 border border-transparent",
+                    isActive ? "text-white font-semibold" : "text-gray-400 hover:text-white hover:bg-white/[0.05]"
                   )}
                 >
-                  <div className="flex items-center gap-3">
+                  {isActive && (
+                    <motion.span
+                      layoutId="sidebar-active-pill"
+                      className="absolute inset-0 rounded-xl border border-white/15 bg-white/[0.12] shadow-[0_2px_10px_rgba(0,0,0,0.4)]"
+                      transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                    />
+                  )}
+                  <div className="relative flex items-center gap-3">
                     <Icon className={cn("w-4 h-4 transition-colors", isActive ? "text-copper-400" : "text-gray-400 group-hover:text-white")} />
                     <span>{item.label}</span>
                   </div>
-                  <span className="text-[10px] font-mono text-gray-600 group-hover:text-gray-400 transition-colors">
-                    {item.shortcut}
+                  <span className="relative text-[10px] font-mono text-gray-600 group-hover:text-gray-400 transition-colors">
+                    {modKeyLabel()}{item.shortcut}
                   </span>
                 </Link>
               );

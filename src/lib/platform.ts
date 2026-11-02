@@ -43,3 +43,8 @@ export function isWindows(): boolean {
   if (typeof navigator === 'undefined') return false;
   return /Win32|Win64|Windows/i.test(navigator.userAgent || '');
 }
+
+/** How to write the shortcut modifier on this computer: "⌘" on a Mac, "Ctrl+" elsewhere. */
+export function modKeyLabel(): string {
+  return isMacOS() ? '⌘' : 'Ctrl+';
+}

@@ -10,6 +10,8 @@ import { OPEN_API_KEY_MODAL_EVENT, type OpenApiKeyModalDetail } from '../../lib/
 import { syncRemoteUserProfile } from '../../lib/useUserProfile';
 import { syncHistoryFromDb } from '../../lib/generatorHistory';
 import { SyncNotice } from './SyncNotice';
+import { StarBackground } from './StarBackground';
+import { BEDROCK_APPEARANCE_UPDATED_EVENT, getActiveAppearanceSettings } from '../../lib/appSettings';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const isPopup = 
@@ -43,6 +45,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isDesktop = isDesktopApp();
   const navigate = useNavigate();
+
+  // Settings > Appearance > Starfield background
+  const [showStars, setShowStars] = useState(() => getActiveAppearanceSettings().particleEffects);
+  useEffect(() => {
+    const update = () => setShowStars(getActiveAppearanceSettings().particleEffects);
+    window.addEventListener(BEDROCK_APPEARANCE_UPDATED_EVENT, update);
+    window.addEventListener('storage', update);
+    return () => {
+      window.removeEventListener(BEDROCK_APPEARANCE_UPDATED_EVENT, update);
+      window.removeEventListener('storage', update);
+    };
+  }, []);
 
   // Background two-way synchronization for User Profile, Plan, and Prompts History
   useEffect(() => {
@@ -156,6 +170,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Background gradients */}
       <div className="fixed inset-0 z-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-black/80 to-black pointer-events-none"></div>
       <div className="fixed inset-0 z-0 opacity-[0.05] pointer-events-none bg-[url('/noise.svg')] mix-blend-overlay"></div>
+      {showStars && <StarBackground />}
 
       {isDesktop ? (
         /* Desktop Application Layout: Sleek Left Sidebar + Full Height Workstation View */
@@ -165,7 +180,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             setManuallyOpened(true);
             setShowKeyGateway(true);
           }} />
-          <main className="flex-1 relative h-full overflow-y-auto min-w-0 bg-black custom-scrollbar">
+          <main className={`flex-1 relative h-full overflow-y-auto min-w-0 custom-scrollbar ${showStars ? 'bg-transparent' : 'bg-black'}`}>
             {children}
           </main>
         </div>

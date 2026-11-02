@@ -10,6 +10,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { cn } from '../lib/utils';
 import { useAuth } from '../lib/useAuth';
+import { WINDOWS_DOWNLOAD_URL, MAC_DOWNLOAD_URL, SOURCE_REPO_URL, APP_VERSION } from '../lib/downloads';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -40,14 +41,25 @@ export default function Landing() {
   }, [isLoaded, isLoggedIn, navigate]);
   
   useEffect(() => {
+    // People who asked for less motion (in the app or in their operating system) get the final state straight away.
+    // The pinned horizontal gallery still scrolls, because it is how the content is reached.
+    const reduceMotion =
+      document.documentElement.classList.contains('reduce-motion') ||
+      (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const reveal = (target: gsap.TweenTarget, from: gsap.TweenVars, to: gsap.TweenVars) => {
+      if (!reduceMotion) return gsap.fromTo(target, from, to);
+      const { duration: _d, delay: _de, stagger: _s, ease: _e, scrollTrigger: _st, ...finalState } = to;
+      return gsap.set(target, finalState);
+    };
+
     const ctx = gsap.context(() => {
       // Hero Animation
-      gsap.fromTo('.hero-fade-up', 
+      reveal('.hero-fade-up', 
         { y: 40, opacity: 0 },
         { y: 0, opacity: 1, duration: 1.2, stagger: 0.15, ease: 'power4.out', delay: 0.2 }
       );
 
-      gsap.to('.hero-title-parallax', {
+      if (!reduceMotion) gsap.to('.hero-title-parallax', {
         y: -150,
         ease: 'none',
         scrollTrigger: {
@@ -63,7 +75,7 @@ export default function Landing() {
         const words = container.querySelectorAll('.reveal-word');
         if (words.length === 0) return;
 
-        gsap.fromTo(words, 
+        reveal(words, 
           { opacity: 0, y: 20, filter: 'blur(8px)' },
           {
             opacity: 1,
@@ -101,7 +113,7 @@ export default function Landing() {
           const words = container.querySelectorAll('.reveal-word');
           if (words.length === 0) return;
           
-          gsap.fromTo(words, 
+          reveal(words, 
             { opacity: 0, x: 20, filter: 'blur(8px)' },
             {
               opacity: 1,
@@ -123,7 +135,7 @@ export default function Landing() {
 
       // Standard reveals
       gsap.utils.toArray('.reveal-section').forEach((section: any) => {
-        gsap.fromTo(section,
+        reveal(section,
           { opacity: 0, y: 50 },
           { 
             opacity: 1, 
@@ -139,7 +151,7 @@ export default function Landing() {
       });
 
       // Staggered feature cards
-      gsap.fromTo('.feature-card',
+      reveal('.feature-card',
         { opacity: 0, y: 30 },
         {
           opacity: 1,
@@ -155,7 +167,7 @@ export default function Landing() {
       );
 
       // IDE Code Line typing effect on scroll
-      gsap.fromTo('.code-line',
+      reveal('.code-line',
         { opacity: 0, x: -20 },
         {
           opacity: 1,
@@ -200,13 +212,13 @@ export default function Landing() {
               </h1>
               
               <p className="hero-fade-up text-lg md:text-xl text-gray-400 leading-relaxed max-w-xl font-light mb-12">
-                The unified workstation for frontier prompt engineering. Synthesize autonomous agent directives, orchestrate visual DAG workflows, and benchmark across 10 AI providers.
+                Turn a rough idea into a prompt your AI tool can build from. Answer a few questions, get a clear, complete prompt, then test it on different models.
               </p>
 
               <div className="hero-fade-up flex flex-col items-start gap-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                   <a 
-                    href="https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/Bedrock-Setup.exe" 
+                    href={WINDOWS_DOWNLOAD_URL} 
                     download
                     className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-black rounded-full font-semibold text-lg hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
                   >
@@ -214,7 +226,7 @@ export default function Landing() {
                     Download for Windows
                   </a>
                   <div className="flex flex-col text-sm text-gray-500 font-medium">
-                    <span>Version 1.2.5</span>
+                    <span>Version {APP_VERSION}</span>
                     <span>Native Desktop Experience</span>
                   </div>
                 </div>
@@ -222,7 +234,7 @@ export default function Landing() {
                 <div className="flex items-center gap-2.5 pl-1">
                   <span className="text-xs text-gray-500 font-light">Available for macOS:</span>
                   <a
-                    href="https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.2.5-mac/Bedrock-Mac.dmg"
+                    href={MAC_DOWNLOAD_URL}
                     download
                     data-cursor="hover"
                     className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-200"
@@ -373,7 +385,7 @@ export default function Landing() {
             <RevealText text="Ready to build?" />
           </h2>
           <a 
-            href="https://github.com/AtharvaK-XD/Bedrock/releases/latest/download/Bedrock-Setup.exe" 
+            href={WINDOWS_DOWNLOAD_URL} 
             download
             data-cursor="hover"
             className="inline-flex items-center justify-center gap-3 px-12 py-6 bg-white text-black rounded-full font-bold text-xl hover:bg-gray-100 hover:scale-[1.02] transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.15)] cursor-pointer"
@@ -384,7 +396,7 @@ export default function Landing() {
           <div className="flex items-center gap-2 mt-5 text-xs text-gray-500 font-light">
             <span>Available for macOS:</span>
             <a
-              href="https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.2.5-mac/Bedrock-Mac.dmg"
+              href={MAC_DOWNLOAD_URL}
               download
               data-cursor="hover"
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-200"
@@ -400,7 +412,7 @@ export default function Landing() {
           <p>© 2026 Bedrock. All rights reserved.</p>
           <div className="flex gap-6 mt-4 sm:mt-0">
             <a 
-              href="https://github.com/AtharvaK-XD/Bedrock" 
+              href={SOURCE_REPO_URL} 
               target="_blank" 
               rel="noopener noreferrer" 
               data-cursor="hover" 

@@ -41,7 +41,7 @@ import { checkForUpdates } from './lib/updater';
 import { useAuth } from './lib/useAuth';
 import { isDesktopApp } from './lib/platform';
 import { UpdateBanner } from './components/layout/UpdateBanner';
-import { applyAppearanceToDom, BEDROCK_APPEARANCE_UPDATED_EVENT } from './lib/appSettings';
+import { applyAppearanceToDom, BEDROCK_APPEARANCE_UPDATED_EVENT, playUiAudio } from './lib/appSettings';
 import { ExternalLink } from 'lucide-react';
 import { loadPendingDesktopAuth } from './lib/desktopAuthHandoff';
 
@@ -303,6 +303,18 @@ function App() {
       window.removeEventListener(BEDROCK_APPEARANCE_UPDATED_EVENT, handleAppearanceChange);
       window.removeEventListener('storage', handleAppearanceChange);
     };
+  }, []);
+
+  // Settings > Appearance > Interface sounds: a soft click on buttons, links and switches
+  useEffect(() => {
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (target?.closest?.('button:not(:disabled), a[href], [role="button"], [role="switch"], select')) {
+        playUiAudio('click');
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown, { passive: true });
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, []);
 
   useEffect(() => {

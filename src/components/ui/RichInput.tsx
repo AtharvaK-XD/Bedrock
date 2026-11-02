@@ -9,6 +9,7 @@ import { isDesktopApp } from '../../lib/platform';
 import { isModelKeyConfigured } from '../../lib/apiKeysHelper';
 import { QuotaLimitModal } from './QuotaLimitModal';
 import { UpgradeModal } from './UpgradeModal';
+import { showToast } from '../../lib/notify';
 import { ApiKeyPromptModal } from './ApiKeyPromptModal';
 import { Button as StatefulButton } from './stateful-button';
 
@@ -250,7 +251,7 @@ export function RichInput({
       const selectedFiles = Array.from(e.target.files);
       const validFiles = selectedFiles.filter(file => {
         if (file.size > MAX_FILE_SIZE) {
-          alert(`File ${file.name} is too large. Max size is 5MB.`);
+          showToast(`${file.name} is too large. The limit is 5 MB.`, 'warning');
           return false;
         }
         return true;
