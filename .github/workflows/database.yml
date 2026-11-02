@@ -49,4 +49,4 @@ jobs:
           for f in db/*.mjs db/lib/*.mjs; do node --check "$f"; done
 
       - name: Run the in-memory database tests
-        run: npx vitest run tests/db --testTimeout 120000
+        run: npx vitest run tests/db/ --testTimeout 120000

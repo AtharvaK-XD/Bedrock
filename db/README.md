@@ -17,7 +17,7 @@ node db/anonymize-dev.mjs --yes --host <host>              # dev only: fake data
 node db/check-schema.mjs                                   # read-only: live schema vs migrations, roles, counts only
 node db/explain.mjs                                        # read-only: query plans for the SQL the API runs
 node db/flood-test.mjs --yes --host <host>                 # dev only: 1,000,000-row log flood, timed purge
-npx vitest run tests/db                                    # in-memory Postgres (PGlite): no secrets, no Neon; also run by CI
+npx vitest run tests/db/                                   # in-memory Postgres (PGlite): no secrets, no Neon; also run by CI
 npx vitest run tests/db.migrations.test.ts                 # real Neon dev branch; skipped unless DATABASE_URL_DEV is set
 ```
 The migration tool (`db/lib/migrator.mjs`): every normal statement waits at most 5 s for a lock and retries (it never
