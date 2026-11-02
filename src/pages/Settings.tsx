@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/useAuth';
 import { useUserProfile } from '../lib/useUserProfile';
 import { processAvatarImage } from '../lib/imageUtils';
 import {
@@ -28,6 +29,7 @@ import {
   FileCode,
   HardDrive,
   Info,
+  AlertTriangle,
 } from 'lucide-react';
 import { AgentIcon, PerplexityLogo } from '../components/ui/ModelLogos';
 import { subscribeToUpdates, checkForUpdates, applyUpdate, CURRENT_APP_VERSION } from '../lib/updater';
@@ -174,6 +176,70 @@ export default function Settings() {
   const [twitter, setTwitter] = useState(profile.twitter || '');
   const [website, setWebsite] = useState(profile.website || '');
   const [profileState, setProfileState] = useState<{ status: 'idle' | 'saving' | 'saved' | 'error'; message?: string }>({ status: 'idle' });
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [deleteState, setDeleteState] = useState<{
+    status: 'idle' | 'deleting' | 'error' | 'success';
+    message?: string;
+  }>({ status: 'idle' });
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmInput !== 'DELETE') return;
+    setDeleteState({ status: 'deleting' });
+
+    try {
+      let token = '';
+      const clerk = (window as any).Clerk;
+      if (clerk?.session) {
+        token = (await clerk.session.getToken()) || '';
+      }
+
+      const res = await fetch('/api/user/profile?action=delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ confirm: 'DELETE' }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setDeleteState({
+          status: 'error',
+          message: data.message || data.error || 'Failed to delete account. Please try again.',
+        });
+        return;
+      }
+
+      setDeleteState({
+        status: 'success',
+        message: data.message || 'Your account and all associated data have been permanently deleted.',
+      });
+
+      setTimeout(async () => {
+        try {
+          if (clerk) {
+            await clerk.signOut();
+          }
+        } catch {}
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+        } catch {}
+        logout();
+        navigate('/');
+      }, 2000);
+    } catch (err: any) {
+      setDeleteState({
+        status: 'error',
+        message: err.message || 'Network error occurred during account deletion.',
+      });
+    }
+  };
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -736,6 +802,34 @@ export default function Settings() {
                         </div>
                       </SettingCard>
                     )}
+
+                    <div className="h-px bg-white/10" />
+
+                    {/* Danger Zone: Account Deletion */}
+                    <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.03] p-6">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="flex items-center gap-2 text-sm font-bold text-rose-400">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span>Danger Zone</span>
+                          </h3>
+                          <p className="mt-1 text-xs text-gray-400">
+                            Permanently delete your account, saved prompts, workflows, and usage history. This action cannot be undone.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeleteConfirmInput('');
+                            setDeleteState({ status: 'idle' });
+                            setShowDeleteModal(true);
+                          }}
+                          className="cursor-pointer shrink-0 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-rose-400 transition-colors hover:bg-rose-500/20 active:scale-[0.98]"
+                        >
+                          Delete account
+                        </button>
+                      </div>
+                    </div>
                   </motion.div>
                 )}
 
@@ -1467,6 +1561,89 @@ export default function Settings() {
           </main>
         </div>
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md rounded-2xl border border-rose-500/30 bg-sf-0a0b0e p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center gap-3 text-rose-400">
+                <div className="rounded-xl bg-rose-500/10 p-2.5">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Delete Account</h3>
+                  <p className="text-xs text-rose-400">This action is permanent and irreversible.</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs leading-relaxed text-gray-300 space-y-2">
+                <p>The following data will be permanently wiped:</p>
+                <ul className="list-disc pl-4 space-y-1 text-gray-400">
+                  <li>Your account profile and settings</li>
+                  <li>All saved prompts and templates</li>
+                  <li>All branching trees and workflows</li>
+                  <li>All usage telemetry, quota records, and history</li>
+                </ul>
+              </div>
+
+              {deleteState.status === 'success' ? (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
+                  <p className="text-xs font-semibold text-emerald-300">{deleteState.message}</p>
+                  <p className="mt-1 text-[11px] text-gray-400">Redirecting to home...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label htmlFor="confirm-delete" className="text-xs text-gray-400">
+                      To confirm, type <span className="font-mono font-bold text-rose-400">DELETE</span> below:
+                    </label>
+                    <input
+                      id="confirm-delete"
+                      type="text"
+                      value={deleteConfirmInput}
+                      onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                      placeholder="DELETE"
+                      disabled={deleteState.status === 'deleting'}
+                      className="w-full rounded-xl border border-white/10 bg-black/50 px-3.5 py-2.5 font-mono text-sm text-white placeholder-gray-600 outline-none focus:border-rose-500/50"
+                    />
+                  </div>
+
+                  {deleteState.status === 'error' && (
+                    <p className="text-xs text-rose-400" role="alert">
+                      {deleteState.message}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteModal(false)}
+                      disabled={deleteState.status === 'deleting'}
+                      className="cursor-pointer rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/20 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteAccount}
+                      disabled={deleteConfirmInput !== 'DELETE' || deleteState.status === 'deleting'}
+                      className="cursor-pointer rounded-xl bg-rose-600 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-lg shadow-rose-600/30 transition-all hover:bg-rose-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {deleteState.status === 'deleting' ? 'Deleting...' : 'Permanently Delete'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </PageTransition>
   );
 }

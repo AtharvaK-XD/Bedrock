@@ -209,8 +209,21 @@ describe('Prompt Building & Parameter Merging (buildTunedPrompt)', () => {
 });
 
 describe('callLLM and callLLMWithMeta Dispatching', () => {
+  const mockStorage: Record<string, string> = {};
+
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockStorage['bedrock_user_profile'] = JSON.stringify({ plan: 'ultimate' });
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: {
+        getItem: vi.fn((key: string) => mockStorage[key] ?? null),
+        setItem: vi.fn((key: string, val: string) => { mockStorage[key] = String(val); }),
+        removeItem: vi.fn((key: string) => { delete mockStorage[key]; }),
+        clear: vi.fn(() => { Object.keys(mockStorage).forEach(k => delete mockStorage[k]); }),
+      },
+      writable: true,
+      configurable: true,
+    });
   });
 
   it('merges per-model tuning into callLLMWithMeta telemetry', async () => {
@@ -293,8 +306,9 @@ describe('callLLM and callLLMWithMeta Dispatching', () => {
         };
       }
       // Attempt 2 (Retry) receives the repair message
-      expect(body.messages[1].content).toContain('CRITICAL ARCHITECTURAL REPAIR REQUIRED');
-      expect(body.messages[1].content).toContain('FORBIDDEN TERMS DETECTED: [react, react 19, npm, npm install]');
+      const repairContent = body.messages?.[1]?.content || body.prompt || '';
+      expect(repairContent).toContain('CRITICAL ARCHITECTURAL REPAIR REQUIRED');
+      expect(repairContent).toContain('FORBIDDEN TERMS DETECTED: [react, react 19, npm, npm install]');
       return {
         ok: true,
         json: async () => ({

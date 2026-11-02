@@ -976,6 +976,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let accumulated = '';
+        let finalPromptText = '';
         let buffer = '';
 
         while (true) {
@@ -996,17 +997,27 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
                 accumulated += json.token;
                 onToken(json.token);
               }
+              if (json.done && typeof json.promptText === 'string' && json.promptText.trim()) {
+                finalPromptText = json.promptText;
+                if (json.truncated) {
+                  console.warn('[Bedrock Validation] Server indicated streamed response was truncated');
+                }
+                if (json.validation) {
+                  console.warn('[Bedrock Validation] Server validation summary:', json.validation);
+                }
+              }
             } catch {
               // ignore parse errors on interim chunks
             }
           }
         }
-        if (accumulated) {
-          const sVal = validateSynthesisOutput(accumulated, idea.targetType, idea.ideaText);
+        const resultText = finalPromptText || accumulated;
+        if (resultText) {
+          const sVal = validateSynthesisOutput(resultText, idea.targetType, idea.ideaText);
           if (!sVal.isValid) {
             console.warn(`[Bedrock Validation] Server streaming output validation issues:`, sVal.issues.map((i: ValidationIssue) => i.message));
           }
-          return sanitizePromptOutput(accumulated);
+          return sanitizePromptOutput(resultText);
         }
       }
 
