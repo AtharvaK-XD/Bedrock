@@ -663,7 +663,8 @@ describe('AI endpoints', () => {
       ]) {
         enforceRateLimit.mockClear();
         await call();
-        expect(enforceRateLimit.mock.calls[0][4], `${tier}`).toBe(paid);
+        const userCall = enforceRateLimit.mock.calls.find(c => c[2] !== 'aiGate');
+        expect(userCall?.[4], `${tier}`).toBe(paid);
       }
     });
 
@@ -671,11 +672,13 @@ describe('AI endpoints', () => {
       executeAiCompletion.mockResolvedValue({ text: 'ok', model: 'm' });
       authenticateRequest.mockResolvedValue({ ...signedInUser, subscriptionTier: 'pro', isGuest: true });
       await refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), mockRes());
-      expect(enforceRateLimit.mock.calls[0][4]).toBe(false);
+      const userCall1 = enforceRateLimit.mock.calls.find(c => c[2] !== 'aiGate');
+      expect(userCall1?.[4]).toBe(false);
       enforceRateLimit.mockClear();
       authenticateRequest.mockResolvedValue(null);
       await refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), mockRes());
-      expect(enforceRateLimit.mock.calls[0][4]).toBe(false);
+      const userCall2 = enforceRateLimit.mock.calls.find(c => c[2] !== 'aiGate');
+      expect(userCall2?.[4]).toBe(false);
     });
   });
 
