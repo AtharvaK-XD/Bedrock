@@ -14,28 +14,28 @@ if not token:
     sys.exit(1)
 
 repos = ['AtharvaK-XD/Bedrock', 'Bedrockxai/Bedrock']
-tag_name = 'v1.4.2'
-release_title = 'Bedrock v1.4.2 - Production Security, Database Migrations, & UI Fixes'
-body = """# Bedrock v1.4.2 - Production Security, Database Migrations, & UI Fixes
+tag_name = 'v1.4.3'
+release_title = 'Bedrock v1.4.3 - Production Account Erasure, Streaming Recovery & Database Hardening'
+body = """# Bedrock v1.4.3 - Production Account Erasure, Streaming Recovery & Database Hardening
 
 The unified workstation for frontier prompt engineering. Synthesize autonomous agent directives, orchestrate visual DAG workflows, and benchmark across 10 AI providers.
 
-### What's New in v1.4.2:
-- **Security & Secret Scanning**: Full historical scanning protection with Gitleaks pinned rule compliance and hardened secret filters.
-- **Generator Clarifying Questions**: Fixed label visibility, contrast hierarchy, and bulletproof input type detection.
-- **GitHub OAuth Consent**: Explicit consent and account selection flow for web and desktop popup authentication.
-- **Database & Telemetry Migrations**: Prepared database schema and trace tracking telemetry for scalable usage.
+### What's New in v1.4.3:
+- **Production Account Erasure (Danger Zone)**: End-to-end GDPR account deletion flow in Settings with confirmation modal, database cascade erasure, local storage purge, and Clerk session termination.
+- **Streaming Recovery & Truncation Handling**: Resilient streaming reader capturing completed prompt text envelopes, detecting token truncation, and validating AI model responses.
+- **Database Migrations & Paging Validation**: Verified 35/35 database migrations on Neon compute branch and normalized CRLF test parser for migration runbooks.
+- **Isomorphic Runtime Fortification**: Safe browser dispatchers and guarded storage access preventing edge runtime and node test environment crashes.
 
 ### Desktop Downloads:
-- **Windows Installer**: [Bedrock Setup 1.4.2.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.2/Bedrock.Setup.1.4.2.exe)
-- **Windows Portable / Direct**: [Bedrock-Setup.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.2/Bedrock-Setup.exe)
-- **macOS Desktop Build**: Dedicated release available at [v1.4.2-mac](https://github.com/AtharvaK-XD/Bedrock/releases/tag/v1.4.2-mac) (`Bedrock-Mac.dmg` / `Bedrock-Mac.zip`)
+- **Windows Installer**: [Bedrock Setup 1.4.3.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.3/Bedrock.Setup.1.4.3.exe)
+- **Windows Portable / Direct**: [Bedrock-Setup.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.3/Bedrock-Setup.exe)
+- **macOS Desktop Build**: Dedicated release available at [v1.4.3-mac](https://github.com/AtharvaK-XD/Bedrock/releases/tag/v1.4.3-mac) (`Bedrock-Mac.dmg` / `Bedrock-Mac.zip`)
 """
 
 assets = [
-    ('release/Bedrock Setup 1.4.2.exe', 'Bedrock Setup 1.4.2.exe', 'application/vnd.microsoft.portable-executable'),
+    ('release/Bedrock Setup 1.4.3.exe', 'Bedrock Setup 1.4.3.exe', 'application/vnd.microsoft.portable-executable'),
     ('release/Bedrock-Setup.exe', 'Bedrock-Setup.exe', 'application/vnd.microsoft.portable-executable'),
-    ('release/Bedrock Setup 1.4.2.exe.blockmap', 'Bedrock Setup 1.4.2.exe.blockmap', 'application/octet-stream'),
+    ('release/Bedrock Setup 1.4.3.exe.blockmap', 'Bedrock Setup 1.4.3.exe.blockmap', 'application/octet-stream'),
     ('release/latest.yml', 'latest.yml', 'text/yaml'),
 ]
 
