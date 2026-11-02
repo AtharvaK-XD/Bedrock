@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { Activity, Zap, ShieldCheck, Cpu, ArrowUpRight, Sparkles, Lock, Crown } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { EncryptedText } from '../components/ui/encrypted-text';
-import { NetworkTopology2D } from '../components/dashboard/NetworkTopology2D';
+import { ModelUsagePanel } from '../components/dashboard/ModelUsagePanel';
+import { CountUp } from '../components/ui/CountUp';
 import { AgentIcon } from '../components/ui/ModelLogos';
 import { cn } from '../lib/utils';
 import { getUserTelemetry, clearUserTraces, TELEMETRY_UPDATE_EVENT, type UserTelemetrySummary } from '../lib/telemetry';
@@ -11,6 +12,7 @@ import { useUserProfile } from '../lib/useUserProfile';
 import { usePromptQuota } from '../lib/usePromptQuota';
 import { normalizeTier } from '../lib/subscriptionTiers';
 import { formatCurrency } from '../lib/appSettings';
+import { isDesktopApp, modKeyLabel } from '../lib/platform';
 
 
 const QUICK_ACTIONS = [
@@ -18,7 +20,7 @@ const QUICK_ACTIONS = [
     title: 'Prompt Generator', 
     subtitle: 'High-fidelity multi-turn prompt designer', 
     path: '/app/generator', 
-    shortcut: '⌘G',
+    shortcut: '2',
     tag: 'GEN',
     borderHover: 'group-hover:border-copper-500/40'
   },
@@ -26,7 +28,7 @@ const QUICK_ACTIONS = [
     title: 'Branching Pipeline', 
     subtitle: 'Multi-model tree visualizer & forks', 
     path: '/app/branching', 
-    shortcut: '⌘B',
+    shortcut: '3',
     tag: 'FORK',
     borderHover: 'group-hover:border-emerald-500/40'
   },
@@ -34,7 +36,7 @@ const QUICK_ACTIONS = [
     title: 'Prompt Tester', 
     subtitle: 'Side-by-side LLM arena & benchmark', 
     path: '/app/tester', 
-    shortcut: '⌘T',
+    shortcut: '4',
     tag: 'ARENA',
     borderHover: 'group-hover:border-copper-500/40'
   },
@@ -42,7 +44,7 @@ const QUICK_ACTIONS = [
     title: 'Prompt Library', 
     subtitle: 'Curated index of battle-tested prompts', 
     path: '/app/library', 
-    shortcut: '⌘L',
+    shortcut: '5',
     tag: 'INDEX',
     borderHover: 'group-hover:border-purple-500/40'
   },
@@ -50,7 +52,7 @@ const QUICK_ACTIONS = [
     title: 'Prompt History', 
     subtitle: 'Archived prompts, blueprints & generations', 
     path: '/app/history', 
-    shortcut: '⌘H',
+    shortcut: '6',
     tag: 'HISTORY',
     borderHover: 'group-hover:border-blue-500/40'
   },
@@ -152,7 +154,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <EncryptedText
-                text="BEDROCK WORKSTATION ACTIVE · REAL-TIME TELEMETRY CLUSTER"
+                text={`WELCOME BACK, ${(profile?.name || 'there').split(' ')[0].toUpperCase()}`}
                 encryptedClassName="text-copper-500/70 font-mono text-xs tracking-wider"
                 revealedClassName="text-emerald-400 font-mono text-xs font-semibold tracking-wider"
                 revealDelayMs={30}
@@ -161,10 +163,7 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-2 text-[11px] font-mono text-white/40">
               <span className="px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/10 text-copper-300">
-                LAKEBASE POSTGRES
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                100% NOMINAL
+                {hasRuns ? `${telemetry.reliability}% of runs succeeded` : 'No runs yet'}
               </span>
             </div>
           </div>
@@ -193,7 +192,7 @@ export default function Dashboard() {
                         ? "bg-copper-500/15 text-copper-300 border-copper-500/30" 
                         : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
                     )}>
-                      {isFree ? '10 Prompts / Day Quota' : 'Unlimited Generations'}
+                      {isFree ? `${sessionLimit} prompts per session` : 'Unlimited generations'}
                     </span>
                   </div>
                   <p className="text-xs text-zinc-400 mt-1 font-sans">
@@ -232,7 +231,7 @@ export default function Dashboard() {
             {isFree && (
               <div className="mt-4 pt-3 border-t border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] font-mono text-zinc-400">
                 <div className="flex items-center gap-2.5 flex-1">
-                  <span className="shrink-0 text-zinc-400">Daily Quota Meter:</span>
+                  <span className="shrink-0 text-zinc-400">This session:</span>
                   <div className="h-1.5 flex-1 bg-black/60 rounded-full overflow-hidden border border-white/10">
                     <div 
                       className={cn(
@@ -245,7 +244,7 @@ export default function Dashboard() {
                   <span className="shrink-0 text-white font-medium">{sessionPercent}%</span>
                 </div>
                 <div className="flex items-center gap-2 text-zinc-500 text-[10px]">
-                  <span>🔒 Pro & Ultimate models require an active subscription</span>
+                  <Lock className="w-3 h-3 shrink-0" aria-hidden="true" /><span>Pro and Ultimate models need an active subscription</span>
                 </div>
               </div>
             )}
@@ -257,21 +256,21 @@ export default function Dashboard() {
             <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
               <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Total Inferences</span>
+                <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Total runs</span>
                 <div className="w-8 h-8 rounded-xl bg-copper-500/10 border border-copper-500/25 flex items-center justify-center text-copper-400 shadow-[0_0_12px_rgba(200,168,107,0.2)]">
                   <Activity className="w-4 h-4" />
                 </div>
               </div>
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">
-                  {telemetry.totalInferences.toLocaleString()}
+                  <CountUp value={telemetry.totalInferences} />
                 </span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                  {hasRuns ? `${telemetry.totalTokens.toLocaleString()} tok` : 'Active'}
+                  {hasRuns ? `${telemetry.totalTokens.toLocaleString()} tokens` : 'None yet'}
                 </span>
               </div>
               <p className="text-[11px] text-white/40 mt-1.5 font-mono">
-                {hasRuns ? 'Persisted in Neon DB' : 'Ready to generate prompts'}
+                {hasRuns ? 'Saved to your account' : 'Generate a prompt to get started'}
               </p>
             </div>
 
@@ -279,7 +278,7 @@ export default function Dashboard() {
             <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
               <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Cluster P99 Latency</span>
+                <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Response time (p99)</span>
                 <div className="w-8 h-8 rounded-xl bg-copper-500/10 border border-copper-500/25 flex items-center justify-center text-copper-400 shadow-[0_0_12px_rgba(44,154,139,0.2)]">
                   <Zap className="w-4 h-4" />
                 </div>
@@ -289,11 +288,11 @@ export default function Dashboard() {
                   {telemetry.p99Latency > 0 ? `${telemetry.p99Latency}ms` : '—'}
                 </span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                  {telemetry.avgLatency > 0 ? `Avg ${telemetry.avgLatency}ms` : 'Standby'}
+                  {telemetry.avgLatency > 0 ? `Avg ${telemetry.avgLatency}ms` : 'No data'}
                 </span>
               </div>
               <p className="text-[11px] text-white/40 mt-1.5 font-mono">
-                {hasRuns ? 'Real-time cluster telemetry' : 'Awaiting prompt executions'}
+                {hasRuns ? 'Across your recent runs' : 'Run a prompt to see this'}
               </p>
             </div>
 
@@ -301,21 +300,21 @@ export default function Dashboard() {
             <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
               <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">System Reliability</span>
+                <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Success rate</span>
                 <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
               </div>
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">
-                  {hasRuns ? `${telemetry.reliability}%` : '100%'}
+                  {hasRuns ? `${telemetry.reliability}%` : '—'}
                 </span>
                 <span className="inline-flex items-center text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
-                  Nominal
+                  {!hasRuns ? 'No data' : telemetry.reliability >= 95 ? 'Healthy' : 'Some failures'}
                 </span>
               </div>
               <p className="text-[11px] text-white/40 mt-1.5 font-mono">
-                {hasRuns ? `${telemetry.totalInferences} logged inference cycles` : 'Zero SLA breaches recorded'}
+                {hasRuns ? `${telemetry.totalInferences} runs logged` : 'Run a prompt to see this'}
               </p>
             </div>
 
@@ -323,23 +322,23 @@ export default function Dashboard() {
             <div className="relative rounded-3xl glass-panel-luxury p-5 overflow-hidden shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
               <div className="absolute inset-x-0 top-0 h-[1.5px] glass-specular-line pointer-events-none" />
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Active Model Pool</span>
+                <span className="text-xs font-medium text-white/50 tracking-wide uppercase font-mono">Models used</span>
                 <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.2)]">
                   <Cpu className="w-4 h-4" />
                 </div>
               </div>
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white">
-                  {telemetry.activeModelsCount > 0 ? `${telemetry.activeModelsCount} Models` : 'Ready'}
+                  {telemetry.activeModelsCount > 0 ? `${telemetry.activeModelsCount} ${telemetry.activeModelsCount === 1 ? 'model' : 'models'}` : '—'}
                 </span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full">
-                  Multi-LLM
+                  {telemetry.activeModelsCount > 0 ? 'From your runs' : 'None yet'}
                 </span>
               </div>
               <p className="text-[11px] text-white/40 mt-1.5 font-mono truncate">
                 {telemetry.activeModels.length > 0 
                   ? telemetry.activeModels.join(', ') 
-                  : 'Gemini, Groq, OpenRouter & OSS'}
+                  : 'Models you run will show up here'}
               </p>
             </div>
           </div>
@@ -351,18 +350,18 @@ export default function Dashboard() {
             <div className="lg:col-span-3 flex flex-col gap-3">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-display font-semibold text-white tracking-wide">Live Pipeline Architecture</h2>
-                  <span className="text-xs text-white/40 hidden sm:inline">· Active 2D Model Dispatch Graph</span>
+                  <h2 className="text-sm font-display font-semibold text-white tracking-wide">Model usage</h2>
+                  <span className="text-xs text-white/40 hidden sm:inline">· From your own runs</span>
                 </div>
               </div>
-              <NetworkTopology2D />
+              <ModelUsagePanel traces={telemetry.traces} />
             </div>
 
             {/* Right 1 Col: Quick Executables Glass Card */}
             <div className="lg:col-span-1 flex flex-col gap-3">
               <div className="flex items-center justify-between px-1">
-                <h2 className="text-sm font-display font-semibold text-white tracking-wide">Executables</h2>
-                <span className="text-[11px] font-mono text-white/40 uppercase">Workflows</span>
+                <h2 className="text-sm font-display font-semibold text-white tracking-wide">Jump to</h2>
+                <span className="text-[11px] font-mono text-white/40 uppercase">Tools</span>
               </div>
               
               <div className="flex flex-col gap-3 h-full">
@@ -377,7 +376,7 @@ export default function Dashboard() {
                         {action.tag}
                       </span>
                       <span className="text-[11px] font-mono text-white/30 group-hover:text-white/70 transition-colors flex items-center gap-1">
-                        {action.shortcut}
+                        {isDesktopApp() ? `${modKeyLabel()}${action.shortcut}` : null}
                         <ArrowUpRight className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                       </span>
                     </div>
@@ -393,28 +392,6 @@ export default function Dashboard() {
                   </Link>
                 ))}
 
-                {/* Status card */}
-                <div className="rounded-2xl glass-card p-4 border border-white/10 bg-white/[0.015] mt-auto">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-mono text-white/60">Cluster Health</span>
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Nominal
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5 text-[11px]">
-                    <div className="flex justify-between text-white/45">
-                      <span>Database Engine</span>
-                      <span className="font-mono text-white/75">Neon Postgres</span>
-                    </div>
-                    <div className="flex justify-between text-white/45">
-                      <span>Gateway Mode</span>
-                      <span className="font-mono text-emerald-400 font-medium">Production Live</span>
-                    </div>
-                  </div>
-                </div>
-
               </div>
             </div>
             
@@ -425,9 +402,9 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
               <div>
                 <h2 className="text-sm font-display font-semibold text-white tracking-wide">
-                  Execution Trace Log
+                  Recent runs
                 </h2>
-                <p className="text-xs text-white/40 mt-0.5">Live streaming event telemetry from active LLM inference clusters</p>
+                <p className="text-xs text-white/40 mt-0.5">Every prompt run saved to your account, newest first</p>
               </div>
 
               {/* Log Controls */}
@@ -549,7 +526,7 @@ export default function Dashboard() {
                   </div>
                   <p className="text-base font-display font-semibold text-white tracking-tight">No execution traces yet</p>
                   <p className="text-xs text-white/45 mt-1.5 max-w-md font-mono leading-relaxed">
-                    Generate or test your first prompt in Bedrock. Real-time telemetry, token usage, and latency will stream directly into this dashboard and persist to your account.
+                    Generate or test your first prompt in Bedrock. Your runs, token use and response times will appear here and are saved to your account.
                   </p>
                   <Link 
                     to="/app/generator"

@@ -296,7 +296,7 @@ export default function Result() {
                   content: "⚠️ API Key Error: Your API key is invalid or not configured. Please enter a valid API key in the app to continue refinement." 
                 }]);
               } else if (err?.code === 'AI_BUSY') {
-                setChatHistory(prev => [...prev, { role: 'ai', content: `⏳ ${err.message}` }]);
+                setChatHistory(prev => [...prev, { role: 'ai', content: err.message }]);
               } else {
                 setChatHistory(prev => [...prev, { role: 'ai', content: "Sorry, I encountered an error while updating the document." }]);
               }

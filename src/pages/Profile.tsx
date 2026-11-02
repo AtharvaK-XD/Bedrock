@@ -11,6 +11,8 @@ import { processAvatarImage } from '../lib/imageUtils';
 import { AgentIcon } from '../components/ui/ModelLogos';
 import { getUserTelemetry, TELEMETRY_UPDATE_EVENT, type UserTelemetrySummary } from '../lib/telemetry';
 import { syncHistoryFromDb, HISTORY_UPDATE_EVENT, type HistoryPromptItem } from '../lib/generatorHistory';
+import { usePromptQuota } from '../lib/usePromptQuota';
+import { getPlanLimits } from '../lib/subscriptionTiers';
 
 const BANNER_THEMES = [
   {
@@ -76,6 +78,7 @@ type Tab = 'overview' | 'edit' | 'usage' | 'preferences';
 
 export default function Profile() {
   const { profile, updateProfile, resetProfile } = useUserProfile();
+  const quota = usePromptQuota();
   const { user: clerkUser } = useUser();
   const effectiveName = 
     clerkUser?.fullName || 
@@ -650,19 +653,17 @@ export default function Profile() {
                     : telemetry.totalTokens.toString()}
               </p>
               <p className="text-[10px] text-gray-500 mt-1">
-                {telemetry.totalTokens > 0 
-                  ? `${Math.min(100, Math.round((telemetry.totalTokens / 10000) * 100))}% free tier` 
-                  : '0% free tier'}
+                All time
               </p>
             </div>
 
             <div className="p-4 sm:p-5 hover:bg-white/[0.03] transition-all">
               <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Reliability</div>
               <p className="text-2xl sm:text-3xl font-bold text-emerald-400 tracking-tight">
-                {telemetry.totalInferences > 0 ? `${telemetry.reliability}%` : '100%'}
+                {telemetry.totalInferences > 0 ? `${telemetry.reliability}%` : '—'}
               </p>
               <p className="text-[10px] text-emerald-500 mt-1">
-                {telemetry.totalInferences > 0 ? 'Verified SLA' : 'Nominal standby'}
+                {telemetry.totalInferences > 0 ? 'Runs that succeeded' : 'No runs yet'}
               </p>
             </div>
 
@@ -810,14 +811,9 @@ export default function Profile() {
                     ) : (
                       <div className="py-6 text-center border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">
                         <p className="text-xs font-mono text-gray-400">No model runs recorded yet</p>
-                        <p className="text-[10px] text-gray-500 mt-1 font-mono">Run inferences to populate real metrics</p>
+                        <p className="text-[10px] text-gray-500 mt-1 font-mono">Run a prompt and your usage will show up here</p>
                       </div>
                     )}
-
-                    <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-between text-xs font-mono">
-                      <span className="text-gray-400">Routing Mode:</span>
-                      <span className="font-semibold text-white">Latency-Optimized</span>
-                    </div>
                   </div>
 
                   {/* Monthly Resource Quota Widget */}
@@ -832,43 +828,28 @@ export default function Profile() {
                     </div>
 
                     <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-xs font-mono mb-1.5">
-                          <span className="text-gray-400">Monthly Tokens</span>
-                          <span className="text-white font-semibold">
-                            {telemetry.totalTokens.toLocaleString()} / 10,000 ({Math.min(100, Math.round((telemetry.totalTokens / 10000) * 100))}%)
-                          </span>
+                      {[
+                        { label: 'This session', used: quota.sessionPrompts, limit: quota.sessionLimit, percent: quota.sessionPercent, reset: quota.timeUntilSession },
+                        { label: 'This week', used: quota.weeklyPrompts, limit: quota.weeklyLimit, percent: quota.weeklyPercent, reset: quota.timeUntilWeekly },
+                      ].map((row) => (
+                        <div key={row.label}>
+                          <div className="flex justify-between text-xs font-mono mb-1.5">
+                            <span className="text-gray-400">{row.label}</span>
+                            <span className="text-white font-semibold">
+                              {Number.isFinite(row.limit) ? `${row.used} / ${row.limit} prompts` : `${row.used} prompts, no limit`}
+                            </span>
+                          </div>
+                          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                            <motion.div
+                              className="h-full bg-copper-500 rounded-full"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${row.percent}%` }}
+                              transition={{ duration: 0.8, ease: 'easeOut' }}
+                            />
+                          </div>
+                          {Number.isFinite(row.limit) && row.reset && <p className="text-[10px] text-gray-500 mt-1">Resets in {row.reset}</p>}
                         </div>
-                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-amber-500 rounded-full transition-all duration-500" 
-                            style={{ width: `${Math.min(100, Math.round((telemetry.totalTokens / 10000) * 100))}%` }} 
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs font-mono mb-1.5">
-                          <span className="text-gray-400">Daily Runs Quota</span>
-                          <span className="text-white font-semibold">{telemetry.totalInferences} / 20 used</span>
-                        </div>
-                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-copper-500 rounded-full transition-all duration-500" 
-                            style={{ width: `${Math.min(100, Math.round((telemetry.totalInferences / 20) * 100))}%` }} 
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs font-mono mb-1.5">
-                          <span className="text-gray-400">Branch Max Depth</span>
-                          <span className="text-white font-semibold">3 Levels (Pro: Unlimited)</span>
-                        </div>
-                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-sky-500 rounded-full" style={{ width: '100%' }} />
-                        </div>
-                      </div>
+                      ))}
                     </div>
 
                     <div className="mt-6 pt-5 border-t border-white/5 flex flex-col gap-2 font-mono">
@@ -1219,69 +1200,47 @@ export default function Profile() {
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                       <span className="text-xs font-mono text-copper-400 font-bold tracking-wider uppercase">Active Subscription</span>
-                      <h2 className="text-2xl font-bold text-white mt-1">Bedrock Explorer (Free Plan)</h2>
-                      <p className="text-xs text-gray-400 mt-1 font-mono">Standard sandbox access for prompt engineers & builders.</p>
+                      <h2 className="text-2xl font-bold text-white mt-1">{profile.plan || 'Free Plan'}</h2>
+                      <p className="text-xs text-gray-400 mt-1 font-mono">Your current plan and what it includes.</p>
                     </div>
-                    <span className="px-3.5 py-1.5 rounded-full text-xs font-mono font-bold bg-white/10 text-white border border-white/10">
-                      ₹0 / month
-                    </span>
                   </div>
 
                   <div className="h-px bg-white/10" />
 
                   {/* Quotas Breakdown */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 font-mono">
-                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-                      <span className="text-xs text-gray-400 uppercase tracking-wider">Monthly Free Tokens</span>
-                      <p className="text-xl font-bold text-white">
-                        {telemetry.totalTokens.toLocaleString()}{' '}
-                        <span className="text-xs font-normal text-gray-500">/ 10,000</span>
-                      </p>
-                      <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-amber-400 rounded-full transition-all duration-500" 
-                          style={{ width: `${Math.min(100, Math.round((telemetry.totalTokens / 10000) * 100))}%` }} 
-                        />
+                    {[
+                      { label: 'Prompts this session', used: quota.sessionPrompts, limit: quota.sessionLimit, percent: quota.sessionPercent },
+                      { label: 'Prompts this week', used: quota.weeklyPrompts, limit: quota.weeklyLimit, percent: quota.weeklyPercent },
+                    ].map((card) => (
+                      <div key={card.label} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                        <span className="text-xs text-gray-400 uppercase tracking-wider">{card.label}</span>
+                        <p className="text-xl font-bold text-white">
+                          {card.used}{' '}
+                          <span className="text-xs font-normal text-gray-500">{Number.isFinite(card.limit) ? `/ ${card.limit}` : '(no limit)'}</span>
+                        </p>
+                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-copper-400 rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${card.percent}%` }}
+                            transition={{ duration: 0.8, ease: 'easeOut' }}
+                          />
+                        </div>
                       </div>
-                      <p className="text-[10px] text-gray-500">Resets on the 1st of each month.</p>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-                      <span className="text-xs text-gray-400 uppercase tracking-wider">Daily Pipelines Run</span>
-                      <p className="text-xl font-bold text-white">
-                        {telemetry.totalInferences}{' '}
-                        <span className="text-xs font-normal text-gray-500">/ 20 Max</span>
-                      </p>
-                      <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-copper-400 rounded-full transition-all duration-500" 
-                          style={{ width: `${Math.min(100, Math.round((telemetry.totalInferences / 20) * 100))}%` }} 
-                        />
-                      </div>
-                      <p className="text-[10px] text-gray-500">Pro plan supports 20 threads.</p>
-                    </div>
+                    ))}
                   </div>
 
-                  {/* Feature Comparison */}
+                  {/* What the plan includes */}
                   <div className="space-y-3 pt-2 font-mono">
-                    <h3 className="text-xs uppercase tracking-wider text-gray-400">Included in Free Tier:</h3>
+                    <h3 className="text-xs uppercase tracking-wider text-gray-400">Included in your plan:</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-300">
-                      <div className="flex items-center gap-2">
-                        <span className="text-copper-400 font-bold">—</span>
-                        <span>Visual Prompt Wizard</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-copper-400 font-bold">—</span>
-                        <span>Branching Tree (3 levels)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-copper-400 font-bold">—</span>
-                        <span>Prompt Library Storage</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-copper-400 font-bold">—</span>
-                        <span>Side-by-side Dual Model Comparison</span>
-                      </div>
+                      {getPlanLimits(profile.plan).features.map((feature) => (
+                        <div key={feature} className="flex items-start gap-2">
+                          <span className="text-copper-400 font-bold">&mdash;</span>
+                          <span>{feature}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 

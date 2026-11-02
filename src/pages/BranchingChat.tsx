@@ -31,6 +31,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AI_AGENTS, AgentIcon } from '../components/ui/RichInput';
 import { testPrompt, saveWorkflow, loadWorkflows, deleteWorkflow } from '../lib/api';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
+import { showToast } from '../lib/notify';
 import { runSandboxedCode } from '../lib/sandboxedCode';
 import { isModelKeyConfigured } from '../lib/apiKeysHelper';
 import {
@@ -1570,7 +1571,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
       console.error('[Branching] Failed to save workflow:', e);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
-      if (!silent) alert('Failed to save workflow.');
+      if (!silent) showToast("Couldn't save this workflow. Try again in a moment.", 'error');
     } finally {
       setIsSaving(false);
     }

@@ -7,6 +7,7 @@ import { Button as StatefulButton } from './stateful-button';
 import { usePromptQuota } from '../../lib/usePromptQuota';
 import { QuotaLimitModal } from './QuotaLimitModal';
 import { playUiAudio } from '../../lib/appSettings';
+import { showToast } from '../../lib/notify';
 
 interface RefinementInputProps {
   onSubmit?: (text: string, model: string) => void;
@@ -57,7 +58,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
       const selectedFiles = Array.from(e.target.files);
       const validFiles = selectedFiles.filter(file => {
         if (file.size > MAX_FILE_SIZE) {
-          alert(`File ${file.name} is too large. Max size is 5MB.`);
+          showToast(`${file.name} is too large. The limit is 5 MB.`, 'warning');
           return false;
         }
         return true;

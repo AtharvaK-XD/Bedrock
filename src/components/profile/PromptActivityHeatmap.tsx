@@ -148,7 +148,7 @@ export function PromptActivityHeatmap({ activityTimestamps = [] }: PromptActivit
           </h3>
           <p className="text-xs text-white/40 mt-0.5 font-mono">
             {activityTimestamps.length > 0
-              ? 'Real-time telemetry of prompt generations and LLM evaluations'
+              ? 'Your prompt generations and test runs over time'
               : 'Start synthesizing prompts in Bedrock to build your contribution activity'}
           </p>
         </div>
