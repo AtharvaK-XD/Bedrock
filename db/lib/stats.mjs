@@ -1,5 +1,6 @@
 // Read-only growth and health numbers for the database (used by db/stats.mjs; tested on in-memory Postgres).
-// Counts and sizes only. User ids are shortened (first 6 characters) and never shown with emails or names.
+// Counts and sizes only. User ids are shortened (first 5 + last 4 characters: every Clerk id starts with "user_",
+// so the end is what tells two accounts apart) and never shown with emails or names.
 // Retention rules mirror purge_old_logs() (0004): quota rows 1 day, quota log lines 1 day, other logs 90 days,
 // traces 90 days, expired idempotency keys.
 
@@ -14,7 +15,7 @@ export const WARN = {
 };
 
 const exists = async (sql, name) => (await sql.query(`SELECT to_regclass($1) IS NOT NULL AS ok`, [`public."${name}"`]))[0].ok;
-const short = (id) => (id.length > 6 ? `${id.slice(0, 6)}...` : id);
+const short = (id) => (id.length > 12 ? `${id.slice(0, 5)}...${id.slice(-4)}` : `${id.slice(0, 3)}...`);
 
 export async function collectStats(sql) {
   const out = { databaseBytes: 0, tables: [], last24h: {}, overdue: {}, oldestDays: {}, topUsers: [], warnings: [], missing: [] };
