@@ -300,8 +300,8 @@ export default function Wizard() {
   const isDesktop = isDesktopApp();
 
   return (
-    <PageTransition className={cn(isDesktop ? "h-full" : "")}>
-      <div className={cn("relative w-full", isDesktop ? "min-h-full flex-1" : "min-h-[calc(100vh-80px)]")}>
+    <PageTransition className={cn(isDesktop ? "h-full min-h-full flex flex-col" : "")}>
+      <div className={cn("relative w-full", isDesktop ? "h-full min-h-full flex flex-col flex-1" : "min-h-[calc(100vh-80px)]")}>
         {/* Previous Prompts Sidebar: WEBSITE ONLY (Desktop Workstation uses dedicated History workspace in main Sidebar) */}
         {!isDesktop && (
           <>
@@ -338,14 +338,14 @@ export default function Wizard() {
 
         {/* Main Generator Workspace */}
         <div className={cn(
-          "w-full px-4 sm:px-8 py-6 lg:py-10 transition-all duration-300",
+          "w-full px-4 sm:px-8 transition-all duration-300",
           isDesktop 
-            ? "min-h-full flex flex-col flex-1" 
-            : cn("min-h-[calc(100vh-80px)]", !isSidebarCollapsed ? "md:pl-72 lg:pl-76" : "md:pl-8")
+            ? "h-full min-h-full flex flex-col flex-1 py-6" 
+            : cn("py-6 lg:py-10 min-h-[calc(100vh-80px)]", !isSidebarCollapsed ? "md:pl-72 lg:pl-76" : "md:pl-8")
         )}>
         <div className={cn(
           "w-full flex flex-col gap-12 transition-all duration-500",
-          isDesktop && questions.length === 0 ? "flex-1 justify-center" : ""
+          isDesktop && questions.length === 0 ? "my-auto" : ""
         )}>
         
         {/* Top Section (Input) */}
