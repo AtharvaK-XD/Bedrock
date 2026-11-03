@@ -179,7 +179,7 @@ export default function Result() {
       {/* Header */}
       <div className="flex-none p-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-          {!isSwapped && (
+          {!isDesktop && !isSwapped && (
             <button
               type="button"
               onClick={toggleSidebar}
@@ -314,7 +314,7 @@ export default function Result() {
       {/* Document Header */}
       <div className="flex-none p-4 border-b border-white/5 bg-transparent flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          {isSwapped && (
+          {!isDesktop && isSwapped && (
             <button
               type="button"
               onClick={toggleSidebar}
@@ -392,27 +392,31 @@ export default function Result() {
       "relative flex flex-col text-white font-sans selection:bg-copper-500/30 overflow-hidden",
       isDesktop ? "h-full" : "h-[calc(100vh-80px)]"
     )}>
-      {/* Generator History Sidebar (Allows browsing all previously generated prompts) */}
-      <GeneratorHistorySidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={toggleSidebar}
-        activeId={activeHistoryId}
-        onSelectPrompt={handleSelectPrompt}
-        onNewPrompt={handleNewPrompt}
-      />
+      {/* Previous Prompts Sidebar: WEBSITE ONLY (Desktop Workstation uses dedicated History workspace in main Sidebar) */}
+      {!isDesktop && (
+        <>
+          <GeneratorHistorySidebar
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={toggleSidebar}
+            activeId={activeHistoryId}
+            onSelectPrompt={handleSelectPrompt}
+            onNewPrompt={handleNewPrompt}
+          />
 
-      {/* Mobile backdrop overlay */}
-      {!isSidebarCollapsed && (
-        <div
-          onClick={toggleSidebar}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
-        />
+          {/* Mobile backdrop overlay */}
+          {!isSidebarCollapsed && (
+            <div
+              onClick={toggleSidebar}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
+            />
+          )}
+        </>
       )}
 
       {/* Main Split Pane Workspace */}
       <div className={cn(
         "w-full h-full flex flex-col transition-all duration-300",
-        !isSidebarCollapsed ? (isDesktop ? "pl-72 md:pl-76" : "md:pl-72 lg:pl-76") : ""
+        !isDesktop && !isSidebarCollapsed ? "md:pl-72 lg:pl-76" : ""
       )}>
         {/* Split Pane Workspace */}
         <PanelGroup orientation="horizontal" className="w-full h-full">

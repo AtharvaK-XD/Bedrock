@@ -94,7 +94,7 @@ export function Sidebar({ onOpenKeyModal }: SidebarProps) {
             {desktopNavItems.map((item) => {
               const isActive = item.path === '/app'
                 ? (location.pathname === '/app' || location.pathname === '/app/')
-                : location.pathname.startsWith(item.path);
+                : (location.pathname.startsWith(item.path) || (item.path === '/app/generator' && location.pathname.startsWith('/app/result')));
               const Icon = item.icon;
               return (
                 <Link
