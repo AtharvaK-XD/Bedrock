@@ -106,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const ragFacts = getGroundedFacts(rawIdea, targetType);
   const ragSection = ragFacts.groundedFactsBlock ? `\n\n${ragFacts.groundedFactsBlock}` : '';
-  const systemPrompt = `${buildSynthesisSystemPrompt(targetType)}\n\n### USE CASE DIRECTIVE: ${profile.name.toUpperCase()}\n${profile.synthesisPrompt}${ragSection}\n\nForbidden terms to avoid:\n${profile.forbiddenTerms.map(t => `- "${t}"`).join('\n')}\n\n${FINAL_INTEGRITY_CHECK}`;
+  const systemPrompt = `${buildSynthesisSystemPrompt(targetType)}\n\n### USE CASE DIRECTIVE: ${profile.name.toUpperCase()}\n${profile.synthesisPrompt}${ragSection}\n\nForbidden terms and anti-patterns (never use or recommend them in the document; a code term such as "any" means the TypeScript type, not the ordinary word):\n${profile.forbiddenTerms.map(t => `- "${t}"`).join('\n')}\n\n${FINAL_INTEGRITY_CHECK}`;
 
   const userContent = sanitizeAndDelimitPrompt(`Concept: ${rawIdea}\nTarget Type: ${profile.name} (${profile.id})${clarificationContext}`);
 

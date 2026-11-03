@@ -420,12 +420,15 @@ Your task is to analyze the user's freelance project concept and generate exactl
 STRICT ANTI-HALLUCINATION & RELEVANCE RULES:
 1. Focus strictly on commercial deliverables, milestones, acceptance criteria, and scope boundaries.
 2. Never ask vague or superficial questions.
+3. Match the discipline of the idea (software, design and branding, writing and content, video, marketing, consulting): never offer software options for a design, writing or video job, or the reverse.
+4. Every option must be specific to this project's deliverables.
 
-FOCUS DIMENSIONS:
-1. Core Deliverable Architecture: Fullstack production web application, pixel-perfect Figma implementation, or backend API & data architecture.
-2. Milestone Delivery & Payment Phasing: 2-week sprint (50/50), 4-week phased milestones (30/40/30), or retainer with weekly caps.
-3. Critical Out-of-Scope Firewalls: Third-party API fees, native mobile apps, ongoing copywriting, or legacy database migrations.
-4. Client Review & Turnaround SLA: 48-hour client review turnaround, sign-off triggers, and post-launch bug warranty period.
+FOCUS DIMENSIONS (pick the 3 or 4 that matter most for this idea):
+1. Core Deliverables: the exact work products for this discipline (for software: the app, its platforms and integrations; for design: the assets, formats and number of concepts; for writing or video: the pieces, lengths and formats).
+2. Milestone Delivery & Payment Phasing: for example a 2-week job paid 50/50, a 4-week job paid 30/40/30, or a retainer with a weekly cap.
+3. Fee, Rate & Currency: the agreed total fee or hourly rate and the currency, or "not agreed yet". Ask as free text.
+4. Critical Out-of-Scope Firewalls: the most likely scope-creep items for this project (third-party costs, extra platforms, extra revisions, ongoing content or maintenance).
+5. Revisions, Review & Sign-Off: revision rounds per milestone, the client's review window, and the post-delivery warranty or support period.
 
 ${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: FREELANCER_BRIEF_MASTER_PROMPT,
@@ -435,9 +438,10 @@ ${QUESTION_OUTPUT_FORMAT}`,
         questionText: 'What is the primary deliverable for this freelance contract?',
         questionType: 'single_select',
         options: [
-          'Production-Ready Fullstack Web Application',
-          'Frontend UI / Pixel-Perfect Figma Implementation',
-          'Scalable Backend API & Database Architecture',
+          'Software: a web or mobile application, or a backend / API',
+          'Design: brand identity, UI/UX screens or marketing assets',
+          'Content: articles, copywriting, video or social media',
+          'Consulting: an audit, strategy or training engagement',
         ],
       },
       {
@@ -449,6 +453,11 @@ ${QUESTION_OUTPUT_FORMAT}`,
           '4-Week Phased Milestones (30% deposit / 40% mid-point / 30% handoff)',
           'Hourly Retainer with weekly tracked time and billing caps',
         ],
+      },
+      {
+        id: 'fee_terms',
+        questionText: 'What is the agreed fee or hourly rate, and in which currency? Write "not agreed yet" if it is still open.',
+        questionType: 'free_text',
       },
     ],
     fewShotExamples: [
@@ -481,14 +490,17 @@ ${QUESTION_OUTPUT_FORMAT}`,
 Your task is to analyze the user's hackathon idea and generate exactly 3 to 4 high-leverage clarifying questions to build a winning 2-minute demo day battle plan.
 
 STRICT ANTI-HALLUCINATION & RELEVANCE RULES:
-1. Enforce 24-hour scope reality: focus on the 90-second live demo "wow moment" and P0 happy path.
+1. Enforce event scope reality: focus on the live demo "wow moment" and the one P0 happy path.
 2. Never ask about complex 6-month enterprise features.
+3. Ask about what only the team knows and the plan cannot guess. Never put invented statistics or market sizes into a question or its options.
+4. Every question and option must name this idea's own domain, users or features, not generic hackathon wording.
 
-FOCUS DIMENSIONS:
-1. Target Prize Track & Evaluation Focus: Grand Prize Overall Innovation, Best Autonomous AI Agent Architecture, or Best UI/UX Polish.
-2. The 15-Second "Jaw-Drop" Demo Wow Moment: The single climactic live screen action that will shock judges and win the room.
-3. Rapid Prototyping Stack & Shortcuts: Next.js 16 + Aceternity UI, Clerk/Supabase managed auth, Neon serverless Postgres, and pre-seeded mock datasets.
-4. Stage Disaster Fallbacks: Localhost offline mock mode vs pre-recorded 1080p demo video.
+FOCUS DIMENSIONS (pick the 3 or 4 that matter most for this idea; always include dimension 1):
+1. Proof & Real Numbers: the real evidence the team already has (user interviews, a pilot, test results, a sourced statistic about the problem) or none yet. Ask as free text, for example "What real number or evidence shows this problem matters, and where is it from? Write 'none yet' if you have none."
+2. Event Format & Team: the event length (24, 36 or 48 hours, or a demo day), the pitch slot length, and the team size and skills.
+3. Target Prize Track & Judging Criteria: the track or sponsor prize and the published rubric, if known.
+4. The Demo "Wow" Moment: the single live screen action judges should remember, described for this idea.
+5. Rapid Prototyping Stack: the tools the team already knows (framework, auth, database, AI model API), with options that fit this idea.
 
 ${QUESTION_OUTPUT_FORMAT}`,
     synthesisPrompt: HACKATHON_PITCH_MASTER_PROMPT,
@@ -507,6 +519,23 @@ ${QUESTION_OUTPUT_FORMAT}`,
         id: 'demo_wow_moment',
         questionText: 'What is the 15-second "jaw-dropping" moment in your live demo that judges will remember?',
         questionType: 'free_text',
+      },
+      {
+        id: 'proof_numbers',
+        questionText: 'What real number or evidence shows this problem matters (user interviews, a pilot, a sourced statistic), and where is it from? Write "none yet" if you have none.',
+        questionType: 'free_text',
+      },
+      {
+        id: 'event_format',
+        questionText: 'How long is the event, and how big is your team?',
+        questionType: 'single_select',
+        options: [
+          '24 hours, team of 2-3',
+          '24 hours, team of 4-5',
+          '36-48 hours, team of 2-3',
+          '36-48 hours, team of 4-5',
+          'Demo day weeks away (pitch to investors or judges)',
+        ],
       },
     ],
     fewShotExamples: [
