@@ -21,20 +21,21 @@ export interface ModelTuningConfig {
 
 export const MODEL_TUNING_TABLE: Record<string, ModelTuningConfig> = {
   // Compact & Weaker Models (Low temp 0.2-0.3, High examples 3-4, Strict wording)
-  'llama-3.1-8b-instant': {
-    modelId: 'llama-3.1-8b-instant',
-    name: 'Llama 3.1 8B Instant',
+  // Replaced llama-3.1-8b-instant (retired by Groq, 404 on 2026-11-03)
+  'openai/gpt-oss-20b': {
+    modelId: 'openai/gpt-oss-20b',
+    name: 'GPT-OSS 20B',
     tier: 'compact',
-    temperature: 0.2,
+    temperature: 0.3,
     numExamples: 3,
     provider: 'groq',
-    maxTokens: 2048,
-    aliases: ['llama-3.1-8b', 'meta-llama/llama-3.1-8b-instruct', 'llama-8b'],
+    maxTokens: 4096,
+    aliases: ['gpt-oss-20b', 'groq-gpt-oss-20b'],
     extraWording: `[STRICT COMPLIANCE DIRECTIVE - ZERO TOLERANCE FOR FORMAT DRIFT]
-1. Follow the exact requested schema and format without deviation.
+1. Follow the exact requested structure and format without deviation.
 2. Absolutely no conversational filler or preambles. Output only the requested document.
-3. Write complete code without lazy placeholders (no // TODO or truncated stubs).
-4. Strictly obey all negative constraints.`,
+3. Write every section in full: no placeholders, "TODO", "etc." or cut-short parts.
+4. Strictly obey all negative constraints and the role's rules.`,
   },
   'gemini-flash-lite-latest': {
     modelId: 'gemini-flash-lite-latest',
@@ -46,8 +47,8 @@ export const MODEL_TUNING_TABLE: Record<string, ModelTuningConfig> = {
     maxTokens: 3000,
     aliases: ['gemini-3.5-flash-lite', 'gemini-lite'],
     extraWording: `[STRICT EXECUTION DIRECTIVE - HIGH PRECISION MODE]
-1. Adhere strictly to the requested blueprint anatomy without omitting sections or adding conversational wrappers.
-2. Provide complete TypeScript interfaces, Zod schemas, or architectural blocks without skipping lines.
+1. Adhere strictly to the requested document structure without omitting sections or adding conversational wrappers.
+2. Write every section in full and specific to the user's idea; never skip lines or leave placeholders.
 3. Obey all negative constraints without exception.`,
   },
   'openai/gpt-4o-mini': {
@@ -59,26 +60,27 @@ export const MODEL_TUNING_TABLE: Record<string, ModelTuningConfig> = {
     provider: 'openrouter',
     maxTokens: 3500,
     aliases: ['gpt-4o-mini'],
-    extraWording: `[DENSE TECHNICAL DIRECTIVE - CONCISE & PRECISE]
+    extraWording: `[PRECISE DIRECTIVE]
 1. Start directly with the primary title/heading. Do NOT explain what you are going to do.
-2. Output valid, executable schemas and specifications without lazy commentary.
+2. Cover every requested section in depth, concrete and specific to the user's idea; no lazy commentary or placeholders.
 3. Enforce all negative constraints.`,
   },
 
   // Mid-Tier Models (Moderate temp 0.45-0.55, Balanced examples 2, Focused guidance)
-  'llama-3.3-70b-versatile': {
-    modelId: 'llama-3.3-70b-versatile',
-    name: 'Llama 3.3 70B Versatile',
+  // Replaced llama-3.3-70b-versatile (retired by Groq, 404 on 2026-11-03)
+  'openai/gpt-oss-120b': {
+    modelId: 'openai/gpt-oss-120b',
+    name: 'GPT-OSS 120B',
     tier: 'mid',
     temperature: 0.5,
     numExamples: 2,
     provider: 'groq',
     maxTokens: 4096,
-    aliases: ['llama-3.3-70b', 'llama-70b', 'groq-llama-70b'],
-    extraWording: `[ARCHITECTURAL PRECISION DIRECTIVE]
-- Ground all specifications in modern, production-proven standards.
-- Provide complete, syntactically valid type definitions and actionable contracts.
-- Omit conversational preamble; deliver concise, high-density technical instructions.`,
+    aliases: ['gpt-oss-120b', 'groq-gpt-oss-120b'],
+    extraWording: `[PRECISION DIRECTIVE]
+- Ground every recommendation in current, proven practice for the target tool or audience.
+- Make every section complete, concrete and directly usable.
+- Omit conversational preamble; deliver dense, specific instructions.`,
   },
   'gemini-flash-latest': {
     modelId: 'gemini-flash-latest',
@@ -89,9 +91,9 @@ export const MODEL_TUNING_TABLE: Record<string, ModelTuningConfig> = {
     provider: 'gemini',
     maxTokens: 4096,
     aliases: ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-flash'],
-    extraWording: `[PRODUCTION ARCHITECT DIRECTIVE]
-- Deliver deep technical architecture with complete contracts, data schemas, and runnable verification commands.
-- Ensure all diagrams and tables are fully structured. Eliminate generic boilerplate.`,
+    extraWording: `[EXPERT DIRECTIVE]
+- Deliver deep, specific content for every requested section, tailored to the user's idea.
+- Make every table and list fully structured. Eliminate generic boilerplate.`,
   },
   'deepseek-r1-distill-llama-70b': {
     modelId: 'deepseek-r1-distill-llama-70b',
@@ -188,7 +190,7 @@ export function getModelTuning(modelId = 'auto'): ModelTuningConfig {
       temperature: 0.25,
       numExamples: 3,
       extraWording: `[STRICT COMPLIANCE DIRECTIVE - ZERO TOLERANCE FOR FORMAT DRIFT]
-1. Follow the exact requested schema and format without deviation.
+1. Follow the exact requested structure and format without deviation.
 2. Absolutely no conversational filler or preambles.
 3. Strictly obey all negative constraints.`,
     };
@@ -201,7 +203,7 @@ export function getModelTuning(modelId = 'auto'): ModelTuningConfig {
       temperature: 0.7,
       numExamples: 1,
       extraWording: `[FRONTIER SYNTHESIS DIRECTIVE]
-- Exercise principal architect craftsmanship: provide bespoke, elegant systems design with complete contracts.
+- Exercise expert craftsmanship: bespoke, specific and complete for the target tool or audience.
 - Skip basic tutorials and conversational filler.`,
     };
   }
@@ -211,8 +213,8 @@ export function getModelTuning(modelId = 'auto'): ModelTuningConfig {
     tier: 'mid',
     temperature: 0.5,
     numExamples: 2,
-    extraWording: `[ARCHITECTURAL PRECISION DIRECTIVE]
-- Ground all specifications in modern, production-proven standards.
-- Provide complete, syntactically valid type definitions and actionable contracts.`,
+    extraWording: `[PRECISION DIRECTIVE]
+- Ground every recommendation in current, proven practice for the target tool or audience.
+- Make every section complete, concrete and directly usable.`,
   };
 }

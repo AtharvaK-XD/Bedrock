@@ -360,6 +360,41 @@ describe('AI endpoints', () => {
         await testEndpoint(mockReq({ prompt: 'a', stream: true }), streamed);
         expect(sseEvents(streamed).find((e: any) => e.done)).toMatchObject({ truncated: true });
       });
+      it('adds the rules of the role the client names, and otherwise only the universal rules (never the coding rules by default)', async () => {
+        executeAiCompletion.mockResolvedValue({ text: 'answer', model: 'm' });
+        signIn();
+        const before = executeAiCompletion.mock.calls.length;
+        await testEndpoint(mockReq({ prompt: 'a', systemPrompt: 'You write image prompts.' }), mockRes());
+        await testEndpoint(mockReq({ prompt: 'a', systemPrompt: 'You write image prompts.', targetType: 'image_generation' }), mockRes());
+        const sys = (i: number) => executeAiCompletion.mock.calls[before + i][1] as string;
+        expect(sys(0)).toContain('You write image prompts.');
+        expect(sys(0)).toContain('MANDATORY FRONTIER GUARDRAILS');
+        expect(sys(0)).not.toContain('MANDATORY CODING RUNTIME');
+        expect(sys(1)).toContain('VISUAL & CINEMATIC');
+        expect(sys(1)).not.toContain('MANDATORY CODING RUNTIME');
+      });
+
+      it('refine uses the rules of the document it refines, read from the document when the client sends no role', async () => {
+        executeAiCompletion.mockResolvedValue({ text: '<summary>calmer</summary>\n<updated_prompt>\n# Poster\nA calmer poster.\n</updated_prompt>', model: 'm' });
+        signIn();
+        const imageDoc = [
+          '# Noir Detective Cat - Image Prompt Pack',
+          '## 1. Master Midjourney Prompt (Ready to Copy-Paste)',
+          '## 2. Master FLUX & DALL-E Natural Language Prompt',
+          '## 3. Optical, Cinematography & Lighting Specifications Sheet',
+          '## 4. Color Palette & Film Stock Profile',
+          '## 5. Negative Prompt & Exclusion List (Stable Diffusion / ComfyUI)',
+          '## 6. Composition & Aspect Ratio Variations Matrix',
+        ].join('\nDetails.\n');
+        const before = executeAiCompletion.mock.calls.length;
+        await refine(mockReq({ currentPrompt: imageDoc, instruction: 'make it calmer' }), mockRes());
+        await refine(mockReq({ currentPrompt: 'A short note with no sections at all.', instruction: 'shorter' }), mockRes());
+        const sys = (i: number) => executeAiCompletion.mock.calls[before + i][1] as string;
+        expect(sys(0)).toContain('VISUAL & CINEMATIC');
+        expect(sys(0)).not.toContain('MANDATORY CODING RUNTIME');
+        expect(sys(1)).toContain('MANDATORY FRONTIER GUARDRAILS');
+        expect(sys(1)).not.toContain('MANDATORY CODING RUNTIME');
+      });
     });
 
     describe('output limits and cut-off answers on the other routes', () => {
@@ -480,11 +515,11 @@ describe('AI endpoints', () => {
 
       it('a cut-off refine is stored against the model that was cut off', async () => {
         signIn();
-        executeAiCompletion.mockResolvedValue({ text: '<updated_prompt>half', model: 'Groq LLaMA 3.3 70B (llama-3.3-70b-versatile)', truncated: true });
+        executeAiCompletion.mockResolvedValue({ text: '<updated_prompt>half', model: 'Groq GPT-OSS 120B (openai/gpt-oss-120b)', truncated: true });
         const res = mockRes();
         await refine(mockReq({ currentPrompt: 'p', instruction: 'i' }), res);
         expect(res.statusCode).toBe(422);
-        expect(traces()).toEqual([expect.objectContaining({ modelTarget: 'Groq LLaMA 3.3 70B (llama-3.3-70b-versatile)', status: 'error' })]);
+        expect(traces()).toEqual([expect.objectContaining({ modelTarget: 'Groq GPT-OSS 120B (openai/gpt-oss-120b)', status: 'error' })]);
       });
     });
 

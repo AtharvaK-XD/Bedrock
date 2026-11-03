@@ -21,8 +21,12 @@ import {
   testOutputBudget,
   sumUsage,
   tokensForTrace,
+  isGptOssModel,
+  ProviderHttpError,
+  providerRetryAfterSeconds,
+  rateLimitCooldownMs,
 } from '../ai.js';
-import { recordProviderFailure } from '../loadBalancer.js';
+import { recordProviderFailure, AI_PROVIDERS } from '../loadBalancer.js';
 
 /** Runs chunks through the stream filter and returns the joined output. */
 function filterChunks(chunks: string[]): string {
@@ -293,6 +297,83 @@ describe('executeAiCompletion', () => {
     expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(3);
   });
 
+  describe('time limits per attempt', () => {
+    const abortError = () => Object.assign(new Error('aborted'), { name: 'AbortError' });
+    /** A fetch that answers after `ms` unless its signal is aborted first. */
+    const slowFetch = (ms: number, answer: () => unknown) => (_url: string, init: { signal: AbortSignal }) =>
+      new Promise((resolve, reject) => {
+        const t = setTimeout(() => resolve(answer()), ms);
+        init.signal.addEventListener('abort', () => (clearTimeout(t), reject(abortError())), { once: true });
+      });
+    /** A streaming body that sends one chunk every `everyMs`, failing if the request is aborted meanwhile. */
+    const slowStream = (parts: string[], everyMs: number) => (_url: string, init: { signal: AbortSignal }) => {
+      const enc = new TextEncoder();
+      let i = 0;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        body: {
+          getReader: () => ({
+            read: () =>
+              new Promise((resolve, reject) => {
+                if (init.signal.aborted) return reject(abortError());
+                const onAbort = () => (clearTimeout(t), reject(abortError()));
+                init.signal.addEventListener('abort', onAbort, { once: true });
+                const t = setTimeout(() => {
+                  init.signal.removeEventListener('abort', onAbort);
+                  resolve(
+                    i < parts.length
+                      ? { done: false, value: enc.encode(`data: {"choices":[{"delta":{"content":"${parts[i++]}"}}]}\n\n`) }
+                      : { done: true, value: undefined }
+                  );
+                }, everyMs);
+              }),
+          }),
+        },
+      });
+    };
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('a stream that keeps producing text is not cut off at 20 s (it used to be, mid-document)', async () => {
+      vi.useFakeTimers();
+      const parts = ['one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven '];
+      fetchMock.mockImplementation(slowStream(parts, 5_000)); // 8 reads x 5 s = 40 s in total
+      const pending = executeAiCompletion('p', 's', undefined, () => {});
+      await vi.advanceTimersByTimeAsync(45_000);
+      const result = await pending;
+      expect(result.text).toContain('seven');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('a stream with no first token within 20 s is dropped and the next model is tried', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockImplementationOnce(slowStream(['late '], 60_000)).mockResolvedValueOnce(chatStream(['fine'], 'stop'));
+      const pending = executeAiCompletion('p', 's', undefined, () => {});
+      await vi.advanceTimersByTimeAsync(25_000);
+      const result = await pending;
+      expect(result.text).toBe('fine');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('without streaming, a full document may take 30 s; a short answer is still cut at 20 s', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockImplementation(slowFetch(25_000, () => chatBody('whole document')));
+      const longDoc = executeAiCompletion('p', 's', undefined, undefined, undefined, { maxOutputTokens: AI_OUTPUT_BUDGET.synthesize });
+      await vi.advanceTimersByTimeAsync(26_000);
+      expect((await longDoc).text).toBe('whole document');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      fetchMock.mockReset();
+      fetchMock.mockImplementationOnce(slowFetch(25_000, () => chatBody('too slow'))).mockResolvedValueOnce(chatBody('next model'));
+      const short = executeAiCompletion('p', 's', undefined, undefined, undefined, { maxOutputTokens: AI_OUTPUT_BUDGET.questions });
+      await vi.advanceTimersByTimeAsync(26_000);
+      expect((await short).text).toBe('next model');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it('does not retry or fail over once tokens were streamed to the client', async () => {
     const chunk = new TextEncoder().encode('data: {"choices":[{"delta":{"content":"hi"}}]}\n\n');
     let reads = 0;
@@ -387,20 +468,47 @@ describe('AI core: keys, output limits and failover rules', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('sends the requested output limit to Groq and OpenRouter, and 3500 when none is given', async () => {
+  it('sends the requested output limit to Groq (plus room for GPT-OSS reasoning) and OpenRouter, and 3500 when none is given', async () => {
     fetchMock.mockResolvedValue(chatBody('ok'));
     await executeAiCompletion('p', 's', undefined, undefined, undefined, { maxOutputTokens: AI_OUTPUT_BUDGET.questions });
     expect(sentUrl()).toContain('api.groq.com');
-    expect(sentBody().max_tokens).toBe(1200);
+    expect(sentBody().max_tokens).toBe(1200 + 1024);
 
     await executeAiCompletion('p', 's');
-    expect(sentBody(1).max_tokens).toBe(3500);
+    expect(sentBody(1).max_tokens).toBe(3500 + 1024);
 
     vi.stubEnv('GROQ_API_KEY', '');
     vi.stubEnv('OPENROUTER_API_KEY', 'openrouter-test-key-not-real');
     await executeAiCompletion('p', 's', undefined, undefined, undefined, { maxOutputTokens: 777 });
     expect(sentUrl(2)).toContain('openrouter.ai');
     expect(sentBody(2).max_tokens).toBe(777);
+  });
+
+  it('calls the Groq model named in AI_PROVIDERS (GPT-OSS), with low reasoning effort and no reasoning text sent back', async () => {
+    fetchMock.mockResolvedValue(chatBody('ok'));
+    await executeAiCompletion('p', 's');
+    expect(sentBody().model).toBe(AI_PROVIDERS.find((p) => p.provider === 'groq')!.model);
+    expect(sentBody().model).toBe('openai/gpt-oss-120b');
+    expect(sentBody().reasoning_effort).toBe('low');
+    expect(sentBody().include_reasoning).toBe(false);
+  });
+
+  it('every server model is dispatched under its own name, and the retired Llama models are gone', () => {
+    expect(AI_PROVIDERS.map((p) => p.model)).not.toEqual(expect.arrayContaining([expect.stringMatching(/llama/i)]));
+    expect(isGptOssModel('openai/gpt-oss-20b')).toBe(true);
+    expect(isGptOssModel('gpt-oss-120b')).toBe(true);
+    expect(isGptOssModel('openai/gpt-4o-mini')).toBe(false);
+  });
+
+  it('a 404 (model no longer offered) writes one ai_model_missing log line and fails over', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubEnv('OPENROUTER_API_KEY', 'openrouter-test-key-not-real');
+    fetchMock.mockResolvedValueOnce(errBody(404, 'model_not_found')).mockResolvedValueOnce(chatBody('fine'));
+    const result = await executeAiCompletion('p', 's');
+    expect(result.text).toBe('fine');
+    const lines = errorLog.mock.calls.map((c) => String(c[0])).filter((l) => l.includes('ai_model_missing'));
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0])).toEqual({ type: 'ai_model_missing', provider: 'groq-gpt-oss-120b', model: 'openai/gpt-oss-120b', status: 404 });
   });
 
   it('gives Gemini an output limit too (room for its hidden thinking tokens added), and sends no thinking setting', async () => {
@@ -459,21 +567,35 @@ describe('AI core: keys, output limits and failover rules', () => {
       fetchMock.mockResolvedValueOnce(errBody(500, 'internal error')).mockResolvedValueOnce(chatBody('fine'));
       await executeAiCompletion('p', 's');
       expect(recordProviderFailure).toHaveBeenCalledTimes(1);
-      expect(recordProviderFailure).toHaveBeenCalledWith('groq-llama-70b', expect.stringContaining('500'), { rateLimited: false });
+      expect(recordProviderFailure).toHaveBeenCalledWith('groq-gpt-oss-120b', expect.stringContaining('500'), expect.objectContaining({ rateLimited: false, siblings: false }));
     });
 
-    it('429 is read from the HTTP status: counted as a rate limit, and the sibling models of that key are skipped', async () => {
+    it('429 is read from the HTTP status: a rate limit for that model only, so the sibling model is tried next', async () => {
       fetchMock.mockResolvedValueOnce(errBody(429, 'slow down')).mockResolvedValueOnce(chatBody('fine'));
       await executeAiCompletion('p', 's');
-      expect(recordProviderFailure).toHaveBeenCalledWith('groq-llama-70b', expect.any(String), { rateLimited: true });
-      // The next attempt goes to another provider, not to the second Groq model that shares the key
-      expect(sentUrl(1)).toContain('openrouter.ai');
+      expect(recordProviderFailure).toHaveBeenCalledWith('groq-gpt-oss-120b', expect.any(String), expect.objectContaining({ rateLimited: true, siblings: false }));
+      // Groq counts limits per model, so the second Groq model still has its own budget
+      expect(sentUrl(1)).toContain('api.groq.com');
+      expect(sentBody(1).model).toBe('openai/gpt-oss-20b');
     });
 
-    it('a refused key (401) also skips the sibling models, without being called a rate limit', async () => {
+    it("a 429 keeps that model away for the provider's own wait time (Retry-After header or Gemini retryDelay), 15 s to 10 min", async () => {
+      const withRetryAfter = (seconds: string) => ({ ...errBody(429, 'slow down'), headers: { get: (n: string) => (n === 'retry-after' ? seconds : null) } });
+      fetchMock.mockResolvedValueOnce(withRetryAfter('120')).mockResolvedValueOnce(chatBody('fine'));
+      await executeAiCompletion('p', 's');
+      expect(recordProviderFailure).toHaveBeenLastCalledWith('groq-gpt-oss-120b', expect.any(String), expect.objectContaining({ cooldownMs: 120_000 }));
+
+      const geminiDaily = JSON.stringify({ error: { code: 429, details: [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '67111s' }] } });
+      expect(providerRetryAfterSeconds({}, geminiDaily)).toBe(67111);
+      expect(rateLimitCooldownMs(new ProviderHttpError('x', 429, 67111))).toBe(600_000);
+      expect(rateLimitCooldownMs(new ProviderHttpError('x', 429, 2))).toBe(15_000);
+      expect(rateLimitCooldownMs(new ProviderHttpError('x', 500, 120))).toBeUndefined();
+    });
+
+    it('a refused key (401) skips the sibling models and cools them too, without being called a rate limit', async () => {
       fetchMock.mockResolvedValueOnce(errBody(401, 'invalid api key')).mockResolvedValueOnce(chatBody('fine'));
       await executeAiCompletion('p', 's');
-      expect(recordProviderFailure).toHaveBeenCalledWith('groq-llama-70b', expect.any(String), { rateLimited: false });
+      expect(recordProviderFailure).toHaveBeenCalledWith('groq-gpt-oss-120b', expect.any(String), expect.objectContaining({ rateLimited: false, siblings: true }));
       expect(sentUrl(1)).toContain('openrouter.ai');
     });
 

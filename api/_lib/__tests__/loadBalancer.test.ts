@@ -69,20 +69,20 @@ describe('selectOptimalProvider', () => {
   it('sends normal traffic only to the strongest tier, alternating between its providers', async () => {
     fakeRedis = makeRedis();
     const order = await pick(10);
-    expect(new Set(order)).toEqual(new Set(['groq-llama-70b', 'gemini-flash']));
+    expect(new Set(order)).toEqual(new Set(['groq-gpt-oss-120b', 'gemini-flash']));
     for (let i = 1; i < order.length; i++) expect(order[i]).not.toBe(order[i - 1]);
   });
 
   it('never selects a provider whose circuit is tripped in Redis', async () => {
-    fakeRedis = trippedInRedis('groq-llama-70b');
+    fakeRedis = trippedInRedis('groq-gpt-oss-120b');
     expect(new Set(await pick(10))).toEqual(new Set(['gemini-flash']));
   });
 
   it('uses the backup tier only while every stronger provider is tripped', async () => {
-    fakeRedis = trippedInRedis('groq-llama-70b', 'gemini-flash');
-    expect(new Set(await pick(10))).toEqual(new Set(['groq-llama-8b', 'openrouter-gpt4o']));
+    fakeRedis = trippedInRedis('groq-gpt-oss-120b', 'gemini-flash');
+    expect(new Set(await pick(10))).toEqual(new Set(['groq-gpt-oss-20b', 'openrouter-gpt4o']));
 
-    fakeRedis = trippedInRedis('groq-llama-70b', 'gemini-flash', 'groq-llama-8b', 'openrouter-gpt4o');
+    fakeRedis = trippedInRedis('groq-gpt-oss-120b', 'gemini-flash', 'groq-gpt-oss-20b', 'openrouter-gpt4o');
     expect(new Set(await pick(4))).toEqual(new Set(['gemini-flash-lite']));
   });
 
@@ -101,7 +101,7 @@ describe('selectOptimalProvider', () => {
 
   it('skips providers tripped in local memory when Redis is not configured', async () => {
     fakeRedis = null;
-    await recordProviderFailure('groq-llama-70b', 'Groq API returned 429: rate limit');
+    await recordProviderFailure('groq-gpt-oss-120b', 'Groq API returned 429: rate limit');
     const picks = new Set<string>();
     for (let i = 0; i < AI_PROVIDERS.length * 2; i++) {
       picks.add((await selectOptimalProvider(AI_PROVIDERS))!.id);
@@ -164,22 +164,29 @@ describe('recordProviderFailure: rate limit decided by the caller', () => {
   });
 
   it('does not treat "429" inside an unrelated message as a rate limit when the caller says it is not', async () => {
-    await recordProviderFailure('groq-llama-70b', 'Groq API returned 400: request id 4291 invalid', { rateLimited: false });
+    await recordProviderFailure('groq-gpt-oss-120b', 'Groq API returned 400: request id 4291 invalid', { rateLimited: false });
     // One ordinary failure does not trip the circuit (needs 2), and the Groq siblings are untouched
-    expect(await isProviderHealthy('groq-llama-70b')).toBe(true);
-    expect(await isProviderHealthy('groq-llama-8b')).toBe(true);
+    expect(await isProviderHealthy('groq-gpt-oss-120b')).toBe(true);
+    expect(await isProviderHealthy('groq-gpt-oss-20b')).toBe(true);
   });
 
-  it('trips at once, and cools the sibling models, when the caller says it is a rate limit', async () => {
-    await recordProviderFailure('groq-llama-70b', 'upstream said slow down', { rateLimited: true });
-    expect(await isProviderHealthy('groq-llama-70b')).toBe(false);
-    expect(await isProviderHealthy('groq-llama-8b')).toBe(false);
+  it('a rate limit trips that model at once, but not its sibling (Groq and Gemini count limits per model)', async () => {
+    await recordProviderFailure('gemini-flash', 'Gemini API returned 429: quota', { rateLimited: true });
+    expect(await isProviderHealthy('gemini-flash')).toBe(false);
+    // e.g. Gemini Flash out of its daily free requests: Flash Lite has its own quota and keeps serving
+    expect(await isProviderHealthy('gemini-flash-lite')).toBe(true);
+  });
+
+  it('a refused key (siblings: true) trips at once and cools every model on that key', async () => {
+    await recordProviderFailure('groq-gpt-oss-120b', 'Groq API returned 401: invalid key', { rateLimited: false, siblings: true });
+    expect(await isProviderHealthy('groq-gpt-oss-120b')).toBe(false);
+    expect(await isProviderHealthy('groq-gpt-oss-20b')).toBe(false);
     expect(await isProviderHealthy('gemini-flash')).toBe(true);
   });
 
   it('still reads the message when no flag is given (older callers)', async () => {
-    await recordProviderFailure('groq-llama-70b', 'Groq API returned 429: rate limit');
-    expect(await isProviderHealthy('groq-llama-70b')).toBe(false);
+    await recordProviderFailure('groq-gpt-oss-120b', 'Groq API returned 429: rate limit');
+    expect(await isProviderHealthy('groq-gpt-oss-120b')).toBe(false);
   });
 });
 
@@ -196,27 +203,34 @@ describe('Redis use (Upstash bills and limits per command)', () => {
 
   it('a successful call costs one Redis command: both keys reset with one DEL, no counter written', async () => {
     fakeRedis = makeRedis();
-    await recordProviderSuccess('groq-llama-70b');
+    await recordProviderSuccess('groq-gpt-oss-120b');
     expect(fakeRedis.del).toHaveBeenCalledTimes(1);
-    expect(fakeRedis.del).toHaveBeenCalledWith('failures:ai:groq-llama-70b', 'circuit:ai:groq-llama-70b');
+    expect(fakeRedis.del).toHaveBeenCalledWith('failures:ai:groq-gpt-oss-120b', 'circuit:ai:groq-gpt-oss-120b');
     expect(fakeRedis.incr).not.toHaveBeenCalled();
     expect(fakeRedis.set).not.toHaveBeenCalled();
   });
 
-  it('a rate limit trips the whole key family in Redis, so other server instances stop using it too', async () => {
+  it('a rate limit trips that model in Redis for the provider\'s own wait time (other server instances see it too)', async () => {
     fakeRedis = makeRedis();
-    await recordProviderFailure('groq-llama-70b', 'Groq API returned 429', { rateLimited: true });
+    await recordProviderFailure('gemini-flash', 'Gemini API returned 429', { rateLimited: true, cooldownMs: 600_000 });
+    expect(fakeRedis.set.mock.calls.map((c: unknown[]) => c[0])).toEqual(['circuit:ai:gemini-flash']);
+    expect(fakeRedis.set).toHaveBeenCalledWith('circuit:ai:gemini-flash', 'tripped', { ex: 600 });
+  });
+
+  it('a refused key trips the whole key family in Redis', async () => {
+    fakeRedis = makeRedis();
+    await recordProviderFailure('groq-gpt-oss-120b', 'Groq API returned 403', { rateLimited: false, siblings: true });
     const tripped = fakeRedis.set.mock.calls.map((c: unknown[]) => c[0]).sort();
-    expect(tripped).toEqual(['circuit:ai:groq-llama-70b', 'circuit:ai:groq-llama-8b']);
-    expect(fakeRedis.set).toHaveBeenCalledWith('circuit:ai:groq-llama-8b', 'tripped', { ex: 15 });
+    expect(tripped).toEqual(['circuit:ai:groq-gpt-oss-120b', 'circuit:ai:groq-gpt-oss-20b']);
+    expect(fakeRedis.set).toHaveBeenCalledWith('circuit:ai:groq-gpt-oss-20b', 'tripped', { ex: 30 });
   });
 
   it('an ordinary failure trips only that provider, and only on the second failure in a minute', async () => {
     let failures = 0;
     fakeRedis = makeRedis({ incr: vi.fn(async () => ++failures) });
-    await recordProviderFailure('groq-llama-70b', 'Groq API returned 500', { rateLimited: false });
+    await recordProviderFailure('groq-gpt-oss-120b', 'Groq API returned 500', { rateLimited: false });
     expect(fakeRedis.set).not.toHaveBeenCalled();
-    await recordProviderFailure('groq-llama-70b', 'Groq API returned 500', { rateLimited: false });
-    expect(fakeRedis.set.mock.calls.map((c: unknown[]) => c[0])).toEqual(['circuit:ai:groq-llama-70b']);
+    await recordProviderFailure('groq-gpt-oss-120b', 'Groq API returned 500', { rateLimited: false });
+    expect(fakeRedis.set.mock.calls.map((c: unknown[]) => c[0])).toEqual(['circuit:ai:groq-gpt-oss-120b']);
   });
 });

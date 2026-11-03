@@ -661,6 +661,26 @@ export function normalizeProfileId(input?: string): UseCaseProfileId {
   return 'coding-agent';
 }
 
+/**
+ * The key the checks use for a role (TARGET_BLUEPRINT_SECTIONS in validation.ts, the media coding-term check, the
+ * guardrails and the grounded facts), for any spelling the website or an older client sends
+ * ("image_generation", "image-prompt", "img", ...). Before this, those checks compared raw strings, so e.g.
+ * "writing" or "image-prompt" fell back to the CODING checks.
+ */
+export type RoleKey = 'coding_agent' | 'image_generation' | 'video_generation' | 'writing' | 'freelancer_brief' | 'hackathon_pitch' | 'no_code';
+const ROLE_KEYS: Record<UseCaseProfileId, RoleKey> = {
+  'coding-agent': 'coding_agent',
+  'image-prompt': 'image_generation',
+  'video-generation': 'video_generation',
+  writing: 'writing',
+  'freelance-brief': 'freelancer_brief',
+  pitch: 'hackathon_pitch',
+  'no-code': 'no_code',
+};
+export function roleKey(targetType?: string): RoleKey {
+  return ROLE_KEYS[normalizeProfileId(targetType)];
+}
+
 export function getUseCaseProfile(idOrAlias?: string): UseCaseProfile {
   const normalizedId = normalizeProfileId(idOrAlias);
   return USE_CASE_PROFILES[normalizedId] || USE_CASE_PROFILES['coding-agent'];

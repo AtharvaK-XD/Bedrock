@@ -15,7 +15,7 @@ import {
   failureOutcome,
 } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
-import { buildSynthesisSystemPrompt } from '../_lib/aiPrompts.js';
+import { buildSynthesisSystemPrompt, FINAL_INTEGRITY_CHECK } from '../_lib/aiPrompts.js';
 import { getUseCaseProfile, validatePromptAgainstForbiddenTerms } from '../_lib/useCaseProfiles.js';
 import { validateSynthesisOutput, buildRepairMessage, sanitizePromptOutput } from '../_lib/validation.js';
 import { getGroundedFacts } from '../_lib/ragGrounding.js';
@@ -106,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const ragFacts = getGroundedFacts(rawIdea, targetType);
   const ragSection = ragFacts.groundedFactsBlock ? `\n\n${ragFacts.groundedFactsBlock}` : '';
-  const systemPrompt = `${buildSynthesisSystemPrompt(targetType)}\n\n### USE CASE DIRECTIVE: ${profile.name.toUpperCase()}\n${profile.synthesisPrompt}${ragSection}\n\nForbidden terms to avoid:\n${profile.forbiddenTerms.map(t => `- "${t}"`).join('\n')}`;
+  const systemPrompt = `${buildSynthesisSystemPrompt(targetType)}\n\n### USE CASE DIRECTIVE: ${profile.name.toUpperCase()}\n${profile.synthesisPrompt}${ragSection}\n\nForbidden terms to avoid:\n${profile.forbiddenTerms.map(t => `- "${t}"`).join('\n')}\n\n${FINAL_INTEGRITY_CHECK}`;
 
   const userContent = sanitizeAndDelimitPrompt(`Concept: ${rawIdea}\nTarget Type: ${profile.name} (${profile.id})${clarificationContext}`);
 

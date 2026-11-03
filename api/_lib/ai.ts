@@ -97,16 +97,33 @@ const DEFAULT_MAX_OUTPUT_TOKENS: number = AI_OUTPUT_BUDGET.testDefault;
  * does not eat the answer; the total is still bounded.
  */
 const GEMINI_THINKING_HEADROOM_TOKENS = 4_096;
+/**
+ * Groq's GPT-OSS models reason before they answer, and that reasoning counts against max_tokens.
+ * They get a low reasoning effort (fast, and enough for writing a prompt document), the reasoning text
+ * is not sent back (include_reasoning false: it must never reach the user's prompt), and this much
+ * extra room is added so the reasoning does not eat the answer.
+ */
+const GPT_OSS_REASONING_HEADROOM_TOKENS = 1_024;
+export function isGptOssModel(model: string): boolean {
+  return /(^|\/)gpt-oss-/i.test(model);
+}
 
 /** Status codes that mean "this request was bad", not "this provider is unhealthy". */
 const CLIENT_CAUSED_STATUSES: ReadonlySet<number> = new Set([400, 413, 422]);
-/** Status codes that mean the API key (not one model) is refused or out of quota. */
-const KEY_LEVEL_STATUSES: ReadonlySet<number> = new Set([401, 402, 403, 429]);
+/** Status codes that mean the API key itself (not one model) is refused. 429 is per model, see executeAiCompletion. */
+const KEY_LEVEL_STATUSES: ReadonlySet<number> = new Set([401, 402, 403]);
 
 /** Overall wall-clock budget for one request (Vercel maxDuration is 60 s; leave headroom to respond). */
 export const AI_DEFAULT_BUDGET_MS = 50_000;
-/** Longest a single provider attempt may run. */
+/**
+ * Longest a single provider attempt may run without streaming, and the longest wait for the FIRST token of a
+ * stream. Once a stream is producing text it may run until the request's own deadline: the 20 s cap used to cut
+ * long documents off mid-stream, and after text has reached the user no other model can take over.
+ */
 const PROVIDER_TIMEOUT_MS = 20_000;
+/** Without streaming, a full document (large output limit) gets a little longer, still leaving room to fail over. */
+const LONG_PROVIDER_TIMEOUT_MS = 30_000;
+const LONG_OUTPUT_TOKENS = 3_000;
 /** A new provider attempt is not started with less than this left in the budget. */
 const MIN_ATTEMPT_MS = 3_000;
 /** Upstream error bodies are cut to this length before being kept or logged. */
@@ -115,11 +132,30 @@ const MAX_ERROR_BODY_CHARS = 500;
 /** Upstream HTTP failure; carries the status so retry and failover logic need not parse message text. */
 export class ProviderHttpError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** The provider's own "try again in N seconds", when it sent one (Retry-After header or Gemini's retryDelay). */
+  retryAfterSeconds?: number;
+  constructor(message: string, status: number, retryAfterSeconds?: number) {
     super(message);
     this.name = 'ProviderHttpError';
     this.status = status;
+    if (retryAfterSeconds !== undefined) this.retryAfterSeconds = retryAfterSeconds;
   }
+}
+
+/** Reads the provider's wait time from a refused response: the Retry-After header, or Gemini's "retryDelay": "Ns". */
+export function providerRetryAfterSeconds(res: { headers?: { get?: (name: string) => string | null } }, body: string): number | undefined {
+  const header = Number(res.headers?.get?.('retry-after'));
+  if (Number.isFinite(header) && header > 0) return header;
+  const m = body.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
+  return m ? Number(m[1]) : undefined;
+}
+
+/** How long a model that answered 429 is left alone: the provider's own wait time, kept between 15 s and 10 min. */
+const MIN_RATE_LIMIT_COOLDOWN_MS = 15_000;
+const MAX_RATE_LIMIT_COOLDOWN_MS = 10 * 60_000;
+export function rateLimitCooldownMs(err: unknown): number | undefined {
+  if (!(err instanceof ProviderHttpError) || err.status !== 429 || !err.retryAfterSeconds) return undefined;
+  return Math.min(MAX_RATE_LIMIT_COOLDOWN_MS, Math.max(MIN_RATE_LIMIT_COOLDOWN_MS, Math.round(err.retryAfterSeconds * 1000)));
 }
 
 export type AiErrorCode =
@@ -307,7 +343,7 @@ async function withTransientRetry<T>(
 async function callGroq(
   prompt: string,
   systemPrompt?: string,
-  model = 'llama-3.3-70b-versatile',
+  model = 'openai/gpt-oss-120b',
   onToken?: (token: string) => void,
   temperature = 0.5,
   timeoutMs = PROVIDER_TIMEOUT_MS,
@@ -340,15 +376,17 @@ async function callGroq(
         model,
         messages,
         temperature,
-        max_tokens: maxTokens,
         stream: isStreaming,
+        ...(isGptOssModel(model)
+          ? { max_tokens: maxTokens + GPT_OSS_REASONING_HEADROOM_TOKENS, reasoning_effort: 'low', include_reasoning: false }
+          : { max_tokens: maxTokens }),
       }),
       signal: controller.signal,
     });
 
     if (!res.ok) {
       const err = await res.text();
-      throw new ProviderHttpError(`Groq API returned ${res.status}: ${clip(err)}`, res.status);
+      throw new ProviderHttpError(`Groq API returned ${res.status}: ${clip(err)}`, res.status, providerRetryAfterSeconds(res, err));
     }
 
     if (isStreaming && res.body) {
@@ -454,7 +492,7 @@ async function callGemini(
 
       if (!res.ok) {
         const err = await res.text();
-        lastError = new ProviderHttpError(`Gemini API returned ${res.status}: ${clip(err)}`, res.status);
+        lastError = new ProviderHttpError(`Gemini API returned ${res.status}: ${clip(err)}`, res.status, providerRetryAfterSeconds(res, err));
         if (res.status === 503 || res.status === 404) continue;
         throw lastError;
       }
@@ -562,7 +600,7 @@ async function callOpenRouter(
 
     if (!res.ok) {
       const err = await res.text();
-      throw new ProviderHttpError(`OpenRouter API returned ${res.status}: ${clip(err)}`, res.status);
+      throw new ProviderHttpError(`OpenRouter API returned ${res.status}: ${clip(err)}`, res.status, providerRetryAfterSeconds(res, err));
     }
 
     if (isStreaming && res.body) {
@@ -686,7 +724,8 @@ export async function executeAiCompletion(
   const dispatchToProvider = async (
     target: ProviderTarget,
     currentOnToken: ((tok: string) => void) | undefined,
-    timeoutMs: number
+    timeoutMs: number,
+    signal: AbortSignal | undefined = options?.signal
   ): Promise<ProviderResult> => {
     const tuning = getModelTuning(target.model || target.id);
     const tunedSystem = systemPrompt
@@ -694,29 +733,15 @@ export async function executeAiCompletion(
       : tuning.extraWording;
     const temp = temperatureOverride !== undefined ? temperatureOverride : tuning.temperature;
 
-    if (target.id === 'groq-llama-70b') {
-      return await callGroq(prompt, tunedSystem, 'llama-3.3-70b-versatile', currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
+    // The model name comes from AI_PROVIDERS only. (It used to be repeated here per provider id, so a model
+    // change in one place could silently miss the other.)
+    if (target.provider === 'groq') {
+      return await callGroq(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens, signal);
     }
-    if (target.id === 'groq-llama-8b') {
-      return await callGroq(prompt, tunedSystem, 'llama-3.1-8b-instant', currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
+    if (target.provider === 'gemini') {
+      return await callGemini(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens, signal);
     }
-    if (target.id === 'gemini-flash') {
-      return await callGemini(prompt, tunedSystem, 'gemini-flash-latest', currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
-    }
-    if (target.id === 'gemini-flash-lite') {
-      return await callGemini(prompt, tunedSystem, 'gemini-flash-lite-latest', currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
-    }
-    if (target.id === 'openrouter-gpt4o') {
-      return await callOpenRouter(prompt, tunedSystem, 'openai/gpt-4o-mini', currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
-    }
-    // Fallback dynamic routing by model identifier
-    if (target.model.includes('llama') || target.id.startsWith('groq')) {
-      return await callGroq(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
-    }
-    if (target.model.includes('gemini') || target.id.startsWith('gemini')) {
-      return await callGemini(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
-    }
-    return await callOpenRouter(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens, options?.signal);
+    return await callOpenRouter(prompt, tunedSystem, target.model, currentOnToken, temp, timeoutMs, maxTokens, signal);
   };
 
   // 2. Select optimal provider via distributed round-robin / circuit health
@@ -744,7 +769,7 @@ export async function executeAiCompletion(
       deadlineExceeded = true;
       break;
     }
-    const attemptTimeoutMs = Math.min(PROVIDER_TIMEOUT_MS, remainingMs);
+    const attemptTimeoutMs = Math.min(maxTokens >= LONG_OUTPUT_TOKENS ? LONG_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, remainingMs);
 
     // Counts only text that actually reached the client: hidden <think> text does not block a retry or failover
     lastAttempted = provider;
@@ -763,7 +788,27 @@ export async function executeAiCompletion(
           // A fresh filter per attempt (a retry only happens while nothing has reached the client)
           const filter = emitToClient ? createReasoningStreamFilter(emitToClient) : null;
           stream.filter = filter;
-          return dispatchToProvider(provider, filter ? (tok) => filter.push(tok) : undefined, attemptTimeoutMs);
+          if (!filter) return dispatchToProvider(provider, undefined, attemptTimeoutMs);
+
+          // Streaming: only the wait for the first token is capped (PROVIDER_TIMEOUT_MS); after that the stream may
+          // run until the request's own deadline instead of being cut off mid-document at a fixed 20 s.
+          const attempt = new AbortController();
+          const unlink = linkSignal(attempt, options?.signal);
+          let firstTokenTimer: ReturnType<typeof setTimeout> | undefined = setTimeout(
+            () => attempt.abort(),
+            Math.min(PROVIDER_TIMEOUT_MS, Math.max(0, deadlineAt - Date.now()))
+          );
+          const onRawToken = (tok: string) => {
+            if (firstTokenTimer) {
+              clearTimeout(firstTokenTimer);
+              firstTokenTimer = undefined;
+            }
+            filter.push(tok);
+          };
+          return dispatchToProvider(provider, onRawToken, Math.max(MIN_ATTEMPT_MS, deadlineAt - Date.now()), attempt.signal).finally(() => {
+            if (firstTokenTimer) clearTimeout(firstTokenTimer);
+            unlink();
+          });
         },
         // Retrying after tokens reached the client would send them twice
         { deadlineAt, canRetry: () => tokensEmitted === 0 }
@@ -811,14 +856,24 @@ export async function executeAiCompletion(
       const errMsg = clip(err?.message || String(err));
       const rateLimited = isRateLimitError(err, errMsg);
       console.warn(`[LoadBalancer] Provider ${provider.name} failed:`, errMsg);
+      if (err instanceof ProviderHttpError && err.status === 404) {
+        // The provider no longer offers this model (this is how the retired Llama models went unnoticed).
+        // One JSON line, so a log alert can match "type":"ai_model_missing".
+        console.error(JSON.stringify({ type: 'ai_model_missing', provider: provider.id, model: provider.model, status: 404 }));
+      }
       // A request the provider refused because of its own content is not a sign the provider is unhealthy
+      // A refused key (401 / 402 / 403) is refused for every model on it, so the sibling models are skipped too.
+      // A 429 is not: Groq and Gemini count their limits per model (Groq's headers show a separate budget per model,
+      // Gemini's error names a "...PerProjectPerModel" quota), so when one model is out of quota, for example Gemini
+      // Flash after its 20 free requests a day, its sibling may still answer. The model that answered 429 is left
+      // alone for as long as the provider asked (15 s to 10 min).
+      const keyRefused = err instanceof ProviderHttpError && KEY_LEVEL_STATUSES.has(err.status);
       if (countsAgainstProvider(err)) {
-        await recordProviderFailure(provider.id, errMsg, { rateLimited });
+        await recordProviderFailure(provider.id, errMsg, { rateLimited, cooldownMs: rateLimitCooldownMs(err), siblings: keyRefused });
       }
       lastError = err;
 
-      // Rate limited, or the key itself is refused (401 / 402 / 403): the sibling models share that key, so skip them
-      if (rateLimited || (err instanceof ProviderHttpError && KEY_LEVEL_STATUSES.has(err.status))) {
+      if (keyRefused) {
         throttledProviders.add(provider.provider);
       }
 

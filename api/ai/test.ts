@@ -15,7 +15,7 @@ import {
   failureOutcome,
 } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
-import { BEDROCK_CORE_GUARDRAILS } from '../_lib/aiPrompts.js';
+import { BEDROCK_UNIVERSAL_GUARDRAILS, resolveDomainGuardrails } from '../_lib/aiPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -54,9 +54,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const signal = clientAbortSignal(res);
   const prompt = (body.prompt || body.promptText || '').trim();
   const rawSystemPrompt = (body.systemPrompt || '').trim();
-  const systemPrompt = rawSystemPrompt
-    ? `${rawSystemPrompt}\n\n${BEDROCK_CORE_GUARDRAILS}`
-    : BEDROCK_CORE_GUARDRAILS;
+  // Bedrock's rules for the role when the client names it, otherwise only the universal ones. (Before, the CODING
+  // rules - React 19, Next.js, tsc - were added to every call, including image, video and writing prompts; the
+  // website's own system prompts already carry their role's rules.)
+  const guardrails =
+    typeof body.targetType === 'string' && body.targetType.trim()
+      ? resolveDomainGuardrails(body.targetType)
+      : BEDROCK_UNIVERSAL_GUARDRAILS;
+  const systemPrompt = rawSystemPrompt ? `${rawSystemPrompt}\n\n${guardrails}` : guardrails;
 
   if (!prompt) {
     return res.status(400).json({ error: 'prompt is required' });

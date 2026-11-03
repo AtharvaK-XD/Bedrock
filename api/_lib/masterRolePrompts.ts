@@ -121,7 +121,7 @@ Provide a step-by-step phased execution plan with runnable terminal commands:
 - Phase 3: UI Components & Optimistic State
 - Phase 4: Verification Suite (\`tsc --noEmit && vitest run\`)
 
-### PRE-FLIGHT SILENT SELF-AUDIT
+### PRE-FLIGHT SILENT SELF-AUDIT (internal: never write this checklist into the output)
 Before emitting output, silently verify:
 1. Did I include every single user answer without omission?
 2. Did I eliminate all '// TODO' or incomplete stubs?
@@ -206,7 +206,7 @@ deformed, bad anatomy, extra limbs, poorly drawn hands, missing fingers, floatin
 | Mobile Reels / TikTok / Shorts | 9:16 | --ar 9:16 | Vertical hero framing with strong vertical perspective |
 | Social Feed / Instagram | 1:1 / 4:5 | --ar 1:1 | Centered hero composition with high focal symmetry |
 
-### PRE-FLIGHT SILENT SELF-AUDIT
+### PRE-FLIGHT SILENT SELF-AUDIT (internal: never write this checklist into the output)
 Before emitting output, silently verify:
 1. Is there ABSOLUTELY ZERO programming code or software terminology?
 2. Are the Midjourney parameters valid (--ar 16:9 --style raw)?
@@ -276,7 +276,7 @@ Provide a continuous narrative prompt rich in temporal continuity, physical cons
 - Runway: motion and camera controls for the chosen model version (camera movement with its direction and speed; foreground vs background motion where the model supports it).
 - Kling AI / Luma: Camera movement path presets and strength sliders.
 
-### PRE-FLIGHT SILENT SELF-AUDIT
+### PRE-FLIGHT SILENT SELF-AUDIT (internal: never write this checklist into the output)
 Before emitting output, silently verify:
 1. Is there ABSOLUTELY ZERO software code or terminal syntax?
 2. Does every shot specify camera movement, subject action, environment, and temporal speed?
@@ -345,7 +345,7 @@ Explicitly enumerate items strictly excluded from the baseline fee:
 - Step-by-step handover checklist (Git repository access, environment secrets, DNS configuration).
 - 14-day post-launch bug warranty covering defects in original scope.
 
-### PRE-FLIGHT SILENT SELF-AUDIT
+### PRE-FLIGHT SILENT SELF-AUDIT (internal: never write this checklist into the output)
 Before emitting output, silently verify:
 1. Does the payment trigger total equal exactly 100%?
 2. Are all acceptance criteria binary, measurable, and unambiguous?
@@ -381,7 +381,7 @@ Your output document MUST be structured into the following exact sections using 
 Provide a second-by-second click path with exact speaker talking points engineered to hit every judging criterion:
 | Timestamp (Sec) | Visual Click Path / Screen Action | Speaker Script (Word-for-Word) | Psychological Judge Impact |
 | :--- | :--- | :--- | :--- |
-| 00:00 - 00:20 | Speaker on stage, title slide with bold problem statistic | "Every day, 50,000 paramedics lose 15 minutes to manual paperwork. Watch what happens when we automate it live." | Hooks attention, validates massive pain point |
+| 00:00 - 00:20 | Speaker on stage, title slide with one real, sourced problem number (or the team's own honest data) | "[The pain point in one sentence, using only a real, sourced number or the team's own data.] Watch what happens when we automate it live." | Hooks attention, validates the pain point honestly |
 | 00:20 - 00:60 | Live app: Speak into microphone, real-time voice triage | "I tap one button, speak symptoms for 10 seconds... and Bedrock instantly parses vital signs into FHIR standard records." | Demonstrates real working product, zero slides |
 | 00:60 - 01:30 | The "Jaw-Drop" Wow Moment: Real-time conflict alert | "Notice this red pulse? Our model detected a fatal drug interaction with the patient's existing medication." | 10/10 Technical Depth & Novelty |
 | 01:30 - 02:00 | Business model, prize track alignment, vision slide | "Built in 24 hours on Neon Postgres. We're launching in 3 pilot ambulances next Tuesday." | Proven execution speed, high commercial potential |
@@ -411,7 +411,7 @@ Provide a second-by-second click path with exact speaker talking points engineer
 - API Timeout Plan: Instant fallback toggle to pre-cached JSON responses.
 - Stage Screen Fallback: 1080p 60fps Loom screen recording ready in browser tab 2.
 
-### PRE-FLIGHT SILENT SELF-AUDIT
+### PRE-FLIGHT SILENT SELF-AUDIT (internal: never write this checklist into the output)
 Before emitting output, silently verify:
 1. Is the demo script strictly timed for 120 seconds?
 2. Are P0 features clearly distinguished from P1 stretch goals?
@@ -491,7 +491,7 @@ Provide detailed visual recipe flows:
 - Privacy Rules Matrix: Explicit conditions for "View all fields", "Find in searches", and "Auto-binding".
 - Pagination & Search Optimization: Implement database-level search indexing and lazy-loading repeating groups.
 
-### PRE-FLIGHT SILENT SELF-AUDIT
+### PRE-FLIGHT SILENT SELF-AUDIT (internal: never write this checklist into the output)
 Before emitting output, silently verify:
 1. Is every table and field assigned an exact data type and privacy rule?
 2. Are visual layouts structured using modern Flexbox Row/Column principles?
@@ -512,6 +512,8 @@ Great writing changes minds. It is characterized by high intellectual density, c
    - Never write empty generalities. Every claim must be supported by historical precedent, engineering case studies, or mathematical/economic realities.
 3. CONTRARIAN SPINE:
    - The piece must have a sharp, non-obvious thesis statement that challenges standard industry consensus.
+4. PREMISE CHECK BEFORE WRITING:
+   - If the idea rests on a named study, statistic, quote or event you cannot verify, or on a disputed claim, never present it as established fact. Open the blueprint with a short > [!WARNING] that names the claim and says it must be verified before publishing, and build the thesis so it still stands if the claim is false (as an open question, a thought experiment, or a critique of the claim).
 
 ### MANDATORY STRUCTURAL BLUEPRINT
 Your output document MUST be structured into the following exact sections using GitHub-flavored Markdown:
@@ -525,7 +527,7 @@ Your output document MUST be structured into the following exact sections using 
 Provide 3 alternative opening angles:
 - The Provocative Question: Challenges a deeply held assumption.
 - The Anecdotal Scene: A vivid micro-narrative placing the reader in a high-stakes moment.
-- The Contrarian Data Point: A startling empirical fact that contradicts common belief.
+- The Contrarian Data Point: A startling, verifiable fact that contradicts common belief (from the user's input or well-established knowledge; never an invented study, statistic or quote).
 
 ## 2. Narrative Spine & Central Thesis Architecture
 - The Villain: The status-quo trap, outdated convention, or cognitive bias.
@@ -547,7 +549,7 @@ For each major section, detail:
 ## 5. Resonant Climax & Closing Realization
 - A memorable, concluding thought that reframes the entire discussion without ever saying "In conclusion".
 
-### PRE-FLIGHT SILENT SELF-AUDIT
+### PRE-FLIGHT SILENT SELF-AUDIT (internal: never write this checklist into the output)
 Before emitting output, silently verify:
 1. Are all forbidden AI clichés ("delve", "tapestry", "in conclusion") completely eliminated?
 2. Does the essay blueprint maintain a sharp, contrarian thesis with real empirical grounding?`;

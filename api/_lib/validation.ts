@@ -1,4 +1,6 @@
 
+import { roleKey } from './useCaseProfiles.js';
+
 export interface Question {
   id: string;
   questionText: string;
@@ -76,8 +78,7 @@ export function checkQuestionQuality(questions: unknown, profileId: string, user
   const shape = checkQuestionShape(questions);
   if (!shape.ok) return shape.issues.map((i) => (i.path ? `${i.path}: ${i.message}` : i.message));
 
-  const target = profileId === 'image-prompt' ? 'image_generation' : profileId === 'video-generation' ? 'video_generation' : profileId;
-  const { forbiddenTerms, fluffTerms } = detectForbiddenTerms(JSON.stringify(shape.data), target, userIdea);
+  const { forbiddenTerms, fluffTerms } = detectForbiddenTerms(JSON.stringify(shape.data), profileId, userIdea);
   return [
     ...forbiddenTerms.map((t) => `contains the coding term "${t}", which the ${profileId} profile forbids`),
     ...fluffTerms.map((t) => `contains conversational filler "${t}"`),
@@ -114,18 +115,36 @@ export const LAZY_STUB_PHRASES = [
   '// your code here',
 ];
 
+// Library names that are also ordinary words ("angular shadows", "light drizzle", "vue sur la mer", "a svelte
+// figure", "she turns to react", Spanish/Italian "prisma") are listed only in their unambiguous code forms: as bare
+// words they flagged valid image and video prompts and forced a needless repair (prompt-quality eval, 2026-11-03).
 export const MEDIA_FORBIDDEN_CODING_TERMS = [
-  'react',
+  'react component',
+  'react version',
+  'react app',
+  'react hooks',
+  'react native',
+  'react 18',
   'react 19',
   'react.js',
+  'reactjs',
   'typescript',
   'javascript',
   'next.js',
   'nextjs',
-  'vue',
   'vue.js',
-  'angular',
-  'svelte',
+  'vuejs',
+  'vue 3',
+  'vue app',
+  'vue component',
+  '@angular',
+  'angularjs',
+  'angular cli',
+  'angular app',
+  'angular component',
+  'sveltekit',
+  'svelte app',
+  'svelte component',
   'npm',
   'npm install',
   'npm packages',
@@ -141,8 +160,13 @@ export const MEDIA_FORBIDDEN_CODING_TERMS = [
   'interface props',
   'type props',
   'postgresql',
-  'prisma',
-  'drizzle',
+  'prisma orm',
+  'prisma client',
+  'prisma schema',
+  'prisma migrate',
+  'drizzle orm',
+  'drizzle-orm',
+  'drizzle kit',
   'mongodb',
   'mysql',
   'sqlite',
@@ -172,6 +196,36 @@ export interface BlueprintSectionRequirement {
 }
 
 export const TARGET_BLUEPRINT_SECTIONS: Record<string, BlueprintSectionRequirement[]> = {
+  // The five parts WRITING_MASTER_PROMPT asks for. Without this entry, writing was checked against the coding
+  // sections, and a "repair" then asked the model to add coding sections to an essay.
+  writing: [
+    {
+      name: 'Working Titles & Lead Hooks',
+      patterns: [/working\s+titles?/i, /lead\s+hooks?/i, /opening\s+(?:angles?|hooks?)/i, /headline/i],
+      description: 'Title options and opening hooks',
+    },
+    {
+      name: 'Narrative Spine & Central Thesis',
+      patterns: [/narrative\s+spine/i, /central\s+thesis/i, /core\s+thesis/i, /thesis/i],
+      description: 'The central thesis and the argument it rests on',
+    },
+    {
+      name: 'Section-by-Section Outline',
+      patterns: [/section[-\s]by[-\s]section/i, /structural\s+outline/i, /\boutline\b/i],
+      description: 'An outline of every section with its argument and evidence',
+    },
+    {
+      name: 'Voice, Tone & Cadence Guide',
+      patterns: [/\bvoice\b/i, /\btone\b/i, /cadence/i, /prose\s+style/i],
+      description: 'How the piece should sound',
+    },
+    {
+      name: 'Closing',
+      patterns: [/climax/i, /closing/i, /\bending\b/i, /final\s+(?:thought|realization|section)/i, /call\s+to\s+action/i],
+      description: 'How the piece ends',
+    },
+  ],
+
   image_generation: [
     {
       name: 'Visual Concept & Art Direction',
@@ -236,7 +290,7 @@ export const TARGET_BLUEPRINT_SECTIONS: Record<string, BlueprintSectionRequireme
   coding_agent: [
     {
       name: 'Role Definition & Philosophy',
-      patterns: [/role\s+definition/i, /architectural\s+philosophy/i, /principal\s+software/i, /system\s+directive/i],
+      patterns: [/role\s+definition/i, /role\s+persona/i, /operational\s+directives/i, /architectural\s+philosophy/i, /principal\s+software/i, /system\s+directive/i],
       description: 'Role definition and architectural persona',
     },
     {
@@ -251,7 +305,9 @@ export const TARGET_BLUEPRINT_SECTIONS: Record<string, BlueprintSectionRequireme
     },
     {
       name: 'Strict Negative Constraints Matrix',
-      patterns: [/negative\s+constraints/i, /anti-patterns/i, /never\s+do/i, /forbidden/i],
+      // CODING_AGENT_MASTER_PROMPT asks for a <negative_constraints> block, so the underscore form counts too
+      // (before, every coding answer failed this check and triggered a wasted repair call)
+      patterns: [/negative[\s_-]+constraints/i, /anti-patterns/i, /never\s+do/i, /forbidden/i],
       description: 'Explicit negative constraints matrix (no any, no TODOs, no swallowed errors)',
     },
     {
@@ -261,7 +317,7 @@ export const TARGET_BLUEPRINT_SECTIONS: Record<string, BlueprintSectionRequireme
     },
     {
       name: 'Phased Implementation & Verification Protocol',
-      patterns: [/verification\s+(?:protocol|checklist)/i, /definition\s+of\s+done/i, /npm\s+run/i, /vitest/i, /tsc\s+--noEmit/i],
+      patterns: [/verification\s+(?:protocol|checklist)/i, /phased\s+implementation/i, /implementation\s+sequence/i, /automated\s+verification/i, /definition\s+of\s+done/i, /npm\s+run/i, /vitest/i, /tsc\s+--noEmit/i],
       description: 'Executable verification checklist with runnable terminal commands',
     },
   ],
@@ -284,7 +340,7 @@ export const TARGET_BLUEPRINT_SECTIONS: Record<string, BlueprintSectionRequireme
     },
     {
       name: 'Client Handoff, Deployment & Staging',
-      patterns: [/handoff/i, /deployment/i, /staging/i, /hosting/i, /playbook/i],
+      patterns: [/handoff/i, /handover/i, /sign-off/i, /warranty/i, /deployment/i, /staging/i, /hosting/i, /playbook/i],
       description: 'Client handoff instructions, hosting setup, and domain DNS configuration',
     },
     {
@@ -297,7 +353,7 @@ export const TARGET_BLUEPRINT_SECTIONS: Record<string, BlueprintSectionRequireme
   hackathon_pitch: [
     {
       name: '10x Pitch Hook & Problem-Solution Narrative',
-      patterns: [/10x\s+pitch/i, /pitch\s+hook/i, /problem-solution/i, /why\s+now/i],
+      patterns: [/elevator\s+hook/i, /30-second/i, /10x\s+pitch/i, /pitch\s+hook/i, /problem-solution/i, /why\s+now/i],
       description: 'High-impact 30-second opening statement and problem narrative',
     },
     {
@@ -335,7 +391,7 @@ export const TARGET_BLUEPRINT_SECTIONS: Record<string, BlueprintSectionRequireme
     },
     {
       name: 'Visual Page & Component Topology',
-      patterns: [/page\s+topology/i, /component\s+hierarchy/i, /containers?/i, /repeating\s+groups?/i],
+      patterns: [/page\s+topology/i, /page\s+hierarchy/i, /component\s+(?:hierarchy|layout)/i, /containers?/i, /repeating\s+groups?/i],
       description: 'Page layout hierarchy and component conditionals',
     },
     {
@@ -350,6 +406,24 @@ export const TARGET_BLUEPRINT_SECTIONS: Record<string, BlueprintSectionRequireme
     },
   ],
 };
+
+/**
+ * Best guess of a prompt document's role from the sections it contains, for routes whose client does not send the
+ * role (refine). Returns null unless one role clearly fits best: at least 60% of its sections found, and at least
+ * 15 points ahead of the next role. Null means "unknown": callers then use only the universal rules.
+ */
+export function inferRoleFromDocument(text: string): string | null {
+  if (!text || !text.trim()) return null;
+  const scores = Object.entries(TARGET_BLUEPRINT_SECTIONS)
+    .map(([role, sections]) => ({
+      role,
+      score: sections.filter((s) => s.patterns.some((p) => p.test(text))).length / Math.max(1, sections.length),
+    }))
+    .sort((a, b) => b.score - a.score);
+  const [best, next] = scores;
+  if (!best || best.score < 0.6 || best.score - (next?.score ?? 0) < 0.15) return null;
+  return best.role;
+}
 
 export function isIdeaRequestingCode(ideaText?: string): boolean {
   if (!ideaText) return false;
@@ -376,7 +450,8 @@ export function detectForbiddenTerms(
   const lazyStubs: string[] = [];
 
   const lowerText = text.toLowerCase();
-  const isMedia = targetType === 'image_generation' || targetType === 'video_generation';
+  const key = roleKey(targetType);
+  const isMedia = key === 'image_generation' || key === 'video_generation';
   const ideaWantsCode = isIdeaRequestingCode(userIdea);
 
   if (isMedia && !ideaWantsCode) {
@@ -546,7 +621,7 @@ export function validateSynthesisOutput(
     });
   }
 
-  const requirements = TARGET_BLUEPRINT_SECTIONS[targetType] || TARGET_BLUEPRINT_SECTIONS.coding_agent;
+  const requirements = TARGET_BLUEPRINT_SECTIONS[roleKey(targetType)] || TARGET_BLUEPRINT_SECTIONS.coding_agent;
   for (const req of requirements) {
     const hasSection = req.patterns.some(pattern => pattern.test(trimmed));
     if (!hasSection) {
@@ -675,5 +750,16 @@ export function sanitizePromptOutput(text: string): string {
     cleaned = cleaned.replace(pat, '').trim();
   }
 
-  return cleaned;
+  return stripInternalChecklist(cleaned);
+}
+
+/**
+ * Removes Bedrock's own internal checklist ("PRE-FLIGHT SILENT SELF-AUDIT", meant for the model only) when a model
+ * copies it into the document: GPT-4o-mini did in 11 of 21 documents in the 2026-11-03 eval. The section runs from
+ * its heading (or bold label) to the next heading or the end of the document.
+ */
+export function stripInternalChecklist(text: string): string {
+  return text
+    .replace(/(^|\n)(?:#{1,6}\s*|\*\*)[^\n]*SELF-AUDIT[^\n]*\n[\s\S]*?(?=\n#{1,6}\s|$)/gi, '$1')
+    .trim();
 }

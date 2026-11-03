@@ -16,6 +16,8 @@ import {
 } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { buildRefineSystemPrompt, extractRefineResult } from '../_lib/aiPrompts.js';
+import { inferRoleFromDocument } from '../_lib/validation.js';
+import { roleKey } from '../_lib/useCaseProfiles.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -57,7 +59,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   checkPromptInjection(instruction, user?.id, ip);
 
-  const systemPrompt = buildRefineSystemPrompt();
+  // The role decides which rules apply (an image prompt must not get the coding rules). The website does not send
+  // it yet, so it is read from the document's own sections; unknown -> only the universal rules.
+  const role =
+    typeof body.targetType === 'string' && body.targetType.trim() ? roleKey(body.targetType) : inferRoleFromDocument(currentPrompt);
+  const systemPrompt = buildRefineSystemPrompt(role);
   const payload = `EXISTING PROMPT:\n${currentPrompt}\n\nREFINEMENT INSTRUCTION:\n${instruction}`;
   const safeContent = sanitizeAndDelimitPrompt(payload);
 

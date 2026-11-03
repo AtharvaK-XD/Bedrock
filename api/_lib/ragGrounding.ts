@@ -4,6 +4,8 @@
  * ensuring LLMs never hallucinate deprecated APIs, fake packages, or wrong parameter flags.
  */
 
+import { roleKey } from './useCaseProfiles.js';
+
 export interface GroundedFactsResult {
   groundedFactsBlock: string;
   matchedEntities: string[];
@@ -186,11 +188,8 @@ export function getGroundedFacts(
   query: string,
   targetType = 'coding_agent'
 ): GroundedFactsResult {
-  const isVisual =
-    targetType === 'image_generation' ||
-    targetType === 'video_generation' ||
-    targetType === 'image-prompt' ||
-    targetType === 'video-generation';
+  const key = roleKey(targetType);
+  const isVisual = key === 'image_generation' || key === 'video_generation';
 
   const entities = extractEntitiesFromText(query);
   const matchedEntities: string[] = [];
@@ -214,7 +213,7 @@ export function getGroundedFacts(
 
   // If visual media and no specific entity was matched, inject canonical optics facts
   if (isVisual && verifiedBullets.length === 0) {
-    if (targetType === 'video_generation' || targetType === 'video-generation') {
+    if (key === 'video_generation') {
       verifiedBullets.push(...CORE_VERIFIED_FACTS.runway.facts);
     } else {
       verifiedBullets.push(...CORE_VERIFIED_FACTS.midjourney.facts);

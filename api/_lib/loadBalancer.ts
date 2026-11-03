@@ -9,11 +9,14 @@ export interface ProviderTarget {
   weight: number;
 }
 
+// Groq retired llama-3.3-70b-versatile and llama-3.1-8b-instant: on 2026-11-03 both answered
+// 404 model_not_found, so every Groq attempt failed and production ran on Gemini and OpenRouter only.
+// Replaced by the GPT-OSS models Groq offers now (checked with a live call the same day).
 export const AI_PROVIDERS: ProviderTarget[] = [
   {
-    id: 'groq-llama-70b',
-    name: 'Groq LLaMA 3.3 70B',
-    model: 'llama-3.3-70b-versatile',
+    id: 'groq-gpt-oss-120b',
+    name: 'Groq GPT-OSS 120B',
+    model: 'openai/gpt-oss-120b',
     provider: 'groq',
     priority: 1,
     weight: 5,
@@ -27,9 +30,9 @@ export const AI_PROVIDERS: ProviderTarget[] = [
     weight: 5,
   },
   {
-    id: 'groq-llama-8b',
-    name: 'Groq LLaMA 3.1 8B',
-    model: 'llama-3.1-8b-instant',
+    id: 'groq-gpt-oss-20b',
+    name: 'Groq GPT-OSS 20B',
+    model: 'openai/gpt-oss-20b',
     provider: 'groq',
     priority: 2,
     weight: 4,
@@ -109,38 +112,41 @@ async function filterHealthyProviders(providers: ProviderTarget[]): Promise<Prov
 
 /**
  * Records a failure on an AI provider. Trips circuit breaker if threshold is exceeded.
- * Automatically identifies 429 rate limit errors and cascades cooldown to sibling models sharing the key.
+ * A rate limit (429) trips this model at once, for `cooldownMs` when the caller knows the provider's own wait time.
+ * The sibling models on the same key are cooled too only when `siblings` is true (the key itself was refused):
+ * Groq and Gemini count rate limits per model, so one model being out of quota says nothing about its sibling.
  */
 export async function recordProviderFailure(
   providerId: string,
   error?: string,
-  opts?: { rateLimited?: boolean }
+  opts?: { rateLimited?: boolean; cooldownMs?: number; siblings?: boolean }
 ): Promise<void> {
   const redis = getRedisClient();
   const errMsg = error || '';
   // Prefer the HTTP status decided by the caller; fall back to the message text only when it is not known
   const isRateLimit = opts?.rateLimited ?? (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit'));
-  const cooldownMs = isRateLimit ? RATE_LIMIT_COOLDOWN_MS : TRIP_DURATION_MS;
+  const cooldownMs = opts?.cooldownMs ?? (isRateLimit ? RATE_LIMIT_COOLDOWN_MS : TRIP_DURATION_MS);
+  const cascade = opts?.siblings === true;
 
   // 1. Update local circuit state
   const local = localCircuitMap.get(providerId) || { trippedUntil: 0, failures: 0 };
   local.failures += 1;
 
-  // If rate-limited or threshold reached, trip immediately
-  if (isRateLimit || local.failures >= MAX_FAILURES) {
+  // Rate limited, key refused, or threshold reached: trip immediately
+  if (isRateLimit || cascade || local.failures >= MAX_FAILURES) {
     local.trippedUntil = Date.now() + cooldownMs;
-    console.warn(`[LoadBalancer] Circuit for ${providerId} TRIPPED locally (${isRateLimit ? '429 Rate Limit' : 'Failures: ' + local.failures}). Cooldown: ${cooldownMs / 1000}s`);
+    console.warn(`[LoadBalancer] Circuit for ${providerId} TRIPPED locally (${isRateLimit ? '429 Rate Limit' : cascade ? 'Key refused' : 'Failures: ' + local.failures}). Cooldown: ${cooldownMs / 1000}s`);
 
-    // If rate limit hit, cascade trip to other models sharing the same provider API key
+    // The key itself was refused: cool the other models that use the same key too
     const prefix = providerId.split('-')[0];
-    if (isRateLimit && prefix) {
+    if (cascade && prefix) {
       for (const p of AI_PROVIDERS) {
         if (p.id.startsWith(prefix) && p.id !== providerId) {
           const sibling = localCircuitMap.get(p.id) || { trippedUntil: 0, failures: 0 };
           sibling.failures = MAX_FAILURES;
           sibling.trippedUntil = Date.now() + cooldownMs;
           localCircuitMap.set(p.id, sibling);
-          console.warn(`[LoadBalancer] Cascaded 429 rate-limit cooldown to sibling provider ${p.id}`);
+          console.warn(`[LoadBalancer] Cascaded key-refused cooldown to sibling provider ${p.id}`);
         }
       }
     }
@@ -153,14 +159,14 @@ export async function recordProviderFailure(
       const failureCount = await redis.incr(`failures:ai:${providerId}`);
       await redis.expire(`failures:ai:${providerId}`, 60);
 
-      if (isRateLimit || failureCount >= MAX_FAILURES) {
+      if (isRateLimit || cascade || failureCount >= MAX_FAILURES) {
         await redis.set(`circuit:ai:${providerId}`, 'tripped', { ex: Math.round(cooldownMs / 1000) });
         console.warn(`[LoadBalancer] Distributed circuit for ${providerId} TRIPPED in Redis.`);
 
-        // The models sharing this API key are rate limited too: tell the other server instances as well,
-        // not only this one (the local cascade above only protects this instance)
+        // The key itself was refused, so the models sharing it are unusable too: tell the other server
+        // instances as well, not only this one (the local cascade above only protects this instance)
         const prefix = providerId.split('-')[0];
-        if (isRateLimit && prefix) {
+        if (cascade && prefix) {
           for (const p of AI_PROVIDERS) {
             if (p.id.startsWith(prefix) && p.id !== providerId) {
               await redis.set(`circuit:ai:${p.id}`, 'tripped', { ex: Math.round(cooldownMs / 1000) });
