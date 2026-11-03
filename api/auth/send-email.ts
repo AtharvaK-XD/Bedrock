@@ -94,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const identity = await fetchClerkIdentity(clerkUserId);
   if (!identity.ok) {
-    if (identity.reason === 'no_verified_email') {
+    if ('reason' in identity && identity.reason === 'no_verified_email') {
       return res.status(403).json({ error: 'Your account has no verified email address', code: 'EMAIL_NOT_VERIFIED' });
     }
     // Not configured or Clerk unreachable: send nothing (fail closed)

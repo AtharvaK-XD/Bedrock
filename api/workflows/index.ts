@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     const list = parseListQuery(req.query);
     if (!list.ok) {
-      return res.status(400).json({ error: list.error, code: 'INVALID_LIST_QUERY' });
+      return res.status(400).json({ error: (list as { ok: false; error: string }).error, code: 'INVALID_LIST_QUERY' });
     }
 
     try {
