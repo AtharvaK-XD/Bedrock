@@ -26,7 +26,7 @@ import {
 import { ExportModal } from '../components/ui/ExportModal';
 import { AgentIcon } from '../components/ui/ModelLogos';
 import { useUserProfile } from '../lib/useUserProfile';
-import { normalizeTier, TIER_LIMITS } from '../lib/subscriptionTiers';
+import { normalizeTier, getPlanLimits } from '../lib/subscriptionTiers';
 import { UpgradeModal } from '../components/ui/UpgradeModal';
 
 export interface PromptItem {
@@ -403,8 +403,9 @@ export default function Library() {
   const [exportingPrompt, setExportingPrompt] = useState<PromptItem | null>(null);
 
   const { profile } = useUserProfile();
+  const isDesktop = isDesktopApp();
   const currentTier = normalizeTier(profile?.plan);
-  const tierConfig = TIER_LIMITS[currentTier];
+  const tierConfig = getPlanLimits(profile?.plan);
   const [upgradeModal, setUpgradeModal] = useState<{
     isOpen: boolean;
     featureName?: string;
@@ -507,7 +508,7 @@ export default function Library() {
 
   const handleOpenCreate = () => {
     const customCount = prompts.filter(p => p.isCustom).length;
-    if (customCount >= tierConfig.libraryPromptLimit) {
+    if (!isDesktop && customCount >= tierConfig.libraryPromptLimit) {
       setUpgradeModal({
         isOpen: true,
         featureName: 'Prompt Library Slot Limit',
@@ -589,7 +590,7 @@ export default function Library() {
   const handleDuplicate = (prompt: PromptItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
     const customCount = prompts.filter(p => p.isCustom).length;
-    if (customCount >= tierConfig.libraryPromptLimit) {
+    if (!isDesktop && customCount >= tierConfig.libraryPromptLimit) {
       setUpgradeModal({
         isOpen: true,
         featureName: 'Prompt Library Slot Limit',
@@ -615,8 +616,6 @@ export default function Library() {
     setSearch('');
     setActiveCategory('All');
   };
-
-  const isDesktop = isDesktopApp();
 
   return (
     <PageTransition className={cn(isDesktop ? "h-full" : "")}>

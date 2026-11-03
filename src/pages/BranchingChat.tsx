@@ -1637,9 +1637,10 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
   }, []);
 
   const addNode = (type: keyof typeof NODE_CONFIG = 'prompt') => {
+    const isDesktop = isDesktopApp();
     const currentTier = normalizeTier(profile?.plan);
-    const maxNodes = TIER_LIMITS[currentTier].dagNodeLimit;
-    if (nodes.length >= maxNodes) {
+    const maxNodes = isDesktop ? Infinity : TIER_LIMITS[currentTier].dagNodeLimit;
+    if (!isDesktop && nodes.length >= maxNodes) {
       setUpgradeModal({
         isOpen: true,
         featureName: 'Workflow Node Limit',

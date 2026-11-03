@@ -13,6 +13,7 @@ import { getUserTelemetry, TELEMETRY_UPDATE_EVENT, type UserTelemetrySummary } f
 import { syncHistoryFromDb, HISTORY_UPDATE_EVENT, type HistoryPromptItem } from '../lib/generatorHistory';
 import { usePromptQuota } from '../lib/usePromptQuota';
 import { getPlanLimits } from '../lib/subscriptionTiers';
+import { isDesktopApp } from '../lib/platform';
 
 const BANNER_THEMES = [
   {
@@ -322,7 +323,12 @@ export default function Profile() {
     }
   };
 
-  const tabs: { id: Tab; label: string }[] = [
+  const isDesktop = isDesktopApp();
+  const tabs: { id: Tab; label: string }[] = isDesktop ? [
+    { id: 'overview', label: 'Overview & Activity' },
+    { id: 'edit', label: 'Edit Profile' },
+    { id: 'preferences', label: 'Model Preferences' },
+  ] : [
     { id: 'overview', label: 'Overview & Activity' },
     { id: 'edit', label: 'Edit Profile' },
     { id: 'usage', label: 'Plan & Quotas' },
@@ -520,7 +526,7 @@ export default function Profile() {
 
                     {/* Plan Badge */}
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono font-semibold bg-copper-500/15 text-copper-300 border border-copper-500/30">
-                      {profile.plan || 'Free Plan'}
+                      {isDesktop ? 'Workstation (BYOK)' : (profile.plan || 'Free Plan')}
                     </span>
 
                     {photoMessage && (
@@ -594,12 +600,14 @@ export default function Profile() {
                   {activeTab === 'edit' ? 'Close Edit' : 'Edit Profile'}
                 </button>
 
-                <Link
-                  to="/app/pricing"
-                  className="px-5 py-2.5 rounded-xl font-bold uppercase tracking-wider text-white bg-copper-500 hover:bg-copper-600 transition-all shadow-md shadow-copper-500/20"
-                >
-                  Upgrade Plan
-                </Link>
+                {!isDesktop && (
+                  <Link
+                    to="/app/pricing"
+                    className="px-5 py-2.5 rounded-xl font-bold uppercase tracking-wider text-white bg-copper-500 hover:bg-copper-600 transition-all shadow-md shadow-copper-500/20"
+                  >
+                    Upgrade Plan
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -816,7 +824,9 @@ export default function Profile() {
                     )}
                   </div>
 
-                  {/* Monthly Resource Quota Widget */}
+                  {/* Monthly Resource Quota Widget: WEBSITE ONLY */}
+                  {!isDesktop && (
+  
                   <div className="p-6 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-base font-bold text-white">
@@ -867,6 +877,7 @@ export default function Profile() {
                       </Link>
                     </div>
                   </div>
+                  )}
 
                   {/* Connected Accounts */}
                   <div className="p-6 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm">
@@ -1184,8 +1195,8 @@ export default function Profile() {
             </motion.div>
           )}
 
-          {/* TAB 3: USAGE & PLAN */}
-          {activeTab === 'usage' && (
+          {/* TAB 3: USAGE & PLAN: WEBSITE ONLY */}
+          {!isDesktop && activeTab === 'usage' && (
             <motion.div
               key="usage"
               initial={{ opacity: 0, y: 10 }}

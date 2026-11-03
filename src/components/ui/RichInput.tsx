@@ -185,6 +185,7 @@ export function RichInput({
   targetType,
   onTargetTypeChange,
 }: RichInputProps) {
+  const isDesktop = isDesktopApp();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -231,15 +232,17 @@ export function RichInput({
         }
       }
 
-      if (isLimitReached) {
+      if (!isDesktop && isLimitReached) {
         setShowQuotaModal(true);
         return;
       }
 
-      const allowed = recordPromptUsage(1);
-      if (!allowed) {
-        setShowQuotaModal(true);
-        return;
+      if (!isDesktop) {
+        const allowed = recordPromptUsage(1);
+        if (!allowed) {
+          setShowQuotaModal(true);
+          return;
+        }
       }
 
       onSubmit();
@@ -630,17 +633,19 @@ export function RichInput({
             disabled={!value.trim() || isLoading}
             className={cn(
               "px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper-400/50 active:scale-[0.98]",
-              isLimitReached
+              !isDesktop && isLimitReached
                 ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
                 : "bg-copper-500 hover:bg-copper-600 text-white hover:ring-2 hover:ring-copper-400/50 shadow-md shadow-copper-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
             )}
-            title={isLimitReached ? `Limit reached. Resets in ${timeUntilSession}` : undefined}
+            title={!isDesktop && isLimitReached ? `Limit reached. Resets in ${timeUntilSession}` : undefined}
           >
-            {isLimitReached ? 'Limit Reached' : 'Generate'}
+            {!isDesktop && isLimitReached ? 'Limit Reached' : 'Generate'}
           </StatefulButton>
         </div>
 
-        {/* Token Quota Progress */}
+        {/* Token Quota Progress: WEBSITE ONLY (Desktop uses BYOK keys with zero limits) */}
+        {!isDesktop && (
+  
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 pb-4 pt-1 text-[11px] font-mono text-zinc-500 gap-4 sm:gap-8 bg-transparent">
           <div 
             className="flex items-center gap-3 flex-1 w-full cursor-pointer hover:text-zinc-400 transition-colors"
@@ -679,6 +684,7 @@ export function RichInput({
             </span>
           </div>
         </div>
+        )}
       </div>
 
       <QuotaLimitModal

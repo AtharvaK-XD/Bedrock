@@ -72,6 +72,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'OK' | 'ERR'>('ALL');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const isDesktop = isDesktopApp();
   const { profile } = useUserProfile();
   const currentTier = normalizeTier(profile?.plan);
   const isFree = currentTier === 'free';
@@ -168,7 +169,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* SUBSCRIPTION & QUOTA GLASS BANNER */}
+          {/* SUBSCRIPTION & QUOTA GLASS BANNER: WEBSITE ONLY (Desktop runs on BYOK keys with zero limits) */}
+          {!isDesktop && (
+  
           <div className="relative rounded-3xl p-5 sm:p-6 bg-sf-0e1117/80 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
             <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
@@ -249,6 +252,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+          )}
 
           {/* EXECUTIVE TELEMETRY KPI GLASS CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
