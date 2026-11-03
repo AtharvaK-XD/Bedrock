@@ -14,29 +14,29 @@ if not token:
     sys.exit(1)
 
 repos = ['AtharvaK-XD/Bedrock', 'Bedrockxai/Bedrock']
-tag_name = 'v1.4.3'
-release_title = 'Bedrock v1.4.3 - Production Account Erasure, Streaming Recovery & Database Hardening'
-body = """# Bedrock v1.4.3 - Production Account Erasure, Streaming Recovery & Database Hardening
+tag_name = 'v1.4.4'
+release_title = 'Bedrock v1.4.4 - Autonomous Workstation Architecture, BYOK Autonomy & Studio Layout Unification'
+body = """# Bedrock v1.4.4 - Autonomous Workstation Architecture, BYOK Autonomy & Studio Layout Unification
 
 The unified workstation for frontier prompt engineering. Synthesize autonomous agent directives, orchestrate visual DAG workflows, and benchmark across 10 AI providers.
 
-### What's New in v1.4.3:
-- **Production Account Erasure (Danger Zone)**: End-to-end GDPR account deletion flow in Settings with confirmation modal, database cascade erasure, local storage purge, and Clerk session termination.
-- **Streaming Recovery & Truncation Handling**: Resilient streaming reader capturing completed prompt text envelopes, detecting token truncation, and validating AI model responses.
-- **Database Migrations & Paging Validation**: Verified 35/35 database migrations on Neon compute branch and normalized CRLF test parser for migration runbooks.
-- **Isomorphic Runtime Fortification**: Safe browser dispatchers and guarded storage access preventing edge runtime and node test environment crashes.
+### What's New in v1.4.4:
+- **Autonomous Desktop BYOK Architecture**: Removed subscription cards, "Manage Subscription" links, upgrade triggers, and session/weekly token quota bars from the desktop application, reflecting that desktop users provide their own API keys with zero local limits.
+- **Generator Studio Centering**: Vertically centered the "Craft the Perfect Prompt" header and prompt input studio in the workstation viewport, providing a clean, distraction-free desktop experience.
+- **Generator History Redundancy Isolation**: Removed duplicate inner History toggle buttons and slide-out sidebars from the Generator refinement studio on desktop, unlocking full workstation screen width while relying exclusively on the dedicated main History workspace (`Ctrl+6`).
+- **Active Navigation Tracking**: Synchronized the main sidebar active indicator to highlight the Generator workspace while viewing or refining prompts on `/app/result`.
 
 ### Desktop Downloads:
-- **Windows Installer**: [Bedrock Setup 1.4.3.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.3/Bedrock.Setup.1.4.3.exe)
-- **Windows Portable / Direct**: [Bedrock-Setup.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.3/Bedrock-Setup.exe)
-- **macOS Desktop Build**: Dedicated release available at [v1.4.3-mac](https://github.com/AtharvaK-XD/Bedrock/releases/tag/v1.4.3-mac) (`Bedrock-Mac.dmg` / `Bedrock-Mac.zip`)
+- **Windows Installer**: [Bedrock Setup 1.4.4.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.4/Bedrock.Setup.1.4.4.exe)
+- **Windows Portable / Direct**: [Bedrock-Setup.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.4/Bedrock-Setup.exe)
+- **macOS Desktop Build**: Dedicated release available at [v1.4.4-mac](https://github.com/AtharvaK-XD/Bedrock/releases/tag/v1.4.4-mac) (`Bedrock-Mac.dmg` / `Bedrock-Mac.zip`)
 """
 
 assets = [
-    ('release/Bedrock Setup 1.4.3.exe', 'Bedrock Setup 1.4.3.exe', 'application/vnd.microsoft.portable-executable'),
-    ('release/Bedrock-Setup-1.4.3.exe', 'Bedrock-Setup-1.4.3.exe', 'application/vnd.microsoft.portable-executable'),
+    ('release/Bedrock Setup 1.4.4.exe', 'Bedrock Setup 1.4.4.exe', 'application/vnd.microsoft.portable-executable'),
+    ('release/Bedrock-Setup-1.4.4.exe', 'Bedrock-Setup-1.4.4.exe', 'application/vnd.microsoft.portable-executable'),
     ('release/Bedrock-Setup.exe', 'Bedrock-Setup.exe', 'application/vnd.microsoft.portable-executable'),
-    ('release/Bedrock Setup 1.4.3.exe.blockmap', 'Bedrock Setup 1.4.3.exe.blockmap', 'application/octet-stream'),
+    ('release/Bedrock Setup 1.4.4.exe.blockmap', 'Bedrock Setup 1.4.4.exe.blockmap', 'application/octet-stream'),
     ('release/latest.yml', 'latest.yml', 'text/yaml'),
 ]
 
@@ -120,4 +120,3 @@ for repo in repos:
                 print(f'Upload failed for {file_name}: {err.code} {err_body}')
 
 print('Release publishing complete!')
-
