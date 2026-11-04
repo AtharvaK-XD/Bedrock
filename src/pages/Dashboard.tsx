@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Activity, Zap, ShieldCheck, Cpu, ArrowUpRight, Lock, Crown } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { EncryptedText } from '../components/ui/encrypted-text';
-import { ModelUsagePanel } from '../components/dashboard/ModelUsagePanel';
+import { NetworkTopology2D } from '../components/dashboard/NetworkTopology2D';
 import { CountUp } from '../components/ui/CountUp';
 import { AgentIcon } from '../components/ui/ModelLogos';
 import { cn } from '../lib/utils';
@@ -354,11 +354,11 @@ export default function Dashboard() {
             <div className="lg:col-span-3 flex flex-col gap-3">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-display font-semibold text-white tracking-wide">Model usage</h2>
-                  <span className="text-xs text-white/40 hidden sm:inline">· From your own runs</span>
+                  <h2 className="text-sm font-display font-semibold text-white tracking-wide">Live Pipeline Architecture</h2>
+                  <span className="text-xs text-white/40 hidden sm:inline">· Active 2D Model Dispatch Graph</span>
                 </div>
               </div>
-              <ModelUsagePanel traces={telemetry.traces} />
+              <NetworkTopology2D traces={telemetry.traces} />
             </div>
 
             {/* Right 1 Col: Quick Executables Glass Card */}
