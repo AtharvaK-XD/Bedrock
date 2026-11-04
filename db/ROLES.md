@@ -46,7 +46,7 @@ the role itself and also checks that the time limits apply.
 
 | Table / function | bedrock_app may | Why (api/**, checked 2026-10-31) |
 |---|---|---|
-| "User" | SELECT every column except `password_hash`; INSERT the 12 sign-in columns; UPDATE only name, username, bio, location, organization, github, huggingface, website, plan, subscription_tier, updated_at | sign-in lookup + first-login insert (auth.ts, column list since CHG-0023), profile read/update, plan change. `SELECT *` on "User" fails. |
+| "User" | SELECT every column except `password_hash`; INSERT the 12 sign-in columns; UPDATE only name, username, bio, location, organization, github, huggingface, website, birth_date, referral_source, plan, subscription_tier, updated_at | sign-in lookup + first-login insert (auth.ts, column list since CHG-0023), profile read/update, plan change. `SELECT *` on "User" fails. |
 | "Prompt", "BranchingTree" | SELECT, INSERT, UPDATE, DELETE | list, count, owner-checked update, insert, delete |
 | "Trace", "SecurityLog", "QuotaEvent" | SELECT, INSERT, DELETE | add, count, refund, "clear my traces", cleanup; never edit |
 | "IdempotencyKey" | SELECT, DELETE | cleanup of expired keys |

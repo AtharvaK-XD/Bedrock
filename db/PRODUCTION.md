@@ -32,6 +32,7 @@ each feature works the moment it is live.
 | 0015 | max 5,000 usage records per account per 24 h (`POST /api/traces` answers 429) | no cap |
 | 0016 | old rows checked against the size rules | old rows unchecked |
 | 0017 | fast paging of the prompts / workflows lists (0.24 ms per page on the production copy) | paging works, but reads the whole library |
+| 0018 | the sign-up wizard's birth date and "how did you hear about us" answers (new, optional "User" columns) | the profile still loads, those two answers are simply not stored (a save that carries them answers 503 `ONBOARDING_FIELDS_NOT_READY`) |
 
 ## Step 0: safety net (must be done first)
 1. Neon console -> your project -> Branches -> create a branch **from production, at "now"**, named

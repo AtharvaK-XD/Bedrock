@@ -23,6 +23,7 @@ const EXPECTED = {
     joined_date: ['text', 'YES'], email_verified: ['boolean', 'NO'], mfa_enabled: ['boolean', 'NO'],
     razorpay_customer_id: ['text', 'YES'], razorpay_subscription_id: ['text', 'YES'],
     subscription_tier: ['text', 'NO'], created_at: [TS, 'NO'], updated_at: [TS, 'NO'],
+    birth_date: ['text', 'YES'], referral_source: ['text', 'YES'], // 0018
   },
   Prompt: {
     id: ['text', 'NO'], user_id: ['text', 'NO'], title: ['text', 'NO'], snippet: ['text', 'NO'],
@@ -51,7 +52,7 @@ const EXPECTED = {
 };
 // Columns the API reads from "User" in GET /api/user/profile (api/user/profile.ts, CHG-0013)
 const PROFILE_COLUMNS = ['id', 'name', 'username', 'email', 'avatar_url', 'avatar_initials', 'plan', 'role', 'bio', 'location',
-  'organization', 'github', 'huggingface', 'website', 'joined_date', 'created_at', 'subscription_tier'];
+  'organization', 'github', 'huggingface', 'website', 'joined_date', 'created_at', 'subscription_tier', 'birth_date', 'referral_source'];
 
 let differences = 0;
 const diff = (msg) => { differences++; console.log(`DIFF  ${msg}`); };

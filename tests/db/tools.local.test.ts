@@ -114,4 +114,30 @@ describe.skipIf(!PGlite)('dev-data anonymizer (db/anonymize-dev.mjs)', () => {
     }
     await db.close();
   }, 120_000);
+
+  it('also erases the onboarding answers (birth date, referral source, migration 0018)', async () => {
+    const db = new PGlite();
+    await migrateUp(db, new Set<string>());
+    await seedUsers(db);
+    await db.query(`UPDATE "User" SET birth_date = '1990-05-17', referral_source = 'a friend called Priya' WHERE id = 'ua'`);
+    const sql = neonLike(db);
+    await markDev(sql);
+    await anonymize(sql);
+    const users = await rows(db, `SELECT birth_date, referral_source FROM "User" ORDER BY id`);
+    expect(users).toEqual([
+      { birth_date: null, referral_source: null },
+      { birth_date: null, referral_source: null },
+    ]);
+    await db.close();
+  }, 120_000);
+
+  it('still works on a copy that has not run migration 0018 yet (the columns do not exist)', async () => {
+    const db = new PGlite();
+    await migrateUp(db, new Set<string>(), '0017');
+    await seedUsers(db);
+    const sql = neonLike(db);
+    await markDev(sql);
+    expect(await anonymize(sql)).toEqual({ users: 2, real_emails: 0 });
+    await db.close();
+  }, 120_000);
 });

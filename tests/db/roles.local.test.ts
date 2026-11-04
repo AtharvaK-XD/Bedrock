@@ -101,6 +101,30 @@ describe.skipIf(!PGlite)('db/roles.sql on in-memory Postgres', () => {
     });
   });
 
+  it('the onboarding answers (0018) can be read and changed as bedrock_app, and nothing wider was opened', async () => {
+    await runSql(db, rolesSql);
+    await asApp(async () => {
+      expect(await errorOf(db, `SELECT birth_date, referral_source FROM "User" WHERE id='ua' LIMIT 1`)).toBeNull();
+      expect(
+        await errorOf(db, `UPDATE "User" SET birth_date = '2000-01-31'::text, referral_source = 'youtube'::text, updated_at = NOW() WHERE id='ua'`),
+      ).toBeNull();
+      // the profile route's CASE form (keeps a value when the answer is absent)
+      expect(
+        await errorOf(
+          db,
+          `UPDATE "User" SET birth_date = CASE WHEN $1::boolean THEN $2::text ELSE birth_date END, referral_source = CASE WHEN $3::boolean THEN $4::text ELSE referral_source END, updated_at = NOW() WHERE id = $5`,
+          [false, null, true, 'friend', 'ua'],
+        ),
+      ).toBeNull();
+      // still refused: the sign-in columns and password_hash stay out of reach
+      expect(await errorOf(db, `UPDATE "User" SET email = 'evil@x.test' WHERE id='ua'`)).toMatch(/permission denied/);
+      expect(await errorOf(db, `SELECT password_hash FROM "User" LIMIT 1`)).toMatch(/permission denied/);
+    });
+    expect(await rows(db, `SELECT birth_date, referral_source FROM "User" WHERE id='ua'`)).toEqual([
+      { birth_date: '2000-01-31', referral_source: 'friend' },
+    ]);
+  });
+
   it('dangerous actions are refused as bedrock_app', async () => {
     const refused: Record<string, string> = {
       'read password_hash': `SELECT password_hash FROM "User" LIMIT 1`,

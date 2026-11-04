@@ -47,6 +47,7 @@ Roles: `db/ROLES.md` + `db/roles.sql`.
 | 0015_trace_daily_cap | At most 5,000 usage records per user per 24 hours (error `DAILY_TRACE_LIMIT`, 23514). Existing rows untouched. |
 | 0016_validate_size_checks | Makes the 0003/0005 size rules cover old rows too. Refuses (changes nothing for that table) if an old row breaks a rule. Down is a no-op. |
 | 0017_paging_indexes | Two indexes (built `CONCURRENTLY`) for stable, fast paging of the prompts and workflows lists (`db/PAGING.md`). |
+| 0018_onboarding_fields | Two optional "User" columns for the sign-up wizard, `birth_date` and `referral_source` (both text, NULL for every existing account), plus a loose size check (150 / 500 characters; the API allows 30 / 100). No data is changed. If the app role is in use, run `node db/migrate.mjs roles --yes --host <host>` again afterwards (it grants the two columns). Until then, the profile route keeps working without them (see CHG-0064). |
 
 ## Limits: database vs API (on purpose the database is looser)
 The API refuses first with a clear message; the database limit is a safety net for bugs or direct writes.
@@ -59,6 +60,7 @@ The API refuses first with a clear message; the database limit is a safety net f
 | Ids | 100 chars | 100 chars (0003) |
 | Profile name / username / bio | 100 / 50 / 1,000 | 1,000 / 100 / 5,000 (0013) |
 | Location, organization / links | 100 / 300 each | 500 / 2,000 each (0013) |
+| Birth date / referral source | 30 / 100 chars (birth date must be a real date, `YYYY-MM-DD`) | 150 / 500 chars (0018) |
 Tightening the database to the API numbers needs Atharva's OK.
 
 ## Rules for future migrations
@@ -84,7 +86,7 @@ Before anything: all steps below must already have passed on a Neon dev branch (
 | 5 | Only if `check-schema` shows the app connects with the same role that runs migrations (or after step 8): `up ... --to 0006` | One generation works (no 503). | `down` |
 | 6 | `up ... --to 0007` (stops by itself if duplicate emails exist). | `check-schema`: unique index on lower(email) = yes. | `down` |
 | 6b | `up ... --to 0010` (0009 stops by itself if duplicate usernames exist). Then deploy the API change that uses `trace_totals()` (if Backend made it). | A generation still works; profile username change works; a taken username gives 409; dashboard totals load. | `down` per step, newest first |
-| 7 | `up ... --to 0013` (0013 stops by itself if an account is over a limit). Then the rest: `up ...` (0014-0017; 0016 stops by itself if an old row breaks a size rule). | Save + edit + delete a prompt and a workflow; profile save; one generation; `check-schema`: row guards 12 of 12. | `down` per step, newest first (nothing to undo in data) |
+| 7 | `up ... --to 0013` (0013 stops by itself if an account is over a limit). Then the rest: `up ...` (0014-0018; 0016 stops by itself if an old row breaks a size rule). | Save + edit + delete a prompt and a workflow; profile save; one generation; `check-schema`: row guards 12 of 12. | `down` per step, newest first (nothing to undo in data) |
 | 8 | Roles (recommended, `db/ROLES.md`): create `bedrock_app` with plain SQL, `node db/migrate.mjs roles --yes --host <host>` (every line OK), set Vercel `DATABASE_URL` (Preview first) to the `bedrock_app` string, redeploy, repeat the step 7 checks. Then Production. | All step 7 checks pass on the preview first. `check-schema` with the app string: `connected as role: bedrock_app`. | Put the old `DATABASE_URL` back in Vercel and redeploy (rights do no harm if unused). |
 | 9 | Remove `DATABASE_URL_DEV`'s production value from the session. | | |
 

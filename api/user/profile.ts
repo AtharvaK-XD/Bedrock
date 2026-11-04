@@ -4,7 +4,16 @@ import { getDb, UserRow } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
 import { handleDesktopTicket } from '../_lib/desktopTicket.js';
 import { handleDeleteAccount, handleClerkWebhook } from '../_lib/accountDeletion.js';
-import { DATA_LIMITS, PG_UNIQUE_VIOLATION, sendDbFailure, firstFieldError, isUnsafeLink } from '../_lib/dataHttp.js';
+import {
+  DATA_LIMITS,
+  PG_UNIQUE_VIOLATION,
+  sendDbFailure,
+  firstFieldError,
+  isUnsafeLink,
+  isValidBirthDate,
+  hasControlChars,
+  isMissingColumnError,
+} from '../_lib/dataHttp.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enforce distributed Upstash Redis rate limiting
@@ -38,11 +47,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     try {
       // Only the columns this response uses: never read password_hash or billing ids here
-      const rows = await sql`
-        SELECT id, name, username, email, avatar_url, avatar_initials, plan, role, bio, location,
-          organization, github, huggingface, website, joined_date, created_at, subscription_tier
-        FROM "User" WHERE id = ${user.id} LIMIT 1
-      ` as Array<Omit<UserRow, 'password_hash' | 'email_verified' | 'mfa_enabled' | 'updated_at'>>;
+      type ProfileRow = Omit<UserRow, 'password_hash' | 'email_verified' | 'mfa_enabled' | 'updated_at'>;
+      let rows: ProfileRow[];
+      try {
+        rows = await sql`
+          SELECT id, name, username, email, avatar_url, avatar_initials, plan, role, bio, location,
+            organization, github, huggingface, website, joined_date, created_at, subscription_tier,
+            birth_date, referral_source
+          FROM "User" WHERE id = ${user.id} LIMIT 1
+        ` as ProfileRow[];
+      } catch (err: unknown) {
+        // A deploy can be ahead of the database: migration 0018 (the two onboarding columns) or db/roles.sql not
+        // applied yet. Serve the profile without them instead of failing every profile request.
+        if (!isMissingColumnError(err)) throw err;
+        console.warn('[Profile] onboarding columns not available yet (migration 0018 / db/roles.sql); serving the profile without them');
+        rows = await sql`
+          SELECT id, name, username, email, avatar_url, avatar_initials, plan, role, bio, location,
+            organization, github, huggingface, website, joined_date, created_at, subscription_tier
+          FROM "User" WHERE id = ${user.id} LIMIT 1
+        ` as ProfileRow[];
+      }
       if (rows.length === 0 || !rows[0]) {
         return res.status(200).json({
           name: user.name,
@@ -78,6 +102,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         github: u.github || '',
         huggingface: u.huggingface || '',
         website: u.website || '',
+        birthDate: u.birth_date || '',
+        referralSource: u.referral_source || '',
         joinedDate,
         subscriptionTier: u.subscription_tier || 'free',
       });
@@ -98,10 +124,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       [body.github, DATA_LIMITS.profileLink, 'github'],
       [body.huggingface, DATA_LIMITS.profileLink, 'huggingface'],
       [body.website, DATA_LIMITS.profileLink, 'website'],
+      [body.birthDate, DATA_LIMITS.profileBirthDate, 'birthDate'],
+      [body.referralSource, DATA_LIMITS.profileReferralSource, 'referralSource'],
     ]);
     if (fieldError) {
       return res.status(400).json({ error: fieldError });
     }
+
+    // Onboarding answers (migration 0018). An answer that is absent is left as it is; '' or null clears it.
+    const hasBirthDate = body.birthDate !== undefined;
+    const hasReferralSource = body.referralSource !== undefined;
+    const birthDate = typeof body.birthDate === 'string' ? body.birthDate.trim() : '';
+    const referralSource = typeof body.referralSource === 'string' ? body.referralSource.trim() : '';
+    if (birthDate && !isValidBirthDate(birthDate)) {
+      return res.status(400).json({ error: 'birthDate must be a real date written YYYY-MM-DD (for example 2000-01-31)' });
+    }
+    if (hasControlChars(referralSource)) {
+      return res.status(400).json({ error: 'referralSource must be plain text' });
+    }
+    // A request that carries only onboarding answers must not touch the other profile fields (the normal save below
+    // writes every field, so a missing one would be cleared).
+    const PROFILE_FIELDS = ['name', 'username', 'bio', 'location', 'organization', 'github', 'huggingface', 'website'] as const;
+    const onboardingOnly = (hasBirthDate || hasReferralSource) && PROFILE_FIELDS.every((f) => body[f] === undefined);
     for (const field of ['github', 'huggingface', 'website'] as const) {
       if (body[field] && isUnsafeLink(body[field])) {
         return res.status(400).json({ error: `${field} must be a normal web link (http or https)` });
@@ -109,6 +153,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
+      if (hasBirthDate || hasReferralSource) {
+        // Done first and on its own statement, so a database that is not ready (migration 0018 or db/roles.sql
+        // missing) is reported before anything else is changed.
+        try {
+          await sql`
+            UPDATE "User"
+            SET
+              birth_date = CASE WHEN ${hasBirthDate}::boolean THEN ${birthDate || null}::text ELSE birth_date END,
+              referral_source = CASE WHEN ${hasReferralSource}::boolean THEN ${referralSource || null}::text ELSE referral_source END,
+              updated_at = NOW()
+            WHERE id = ${user.id}
+          `;
+        } catch (err: unknown) {
+          if (!isMissingColumnError(err)) throw err;
+          console.error('[Profile] PUT: onboarding columns not available (migration 0018 / db/roles.sql not applied yet)');
+          return res.status(503).json({
+            error: 'Onboarding answers cannot be saved yet',
+            code: 'ONBOARDING_FIELDS_NOT_READY',
+            message: 'This part of your profile cannot be saved right now. Please try again later.',
+          });
+        }
+        if (onboardingOnly) {
+          return res.status(200).json({ message: 'Profile updated successfully', success: true });
+        }
+      }
+
       const name = body.name || user.name;
       const username = body.username || null;
       const bio = body.bio || null;

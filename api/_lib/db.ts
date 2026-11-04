@@ -41,6 +41,9 @@ export interface UserRow {
   email_verified: boolean;
   mfa_enabled: boolean;
   subscription_tier: string;
+  /** Onboarding answers (migration 0018). Optional: absent while that migration is not applied yet. */
+  birth_date?: string | null;
+  referral_source?: string | null;
   created_at: Date;
   updated_at: Date;
 }

@@ -21,6 +21,11 @@ export async function anonymize(sql) {
   if (!(await isMarkedDev(sql))) {
     throw new Error('This database is not marked as a dev database (bedrock_environment). Refusing. Nothing was changed.');
   }
+  // Onboarding answers (migration 0018) are personal data. A copy that has not run 0018 yet has no such columns.
+  const onboardingCols = await sql.query(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'User' AND column_name IN ('birth_date', 'referral_source')",
+  );
+  const scrubOnboarding = onboardingCols.map((r) => `${r.column_name} = NULL, `).join('');
   const results = await sql.transaction((tx) => [
     // accounts: fake but unique, stable per id
     tx.query(`UPDATE "User" SET
@@ -28,7 +33,7 @@ export async function anonymize(sql) {
         name = 'Test User ' || substr(md5(id), 1, 4),
         username = CASE WHEN username IS NULL THEN NULL ELSE 'user_' || substr(md5(id), 1, 12) END,
         avatar_url = NULL, avatar_initials = 'TU', bio = NULL, location = NULL, organization = NULL,
-        github = NULL, huggingface = NULL, website = NULL, password_hash = 'x',
+        github = NULL, huggingface = NULL, website = NULL, ${scrubOnboarding}password_hash = 'x',
         razorpay_customer_id = NULL, razorpay_subscription_id = NULL, updated_at = now()`),
     tx.query(`UPDATE "Prompt" SET title = 'Test prompt ' || substr(md5(id), 1, 6), snippet = ${filler('snippet')},
         full_content = ${filler('full_content')}, tags = '["Test"]'`),
