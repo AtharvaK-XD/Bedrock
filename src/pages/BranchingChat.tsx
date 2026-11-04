@@ -1741,6 +1741,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeClick={onNodeClick}
+          onPaneClick={() => setActiveSettingsNodeId(null)}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={{ type: 'deletableEdge' }}
@@ -1769,15 +1770,13 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
       </div>
 
       {/* Center Bottom Toolbar */}
-      <motion.div
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
-        className={cn(
-          "absolute bottom-6 z-20 flex items-center gap-3 nowheel nopan nodrag font-mono text-xs transition-all duration-300",
-          activeNode ? "left-[calc(50%+190px)] -translate-x-1/2" : "left-1/2 -translate-x-1/2"
-        )}
-      >
+      <div className="absolute bottom-6 inset-x-0 mx-auto w-fit z-20 pointer-events-none flex justify-center">
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
+          className="pointer-events-auto flex items-center gap-3 nowheel nopan nodrag font-mono text-xs"
+        >
         <div className="flex items-center gap-2.5 px-3 py-2 bg-sf-1a1a1a/90 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-xl shadow-black/40">
           <button
             onClick={onBackToDashboard}
@@ -1862,6 +1861,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
           <span>DEL:Remove</span>
         </div>
       </motion.div>
+      </div>
 
       {/* Floating Node Palette with Distinct Shapes for Each Archetype */}
       <div
