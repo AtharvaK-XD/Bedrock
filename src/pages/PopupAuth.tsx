@@ -172,7 +172,7 @@ export default function PopupAuth() {
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen bg-sf-050505 text-white flex flex-col items-center justify-center p-6 font-sans">
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 font-sans">
         <div className="max-w-md w-full bg-zinc-950 border border-white/10 rounded-2xl p-6 text-center space-y-4">
           <p className="text-sm text-red-400">{errorMessage}</p>
           <button
@@ -191,7 +191,7 @@ export default function PopupAuth() {
   }
 
   return (
-    <div className="min-h-screen bg-sf-050505 text-white flex flex-col items-center justify-center font-sans select-none">
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-sans select-none">
       <div className="flex flex-col items-center gap-4">
         <div className="w-8 h-8 border-2 border-white/10 border-t-copper-500 rounded-full animate-spin" />
         <span className="text-xs font-mono text-zinc-500 tracking-wider">

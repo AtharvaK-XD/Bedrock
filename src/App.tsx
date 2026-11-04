@@ -26,7 +26,7 @@ const Terms = lazy(() => import('./pages/Terms'));
 
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center min-h-[60vh] bg-sf-050505" role="status" aria-label="Loading">
+    <div className="flex-1 w-full min-h-[calc(100vh-5rem)] flex items-center justify-center bg-black" role="status" aria-label="Loading">
       <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
     </div>
   );
@@ -180,7 +180,7 @@ function AnimatedRoutes() {
           path="/" 
           element={
             !isLoaded ? (
-              <div className="flex items-center justify-center min-h-screen bg-sf-050505">
+              <div className="flex items-center justify-center min-h-screen bg-black">
                 <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
               </div>
             ) : isLoggedIn ? (
@@ -237,7 +237,7 @@ function AnimatedRoutes() {
           path="/app/*" 
           element={
             !isLoaded ? (
-              <div className="flex items-center justify-center min-h-screen bg-sf-050505">
+              <div className="flex items-center justify-center min-h-screen bg-black">
                 <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
               </div>
             ) : !isLoggedIn ? (

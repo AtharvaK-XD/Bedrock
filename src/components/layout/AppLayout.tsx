@@ -143,7 +143,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Returned after all hooks so React always sees the same hooks in the same order
   if (isPopup) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-sf-050505 text-sandstone-300">
+      <div className="flex items-center justify-center min-h-screen bg-black text-sandstone-300">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
           <span className="text-sm font-mono">Authentication complete. Closing window...</span>
@@ -166,15 +166,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             setManuallyOpened(true);
             setShowKeyGateway(true);
           }} />
-          <main className="flex-1 relative h-full overflow-y-auto min-w-0 bg-black custom-scrollbar">
+          <main className="flex-1 relative h-full overflow-y-auto min-w-0 bg-black custom-scrollbar flex flex-col">
             {children}
           </main>
         </div>
       ) : (
         /* Website Layout: Traditional Topbar + Scrolling Page */
-        <div className="min-h-screen flex flex-col relative z-10">
+        <div className="min-h-screen flex flex-col relative z-10 bg-black">
           <Topbar />
-          <main className="flex-1 relative pt-20">
+          <main className="flex-1 relative pt-20 flex flex-col bg-black">
             {children}
           </main>
         </div>

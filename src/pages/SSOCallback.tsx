@@ -118,7 +118,7 @@ export default function SSOCallback() {
   }, [isSignedIn, user, clerk, navigate, isPopup]);
 
   return (
-    <PageTransition className="flex items-center justify-center min-h-screen bg-sf-050505">
+    <PageTransition className="flex items-center justify-center min-h-screen bg-black">
       <div className="flex flex-col items-center justify-center gap-4">
         <div className="w-8 h-8 border-2 border-white/20 border-t-copper-500 rounded-full animate-spin"></div>
         <p className="text-gray-400 font-medium text-sm">

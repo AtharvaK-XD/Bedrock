@@ -154,7 +154,7 @@ export default function BrowserAuthCallback() {
   };
 
   return (
-    <PageTransition className="min-h-screen bg-sf-050505 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+    <PageTransition className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-emerald-500/10 blur-[180px] pointer-events-none rounded-full" />
 
