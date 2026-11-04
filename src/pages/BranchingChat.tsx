@@ -1768,14 +1768,14 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
         </ReactFlow>
       </div>
 
-      {/* Top Left Toolbar */}
+      {/* Center Bottom Toolbar */}
       <motion.div
-        initial={{ y: -50, opacity: 0 }}
+        initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
         className={cn(
-          "absolute top-6 z-10 flex items-center gap-3 nowheel nopan nodrag font-mono text-xs transition-all duration-300",
-          activeNode ? "left-[404px]" : "left-6"
+          "absolute bottom-6 z-20 flex items-center gap-3 nowheel nopan nodrag font-mono text-xs transition-all duration-300",
+          activeNode ? "left-[calc(50%+190px)] -translate-x-1/2" : "left-1/2 -translate-x-1/2"
         )}
       >
         <div className="flex items-center gap-2.5 px-3 py-2 bg-sf-1a1a1a/90 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-xl shadow-black/40">
