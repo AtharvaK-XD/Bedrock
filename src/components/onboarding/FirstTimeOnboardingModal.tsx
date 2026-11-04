@@ -132,6 +132,19 @@ export function FirstTimeOnboardingModal() {
               },
               body: JSON.stringify({ name: name.trim() }),
             }).catch(() => {});
+
+            // Call dedicated onboarding profile update per OPEN-0067
+            fetch('/api/user/profile', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                birthDate: formattedBirthDate,
+                referralSource: finalSource,
+              }),
+            }).catch(() => {});
           }
         }
       } catch {}
