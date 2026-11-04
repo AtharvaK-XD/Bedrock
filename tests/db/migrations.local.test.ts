@@ -222,6 +222,72 @@ describe.skipIf(!PGlite)('migrations on in-memory Postgres', () => {
     });
   });
 
+  describe('0018 onboarding fields (birth_date, referral_source)', () => {
+    const NEW_COLUMNS = `SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'User' AND column_name IN ('birth_date','referral_source') ORDER BY column_name`;
+
+    it('before: the columns do not exist; after: two nullable text columns, and no existing account is changed', async () => {
+      const d = new PGlite();
+      const a = new Set<string>();
+      await migrateUp(d, a, '0017');
+      await seedUsers(d);
+      await d.query(`UPDATE "User" SET bio = 'keep me', username = 'alice' WHERE id = 'ua'`);
+      expect(await rows(d, NEW_COLUMNS)).toEqual([]);
+      expect(await errorOf(d, `SELECT birth_date FROM "User"`)).toMatch(/birth_date/);
+      const before = await rows(d, `SELECT * FROM "User" ORDER BY id`);
+
+      await migrateUp(d, a);
+      expect(await rows(d, NEW_COLUMNS)).toEqual([
+        { column_name: 'birth_date', data_type: 'text', is_nullable: 'YES' },
+        { column_name: 'referral_source', data_type: 'text', is_nullable: 'YES' },
+      ]);
+      const after = await rows(d, `SELECT * FROM "User" ORDER BY id`);
+      expect(after.map((u: any) => ({ ...u, birth_date: undefined, referral_source: undefined }))).toEqual(
+        before.map((u: any) => ({ ...u, birth_date: undefined, referral_source: undefined })),
+      );
+      expect(after.every((u: any) => u.birth_date === null && u.referral_source === null)).toBe(true);
+      await d.close();
+    }, 120_000);
+
+    it('the safety-net size check is validated, refuses 151 / 501 characters and accepts the limits', async () => {
+      expect((await rows(db, `SELECT convalidated v FROM pg_constraint WHERE conname = 'User_onboarding_size_chk'`))[0].v).toBe(true);
+      expect(await errorOf(db, `UPDATE "User" SET birth_date = repeat('1',151) WHERE id = 'ua'`)).toMatch(/User_onboarding_size_chk/);
+      expect(await errorOf(db, `UPDATE "User" SET referral_source = repeat('r',501) WHERE id = 'ua'`)).toMatch(/User_onboarding_size_chk/);
+      expect(await errorOf(db, `UPDATE "User" SET birth_date = '2000-01-31', referral_source = repeat('r',500) WHERE id = 'ua'`)).toBeNull();
+      expect(await errorOf(db, `UPDATE "User" SET birth_date = NULL, referral_source = NULL WHERE id = 'ua'`)).toBeNull();
+    });
+
+    it('the existing "User" checks still apply next to it', async () => {
+      expect(await errorOf(db, `UPDATE "User" SET bio = repeat('b',5001) WHERE id = 'ub'`)).toMatch(/User_text_size_chk/);
+    });
+
+    it('down removes the columns and the check and keeps every account; re-applying works', async () => {
+      const d = new PGlite();
+      const a = new Set<string>();
+      await migrateUp(d, a);
+      await seedUsers(d);
+      await d.query(`UPDATE "User" SET birth_date = '1999-12-31', referral_source = 'friend' WHERE id = 'ua'`);
+      await migrateDown(d, a, '0017');
+      expect(a.has('0018')).toBe(false);
+      expect(await rows(d, NEW_COLUMNS)).toEqual([]);
+      expect(await rows(d, `SELECT 1 FROM pg_constraint WHERE conname = 'User_onboarding_size_chk'`)).toHaveLength(0);
+      expect(await rows(d, `SELECT count(*)::int c FROM "User"`)).toEqual([{ c: 2 }]);
+      await migrateUp(d, a);
+      expect(await rows(d, `SELECT birth_date, referral_source FROM "User" WHERE id = 'ua'`)).toEqual([{ birth_date: null, referral_source: null }]);
+      await d.close();
+    }, 120_000);
+
+    it('deleting an account removes its onboarding answers with the row', async () => {
+      const d = new PGlite();
+      const a = new Set<string>();
+      await migrateUp(d, a);
+      await seedUsers(d);
+      await d.query(`UPDATE "User" SET birth_date = '1999-12-31', referral_source = 'friend' WHERE id = 'ub'`);
+      await d.query(`SELECT delete_user_data('ub')`);
+      expect(await rows(d, `SELECT count(*)::int c FROM "User" WHERE id = 'ub'`)).toEqual([{ c: 0 }]);
+      await d.close();
+    }, 120_000);
+  });
+
   describe('up and down', () => {
     it('every migration can be undone and re-applied (twice) and no row is lost', async () => {
       const d = new PGlite();

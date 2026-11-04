@@ -26,6 +26,9 @@ export const DATA_LIMITS = {
   profileBio: 1_000,
   profileShortText: 100,
   profileLink: 300,
+  // Onboarding wizard answers (migration 0018; the database allows 150 and 500)
+  profileBirthDate: 30,
+  profileReferralSource: 100,
 } as const;
 
 /** Paging for the list routes (GET /api/prompts, GET /api/workflows). */
@@ -157,6 +160,45 @@ export function firstFieldError(checks: Array<[value: unknown, max: number, labe
     if (value.length > max) return `${label} must be at most ${max} characters`;
   }
   return null;
+}
+
+const BIRTH_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * True for a real calendar date written YYYY-MM-DD (the format the onboarding wizard sends), from 1900-01-01 up to
+ * tomorrow. "Tomorrow" instead of "today" so a user whose local date is ahead of UTC is not refused.
+ * Rejects 2000-02-30, 2001-02-29, 2000-13-01, "1/2/2000", and dates in the future.
+ */
+export function isValidBirthDate(value: string, now: Date = new Date()): boolean {
+  const m = BIRTH_DATE_RE.exec(value);
+  if (!m) return false;
+  const [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  if (year < 1900) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return false;
+  const tomorrow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  return date.getTime() <= tomorrow;
+}
+
+/** Control characters (including NUL, which Postgres text cannot hold) do not belong in a short typed answer. */
+export function hasControlChars(value: string): boolean {
+  return Array.from(value).some((ch) => {
+    const code = ch.charCodeAt(0);
+    return code < 0x20 || code === 0x7f;
+  });
+}
+
+const PG_UNDEFINED_COLUMN = '42703';
+const PG_INSUFFICIENT_PRIVILEGE = '42501';
+
+/**
+ * True when a query failed because a column does not exist (migration 0018 not applied yet) or the app role has no
+ * right on it (db/roles.sql not run again). Lets the profile route keep working during a deploy that is ahead of the
+ * database, instead of failing every profile request.
+ */
+export function isMissingColumnError(err: unknown): boolean {
+  const code = (err as { code?: unknown } | null)?.code;
+  return code === PG_UNDEFINED_COLUMN || code === PG_INSUFFICIENT_PRIVILEGE;
 }
 
 /** Cuts a display-only string (title, snippet, label) to `max` characters; non-strings become ''. */

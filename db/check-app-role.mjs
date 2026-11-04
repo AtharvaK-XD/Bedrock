@@ -47,6 +47,10 @@ const works = {
   'profile GET (17 columns) + PUT': [newUser,
     `SELECT id, name, username, email, avatar_url, avatar_initials, plan, role, bio, location, organization, github, huggingface, website, joined_date, created_at, subscription_tier FROM "User" WHERE id = '${P}' LIMIT 1`,
     `UPDATE "User" SET name = 'p2', username = NULL, bio = 'b', location = NULL, organization = NULL, github = NULL, huggingface = NULL, website = NULL, updated_at = NOW() WHERE id = '${P}'`],
+  // 0018: the onboarding wizard's two answers (needs roles.sql from CHG-0064 or later)
+  'onboarding fields (read + partial update)': [newUser,
+    `SELECT birth_date, referral_source FROM "User" WHERE id = '${P}' LIMIT 1`,
+    `UPDATE "User" SET birth_date = '2000-01-31', referral_source = 'youtube', updated_at = NOW() WHERE id = '${P}'`],
   'plan / tier change': [newUser, `UPDATE "User" SET subscription_tier = 'free', plan = 'Free Plan', updated_at = NOW() WHERE id = '${P}'`],
   'prompt: save (update, then insert-if-under-cap), list, delete': [newUser,
     `UPDATE "Prompt" SET title = 't' WHERE id = '${P}_p' AND user_id = '${P}'`,

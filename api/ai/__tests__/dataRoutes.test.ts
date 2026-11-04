@@ -589,6 +589,159 @@ describe('PUT /api/user/profile', () => {
   });
 });
 
+// Migration 0018 + OPEN-0066: the onboarding wizard's birth date and referral source
+describe('profile onboarding fields (birthDate, referralSource)', () => {
+  const missingColumn = () => Object.assign(new Error('column "birth_date" does not exist'), { code: '42703' });
+
+  it('GET returns both, as empty text when never set', async () => {
+    h.state.responder = () => [{ id: 'user_A', name: 'Alice', email: 'a@example.com', birth_date: '2000-01-31', referral_source: 'youtube' }];
+    const res = mockRes();
+    await profile(mockReq('GET'), res);
+    expect(res.body).toMatchObject({ birthDate: '2000-01-31', referralSource: 'youtube' });
+    expect(h.state.calls[0].text).toContain('birth_date, referral_source');
+
+    h.state.responder = () => [{ id: 'user_A', name: 'Alice', email: 'a@example.com', birth_date: null, referral_source: null }];
+    const empty = mockRes();
+    await profile(mockReq('GET'), empty);
+    expect(empty.body).toMatchObject({ birthDate: '', referralSource: '' });
+  });
+
+  it('GET still works when the database is behind (migration 0018 or roles.sql not applied): empty answers, no 500', async () => {
+    let n = 0;
+    h.state.responder = () => {
+      if (n++ === 0) throw missingColumn();
+      return [{ id: 'user_A', name: 'Alice', email: 'a@example.com', username: 'alice' }];
+    };
+    const res = mockRes();
+    await profile(mockReq('GET'), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toMatchObject({ username: 'alice', birthDate: '', referralSource: '' });
+    expect(h.state.calls).toHaveLength(2);
+    expect(h.state.calls[1].text).not.toContain('birth_date');
+  });
+
+  it('GET does not hide other database errors', async () => {
+    h.state.responder = () => {
+      throw Object.assign(new Error('connection reset'), { code: '08006' });
+    };
+    const res = mockRes();
+    await profile(mockReq('GET'), res);
+    expect(res.statusCode).toBe(500);
+  });
+
+  it('PUT with only the two answers changes only those columns (nothing else is cleared)', async () => {
+    const res = mockRes();
+    await profile(mockReq('PUT', { birthDate: '2000-01-31', referralSource: '  youtube  ' }), res);
+    expect(res.statusCode).toBe(200);
+    expect(h.state.calls).toHaveLength(1);
+    const call = h.state.calls[0];
+    expect(call.text).toContain('birth_date = CASE WHEN');
+    expect(call.text).not.toMatch(/name = |bio = |website = /);
+    expect(call.values).toEqual(expect.arrayContaining([true, '2000-01-31', 'youtube', 'user_A']));
+  });
+
+  it('PUT with one answer leaves the other one as it is', async () => {
+    const res = mockRes();
+    await profile(mockReq('PUT', { referralSource: 'friend' }), res);
+    expect(res.statusCode).toBe(200);
+    // [hasBirthDate, birthDate, hasReferralSource, referralSource, userId]
+    expect(h.state.calls[0].values).toEqual([false, null, true, 'friend', 'user_A']);
+  });
+
+  it('PUT with an empty value clears the answer', async () => {
+    const res = mockRes();
+    await profile(mockReq('PUT', { birthDate: '', referralSource: null }), res);
+    expect(res.statusCode).toBe(200);
+    expect(h.state.calls[0].values).toEqual([true, null, true, null, 'user_A']);
+  });
+
+  it('PUT together with the normal profile fields saves both', async () => {
+    const res = mockRes();
+    await profile(mockReq('PUT', { name: 'Alice', bio: 'hi', birthDate: '1999-12-31' }), res);
+    expect(res.statusCode).toBe(200);
+    expect(h.state.calls).toHaveLength(2);
+    expect(h.state.calls[0].text).toContain('birth_date');
+    expect(h.state.calls[1].text).toContain('name = ');
+    expect(h.state.calls[1].text).not.toContain('birth_date');
+  });
+
+  it('PUT without the new fields never touches the new columns (works before migration 0018)', async () => {
+    const res = mockRes();
+    await profile(mockReq('PUT', { name: 'Alice', bio: 'hi' }), res);
+    expect(res.statusCode).toBe(200);
+    expect(h.state.calls).toHaveLength(1);
+    expect(h.state.calls[0].text).not.toMatch(/birth_date|referral_source/);
+  });
+
+  it.each([
+    ['not a date', 'yesterday'],
+    ['wrong order', '31-01-2000'],
+    ['slashes', '2000/01/31'],
+    ['month 13', '2000-13-01'],
+    ['day 30 of February', '2000-02-30'],
+    ['29 February in a common year', '2001-02-29'],
+    ['before 1900', '1899-12-31'],
+    ['in the future', '2999-01-01'],
+    ['a date with a time', '2000-01-31T00:00:00Z'],
+  ])('PUT rejects a birthDate that is %s', async (_label, birthDate) => {
+    const res = mockRes();
+    await profile(mockReq('PUT', { birthDate }), res);
+    expect(res.statusCode).toBe(400);
+    expect(String((res.body as any).error)).toMatch(/birthDate/);
+    expect(h.state.calls).toHaveLength(0);
+  });
+
+  it('PUT accepts real edge dates: a leap day and the first allowed day', async () => {
+    for (const birthDate of ['2000-02-29', '1900-01-01']) {
+      h.state.calls = [];
+      const res = mockRes();
+      await profile(mockReq('PUT', { birthDate }), res);
+      expect(res.statusCode, birthDate).toBe(200);
+    }
+  });
+
+  it('PUT enforces the length limits (30 and 100) and plain text', async () => {
+    for (const body of [
+      { birthDate: '2'.repeat(31) },
+      { referralSource: 'r'.repeat(101) },
+      { birthDate: 20000131 },
+      { referralSource: 5 },
+      { referralSource: 'bad\u0000text' },
+      { referralSource: 'bad\ntext' },
+    ]) {
+      const res = mockRes();
+      await profile(mockReq('PUT', body), res);
+      expect(res.statusCode, JSON.stringify(body)).toBe(400);
+    }
+    expect(h.state.calls).toHaveLength(0);
+    const ok = mockRes();
+    await profile(mockReq('PUT', { referralSource: 'r'.repeat(100) }), ok);
+    expect(ok.statusCode).toBe(200);
+  });
+
+  it('PUT answers 503 with a clear code, and changes nothing, when the database is not ready', async () => {
+    h.state.responder = () => {
+      throw missingColumn();
+    };
+    const res = mockRes();
+    await profile(mockReq('PUT', { name: 'Alice', birthDate: '2000-01-31' }), res);
+    expect(res.statusCode).toBe(503);
+    expect(res.body).toMatchObject({ code: 'ONBOARDING_FIELDS_NOT_READY' });
+    expect(JSON.stringify(res.body)).not.toMatch(/birth_date|42703|column/);
+    // the onboarding statement is first, so the normal save did not run
+    expect(h.state.calls).toHaveLength(1);
+  });
+
+  it('PUT also treats a missing column right (42501) as "not ready", not as a crash', async () => {
+    h.state.responder = () => {
+      throw Object.assign(new Error('permission denied for table User'), { code: '42501' });
+    };
+    const res = mockRes();
+    await profile(mockReq('PUT', { referralSource: 'reddit' }), res);
+    expect(res.statusCode).toBe(503);
+  });
+});
+
 describe('GET /api/health', () => {
   async function loadHealth() {
     vi.resetModules();
