@@ -3,15 +3,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Desktop sign-in ticket (POST /api/user/profile?action=desktop-ticket) with Clerk, the database and
 // the token check mocked: no real Clerk request is made.
 const h = vi.hoisted(() => ({
-  state: { user: null as any, rateLimitAllowed: true },
+  state: { user: null as any, rateLimitAllowed: true, ticketLimitAllowed: true, limits: [] as Array<[string, unknown]> },
   authenticateRequest: vi.fn(),
   logSecurityEvent: vi.fn(async () => {}),
   sql: vi.fn(async () => []),
 }));
 
-vi.mock('../auth.js', () => ({ authenticateRequest: h.authenticateRequest }));
+vi.mock('../auth.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../auth.js')>()),
+  authenticateRequest: h.authenticateRequest,
+}));
 vi.mock('../rateLimiter.js', () => ({
-  enforceRateLimit: vi.fn(async () => h.state.rateLimitAllowed),
+  enforceRateLimit: vi.fn(async (_req: unknown, _res: unknown, preset: string, id: unknown) => {
+    h.state.limits.push([preset, id]);
+    return preset === 'desktopTicket' ? h.state.ticketLimitAllowed : h.state.rateLimitAllowed;
+  }),
   getClientIp: () => '203.0.113.7',
 }));
 vi.mock('../db.js', () => ({ getDb: () => h.sql, logSecurityEvent: h.logSecurityEvent }));
@@ -22,7 +28,10 @@ const SECRET = 'sk_test_unit_test_secret_value';
 const TICKET = 'ticket_value_from_clerk';
 
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url');
-const jwtFor = (sub: unknown) => `${b64({ alg: 'RS256', kid: 'k' })}.${b64({ sub })}.c2ln`;
+// The session id is derived from the user id, so the fake Clerk below can answer for any user
+const sidFor = (sub: unknown) => `sess_${String(sub).replace(/[^A-Za-z0-9]/g, '')}`;
+const jwtFor = (sub: unknown, claims: Record<string, unknown> = { sid: sidFor(sub) }) =>
+  `${b64({ alg: 'RS256', kid: 'k' })}.${b64({ sub, ...claims })}.c2ln`;
 
 let counter = 0;
 const freshSub = () => `user_unit${++counter}`; // the per-user brake is module state: one id per test
@@ -59,12 +68,26 @@ function mockRes() {
 const clerkOk = () => new Response(JSON.stringify({ id: 'sit_1', token: TICKET, status: 'pending' }), { status: 200 });
 
 let fetchMock: ReturnType<typeof vi.fn>;
+/** The call that creates the ticket (POST sign_in_tokens). */
+let mintMock: any;
+/** Clerk's answer about a session; default: active and owned by the token's user. */
+let sessionMock: any;
 
 beforeEach(() => {
   h.state.rateLimitAllowed = true;
+  h.state.ticketLimitAllowed = true;
+  h.state.limits = [];
   h.authenticateRequest.mockReset();
   h.logSecurityEvent.mockClear();
-  fetchMock = vi.fn(async () => clerkOk());
+  mintMock = vi.fn(async (..._a: unknown[]) => clerkOk());
+  sessionMock = vi.fn(async (sid: string, _init?: unknown) =>
+    new Response(JSON.stringify({ id: sid, status: 'active', user_id: 'user_' + sid.slice('sess_user'.length) }), { status: 200 })
+  );
+  fetchMock = vi.fn(async (url: string, init?: any) =>
+    String(url).startsWith('https://api.clerk.com/v1/sessions/')
+      ? sessionMock(String(url).split('/').pop() as string, init)
+      : mintMock(url, init)
+  );
   vi.stubGlobal('fetch', fetchMock);
   vi.stubEnv('CLERK_SECRET_KEY', SECRET);
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -88,8 +111,8 @@ describe('POST /api/user/profile?action=desktop-ticket', () => {
     expect(res.headers['Cache-Control']).toBe('no-store');
     expect(JSON.stringify(res.body)).not.toContain(SECRET);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
+    expect(mintMock).toHaveBeenCalledTimes(1);
+    const [url, init] = mintMock.mock.calls[0] as [string, any];
     expect(url).toBe('https://api.clerk.com/v1/sign_in_tokens');
     expect(init.method).toBe('POST');
     expect(init.headers.Authorization).toBe(`Bearer ${SECRET}`);
@@ -104,7 +127,7 @@ describe('POST /api/user/profile?action=desktop-ticket', () => {
     await profile(mockReq(sub, { body: { user_id: 'user_victim', userId: 'user_victim' }, query: { user_id: 'user_victim' } }), res);
 
     expect(res.statusCode).toBe(200);
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body).user_id).toBe(sub);
+    expect(JSON.parse((mintMock.mock.calls[0] as any[])[1].body).user_id).toBe(sub);
   });
 
   it('refuses everyone who is not a verified, signed-in Bearer user, and never calls Clerk for them', async () => {
@@ -170,18 +193,18 @@ describe('POST /api/user/profile?action=desktop-ticket', () => {
     const sub = freshSub();
     h.authenticateRequest.mockResolvedValue(signedInUser(sub));
 
-    fetchMock.mockResolvedValueOnce(new Response('{"errors":[{"message":"secret internal detail"}]}', { status: 422 }));
+    mintMock.mockResolvedValueOnce(new Response('{"errors":[{"message":"secret internal detail"}]}', { status: 422 }));
     const rejected = mockRes();
     await profile(mockReq(sub), rejected);
     expect(rejected.statusCode).toBe(502);
     expect(JSON.stringify(rejected.body)).not.toContain('secret internal detail');
 
-    fetchMock.mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    mintMock.mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }));
     const timedOut = mockRes();
     await profile(mockReq(sub), timedOut);
     expect(timedOut.statusCode).toBe(502);
 
-    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ id: 'sit_1' }), { status: 200 }));
+    mintMock.mockResolvedValueOnce(new Response(JSON.stringify({ id: 'sit_1' }), { status: 200 }));
     const noTicket = mockRes();
     await profile(mockReq(sub), noTicket);
     expect(noTicket.statusCode).toBe(502);
@@ -218,7 +241,7 @@ describe('POST /api/user/profile?action=desktop-ticket', () => {
       codes.push(res.statusCode);
     }
     expect(codes).toEqual([200, 200, 200, 200, 200, 200, 429, 429]);
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(mintMock).toHaveBeenCalledTimes(6);
 
     // Someone else is not affected
     const other = freshSub();
@@ -226,6 +249,103 @@ describe('POST /api/user/profile?action=desktop-ticket', () => {
     const res = mockRes();
     await profile(mockReq(other), res);
     expect(res.statusCode).toBe(200);
+  });
+
+  describe('a session token alone is not enough to open a new login', () => {
+    it('asks Clerk about the session from the token before creating a ticket', async () => {
+      const sub = freshSub();
+      h.authenticateRequest.mockResolvedValue(signedInUser(sub));
+      await profile(mockReq(sub), mockRes());
+
+      expect(sessionMock).toHaveBeenCalledTimes(1);
+      expect(String(fetchMock.mock.calls[0][0])).toBe(`https://api.clerk.com/v1/sessions/${sidFor(sub)}`);
+      expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(`Bearer ${SECRET}`);
+      expect(String(fetchMock.mock.calls[1][0])).toBe('https://api.clerk.com/v1/sign_in_tokens');
+    });
+
+    it('refuses a token whose session has ended (signed out, revoked, expired): no ticket is created', async () => {
+      for (const status of ['ended', 'revoked', 'removed', 'expired', 'abandoned', 'replaced', 'pending']) {
+        const sub = freshSub();
+        h.authenticateRequest.mockResolvedValue(signedInUser(sub));
+        sessionMock.mockResolvedValueOnce(new Response(JSON.stringify({ status, user_id: sub }), { status: 200 }));
+        const res = mockRes();
+        await profile(mockReq(sub), res);
+        expect(res.statusCode, status).toBe(401);
+        expect(res.body.code).toBe('DESKTOP_TICKET_SESSION_ENDED');
+      }
+      expect(mintMock).not.toHaveBeenCalled();
+      expect((h.logSecurityEvent.mock.calls[0] as any[])[0]).toMatchObject({ eventType: 'DESKTOP_TICKET_SESSION_ENDED', severity: 'WARN' });
+    });
+
+    it('refuses a session Clerk does not know, or one that belongs to someone else', async () => {
+      const sub = freshSub();
+      h.authenticateRequest.mockResolvedValue(signedInUser(sub));
+      sessionMock.mockResolvedValueOnce(new Response('{}', { status: 404 }));
+      const unknown = mockRes();
+      await profile(mockReq(sub), unknown);
+      expect(unknown.statusCode).toBe(401);
+
+      sessionMock.mockResolvedValueOnce(new Response(JSON.stringify({ status: 'active', user_id: 'user_someoneelse' }), { status: 200 }));
+      const foreign = mockRes();
+      await profile(mockReq(sub), foreign);
+      expect(foreign.statusCode).toBe(401);
+      expect(mintMock).not.toHaveBeenCalled();
+    });
+
+    it('creates no ticket when Clerk cannot answer about the session (fails closed)', async () => {
+      const sub = freshSub();
+      h.authenticateRequest.mockResolvedValue(signedInUser(sub));
+      sessionMock.mockResolvedValueOnce(new Response('{}', { status: 500 }));
+      const broken = mockRes();
+      await profile(mockReq(sub), broken);
+      expect(broken.statusCode).toBe(502);
+
+      sessionMock.mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+      const timedOut = mockRes();
+      await profile(mockReq(sub), timedOut);
+      expect(timedOut.statusCode).toBe(502);
+      expect(mintMock).not.toHaveBeenCalled();
+    });
+
+    it('refuses a token without a usable session id, and never sends a strange id to Clerk', async () => {
+      const sub = freshSub();
+      h.authenticateRequest.mockResolvedValue(signedInUser(sub));
+      for (const claims of [{}, { sid: 42 }, { sid: 'sess_' }, { sid: 'sess_a/../../users' }, { sid: 'other_abc' }]) {
+        const res = mockRes();
+        await profile(mockReq(sub, { headers: { authorization: `Bearer ${jwtFor(sub, claims)}` } }), res);
+        expect(res.statusCode).toBe(401);
+      }
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  it("refuses other websites; Bedrock's own pages and non-browser callers pass", async () => {
+    const sub = freshSub();
+    h.authenticateRequest.mockResolvedValue(signedInUser(sub));
+    for (const origin of ['https://evil.example', 'https://bedrock-steel.vercel.app.evil.example', 'null']) {
+      const res = mockRes();
+      await profile(mockReq(sub, { headers: { origin, host: 'bedrock-steel.vercel.app' } }), res);
+      expect(res.statusCode, origin).toBe(403);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    for (const origin of ['https://bedrock-steel.vercel.app', 'http://127.0.0.1:54321']) {
+      const res = mockRes();
+      await profile(mockReq(sub, { headers: { origin, host: 'bedrock-steel.vercel.app' } }), res);
+      expect(res.statusCode, origin).toBe(200);
+    }
+    const noOrigin = mockRes();
+    await profile(mockReq(sub), noOrigin);
+    expect(noOrigin.statusCode).toBe(200);
+  });
+
+  it('applies the shared per-account limit before calling Clerk', async () => {
+    const sub = freshSub();
+    h.authenticateRequest.mockResolvedValue(signedInUser(sub));
+    h.state.ticketLimitAllowed = false;
+    await profile(mockReq(sub), mockRes());
+    expect(h.state.limits).toContainEqual(['desktopTicket', sub]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('keeps the normal profile routes unchanged when no action is sent', async () => {

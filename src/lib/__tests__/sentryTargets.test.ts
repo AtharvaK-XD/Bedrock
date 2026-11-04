@@ -9,7 +9,6 @@ describe('Sentry trace header targets', () => {
   it('include Bedrock\'s own API', () => {
     expect(gets('/api/ai/synthesize')).toBe(true);
     expect(gets('https://bedrock-steel.vercel.app/api/health')).toBe(true);
-    expect(gets('https://bedrockxai.com/api/health')).toBe(true);
     expect(gets('http://127.0.0.1:54321/api/prompts', 'http://127.0.0.1:54321')).toBe(true);
     expect(gets('https://bedrock-git-feature-x.vercel.app/api/prompts', 'https://bedrock-git-feature-x.vercel.app')).toBe(true);
   });
@@ -23,6 +22,7 @@ describe('Sentry trace header targets', () => {
       'https://generativelanguage.googleapis.com/v1beta/models',
       'https://us.i.posthog.com/e/',
       'https://some-stranger.vercel.app/api',
+      'https://bedrockxai.com/api/health', // not registered by anyone (checked 2026-11-05): never a trusted target
       'https://bedrock-steel.vercel.app.evil.example/api',
       'https://evil.example/?next=localhost',
     ]) {
@@ -31,8 +31,8 @@ describe('Sentry trace header targets', () => {
   });
 
   it('does not let a file: or opaque origin add a target', () => {
-    expect(tracePropagationTargets('null')).toHaveLength(3);
-    expect(tracePropagationTargets('file://')).toHaveLength(3);
-    expect(tracePropagationTargets(undefined)).toHaveLength(3);
+    expect(tracePropagationTargets('null')).toHaveLength(2);
+    expect(tracePropagationTargets('file://')).toHaveLength(2);
+    expect(tracePropagationTargets(undefined)).toHaveLength(2);
   });
 });

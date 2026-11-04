@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import type { AuthenticatedUser } from './auth.js';
+import { isAllowedAppOrigin, type AuthenticatedUser } from './auth.js';
 import { logSecurityEvent } from './db.js';
-import { getClientIp } from './rateLimiter.js';
+import { enforceRateLimit, getClientIp } from './rateLimiter.js';
 
 /**
  * Desktop sign-in ticket.
@@ -15,13 +15,22 @@ import { getClientIp } from './rateLimiter.js';
  * Who can ask: only a request that carries a Clerk JWT that authenticateRequest() already verified
  * (signature, expiry and the CLERK_ISSUER allow-list). The ticket is always for that token's own
  * account, never for an id sent in the request.
+ *
+ * A ticket opens a NEW long-lived session, so a short-lived session token must not be enough on its own:
+ * Clerk is asked whether the token's session is still active. A token copied before the user signed out
+ * (it stays valid for up to about a minute) cannot be traded for a fresh login. Clerk enforces that a
+ * ticket works once and expires after TICKET_TTL_SECONDS. No CSRF token is needed: only an explicit
+ * Authorization header is accepted, never a cookie, so another website has nothing to ride on.
  */
 
 const CLERK_SIGN_IN_TOKENS_URL = 'https://api.clerk.com/v1/sign_in_tokens';
+const CLERK_SESSIONS_URL = 'https://api.clerk.com/v1/sessions/';
 const TICKET_TTL_SECONDS = 120;
-const CLERK_TIMEOUT_MS = 5000;
+const CLERK_TIMEOUT_MS = 8000; // both Clerk calls together
 /** Clerk user ids look like "user_2abc...". Anything else is not passed to Clerk. */
 export const CLERK_USER_ID_RE = /^user_[A-Za-z0-9]{1,64}$/;
+/** Clerk session ids look like "sess_2abc...". Anything else is not passed to Clerk. */
+const CLERK_SESSION_ID_RE = /^sess_[A-Za-z0-9]{1,64}$/;
 
 // Best-effort brake on top of the route's general rate limit (per instance only: serverless instances do not share memory).
 const MAX_TICKETS_PER_WINDOW = 6;
@@ -50,16 +59,32 @@ function overTicketLimit(userId: string, now = Date.now()): boolean {
  * Only call it AFTER authenticateRequest() returned a non-guest user for this request.
  */
 export function verifiedClerkSubject(req: VercelRequest): string | null {
+  const sub = bearerClaims(req)?.sub;
+  return typeof sub === 'string' && CLERK_USER_ID_RE.test(sub) ? sub : null;
+}
+
+function bearerClaims(req: VercelRequest): Record<string, unknown> | null {
   const header = req.headers.authorization;
   if (typeof header !== 'string' || !header.startsWith('Bearer ')) return null;
   const parts = header.slice(7).trim().split('.');
   if (parts.length !== 3) return null;
   try {
-    const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-    return typeof claims?.sub === 'string' && CLERK_USER_ID_RE.test(claims.sub) ? claims.sub : null;
+    return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
   } catch {
     return null;
   }
+}
+
+/** Is this session still active at Clerk, and does it belong to this user? Throws when Clerk cannot answer. */
+async function isSessionActive(sessionId: string, userId: string, secretKey: string, signal: AbortSignal): Promise<boolean> {
+  const res = await fetch(`${CLERK_SESSIONS_URL}${sessionId}`, {
+    signal,
+    headers: { Authorization: `Bearer ${secretKey}`, Accept: 'application/json' },
+  });
+  if (res.status === 404) return false;
+  if (!res.ok) throw new Error(`Clerk answered ${res.status} for the session check`);
+  const session = (await res.json()) as { status?: unknown; user_id?: unknown };
+  return session?.status === 'active' && session?.user_id === userId;
 }
 
 export async function handleDesktopTicket(req: VercelRequest, res: VercelResponse, user: AuthenticatedUser) {
@@ -75,11 +100,25 @@ export async function handleDesktopTicket(req: VercelRequest, res: VercelRespons
     return res.status(401).json({ error: 'Unauthorized: a signed-in session token is required.' });
   }
 
+  // A browser names the page that sent the request: only Bedrock's own pages may ask (no Origin = not a browser page)
+  const origin = req.headers.origin;
+  if (typeof origin === 'string' && origin && !isAllowedAppOrigin(origin, req.headers.host)) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
+
+  const sessionId = bearerClaims(req)?.sid;
+  if (typeof sessionId !== 'string' || !CLERK_SESSION_ID_RE.test(sessionId)) {
+    return res.status(401).json({ error: 'Unauthorized: a signed-in session token is required.' });
+  }
+
   const secretKey = (process.env.CLERK_SECRET_KEY || '').trim();
   if (!secretKey.startsWith('sk_')) {
     console.error('[DesktopTicket] CLERK_SECRET_KEY is not configured');
     return res.status(503).json({ error: 'Desktop sign-in is not available yet', code: 'DESKTOP_TICKET_NOT_CONFIGURED' });
   }
+
+  // Shared between all server copies (Redis); the brake below is per copy and stays as a second line
+  if (!(await enforceRateLimit(req, res, 'desktopTicket', subject))) return;
 
   if (overTicketLimit(subject)) {
     res.setHeader('Retry-After', String(Math.ceil(TICKET_WINDOW_MS / 1000)));
@@ -89,6 +128,18 @@ export async function handleDesktopTicket(req: VercelRequest, res: VercelRespons
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), CLERK_TIMEOUT_MS);
   try {
+    if (!(await isSessionActive(sessionId, subject, secretKey, controller.signal))) {
+      await logSecurityEvent({
+        userId: user.id,
+        eventType: 'DESKTOP_TICKET_SESSION_ENDED',
+        severity: 'WARN',
+        ipAddress: getClientIp(req),
+        endpoint: '/api/user/profile?action=desktop-ticket',
+        message: 'Desktop ticket refused: the session token belongs to a session that is no longer active',
+      }).catch(() => {});
+      return res.status(401).json({ error: 'Your session has ended. Please sign in again.', code: 'DESKTOP_TICKET_SESSION_ENDED' });
+    }
+
     const clerkRes = await fetch(CLERK_SIGN_IN_TOKENS_URL, {
       method: 'POST',
       signal: controller.signal,
@@ -124,6 +175,7 @@ export async function handleDesktopTicket(req: VercelRequest, res: VercelRespons
 
     return res.status(200).json({ ticket: data.token, expiresInSeconds: TICKET_TTL_SECONDS });
   } catch (err: any) {
+    // Fails closed: when Clerk cannot confirm the session, no ticket is issued
     console.error('[DesktopTicket] Clerk request failed:', err?.name === 'AbortError' ? 'timeout' : err?.message || err);
     return res.status(502).json({ error: 'Could not start desktop sign-in', code: 'DESKTOP_TICKET_FAILED' });
   } finally {

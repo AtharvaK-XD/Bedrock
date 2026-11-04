@@ -169,27 +169,38 @@ export async function reserveQuota(params: {
       return { ...base, allowed: granted, unavailable: false, reservationId: granted ? id : null, store: 'QuotaEvent' };
     }
 
-    const rows = (user
-      ? await sql`
-          INSERT INTO "SecurityLog" (id, user_id, event_type, severity, ip_address, endpoint, message, created_at)
-          SELECT ${id}, ${userId}, ${eventType}, 'INFO', ${ipAddress}, ${endpoint}, 'AI usage (user)', NOW()
-          WHERE (
-            SELECT COUNT(*) FROM "SecurityLog"
-            WHERE user_id = ${userId} AND event_type = ${eventType}
-              AND created_at >= NOW() - INTERVAL '5 hours'
-          ) < ${limit}
-          RETURNING id
-        `
-      : await sql`
-          INSERT INTO "SecurityLog" (id, user_id, event_type, severity, ip_address, endpoint, message, created_at)
-          SELECT ${id}, NULL, ${eventType}, 'INFO', ${ipAddress}, ${endpoint}, 'AI usage (anonymous)', NOW()
-          WHERE (
-            SELECT COUNT(*) FROM "SecurityLog"
-            WHERE user_id IS NULL AND ip_address = ${ipAddress} AND event_type = ${eventType}
-              AND created_at >= NOW() - INTERVAL '5 hours'
-          ) < ${limit}
-          RETURNING id
-        `) as Array<{ id: string }>;
+    // Migration 0004 is not applied: count in "SecurityLog", under the same per-caller lock reserve_quota() takes.
+    // Without the lock, parallel requests all read the same count and overshoot the limit. The lock must be its
+    // own statement in a READ COMMITTED transaction: only then does the count see rows committed while it waited.
+    const lockKey = user ? `u:${userId}:${bucket}` : `ip:${ipAddress}:${bucket}`;
+    const results = await sql.transaction(
+      [
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}::text, 0))`,
+        user
+          ? sql`
+              INSERT INTO "SecurityLog" (id, user_id, event_type, severity, ip_address, endpoint, message, created_at)
+              SELECT ${id}, ${userId}, ${eventType}, 'INFO', ${ipAddress}, ${endpoint}, 'AI usage (user)', NOW()
+              WHERE (
+                SELECT COUNT(*) FROM "SecurityLog"
+                WHERE user_id = ${userId} AND event_type = ${eventType}
+                  AND created_at >= NOW() - INTERVAL '5 hours'
+              ) < ${limit}
+              RETURNING id
+            `
+          : sql`
+              INSERT INTO "SecurityLog" (id, user_id, event_type, severity, ip_address, endpoint, message, created_at)
+              SELECT ${id}, NULL, ${eventType}, 'INFO', ${ipAddress}, ${endpoint}, 'AI usage (anonymous)', NOW()
+              WHERE (
+                SELECT COUNT(*) FROM "SecurityLog"
+                WHERE user_id IS NULL AND ip_address = ${ipAddress} AND event_type = ${eventType}
+                  AND created_at >= NOW() - INTERVAL '5 hours'
+              ) < ${limit}
+              RETURNING id
+            `,
+      ],
+      { isolationLevel: 'ReadCommitted' }
+    );
+    const rows = results[1] as Array<{ id: string }>;
 
     const allowed = rows.length > 0;
     return { ...base, allowed, unavailable: false, reservationId: allowed ? id : null, store: 'SecurityLog' };

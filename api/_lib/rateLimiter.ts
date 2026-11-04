@@ -150,7 +150,8 @@ export type LimiterPreset =
   | 'general'
   | 'health'
   | 'email'
-  | 'emailRecipient';
+  | 'emailRecipient'
+  | 'desktopTicket';
 
 interface PresetConfig {
   requests: number;
@@ -173,6 +174,8 @@ const PRESET_CONFIGS: Record<LimiterPreset, PresetConfig> = {
   // Transactional email: per sender IP, and per recipient address
   email: { requests: 5, windowSeconds: 3600, prefix: 'ratelimit:email:ip' },
   emailRecipient: { requests: 3, windowSeconds: 86400, prefix: 'ratelimit:email:rcpt' },
+  // Desktop sign-in tickets are login credentials: per account, shared between all server copies
+  desktopTicket: { requests: 10, windowSeconds: 60, prefix: 'ratelimit:desktop-ticket' },
 };
 
 // Cache Upstash Ratelimit instances (keyed by preset + tier)

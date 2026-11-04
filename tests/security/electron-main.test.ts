@@ -387,6 +387,20 @@ describe('desktop sign-in endpoints', () => {
     expect(state.sent[1][1]).not.toHaveProperty('ticket');
   });
 
+  it('keeps a delivered sign-in waiting for only 2 minutes (a ticket is dead after that anyway)', async () => {
+    await invoke('auth:start-external', { strategy: 'oauth_google', mode: 'login', nonce: 'shortLifeNonce1' });
+    expect((await post({ nonce: 'shortLifeNonce1', ticket: 'tkt_short' })).status).toBe(200);
+
+    const realNow = Date.now;
+    const spy = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + 121_000);
+    try {
+      const late = await (await fetch(`${base}/api/desktop-auth-status?nonce=shortLifeNonce1`)).json();
+      expect(late.authenticated).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('rejects malformed nonces at start and oversized bodies', async () => {
     expect((await invoke('auth:start-external', { nonce: '../../x' })).success).toBe(false);
     expect((await invoke('auth:start-external', undefined)).success).toBe(false);

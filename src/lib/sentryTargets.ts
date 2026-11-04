@@ -6,7 +6,6 @@ export function tracePropagationTargets(ownOrigin?: string): Array<string | RegE
   return [
     /^\//, // relative URLs: Bedrock's own /api routes on whatever address the app is served from
     /^https:\/\/bedrock-steel\.vercel\.app(\/|$)/,
-    /^https:\/\/bedrockxai\.com(\/|$)/,
     // Absolute URLs back to this same page origin (the desktop app's own 127.0.0.1:<port>, a preview deployment)
     ...(ownOrigin && /^https?:\/\//.test(ownOrigin) ? [new RegExp(`^${ownOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/|$)`)] : []),
   ];

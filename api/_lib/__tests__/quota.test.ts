@@ -6,7 +6,7 @@ const h = vi.hoisted(() => {
     calls: [] as Array<{ text: string; values: unknown[] }>,
     responder: (_text: string, _values: unknown[]): unknown => [],
   };
-  const sql = (strings: TemplateStringsArray, ...values: unknown[]) => {
+  const sql: any = (strings: TemplateStringsArray, ...values: unknown[]) => {
     const text = strings.join('$').replace(/\s+/g, ' ').trim();
     state.calls.push({ text, values });
     try {
@@ -15,6 +15,7 @@ const h = vi.hoisted(() => {
       return Promise.reject(err);
     }
   };
+  sql.transaction = vi.fn((queries: Array<Promise<unknown>>) => Promise.all(queries));
   return { state, sql };
 });
 
@@ -91,12 +92,48 @@ describe('reserveQuota before migration 0004 is applied', () => {
     const q = await reserveQuota({ bucket: 'generation', endpoint: '/x', user: freeUser, ip: '1.2.3.4' });
 
     expect(q).toMatchObject({ allowed: true, unavailable: false, store: 'SecurityLog' });
-    expect(h.state.calls.map((c) => c.text.split(' ')[0])).toEqual(['SELECT', 'INSERT']);
-    expect(h.state.calls[1].text).toContain('INSERT INTO "SecurityLog"');
+    expect(h.state.calls.map((c) => c.text.split(' ')[0])).toEqual(['SELECT', 'SELECT', 'INSERT']);
+    expect(h.state.calls[2].text).toContain('INSERT INTO "SecurityLog"');
 
     h.state.calls = [];
     await releaseQuota(q);
     expect(h.state.calls[0].text).toBe('DELETE FROM "SecurityLog" WHERE id = $');
+  });
+
+  it('counts under a per-caller lock, in one READ COMMITTED transaction, so parallel requests cannot overshoot', async () => {
+    const { reserveQuota } = await loadSecurity();
+    h.sql.transaction.mockClear();
+    h.state.responder = (text) => {
+      if (text.includes('reserve_quota(')) throw notApplied();
+      return [{ id: 'x' }];
+    };
+    await reserveQuota({ bucket: 'generation', endpoint: '/x', user: freeUser, ip: '1.2.3.4' });
+    await reserveQuota({ bucket: 'assist', endpoint: '/x', user: null, ip: '1.2.3.4' });
+
+    expect(h.sql.transaction).toHaveBeenCalledTimes(2);
+    expect(h.sql.transaction.mock.calls[0][0]).toHaveLength(2);
+    expect(h.sql.transaction.mock.calls[0][1]).toEqual({ isolationLevel: 'ReadCommitted' });
+
+    const locks = h.state.calls.filter((c) => c.text.includes('pg_advisory_xact_lock'));
+    const inserts = h.state.calls.filter((c) => c.text.includes('INSERT INTO "SecurityLog"'));
+    expect(locks.map((c) => c.values[0])).toEqual(['u:user_A:generation', 'ip:1.2.3.4:assist']);
+    expect(inserts).toHaveLength(2);
+    // The lock comes first: the count must run after waiting for the lock
+    expect(h.state.calls.indexOf(locks[0])).toBeLessThan(h.state.calls.indexOf(inserts[0]));
+  });
+
+  it('refuses at the limit and when the fallback transaction fails (fails closed)', async () => {
+    const { reserveQuota } = await loadSecurity();
+    h.state.responder = (text) => {
+      if (text.includes('reserve_quota(')) throw notApplied();
+      return [];
+    };
+    const full = await reserveQuota({ bucket: 'generation', endpoint: '/x', user: freeUser, ip: '1.2.3.4' });
+    expect(full).toMatchObject({ allowed: false, unavailable: false, reservationId: null, store: 'SecurityLog' });
+
+    h.sql.transaction.mockImplementationOnce(() => Promise.reject(new Error('connection lost')));
+    const down = await reserveQuota({ bucket: 'generation', endpoint: '/x', user: freeUser, ip: '1.2.3.4' });
+    expect(down).toMatchObject({ allowed: false, unavailable: true, reservationId: null });
   });
 
   it('does not retry reserve_quota() on every request, but checks again after 5 minutes', async () => {
