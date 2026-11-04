@@ -13,7 +13,6 @@ import {
   Shield,
   Eye,
   EyeOff,
-  Sparkles,
   Cpu,
   ExternalLink,
   Check,
@@ -852,7 +851,7 @@ export default function Settings() {
                     <div className="relative space-y-2.5 rounded-2xl border border-white/10 bg-sf-0a0b0e p-4" ref={modelDropdownRef}>
                       <div className="flex items-center justify-between">
                         <span className={cn(labelClass, 'flex items-center gap-2 text-white')}>
-                          <Sparkles className="h-3.5 w-3.5 text-copper-400" /> Default model
+                          <Cpu className="h-3.5 w-3.5 text-copper-400" /> Default model
                         </span>
                         <span className="text-[11px] text-gray-400">Used when a screen doesn't pick one</span>
                       </div>

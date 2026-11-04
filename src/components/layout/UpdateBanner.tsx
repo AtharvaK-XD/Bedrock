@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, RefreshCw, X, ArrowUpCircle, Download } from 'lucide-react';
+import { RefreshCw, X, ArrowUpCircle, Download } from 'lucide-react';
 import { subscribeToUpdates, applyUpdate, checkForUpdates } from '../../lib/updater';
 import type { UpdateStatus } from '../../lib/updater';
 import { isDesktopApp } from '../../lib/platform';
@@ -73,7 +73,7 @@ export function UpdateBanner() {
             ) : isDownloaded ? (
               <ArrowUpCircle className="w-5 h-5 text-emerald-400" />
             ) : (
-              <Sparkles className="w-5 h-5 text-copper-400" />
+              <ArrowUpCircle className="w-5 h-5 text-copper-400" />
             )}
           </div>
 

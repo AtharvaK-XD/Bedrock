@@ -9,8 +9,7 @@ import {
   FileText,
   Check,
   Lock,
-  Zap,
-  Sparkles
+  Zap
 } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
@@ -366,7 +365,7 @@ export default function Billing() {
                       to="/app/pricing"
                       className="w-full py-2.5 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-semibold text-xs font-mono uppercase tracking-wider transition-colors shadow-md shadow-copper-500/20 flex items-center justify-center gap-1.5 active:scale-[0.98]"
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
+                      <Zap className="w-3.5 h-3.5" />
                       <span>Upgrade Plan</span>
                     </Link>
                   ) : (

@@ -15,7 +15,7 @@ import {
   X,
   MoreHorizontal,
   RotateCcw,
-  Sparkles,
+  ShieldCheck,
   LayoutGrid,
   Layers,
   ArrowUpRight,
@@ -873,7 +873,7 @@ export default function Library() {
                             ))}
                           </div>
                           <span className="text-xs font-mono text-neutral-400 font-medium flex items-center gap-1.5">
-                            <Sparkles className="w-3.5 h-3.5 text-copper-400" />
+                            <ShieldCheck className="w-3.5 h-3.5 text-copper-400" />
                             LLM Tested
                           </span>
                         </div>
@@ -1049,7 +1049,7 @@ export default function Library() {
           {/* Empty State */}
           {filteredPrompts.length === 0 && (
             <div className="col-span-full py-20 flex flex-col items-center justify-center text-neutral-400 text-center">
-              <Sparkles className="w-8 h-8 text-neutral-500 mb-3" />
+              <Search className="w-8 h-8 text-neutral-500 mb-3" />
               <p className="text-lg font-medium text-white/90">No prompts found matching your filter</p>
               <p className="text-xs font-mono text-neutral-500 mt-1 max-w-sm">
                 Try searching for a different keyword or switch to another category.

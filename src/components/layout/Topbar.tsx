@@ -13,7 +13,7 @@ import {
   FlaskConical, 
   Bookmark, 
   History as HistoryIcon, 
-  Sparkles 
+  Cpu 
 } from 'lucide-react';
 import { Menu, MenuItem, ProductItem, HoveredLink } from '../ui/navbar-menu';
 import { openApiKeyModal } from '../../lib/apiKeyEvents';
@@ -151,7 +151,7 @@ export function Topbar() {
                         title="Multi-Agent Synthesis"
                         description="Target Claude Code, Cursor, Codex, Gemini & custom agents."
                         to="/app/generator"
-                        icon={Sparkles}
+                        icon={Cpu}
                       />
                     </div>
                     <div className="border-t border-white/10 pt-2.5 flex items-center justify-between px-1">

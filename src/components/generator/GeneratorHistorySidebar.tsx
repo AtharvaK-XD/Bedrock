@@ -11,7 +11,7 @@ import {
   X,
   User,
   Settings,
-  Sparkles
+  FileText
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
@@ -334,7 +334,7 @@ function GeneratorHistorySidebarContent({
 
             {chatItems.length === 0 && (
               <div className="px-3 py-10 text-center text-xs text-neutral-500 font-mono flex flex-col items-center justify-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-neutral-600 mb-1" />
+                <FileText className="w-4 h-4 text-neutral-600 mb-1" />
                 <span>{searchQuery ? "No matching prompts found" : "No previous prompts"}</span>
                 {!searchQuery && (
                   <span className="text-[11px] text-neutral-600">Created prompts will appear here</span>

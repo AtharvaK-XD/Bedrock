@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '@clerk/react';
-import { User, Calendar, Compass, ArrowRight, ArrowLeft, Check, Sparkles, Shield, Rocket } from 'lucide-react';
+import { User, Calendar, Compass, ArrowRight, ArrowLeft, Check, Shield, Rocket } from 'lucide-react';
 import { playUiAudio } from '../../lib/appSettings';
 
 const REFERRAL_SOURCES = [
@@ -182,7 +182,7 @@ export function FirstTimeOnboardingModal() {
         {/* Top Header Badge & Progress Indicator */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs text-sandstone-300 font-mono">
-            <Sparkles className="w-3.5 h-3.5 text-copper-400" />
+            <Compass className="w-3.5 h-3.5 text-copper-400" />
             <span>Welcome to Bedrock</span>
           </div>
 

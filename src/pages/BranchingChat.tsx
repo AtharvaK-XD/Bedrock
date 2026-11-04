@@ -36,7 +36,7 @@ import { runSandboxedCode } from '../lib/sandboxedCode';
 import { isModelKeyConfigured } from '../lib/apiKeysHelper';
 import {
   Bot,
-  Sparkles,
+  MessageSquareCode,
   Terminal,
   Database,
   GitFork,
@@ -89,7 +89,7 @@ const NODE_CONFIG = {
     bg: 'bg-copper-500/10',
     border: 'border-copper-500/30',
     hoverBorder: 'hover:border-copper-500/60',
-    icon: Sparkles,
+    icon: MessageSquareCode,
     paletteShape: 'rounded-xl rounded-bl-xs'
   },
   output: { 

@@ -23,7 +23,6 @@ import {
   Download, 
   Wand2, 
   FlaskConical, 
-  Sparkles, 
   ArrowUpRight, 
   Code2, 
   Terminal, 
@@ -686,7 +685,7 @@ export default function HistoryPage() {
                     </div>
                   ) : (
                     <div className="p-4 rounded-xl bg-copper-500/[0.05] border border-copper-500/20 text-xs text-copper-200/80 flex items-start gap-3">
-                      <Sparkles className="w-4 h-4 text-copper-400 shrink-0 mt-0.5" />
+                      <FileText className="w-4 h-4 text-copper-400 shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-copper-300 mb-0.5">Prompt Draft in Progress</p>
                         <p className="text-[11px] text-copper-200/70">

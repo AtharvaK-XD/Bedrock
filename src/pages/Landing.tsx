@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthCard } from '../components/auth/AuthCard';
-import { Shield, Sparkles, Layout, Layers, Database, Globe } from 'lucide-react';
+import { Shield, Cpu, Layout, Layers, Database, Globe } from 'lucide-react';
 import { AppleLogo, WindowsLogo } from '../components/ui/ModelLogos';
 import { PageTransition } from '../components/layout/PageTransition';
 // three.js is large, so the 3D background loads after the page is usable.
@@ -360,7 +360,7 @@ export default function Landing() {
           </div>
           <div className="features-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: <Sparkles className="w-5 h-5" />, title: "Multi-Agent Synthesis", desc: "Transforms raw briefs into production directives with clarifying questions across 7 archetypes including Coding, Image, and Video Generation." },
+              { icon: <Cpu className="w-5 h-5" />, title: "Multi-Agent Synthesis", desc: "Transforms raw briefs into production directives with clarifying questions across 7 archetypes including Coding, Image, and Video Generation." },
               { icon: <Layers className="w-5 h-5" />, title: "Visual DAG Branching", desc: "Node-based canvas for non-linear prompt orchestration. Build complex logic with condition routers, dynamic data stores, and consensus merges." },
               { icon: <Layout className="w-5 h-5" />, title: "Side-by-Side Arena", desc: "Instantly benchmark your refined prompts across 10 frontier models including Claude 3.7, GPT-4o, DeepSeek-R1, and Gemini 2.5." },
               { icon: <Shield className="w-5 h-5" />, title: "Local Privacy & BYOK", desc: "Native desktop workstation for macOS and Windows. Bring your own API keys: they are stored on your device only and go straight to the AI provider you choose, never to Bedrock servers." },

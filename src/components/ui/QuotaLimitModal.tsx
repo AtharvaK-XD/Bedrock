@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Hourglass, Sparkles, X, ArrowRight, ShieldAlert } from 'lucide-react';
+import { Hourglass, Zap, X, ArrowRight, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface QuotaLimitModalProps {
@@ -129,7 +129,7 @@ export function QuotaLimitModal({
                 }}
                 className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-copper-500 hover:bg-copper-600 text-white rounded-xl font-semibold text-sm shadow-lg shadow-copper-500/20 transition-all active:scale-[0.98]"
               >
-                <Sparkles className="w-4 h-4" />
+                <Zap className="w-4 h-4" />
                 Upgrade for Unlimited
                 <ArrowRight className="w-4 h-4 ml-1" />
               </button>

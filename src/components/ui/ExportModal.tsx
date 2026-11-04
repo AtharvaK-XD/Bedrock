@@ -7,7 +7,7 @@ import {
   Check,
   Download,
   Code2,
-  Sparkles,
+  Braces,
   Bot,
   Terminal,
   ChevronDown,
@@ -311,7 +311,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 className="px-6 py-2 bg-emerald-500/5 border-b border-emerald-500/10 flex items-center gap-2 overflow-x-auto text-xs shrink-0"
                 data-lenis-prevent="true"
               >
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <Braces className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="text-[11px] font-mono text-emerald-300 font-semibold uppercase shrink-0">
                   Detected Variables:
                 </span>

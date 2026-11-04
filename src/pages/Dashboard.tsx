@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, Zap, ShieldCheck, Cpu, ArrowUpRight, Sparkles, Lock, Crown } from 'lucide-react';
+import { Activity, Zap, ShieldCheck, Cpu, ArrowUpRight, Lock, Crown } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { EncryptedText } from '../components/ui/encrypted-text';
 import { ModelUsagePanel } from '../components/dashboard/ModelUsagePanel';
@@ -526,7 +526,7 @@ export default function Dashboard() {
               ) : (
                 <div className="py-16 px-4 flex flex-col items-center justify-center text-center">
                   <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-copper-400 mb-4 shadow-sm">
-                    <Sparkles className="w-6 h-6 text-copper-400/80" />
+                    <Activity className="w-6 h-6 text-copper-400/80" />
                   </div>
                   <p className="text-base font-display font-semibold text-white tracking-tight">No execution traces yet</p>
                   <p className="text-xs text-white/45 mt-1.5 max-w-md font-mono leading-relaxed">

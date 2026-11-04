@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Key, Eye, EyeOff, ExternalLink, ShieldCheck, CheckCircle2, Sparkles } from 'lucide-react';
+import { Key, Eye, EyeOff, ExternalLink, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react';
 import { API_KEYS_UPDATED_EVENT } from '../../lib/apiKeyEvents';
 import { isDesktopApp } from '../../lib/platform';
 import {
@@ -615,7 +615,7 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-white" />
+                    <ArrowRight className="w-4 h-4 text-white" />
                     <span>Save & Enter Workspace</span>
                   </>
                 )}
