@@ -81,7 +81,7 @@ export function Topbar() {
   const brandLink = '/app';
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 h-20 bg-transparent pointer-events-none">
+    <header className="fixed top-0 left-0 right-0 z-50 h-20 bg-transparent pointer-events-none">
       <div className="relative w-full px-4 sm:px-8 h-full flex items-center justify-between">
         
         {/* Brand */}

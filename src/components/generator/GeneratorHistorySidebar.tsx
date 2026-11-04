@@ -134,7 +134,7 @@ function GeneratorHistorySidebarContent({
       animate={{ x: isCollapsed ? "-100%" : "0%" }}
       transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
       className={cn(
-        "fixed top-0 bottom-0 z-40 w-64 sm:w-72 bg-sf-0c0d10 border-r border-white/[0.08] flex flex-col select-none shadow-[6px_0_32px_rgba(0,0,0,0.65)]",
+        "fixed top-0 bottom-0 z-30 w-64 sm:w-72 bg-sf-0c0d10 border-r border-white/[0.08] flex flex-col select-none shadow-[6px_0_32px_rgba(0,0,0,0.65)]",
         isDesktop ? "left-64" : "left-0",
         isCollapsed ? "pointer-events-none" : "pointer-events-auto"
       )}
