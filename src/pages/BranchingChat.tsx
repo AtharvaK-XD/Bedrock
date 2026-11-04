@@ -59,6 +59,10 @@ import {
   List,
   RefreshCw,
   Lock,
+  MousePointer,
+  Hand,
+  Maximize2,
+  HelpCircle,
 } from 'lucide-react';
 import { useUserProfile } from '../lib/useUserProfile';
 import { TIER_LIMITS, normalizeTier, isModelAllowedForTier, getModelRequiredTier } from '../lib/subscriptionTiers';
@@ -1529,6 +1533,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
   const [activeSettingsNodeId, setActiveSettingsNodeId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const { fitView } = useReactFlow();
 
   const { profile } = useUserProfile();
   const [upgradeModal, setUpgradeModal] = useState<{
@@ -1621,6 +1626,8 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
         setToolMode('pan');
       } else if (e.key.toLowerCase() === 'v') {
         setToolMode('select');
+      } else if (e.key.toLowerCase() === 'f') {
+        fitView({ duration: 300, padding: 0.2 });
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         setNodes((nds) => {
           const toDelete = new Set(nds.filter((node) => node.selected).map(n => n.id));
@@ -1777,7 +1784,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
           transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
           className="pointer-events-auto flex items-center gap-3 nowheel nopan nodrag font-mono text-xs"
         >
-        <div className="flex items-center gap-2.5 px-3 py-2 bg-sf-1a1a1a/90 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-xl shadow-black/40">
+        <div className="flex items-center gap-2 px-3 py-2 bg-sf-1a1a1a/90 backdrop-blur-2xl border border-white/10 rounded-xl text-gray-400 shadow-xl shadow-black/40">
           <button
             onClick={onBackToDashboard}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white transition-all text-xs font-sans font-medium active:scale-[0.97] shrink-0 border border-white/5"
@@ -1789,20 +1796,25 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
           
           <div className="w-[1px] h-4 bg-white/15"></div>
 
-          <input 
-            type="text" 
-            value={workflowTitle}
-            onChange={(e) => setWorkflowTitle(e.target.value)}
-            className="bg-transparent border border-transparent hover:border-white/10 focus:border-copper-500/50 text-white font-display font-semibold focus:outline-none focus:ring-1 focus:ring-copper-500 rounded px-2 py-0.5 w-32 md:w-44 placeholder-gray-500 transition-colors"
-            placeholder="Untitled Pipeline"
-          />
+          <div className="flex items-center gap-1.5">
+            <input 
+              type="text" 
+              value={workflowTitle}
+              onChange={(e) => setWorkflowTitle(e.target.value)}
+              className="bg-transparent border border-transparent hover:border-white/10 focus:border-copper-500/50 text-white font-display font-semibold focus:outline-none focus:ring-1 focus:ring-copper-500 rounded px-2 py-0.5 w-28 sm:w-36 placeholder-gray-500 transition-colors"
+              placeholder="Untitled Pipeline"
+            />
+            <span className="text-[10px] text-gray-500 font-mono px-1 py-0.2 rounded bg-white/5 border border-white/5 hidden sm:inline-block">
+              {nodes.length} {nodes.length === 1 ? 'node' : 'nodes'}
+            </span>
+          </div>
           
           <div className="w-[1px] h-4 bg-white/15"></div>
           
           {savedWorkflows.length > 0 && (
             <>
               <select 
-                className="bg-transparent border-none text-gray-400 font-mono text-[10px] uppercase focus:outline-none focus:text-white cursor-pointer max-w-[130px] truncate"
+                className="bg-transparent border-none text-gray-400 font-mono text-[10px] uppercase focus:outline-none focus:text-white cursor-pointer max-w-[110px] truncate"
                 onChange={(e) => {
                   const id = e.target.value;
                   if (!id) return;
@@ -1848,17 +1860,75 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
           <div className="w-[1px] h-4 bg-white/15"></div>
           <button 
             onClick={() => { setNodes([]); setEdges([]); setWorkflowId(undefined); setWorkflowTitle('Untitled Pipeline'); setActiveSettingsNodeId(null); }} 
-            className="hover:text-red-400 transition-colors px-1"
+            className="hover:text-red-400 transition-colors px-1 text-xs"
+            title="Clear canvas"
           >
             Clear
           </button>
           
           <div className="w-[1px] h-4 bg-white/15"></div>
-          <span className={toolMode === 'select' ? "text-white font-semibold" : ""}>V:Select</span>
+
+          {/* Interactive Tool Selector: Pointer vs Hand */}
+          <div className="flex items-center bg-black/40 border border-white/5 rounded-lg p-0.5">
+            <button
+              type="button"
+              onClick={() => setToolMode('select')}
+              className={cn(
+                "p-1 rounded transition-colors",
+                toolMode === 'select' 
+                  ? "bg-white/15 text-white" 
+                  : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
+              )}
+              title="Select & connect nodes (V)"
+            >
+              <MousePointer className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setToolMode('pan')}
+              className={cn(
+                "p-1 rounded transition-colors",
+                toolMode === 'pan' 
+                  ? "bg-white/15 text-white" 
+                  : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
+              )}
+              title="Pan canvas (H or Space+Drag)"
+            >
+              <Hand className="w-3 h-3" />
+            </button>
+          </div>
+
           <div className="w-[1px] h-4 bg-white/15"></div>
-          <span className={toolMode === 'pan' ? "text-white font-semibold" : ""}>H:Pan</span>
+
+          {/* Fit View Button */}
+          <button
+            type="button"
+            onClick={() => fitView({ duration: 350, padding: 0.18 })}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all active:scale-95"
+            title="Fit to view (F)"
+          >
+            <Maximize2 className="w-3 h-3" />
+          </button>
+
           <div className="w-[1px] h-4 bg-white/15"></div>
-          <span>DEL:Remove</span>
+
+          {/* Keyboard Shortcuts Helper Popover */}
+          <div className="relative group/help">
+            <button
+              type="button"
+              className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+              title="Keyboard shortcuts"
+            >
+              <HelpCircle className="w-3 h-3" />
+            </button>
+            <div className="absolute bottom-full right-0 mb-2.5 hidden group-hover/help:flex flex-col gap-1.5 p-2.5 bg-sf-16181d/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-2xl text-[11px] font-sans text-gray-300 w-44 pointer-events-none z-50">
+              <div className="text-[10px] font-mono uppercase text-gray-400 font-semibold tracking-wider pb-1 border-b border-white/10">Shortcuts</div>
+              <div className="flex items-center justify-between"><span className="text-gray-400">Select Mode</span><kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[10px] text-white">V</kbd></div>
+              <div className="flex items-center justify-between"><span className="text-gray-400">Pan Canvas</span><kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[10px] text-white">H / Space</kbd></div>
+              <div className="flex items-center justify-between"><span className="text-gray-400">Fit to View</span><kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[10px] text-white">F</kbd></div>
+              <div className="flex items-center justify-between"><span className="text-gray-400">Delete Node</span><kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[10px] text-white">Del</kbd></div>
+            </div>
+          </div>
         </div>
       </motion.div>
       </div>
