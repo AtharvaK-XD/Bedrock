@@ -33,7 +33,7 @@ import prompts from '../../prompts/index.js';
 import workflows from '../../workflows/index.js';
 import traces from '../../traces/index.js';
 import profile from '../../user/profile.js';
-import { encodeCursor, decodeCursor } from '../../_lib/dataHttp.js';
+import { encodeCursor, decodeCursor, serverRowId } from '../../_lib/dataHttp.js';
 
 function mockReq(method: string, body: Record<string, unknown> = {}, query: Record<string, string> = {}) {
   return { method, body, query, headers: {} } as any;
@@ -189,7 +189,7 @@ describe('paged lists: GET /api/prompts and GET /api/workflows', () => {
       await prompts(mockReq('GET', {}, { id: 'p1' }), found);
       expect(found.statusCode).toBe(200);
       expect(found.body).toMatchObject({ id: 'p1', fullContent: 'full text 1' });
-      expect(lastQuery().values).toEqual(['p1', 'user_A']);
+      expect(lastQuery().values).toEqual(['p1', serverRowId('user_A', 'p1'), 'user_A']);
       expect(lastQuery().text).toContain('user_id =');
 
       h.state.responder = () => [];
@@ -254,7 +254,7 @@ describe('paged lists: GET /api/prompts and GET /api/workflows', () => {
       const found = mockRes();
       await workflows(mockReq('GET', {}, { id: 'w1' }), found);
       expect(found.body).toMatchObject({ id: 'w1', nodes: [{ id: 'n1' }] });
-      expect(lastQuery().values).toEqual(['w1', 'user_A']);
+      expect(lastQuery().values).toEqual(['w1', serverRowId('user_A', 'w1'), 'user_A']);
 
       h.state.responder = () => [];
       const missing = mockRes();
@@ -280,16 +280,17 @@ describe('paged lists: GET /api/prompts and GET /api/workflows', () => {
 });
 
 describe('POST /api/prompts', () => {
-  it("never overwrites another user's prompt: the update is scoped to the caller and a foreign id gives 409", async () => {
-    h.state.responder = (text) => (text.startsWith('SELECT COUNT') ? [{ count: 3 }] : []);
+  it("never overwrites another user's prompt: the update is scoped to the caller, and a new row gets a server id", async () => {
+    h.state.responder = (text) => (text.startsWith('INSERT') ? [{ id: 'x' }] : []);
     const res = mockRes();
-    await prompts(mockReq('POST', { id: 'prm_owned_by_B', title: 't', content: 'hijacked' }), res);
+    await prompts(mockReq('POST', { id: 'prm_owned_by_B', title: 't', content: 'mine' }), res);
 
-    expect(res.statusCode).toBe(409);
-    expect(res.body.code).toBe('PROMPT_ID_CONFLICT');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.id).toBe(serverRowId('user_A', 'prm_owned_by_B'));
     const update = h.state.calls.find((c) => c.text.startsWith('UPDATE'))!;
-    expect(update.text).toContain('WHERE id = $ AND user_id = $');
+    expect(update.text).toContain('WHERE id IN ($, $) AND user_id = $');
     expect(update.values).toContain('user_A');
+    expect(h.state.calls.find((c) => c.text.startsWith('INSERT'))!.values[0]).toBe(serverRowId('user_A', 'prm_owned_by_B'));
     expect(sqlTexts().some((t) => t.includes('DO UPDATE'))).toBe(false);
     expect(sqlTexts().find((t) => t.startsWith('INSERT'))).toContain('ON CONFLICT (id) DO NOTHING');
   });
@@ -370,11 +371,11 @@ describe('POST /api/prompts', () => {
 
 describe('POST /api/workflows', () => {
   it("never overwrites another user's workflow", async () => {
-    h.state.responder = (text) => (text.startsWith('SELECT COUNT') ? [{ count: 1 }] : []);
+    h.state.responder = (text) => (text.startsWith('INSERT') ? [{ id: 'x' }] : []);
     const res = mockRes();
     await workflows(mockReq('POST', { id: 'wf_owned_by_B', title: 'x', nodes: [], edges: [] }), res);
-    expect(res.statusCode).toBe(409);
-    expect(res.body.code).toBe('WORKFLOW_ID_CONFLICT');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.id).toBe(serverRowId('user_A', 'wf_owned_by_B'));
     expect(h.state.calls.find((c) => c.text.startsWith('UPDATE'))!.values).toContain('user_A');
     expect(sqlTexts().some((t) => t.includes('DO UPDATE'))).toBe(false);
   });
@@ -462,11 +463,14 @@ describe('/api/traces', () => {
     expect(totalsCalls()).toHaveLength(2);
   });
 
-  it("reports server-recorded 'success' / 'error' traces as OK / ERR, and uses the 100-row totals until migration 0010 exists", async () => {
+  it("reports server-recorded 'success' / 'error' traces as OK / ERR, and computes totals with inline SQL until migration 0010 exists", async () => {
     let now = 5_000_000_000_000;
     vi.spyOn(Date, 'now').mockImplementation(() => now);
     h.state.responder = (text) => {
       if (text.includes('trace_totals(')) throw Object.assign(new Error('function trace_totals(text) does not exist'), { code: '42883' });
+      if (text.includes('AS total_inferences')) {
+        return [{ total_inferences: 250, total_tokens: '5000', avg_latency: 80, p99_latency: 900, reliability: '50.0', active_models: ['m'] }];
+      }
       return traceRows();
     };
     const res = mockRes();
@@ -474,7 +478,9 @@ describe('/api/traces', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.traces.map((t: any) => t.status)).toEqual(['OK', 'ERR']);
     expect(res.body.reliability).toBe(50);
-    expect(res.body.totalInferences).toBe(2);
+    // All 250 runs, not the 2 rows listed
+    expect(res.body.totalInferences).toBe(250);
+    expect(res.body.totalTokens).toBe(5000);
 
     // Not asked again on every request ...
     await traces(mockReq('GET'), mockRes());

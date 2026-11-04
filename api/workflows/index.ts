@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
-import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText, dbLimitKind, parseListQuery, encodeCursor } from '../_lib/dataHttp.js';
+import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText, dbLimitKind, parseListQuery, encodeCursor, newRowId, serverRowId } from '../_lib/dataHttp.js';
 
 /** Nodes and edges are stored as JSON text; a damaged value must not break the whole list. */
 function readJsonList(raw: unknown): unknown {
@@ -62,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (list.id) {
         const [row] = (await sql`
           SELECT id, title, nodes, edges, created_at, updated_at
-          FROM "BranchingTree" WHERE id = ${list.id} AND user_id = ${user.id} LIMIT 1
+          FROM "BranchingTree" WHERE id IN (${list.id}, ${serverRowId(user.id, list.id)}) AND user_id = ${user.id} LIMIT 1
         `) as any[];
         if (!row) return res.status(404).json({ error: 'Workflow not found', code: 'WORKFLOW_NOT_FOUND' });
         return res.status(200).json(mapWorkflow(row, false));
@@ -130,10 +130,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-      const id = body.id || `wf_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      // The server owns every new row's id. A client id only says which of this user's rows is meant (see serverRowId).
+      const id = body.id ? serverRowId(user.id, body.id) : newRowId();
       const title = clampText(body.title || body.name, DATA_LIMITS.workflowTitle) || 'Untitled Workflow';
 
-      // Update only a workflow this user owns; an id belonging to someone else is never touched
+      // Update only a workflow this user owns (rows saved before server ids keep their old id). A row of another
+      // account is never touched: its id is simply not one of these two for this user's update.
       if (body.id) {
         const updated = (await sql`
           UPDATE "BranchingTree" SET
@@ -141,11 +143,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             nodes = ${nodes},
             edges = ${edges},
             updated_at = NOW()
-          WHERE id = ${id} AND user_id = ${user.id}
+          WHERE id IN (${body.id}, ${id}) AND user_id = ${user.id}
           RETURNING id
         `) as Array<{ id: string }>;
         if (updated.length > 0) {
-          return res.status(200).json({ id, title, success: true });
+          return res.status(200).json({ id: updated[0].id, title, success: true });
         }
       }
 
@@ -160,7 +162,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({ id, title, success: true });
       }
 
-      // Nothing written: either the user is at the limit, or the id is taken by another account
+      // Nothing written: either the user is at the limit, or a parallel save of the same workflow just created it
       const [{ count }] = (await sql`
         SELECT COUNT(*)::int AS count FROM "BranchingTree" WHERE user_id = ${user.id}
       `) as Array<{ count: number }>;
@@ -188,12 +190,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // DELETE /api/workflows?id=...: delete workflow
   if (req.method === 'DELETE') {
     try {
-      const id = (req.query.id as string) || (req.body?.id as string);
-      if (!id) {
+      const id = req.query.id || req.body?.id;
+      if (!id || typeof id !== 'string') {
         return res.status(400).json({ error: 'Workflow id is required' });
       }
 
-      await sql`DELETE FROM "BranchingTree" WHERE id = ${id} AND user_id = ${user.id}`;
+      await sql`DELETE FROM "BranchingTree" WHERE id IN (${id}, ${serverRowId(user.id, id)}) AND user_id = ${user.id}`;
       return res.status(200).json({ success: true });
     } catch (err: any) {
       return sendDbFailure(res, '[Workflows] DELETE error:', 'Failed to delete workflow', err);

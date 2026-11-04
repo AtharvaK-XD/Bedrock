@@ -153,7 +153,8 @@ export async function clearUserTraces(): Promise<void> {
 }
 
 /**
- * Save prompt to Neon DB
+ * Save prompt to Neon DB. Returns the id the server stored it under (the server owns ids), or null when it was
+ * not saved.
  */
 export async function savePromptToDb(prompt: {
   id?: string;
@@ -162,11 +163,11 @@ export async function savePromptToDb(prompt: {
   promptText?: string;
   targetType?: string;
   tags?: string[];
-}): Promise<void> {
+}): Promise<string | null> {
   const privacy = getActivePrivacySettings();
   if (!privacy.saveHistory || privacy.localVaultOnly) {
     // History saving is off, or the user keeps everything on this device only
-    return;
+    return null;
   }
 
   const cleanTitle = scrubSecrets(prompt.title);
@@ -192,11 +193,15 @@ export async function savePromptToDb(prompt: {
       reportSyncProblem(limitMessage);
     } else if (isSyncFailure(res)) {
       reportSyncProblem("Couldn't back up your prompt to the cloud. It is still saved on this device.");
+    } else if (res.ok) {
+      const data = await res.json().catch(() => null);
+      return typeof data?.id === 'string' && data.id ? data.id : null;
     }
   } catch (err) {
     console.warn('[Prompts] Failed to save prompt to DB:', err);
     reportSyncProblem("Couldn't back up your prompt to the cloud. It is still saved on this device.");
   }
+  return null;
 }
 
 

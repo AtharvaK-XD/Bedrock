@@ -1,4 +1,26 @@
+import crypto from 'node:crypto';
 import type { VercelResponse } from '@vercel/node';
+
+/** Id for a new saved prompt or workflow when the client sends no id. */
+export function newRowId(): string {
+  return crypto.randomUUID();
+}
+
+/**
+ * The server-owned id of a row the client refers to by its own id. The app and released desktop builds name a new
+ * prompt locally ("prompt-1730000000") and keep using that name for later saves and deletes, so the name is treated
+ * only as a reference: the row's primary key is a UUID derived from (account, name). The same name always reaches the
+ * same row of the same account, so repeat saves do not duplicate and deletes still work; two accounts using the same
+ * name get different rows, so a client can never pick, or probe for, a key in another account.
+ * Formatted as a UUID version 8 (RFC 9562, application-defined).
+ */
+export function serverRowId(userId: string, clientId: string): string {
+  const bytes = crypto.createHash('sha256').update(`bedrock:row-id:v1\0${userId}\0${clientId}`).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x80;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 /** Size and count limits for data saved through the prompts, workflows, traces and profile routes. */
 export const DATA_LIMITS = {

@@ -104,19 +104,37 @@ export function addPromptToHistory(
   saveGeneratorHistory(updated);
   
   // Persist prompt to Neon DB in background
-  try {
-    savePromptToDb({
-      id: newItem.id,
-      title: newItem.title,
-      ideaText: newItem.ideaText,
-      promptText: newItem.promptText,
-      targetType: newItem.targetType,
+  savePromptToDb({
+    id: newItem.id,
+    title: newItem.title,
+    ideaText: newItem.ideaText,
+    promptText: newItem.promptText,
+    targetType: newItem.targetType,
+  })
+    .then((serverId) => {
+      if (serverId) adoptServerPromptId(newItem.id, serverId);
+    })
+    .catch((err) => {
+      console.warn('Background DB prompt sync failed:', err);
     });
-  } catch (err) {
-    console.warn('Background DB prompt sync failed:', err);
-  }
 
   return newItem;
+}
+
+/**
+ * The server owns prompt ids, so a local entry takes the id its save came back with. Otherwise the next sync would
+ * see the server's row as a different prompt and list it twice. Callers still holding the old id are fine: the server
+ * maps it to the same row for later saves and deletes.
+ */
+export function adoptServerPromptId(localId: string, serverId: string): void {
+  if (localId === serverId) return;
+  const current = getStoredGeneratorHistory();
+  if (!current.some((item) => item.id === localId)) return;
+  // A sync that ran before this answer may already have added the server's copy: the local entry replaces it
+  const updated = current
+    .filter((item) => item.id !== serverId)
+    .map((item) => (item.id === localId ? { ...item, id: serverId } : item));
+  saveGeneratorHistory(updated);
 }
 
 export async function syncHistoryFromDb(): Promise<HistoryPromptItem[]> {

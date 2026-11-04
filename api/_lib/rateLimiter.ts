@@ -3,17 +3,18 @@ import { isIP } from 'node:net';
 import { Redis } from '@upstash/redis';
 import { Ratelimit } from '@upstash/ratelimit';
 
-// Initialize Upstash Redis client with environment variables or fallback
+// Server-side variables only. A VITE_ name is meant for the browser and must never carry this token (OPEN-0043).
 let redisClient: Redis | null = null;
 
-const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.VITE_UPSTASH_REDIS_REST_URL;
-const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.VITE_UPSTASH_REDIS_REST_TOKEN;
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-// A VITE_ name is meant for the browser. The build strips it from the public website code (vite.config.ts),
-// but it should not carry a secret at all: rename the Vercel variables to UPSTASH_REDIS_REST_URL / _TOKEN.
-if (!process.env.UPSTASH_REDIS_REST_TOKEN && process.env.VITE_UPSTASH_REDIS_REST_TOKEN) {
-  console.warn('[Security] Redis is configured through VITE_UPSTASH_REDIS_REST_* variables: rename them to UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in Vercel.');
-}
+/**
+ * True when either variable is set. In-memory limits are only for a setup with Redis left out completely (local
+ * development). Memory counters are per serverless instance, so in production they would quietly multiply every
+ * limit: once Redis is configured, a broken or half-finished setup refuses requests instead (see enforceRateLimit).
+ */
+const redisConfigured = Boolean(redisUrl || redisToken);
 
 if (redisUrl && redisToken) {
   try {
@@ -23,8 +24,10 @@ if (redisUrl && redisToken) {
     });
     console.log('⚡ [Upstash Redis] Successfully connected for Edge Rate Limiting & Load Balancing');
   } catch (err) {
-    console.warn('⚠️ [Upstash Redis] Failed to initialize Redis client, using in-memory fallback:', err);
+    console.error('[Upstash Redis] Failed to initialize the Redis client; requests will be refused:', err);
   }
+} else if (redisConfigured) {
+  console.error('[Upstash Redis] Only one of UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN is set; requests will be refused until both are set.');
 } else {
   console.info('ℹ️ [Upstash Redis] Credentials not found in environment, running in-memory rate limiting fallback.');
 }
@@ -33,7 +36,7 @@ export function getRedisClient(): Redis | null {
   return redisClient;
 }
 
-// In-Memory Fallback Store for serverless instances when Redis is unconfigured or unreachable
+// In-memory store, used only when Redis is left out completely (and for /api/health, see enforceRateLimit)
 interface MemoryEntry {
   count: number;
   resetAt: number;
@@ -207,6 +210,20 @@ export interface RateLimitCheckResult {
   retryAfterSeconds?: number;
 }
 
+const LIMITER_RETRY_AFTER_SECONDS = 30;
+
+/** Redis is configured but not usable: refuse (fail closed) rather than run without a shared limit. */
+function sendLimiterUnavailable(res: VercelResponse): false {
+  res.setHeader('Retry-After', LIMITER_RETRY_AFTER_SECONDS.toString());
+  res.status(503).json({
+    error: 'Service temporarily unavailable',
+    code: 'RATE_LIMITER_UNAVAILABLE',
+    message: `Bedrock is briefly unavailable. Please try again in ${LIMITER_RETRY_AFTER_SECONDS} seconds.`,
+    retryAfterSeconds: LIMITER_RETRY_AFTER_SECONDS,
+  });
+  return false;
+}
+
 /**
  * Enforces rate limiting on a Vercel serverless request.
  * Sets X-RateLimit headers and automatically sends HTTP 429 if the quota is exceeded.
@@ -216,7 +233,7 @@ export interface RateLimitCheckResult {
  * @param preset Rate limit preset configuration
  * @param identifierOverride Custom identifier (e.g., user.id or IP)
  * @param isPaidTier If true, scales allowable requests by 2.5x for paid subscribers
- * @returns true if allowed to proceed, false if response was terminated with 429.
+ * @returns true if allowed to proceed, false if the response was terminated (429, or 503 when the limiter is down).
  */
 export async function enforceRateLimit(
   req: VercelRequest,
@@ -234,6 +251,10 @@ export async function enforceRateLimit(
 
   let limitResult: { success: boolean; limit: number; remaining: number; reset: number };
 
+  const useMemory = () => safeMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
+  // /api/health keeps answering during an outage: reporting that Redis is down is its whole job
+  const memoryAllowed = !redisConfigured || preset === 'health';
+
   const limiter = getUpstashLimiter(preset, allowedRequests, cfg.windowSeconds, cfg.prefix);
   if (limiter) {
     try {
@@ -245,11 +266,13 @@ export async function enforceRateLimit(
         reset: resData.reset,
       };
     } catch (redisErr) {
-      console.warn(`[RateLimiter] Upstash Redis call failed for ${preset}, using memory fallback:`, redisErr);
-      limitResult = safeMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
+      console.error(`[RateLimiter] Upstash Redis call failed for ${preset}:`, redisErr);
+      if (!memoryAllowed) return sendLimiterUnavailable(res);
+      limitResult = useMemory();
     }
   } else {
-    limitResult = safeMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
+    if (!memoryAllowed) return sendLimiterUnavailable(res);
+    limitResult = useMemory();
   }
 
   const { success, limit, remaining, reset } = limitResult;

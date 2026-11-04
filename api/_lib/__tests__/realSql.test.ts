@@ -85,6 +85,8 @@ async function call(handler: (req: any, res: any) => unknown, method: string, bo
   return res;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 describe.skipIf(!PGlite)('backend SQL on a real Postgres engine (PGlite + all migrations)', () => {
   beforeAll(async () => {
     vi.stubEnv('DATABASE_URL', 'postgres://pglite-in-memory');
@@ -109,25 +111,58 @@ describe.skipIf(!PGlite)('backend SQL on a real Postgres engine (PGlite + all mi
     vi.restoreAllMocks();
   });
 
-  it('prompts: only the owner can change or delete a prompt; another user with the same id gets 409', async () => {
+  it('prompts: the server owns new ids; two accounts using the same client id get separate rows and cannot touch each other', async () => {
     as('user_A');
-    expect((await call(prompts, 'POST', { id: 'prm_shared', title: 'A', fullContent: 'alice text' })).statusCode).toBe(200);
+    const first = await call(prompts, 'POST', { id: 'prm_shared', title: 'A', fullContent: 'alice text' });
+    expect(first.statusCode).toBe(200);
+    const aliceId = first.body.id;
+    expect(aliceId).toMatch(UUID);
 
     as('user_B');
-    const hijack = await call(prompts, 'POST', { id: 'prm_shared', title: 'B', fullContent: 'hijacked' });
-    expect(hijack.statusCode).toBe(409);
-    expect(hijack.body.code).toBe('PROMPT_ID_CONFLICT');
-    expect(await call(prompts, 'GET')).toMatchObject({ statusCode: 200, body: [] });
+    const other = await call(prompts, 'POST', { id: 'prm_shared', title: 'B', fullContent: 'bob text' });
+    expect(other.statusCode).toBe(200);
+    expect(other.body.id).toMatch(UUID);
+    expect(other.body.id).not.toBe(aliceId);
+    // Knowing Alice's real id does not help: no update, read or delete reaches her row
+    expect((await call(prompts, 'GET', {}, { id: aliceId })).statusCode).toBe(404);
+    expect((await call(prompts, 'POST', { id: aliceId, title: 'B2', fullContent: 'hijack try' })).body.id).not.toBe(aliceId);
+    await call(prompts, 'DELETE', {}, { id: aliceId });
     await call(prompts, 'DELETE', {}, { id: 'prm_shared' });
-
-    const [row] = await q(`SELECT user_id, full_content FROM "Prompt" WHERE id = 'prm_shared'`);
+    const [row] = await q(`SELECT user_id, full_content FROM "Prompt" WHERE id = '${aliceId}'`);
     expect(row).toEqual({ user_id: 'user_A', full_content: 'alice text' });
 
+    // The client's own name keeps reaching the same row: no duplicate on the second save, and it can be deleted by it
     as('user_A');
-    expect((await call(prompts, 'POST', { id: 'prm_shared', title: 'A2', fullContent: 'alice v2' })).statusCode).toBe(200);
+    const second = await call(prompts, 'POST', { id: 'prm_shared', title: 'A2', fullContent: 'alice v2' });
+    expect(second.body.id).toBe(aliceId);
+    // ...and so does the server id, once the client has adopted it
+    expect((await call(prompts, 'POST', { id: aliceId, title: 'A3', fullContent: 'alice v3' })).body.id).toBe(aliceId);
     const list = await call(prompts, 'GET');
     expect(list.body).toHaveLength(1);
-    expect(list.body[0]).toMatchObject({ id: 'prm_shared', title: 'A2', fullContent: 'alice v2', tags: ['Custom'] });
+    expect(list.body[0]).toMatchObject({ id: aliceId, title: 'A3', fullContent: 'alice v3', tags: ['Custom'] });
+    expect((await call(prompts, 'GET', {}, { id: 'prm_shared' })).body.id).toBe(aliceId);
+    expect((await call(prompts, 'DELETE', {}, { id: 'prm_shared' })).statusCode).toBe(200);
+    expect((await call(prompts, 'GET')).body).toEqual([]);
+  });
+
+  it('prompts: a save without an id gets a random UUID; rows saved before server ids keep working under their old id', async () => {
+    as('user_A');
+    const created = await call(prompts, 'POST', { title: 'new', fullContent: 'x' });
+    expect(created.body.id).toMatch(UUID);
+    await q(`INSERT INTO "Prompt" (id, user_id, title, snippet, full_content, tags, target_type, created_at, updated_at)
+      VALUES ('prompt-1730000000', 'user_A', 'old', 's', 'c', '[]', 'General', now(), now())`);
+    const edited = await call(prompts, 'POST', { id: 'prompt-1730000000', title: 'old edited', fullContent: 'c2' });
+    expect(edited.body.id).toBe('prompt-1730000000');
+    expect((await call(prompts, 'GET', {}, { id: 'prompt-1730000000' })).body.title).toBe('old edited');
+    expect((await q(`SELECT count(*)::int AS n FROM "Prompt" WHERE user_id = 'user_A'`))[0].n).toBe(2);
+    await call(prompts, 'DELETE', {}, { id: 'prompt-1730000000' });
+    expect((await q(`SELECT count(*)::int AS n FROM "Prompt" WHERE user_id = 'user_A'`))[0].n).toBe(1);
+  });
+
+  it('delete refuses a repeated id parameter (?id=a&id=b) instead of failing in the database', async () => {
+    as('user_A');
+    expect((await call(prompts, 'DELETE', {}, { id: ['a', 'b'] as any })).statusCode).toBe(400);
+    expect((await call(workflows, 'DELETE', {}, { id: ['a', 'b'] as any })).statusCode).toBe(400);
   });
 
   it('prompts: the 2,000-prompt limit gives 409 PROMPT_LIMIT_REACHED, and editing at the limit still works', async () => {
@@ -144,15 +179,23 @@ describe.skipIf(!PGlite)('backend SQL on a real Postgres engine (PGlite + all mi
     expect((await q(`SELECT count(*)::int AS n FROM "Prompt" WHERE user_id = 'user_C'`))[0].n).toBe(2000);
   });
 
-  it("workflows: another user's id gives 409 WORKFLOW_ID_CONFLICT and the owner's workflow is unchanged", async () => {
+  it("workflows: the server owns new ids; another user's id never reaches the owner's workflow", async () => {
     as('user_A');
-    expect((await call(workflows, 'POST', { id: 'wf_shared', title: 'A', nodes: [{ id: 'n1' }], edges: [] })).statusCode).toBe(200);
+    const first = await call(workflows, 'POST', { id: 'wf_shared', title: 'A', nodes: [{ id: 'n1' }], edges: [] });
+    expect(first.statusCode).toBe(200);
+    const aliceId = first.body.id;
+    expect(aliceId).toMatch(UUID);
     as('user_B');
-    const hijack = await call(workflows, 'POST', { id: 'wf_shared', title: 'B', nodes: [], edges: [] });
-    expect(hijack.statusCode).toBe(409);
-    expect(hijack.body.code).toBe('WORKFLOW_ID_CONFLICT');
-    const [row] = await q(`SELECT user_id, nodes FROM "BranchingTree" WHERE id = 'wf_shared'`);
+    const other = await call(workflows, 'POST', { id: 'wf_shared', title: 'B', nodes: [], edges: [] });
+    expect(other.body.id).not.toBe(aliceId);
+    await call(workflows, 'POST', { id: aliceId, title: 'B2', nodes: [], edges: [] });
+    await call(workflows, 'DELETE', {}, { id: aliceId });
+    const [row] = await q(`SELECT user_id, nodes FROM "BranchingTree" WHERE id = '${aliceId}'`);
     expect(row).toEqual({ user_id: 'user_A', nodes: JSON.stringify([{ id: 'n1' }]) });
+    as('user_A');
+    expect((await call(workflows, 'POST', { id: 'wf_shared', title: 'A2', nodes: [], edges: [] })).body.id).toBe(aliceId);
+    expect((await call(workflows, 'POST', { title: 'no id', nodes: [], edges: [] })).body.id).toMatch(UUID);
+    expect((await q(`SELECT count(*)::int AS n FROM "BranchingTree" WHERE user_id = 'user_A'`))[0].n).toBe(2);
   });
 
   it("workflows: the database's own row cap (migration 0003, e.g. two saves racing at the limit) gives 409, not 500", async () => {
@@ -346,6 +389,22 @@ describe.skipIf(!PGlite)('backend SQL on a real Postgres engine (PGlite + all mi
     });
     expect(res.body.traces).toHaveLength(100);
     expect(res.body.traces[0].latency).toBe(1); // newest first
+
+    // A database without trace_totals() (migration 0010 not applied) gets the same totals from the inline query
+    await q(`ALTER FUNCTION trace_totals(text) RENAME TO trace_totals_off`);
+    try {
+      const inline = await call(traces, 'GET');
+      expect(inline.statusCode).toBe(200);
+      const { traces: _list, ...inlineTotals } = inline.body;
+      const { traces: _same, ...functionTotals } = res.body;
+      expect({ ...inlineTotals, activeModels: [...inlineTotals.activeModels].sort() }).toEqual({
+        ...functionTotals,
+        activeModels: [...functionTotals.activeModels].sort(),
+      });
+      expect(inlineTotals.totalInferences).toBe(150);
+    } finally {
+      await q(`ALTER FUNCTION trace_totals_off(text) RENAME TO trace_totals`);
+    }
   });
 
   it('quota: exactly 10 of 15 simultaneous free generations are allowed; a refund frees one place', async () => {

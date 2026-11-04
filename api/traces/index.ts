@@ -90,40 +90,59 @@ type TraceTotals = {
   activeModels: string[];
 };
 
-// After a "not applied" answer, use the 100-row totals for this long before checking again
+// After a "not applied" answer, skip trace_totals() for this long before checking again
 const TRACE_TOTALS_RECHECK_MS = 5 * 60 * 1000;
 let traceTotalsMissingUntil = 0;
 
+function mapTraceTotals(row: any): TraceTotals | null {
+  if (!row) return null;
+  return {
+    // Neon returns bigint / numeric columns as strings
+    totalInferences: Number(row.total_inferences) || 0,
+    totalTokens: Number(row.total_tokens) || 0,
+    avgLatency: Number(row.avg_latency) || 0,
+    p99Latency: Number(row.p99_latency) || 0,
+    reliability: row.reliability === null || row.reliability === undefined ? 100 : Number(row.reliability),
+    activeModels: Array.isArray(row.active_models) ? row.active_models.filter((m: unknown) => typeof m === 'string') : [],
+  };
+}
+
 /**
- * Totals over ALL of the user's traces via trace_totals() (migration 0010). Returns null when the function
- * is missing or fails, so the caller falls back to adding up the last 100 rows (the older behavior).
+ * Totals over ALL of the user's traces, computed in the database: through trace_totals() (migration 0010), or the
+ * same aggregate written inline while that migration is not applied. Returns null only when the database fails, so
+ * the caller can still show the dashboard with totals over the rows it already loaded.
  */
 async function readTraceTotals(sql: ReturnType<typeof getDb>, userId: string): Promise<TraceTotals | null> {
-  if (Date.now() < traceTotalsMissingUntil) return null;
   try {
-    const [row] = (await sql`SELECT * FROM trace_totals(${userId})`) as any[];
-    if (!row) return null;
-    return {
-      // Neon returns bigint / numeric columns as strings
-      totalInferences: Number(row.total_inferences) || 0,
-      totalTokens: Number(row.total_tokens) || 0,
-      avgLatency: Number(row.avg_latency) || 0,
-      p99Latency: Number(row.p99_latency) || 0,
-      reliability: row.reliability === null || row.reliability === undefined ? 100 : Number(row.reliability),
-      activeModels: Array.isArray(row.active_models) ? row.active_models.filter((m: unknown) => typeof m === 'string') : [],
-    };
-  } catch (err: any) {
-    if (err?.code === PG_UNDEFINED_FUNCTION) {
-      traceTotalsMissingUntil = Date.now() + TRACE_TOTALS_RECHECK_MS;
-      console.warn('[Traces] trace_totals() not found (migration 0010 not applied); totals use the last 100 rows');
-    } else {
-      console.error('[Traces] trace_totals() failed; totals use the last 100 rows:', err?.code || err?.message || err);
+    if (Date.now() >= traceTotalsMissingUntil) {
+      try {
+        const [row] = (await sql`SELECT * FROM trace_totals(${userId})`) as any[];
+        return mapTraceTotals(row);
+      } catch (err: any) {
+        if (err?.code !== PG_UNDEFINED_FUNCTION) throw err;
+        traceTotalsMissingUntil = Date.now() + TRACE_TOTALS_RECHECK_MS;
+        console.warn('[Traces] trace_totals() not found (migration 0010 not applied); using the inline totals query');
+      }
     }
+    const [row] = (await sql`
+      SELECT
+        count(*)::int AS total_inferences,
+        coalesce(sum(tokens_used), 0)::bigint AS total_tokens,
+        coalesce(round(avg(latency_ms)), 0)::int AS avg_latency,
+        coalesce(percentile_disc(0.99) WITHIN GROUP (ORDER BY latency_ms), 0)::int AS p99_latency,
+        CASE WHEN count(*) = 0 THEN 100::numeric
+             ELSE round(100.0 * count(*) FILTER (WHERE status IN ('OK', 'success')) / count(*), 1) END AS reliability,
+        coalesce(array_agg(DISTINCT model_target) FILTER (WHERE model_target IS NOT NULL), ARRAY[]::text[]) AS active_models
+      FROM "Trace" WHERE user_id = ${userId}
+    `) as any[];
+    return mapTraceTotals(row);
+  } catch (err: any) {
+    console.error('[Traces] totals query failed; totals use the listed rows:', err?.code || err?.message || err);
     return null;
   }
 }
 
-/** The older totals: only over the rows passed in (the last 100). */
+/** Last resort when the database cannot compute totals: only over the rows passed in (the last 100). */
 function totalsFromRows(traces: Array<{ tokens: number; latency: number; status: string; model: string }>): TraceTotals {
   const totalInferences = traces.length;
   let totalTokens = 0;
@@ -193,7 +212,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         status: normalizeTraceStatus(r.status),
       }));
 
-      // Totals over all of this user's traces when migration 0010 is applied, else over the 100 rows listed
+      // Totals over all of this user's traces, computed in SQL; over the listed rows only if that query failed
       const totals = sqlTotals ?? totalsFromRows(traces);
 
       return res.status(200).json({
