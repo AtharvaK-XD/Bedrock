@@ -322,26 +322,33 @@ export default function Wizard() {
             )}
 
             {/* Floating Expand Trigger when minimized */}
-            {isSidebarCollapsed && (
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                className="fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sf-0c0d10/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-200 top-22 left-4"
-                title="Show previous prompts"
-              >
-                <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-mono">History</span>
-              </button>
-            )}
+            <AnimatePresence>
+              {isSidebarCollapsed && (
+                <motion.button
+                  key="floating-history-btn"
+                  initial={{ opacity: 0, x: -16, scale: 0.95 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -16, scale: 0.95 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  type="button"
+                  onClick={toggleSidebar}
+                  className="fixed z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sf-0c0d10/95 border border-white/10 text-neutral-300 hover:text-white hover:border-white/20 shadow-xl backdrop-blur-xl transition-colors cursor-pointer group top-22 left-4"
+                  title="Show previous prompts"
+                >
+                  <PanelLeftOpen className="w-4 h-4 text-copper-400 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-mono">History</span>
+                </motion.button>
+              )}
+            </AnimatePresence>
           </>
         )}
 
         {/* Main Generator Workspace */}
         <div className={cn(
-          "w-full px-4 sm:px-8 transition-all duration-300",
+          "w-full px-4 sm:px-8",
           isDesktop 
             ? "h-full min-h-full flex flex-col flex-1 py-6" 
-            : cn("py-6 lg:py-10 min-h-[calc(100vh-80px)]", !isSidebarCollapsed ? "md:pl-72 lg:pl-76" : "md:pl-8")
+            : "py-6 lg:py-10 min-h-[calc(100vh-80px)]"
         )}>
         <div className={cn(
           "w-full flex flex-col gap-12 transition-all duration-500",

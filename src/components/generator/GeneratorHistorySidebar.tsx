@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { 
   SlidersHorizontal, 
   Search, 
@@ -128,11 +129,14 @@ function GeneratorHistorySidebarContent({
   const displayInitial = profile?.avatarInitials ? profile.avatarInitials[0] : (displayName[0] || 'B');
 
   return (
-    <aside
+    <motion.aside
+      initial={false}
+      animate={{ x: isCollapsed ? "-100%" : "0%" }}
+      transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
       className={cn(
-        "fixed top-0 bottom-0 z-30 w-64 sm:w-72 bg-sf-0c0d10 border-r border-white/[0.08] flex flex-col transition-transform duration-300 ease-in-out select-none shadow-[6px_0_32px_rgba(0,0,0,0.65)]",
+        "fixed top-0 bottom-0 z-40 w-64 sm:w-72 bg-sf-0c0d10 border-r border-white/[0.08] flex flex-col select-none shadow-[6px_0_32px_rgba(0,0,0,0.65)]",
         isDesktop ? "left-64" : "left-0",
-        isCollapsed ? "-translate-x-full pointer-events-none" : "translate-x-0 pointer-events-auto"
+        isCollapsed ? "pointer-events-none" : "pointer-events-auto"
       )}
     >
       {/* Top Header Controls (starts at pt-20 on web for fixed Topbar, pt-4 on desktop) */}
@@ -416,6 +420,6 @@ function GeneratorHistorySidebarContent({
           </div>
         </div>
       )}
-    </aside>
+    </motion.aside>
   );
 }
