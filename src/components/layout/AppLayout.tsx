@@ -10,6 +10,7 @@ import { OPEN_API_KEY_MODAL_EVENT, type OpenApiKeyModalDetail } from '../../lib/
 import { syncRemoteUserProfile } from '../../lib/useUserProfile';
 import { syncHistoryFromDb } from '../../lib/generatorHistory';
 import { SyncNotice } from './SyncNotice';
+import { FirstTimeOnboardingModal } from '../onboarding/FirstTimeOnboardingModal';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const isPopup = 
@@ -180,6 +181,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       <SyncNotice />
+      <FirstTimeOnboardingModal />
 
       {/* In-App API Key Gateway & Update Modal */}
       <ApiKeyGatewayModal
