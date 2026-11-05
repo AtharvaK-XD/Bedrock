@@ -84,7 +84,7 @@ export default function Privacy() {
                 1. Information We Collect
               </h2>
               <p className="mb-3">
-                When you access or use Bedrock (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) via our web application (<span className="text-emerald-400">https://bedrock-steel.vercel.app</span>) or native desktop workstation, we collect information in the following ways:
+                When you access or use Bedrock (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) via our web application (<span className="text-emerald-400">https://bedrockxai.com</span>) or native desktop workstation, we collect information in the following ways:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-zinc-400">
                 <li>
@@ -205,7 +205,7 @@ export default function Privacy() {
                 <p className="text-white font-medium">Bedrock Operations</p>
                 <p className="text-zinc-400">Support Email: <a href="mailto:bedrockofficialpage@gmail.com" className="text-emerald-400 hover:underline">bedrockofficialpage@gmail.com</a></p>
                 <p className="text-zinc-400">Developer Contact: <a href="mailto:kulkarniatharva529@gmail.com" className="text-emerald-400 hover:underline">kulkarniatharva529@gmail.com</a></p>
-                <p className="text-zinc-400">Website: <a href="https://bedrock-steel.vercel.app" className="text-emerald-400 hover:underline">https://bedrock-steel.vercel.app</a></p>
+                <p className="text-zinc-400">Website: <a href="https://bedrockxai.com" className="text-emerald-400 hover:underline">https://bedrockxai.com</a></p>
               </div>
             </section>
 

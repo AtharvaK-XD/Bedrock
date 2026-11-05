@@ -390,7 +390,7 @@ function startLocalServer() {
 					// be able to redirect every request (with the user's token) to another server.
 					const hostOverride = app.isPackaged ? undefined : process.env.BEDROCK_BACKEND_HOST;
 					const portOverride = app.isPackaged ? undefined : process.env.BEDROCK_BACKEND_PORT;
-					const backendHost = hostOverride || "bedrock-steel.vercel.app";
+					const backendHost = hostOverride || "bedrockxai.com";
 					const isHttps = !backendHost.includes("localhost") && !backendHost.includes("127.0.0.1");
 					const transport = isHttps ? https : http;
 					const port = isHttps ? 443 : (portOverride ? parseInt(portOverride, 10) : 3001);
@@ -885,10 +885,10 @@ ipcMain.handle("file:save-with-dialog", async (_event, options) => {
 });
 
 // ---- Content-Security-Policy (kept in line with the website's policy in vercel.json) ----
-const DEV_CSP = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http://localhost:* http://127.0.0.1:* https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://accounts.google.com https://*.google.com https://*.googleapis.com https://github.com https://*.github.com https://fonts.googleapis.com https://fonts.gstatic.com https://bedrock-steel.vercel.app; object-src 'none'; base-uri 'self';";
+const DEV_CSP = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http://localhost:* http://127.0.0.1:* https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://accounts.google.com https://*.google.com https://*.googleapis.com https://github.com https://*.github.com https://fonts.googleapis.com https://fonts.gstatic.com https://bedrockxai.com https://bedrock-steel.vercel.app; object-src 'none'; base-uri 'self';";
 // sha256 of the inline popup-closing script in index.html (LF and CRLF checkouts)
 const INDEX_INLINE_SCRIPT_HASHES = "'sha256-4Bo01ZNy7SnDqO38T4qi0U10NKwmezB9OuofGmwyLtw=' 'sha256-KO0VPu5IYIyjwTyCO1dKZTc5y6RrRCB+BOVbBG7UA5U='";
-const CLERK_HOSTS = "https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com";
+const CLERK_HOSTS = "https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com https://clerk.bedrockxai.com https://accounts.bedrockxai.com";
 const APP_CSP = [
 	"default-src 'self'",
 	`script-src 'self' ${INDEX_INLINE_SCRIPT_HASHES} ${CLERK_HOSTS} https://challenges.cloudflare.com https://us-assets.i.posthog.com`,
@@ -896,7 +896,7 @@ const APP_CSP = [
 	"font-src 'self' data: https://fonts.gstatic.com",
 	"img-src 'self' data: blob: https:",
 	"media-src 'self' blob:",
-	`connect-src 'self' http://127.0.0.1:* http://localhost:* https://bedrock-steel.vercel.app ${CLERK_HOSTS} https://*.protect.clerk.com:* https://clerk-telemetry.com https://*.ingest.us.sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://generativelanguage.googleapis.com https://api.groq.com https://api.openai.com https://openrouter.ai https://api-inference.huggingface.co https://api.perplexity.ai https://api.github.com https://api.anthropic.com`,
+	`connect-src 'self' http://127.0.0.1:* http://localhost:* https://bedrockxai.com https://*.bedrockxai.com https://bedrock-steel.vercel.app ${CLERK_HOSTS} https://*.protect.clerk.com:* https://clerk-telemetry.com https://*.ingest.us.sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://generativelanguage.googleapis.com https://api.groq.com https://api.openai.com https://openrouter.ai https://api-inference.huggingface.co https://api.perplexity.ai https://api.github.com https://api.anthropic.com`,
 	`frame-src 'self' https://challenges.cloudflare.com ${CLERK_HOSTS}`,
 	"worker-src 'self' blob:",
 	"object-src 'none'",

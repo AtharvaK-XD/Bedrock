@@ -163,7 +163,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     <table border="0" cellspacing="0" cellpadding="0">
                       <tr>
                         <td style="vertical-align: middle;">
-                          <img src="https://bedrock-steel.vercel.app/logo-tight.png" width="30" height="30" alt="Bedrock" style="display: block; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);" />
+                          <img src="https://bedrockxai.com/logo-tight.png" width="30" height="30" alt="Bedrock" style="display: block; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);" />
                         </td>
                         <td style="padding-left: 12px; vertical-align: middle;">
                           <div style="font-size: 14px; font-weight: 700; color: #ffffff; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.1;">BEDROCK</div>
@@ -222,7 +222,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
                 <tr>
                   <td align="center">
-                    <a href="https://bedrock-steel.vercel.app/app" style="display: block; width: 100%; box-sizing: border-box; text-align: center; background: linear-gradient(180deg, #dfc38a 0%, #c8a86b 100%); color: #090a0d; font-weight: 600; font-size: 14px; padding: 13px 20px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(200, 168, 107, 0.25); letter-spacing: 0.01em;">
+                    <a href="https://bedrockxai.com/app" style="display: block; width: 100%; box-sizing: border-box; text-align: center; background: linear-gradient(180deg, #dfc38a 0%, #c8a86b 100%); color: #090a0d; font-weight: 600; font-size: 14px; padding: 13px 20px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(200, 168, 107, 0.25); letter-spacing: 0.01em;">
                       Launch Bedrock Workstation &rarr;
                     </a>
                   </td>
@@ -239,7 +239,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 Bedrock Prompt Engineering Workstation &bull; Welcome Protocol
               </p>
               <p style="margin: 0; font-size: 11.5px; color: #4b5563;">
-                Dispatched by <span style="color: #6b7280;">bedrockofficialpage@gmail.com</span> &bull; <a href="https://bedrock-steel.vercel.app" style="color: #9ca3af; text-decoration: underline;">bedrock.app</a>
+                Dispatched by <span style="color: #6b7280;">bedrockofficialpage@gmail.com</span> &bull; <a href="https://bedrockxai.com" style="color: #9ca3af; text-decoration: underline;">bedrock.app</a>
               </p>
             </td>
           </tr>
@@ -281,7 +281,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     <table border="0" cellspacing="0" cellpadding="0">
                       <tr>
                         <td style="vertical-align: middle;">
-                          <img src="https://bedrock-steel.vercel.app/logo-tight.png" width="30" height="30" alt="Bedrock" style="display: block; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);" />
+                          <img src="https://bedrockxai.com/logo-tight.png" width="30" height="30" alt="Bedrock" style="display: block; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);" />
                         </td>
                         <td style="padding-left: 12px; vertical-align: middle;">
                           <div style="font-size: 14px; font-weight: 700; color: #ffffff; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.1;">BEDROCK</div>
@@ -348,7 +348,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
                 <tr>
                   <td align="center">
-                    <a href="https://bedrock-steel.vercel.app/app" style="display: block; width: 100%; box-sizing: border-box; text-align: center; background: linear-gradient(180deg, #dfc38a 0%, #c8a86b 100%); color: #090a0d; font-weight: 600; font-size: 14px; padding: 13px 20px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(200, 168, 107, 0.25); letter-spacing: 0.01em;">
+                    <a href="https://bedrockxai.com/app" style="display: block; width: 100%; box-sizing: border-box; text-align: center; background: linear-gradient(180deg, #dfc38a 0%, #c8a86b 100%); color: #090a0d; font-weight: 600; font-size: 14px; padding: 13px 20px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(200, 168, 107, 0.25); letter-spacing: 0.01em;">
                       Launch Bedrock Workstation &rarr;
                     </a>
                   </td>
@@ -357,7 +357,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 10px;">
                 <tr>
                   <td style="padding: 14px 16px; font-size: 12.5px; line-height: 1.5; color: #9ca3af;">
-                    <strong style="color: #fca5a5;">Didn't recognize this sign-in?</strong> If this wasn't you, someone may have unauthorized access. <a href="https://bedrock-steel.vercel.app/app/settings" style="color: #dfc38a; text-decoration: underline;">Change your password</a> immediately.
+                    <strong style="color: #fca5a5;">Didn't recognize this sign-in?</strong> If this wasn't you, someone may have unauthorized access. <a href="https://bedrockxai.com/app/settings" style="color: #dfc38a; text-decoration: underline;">Change your password</a> immediately.
                   </td>
                 </tr>
               </table>
@@ -369,7 +369,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 Bedrock Prompt Engineering Workstation &bull; Automated Security Protocol
               </p>
               <p style="margin: 0; font-size: 11.5px; color: #4b5563;">
-                Dispatched by <span style="color: #6b7280;">${gmailUser}</span> &bull; <a href="https://bedrock-steel.vercel.app" style="color: #9ca3af; text-decoration: underline;">bedrock.app</a>
+                Dispatched by <span style="color: #6b7280;">${gmailUser}</span> &bull; <a href="https://bedrockxai.com" style="color: #9ca3af; text-decoration: underline;">bedrock.app</a>
               </p>
             </td>
           </tr>

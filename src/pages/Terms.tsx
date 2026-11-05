@@ -80,7 +80,7 @@ export default function Terms() {
                 1. Acceptance of Terms
               </h2>
               <p>
-                By creating an account, accessing, or using the Bedrock workstation or web platform at <span className="text-emerald-400">https://bedrock-steel.vercel.app</span>, you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree to these terms, do not access or use the service.
+                By creating an account, accessing, or using the Bedrock workstation or web platform at <span className="text-emerald-400">https://bedrockxai.com</span>, you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree to these terms, do not access or use the service.
               </p>
             </section>
 

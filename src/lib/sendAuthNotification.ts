@@ -57,7 +57,7 @@ export async function notifyAuthSuccess(payload: AuthNotificationPayload): Promi
   // Determine API base
   const origin = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file'))
     ? window.location.origin
-    : 'https://bedrock-steel.vercel.app';
+    : 'https://bedrockxai.com';
 
   const headers = await getNotificationHeaders();
   if (!headers['Authorization']) return; // not signed in: the server would refuse anyway
@@ -73,9 +73,9 @@ export async function notifyAuthSuccess(payload: AuthNotificationPayload): Promi
       }),
     });
 
-    if (!res.ok && origin !== 'https://bedrock-steel.vercel.app') {
+    if (!res.ok && origin !== 'https://bedrockxai.com') {
       // Fallback to production cloud endpoint for desktop or offline loopback
-      await fetch('https://bedrock-steel.vercel.app/api/auth/send-email', {
+      await fetch('https://bedrockxai.com/api/auth/send-email', {
         method: 'POST',
         headers,
         body: JSON.stringify({ email: cleanEmail, name: name?.trim(), type }),
@@ -84,7 +84,7 @@ export async function notifyAuthSuccess(payload: AuthNotificationPayload): Promi
   } catch (err) {
     // Non-blocking: Try fallback to Vercel production endpoint
     try {
-      await fetch('https://bedrock-steel.vercel.app/api/auth/send-email', {
+      await fetch('https://bedrockxai.com/api/auth/send-email', {
         method: 'POST',
         headers,
         body: JSON.stringify({ email: cleanEmail, name: name?.trim(), type }),

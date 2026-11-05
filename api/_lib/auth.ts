@@ -92,7 +92,12 @@ function isAuthorizedParty(azp: unknown): boolean {
   return LOOPBACK_AZP_RE.test(origin) || parties.has(origin);
 }
 
-const PRODUCTION_APP_ORIGIN = 'https://bedrock-steel.vercel.app';
+const PRODUCTION_APP_ORIGINS = new Set([
+  'https://bedrockxai.com',
+  'https://www.bedrockxai.com',
+  'https://bedrock-steel.vercel.app',
+]);
+const PRODUCTION_APP_ORIGIN = 'https://bedrockxai.com';
 
 /**
  * Browser origins allowed to call Bedrock's credentialed endpoints cross-origin: the request's
@@ -101,7 +106,7 @@ const PRODUCTION_APP_ORIGIN = 'https://bedrock-steel.vercel.app';
  */
 export function isAllowedAppOrigin(origin: string, requestHost?: string): boolean {
   const clean = normalizeIssuer(origin);
-  if (LOOPBACK_AZP_RE.test(clean) || clean === PRODUCTION_APP_ORIGIN) return true;
+  if (LOOPBACK_AZP_RE.test(clean) || clean === PRODUCTION_APP_ORIGIN || PRODUCTION_APP_ORIGINS.has(clean)) return true;
   if (getAuthorizedParties()?.has(clean)) return true;
   if (requestHost) {
     try {

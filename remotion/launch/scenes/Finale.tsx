@@ -17,7 +17,7 @@ import { sceneCues } from '../timeline';
 // ============================================================================
 
 const VERSION = '1.3.3';
-const SITE = 'bedrock-steel.vercel.app';
+const SITE = 'bedrockxai.com';
 
 const WindowsIcon: React.FC<{ size: number; color: string }> = ({ size, color }) => (
   <svg width={size} height={size} viewBox="0 0 88 88" fill={color}>

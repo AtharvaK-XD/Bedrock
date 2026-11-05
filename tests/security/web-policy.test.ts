@@ -56,7 +56,7 @@ describe('website security headers', () => {
   it('allows the services the app really talks to', () => {
     const connect = directive(webCsp, 'connect-src');
     for (const host of [
-      'https://bedrock-steel.vercel.app', 'https://*.clerk.accounts.dev', 'https://*.clerk.com', 'https://*.ingest.us.sentry.io',
+      'https://bedrockxai.com', 'https://clerk.bedrockxai.com', 'https://bedrock-steel.vercel.app', 'https://*.clerk.accounts.dev', 'https://*.clerk.com', 'https://*.ingest.us.sentry.io',
       'https://us.i.posthog.com', 'https://generativelanguage.googleapis.com', 'https://api.groq.com', 'https://api.openai.com',
       'https://openrouter.ai', 'https://api-inference.huggingface.co', 'https://api.perplexity.ai', 'https://api.github.com', 'https://api.anthropic.com', 'http://localhost:*',
     ]) {
@@ -66,11 +66,10 @@ describe('website security headers', () => {
 });
 
 describe('trust lists', () => {
-  // Nobody owns this name (registry: no record, DNS: does not exist; checked 2026-11-05). Anyone could buy it, so it
-  // must not be trusted anywhere until Atharva has registered it and this test is changed on purpose.
-  it('do not name the unregistered bedrockxai.com', () => {
+  // bedrockxai.com is registered and owned by Atharva (registered 2026-11-05). It is now the official production domain.
+  it('correctly names the registered production domain bedrockxai.com across configs', () => {
     for (const file of ['vercel.json', 'dist-electron/main.js', 'src/lib/sentryTargets.ts', 'api/_lib/auth.ts', 'api/auth/send-email.ts']) {
-      expect(read(file).toLowerCase(), file).not.toMatch(/bedrockxai(\\)?\.com/);
+      expect(read(file).toLowerCase(), file).toMatch(/bedrockxai(\\)?\.com/);
     }
   });
 

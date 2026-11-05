@@ -585,7 +585,7 @@ async function callOpenRouter(
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${key}`,
-        'HTTP-Referer': 'https://bedrock-steel.vercel.app',
+        'HTTP-Referer': 'https://bedrockxai.com',
         'X-Title': 'Bedrock',
       },
       body: JSON.stringify({

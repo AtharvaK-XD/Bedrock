@@ -229,7 +229,7 @@ describe('local server: other websites and the backend proxy', () => {
       const res = await fetch(`${base}/api/health`, { headers: { Origin: base } });
       expect(res.status).toBe(502);
       expect(seen).toHaveLength(1); // the fake backend was not asked again
-      expect(state.httpsRequests).toEqual([{ hostname: 'bedrock-steel.vercel.app', port: 443 }]);
+      expect(state.httpsRequests).toEqual([{ hostname: 'bedrockxai.com', port: 443 }]);
     } finally {
       state.packaged = false;
       for (const [k, v] of [['BEDROCK_BACKEND_HOST', before.host], ['BEDROCK_BACKEND_PORT', before.port]] as const) {

@@ -52,7 +52,7 @@ export default function PopupAuth() {
 
       const origin = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file'))
         ? window.location.origin
-        : 'https://bedrock-steel.vercel.app';
+        : 'https://bedrockxai.com';
       const callbackUrl = `${origin}/sso-callback?popup=1`;
       const targetUrl = `${origin}/sso-callback?popup=1`;
 
