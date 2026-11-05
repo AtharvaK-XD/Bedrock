@@ -1,4 +1,5 @@
-import { getCachedAnthropicModels, ANTHROPIC_MODELS_EVENT } from '../../lib/anthropicModels';
+import { ANTHROPIC_MODELS_EVENT } from '../../lib/anthropicModels';
+import { getCachedProviderModels, DYNAMIC_MODELS_UPDATED_EVENT } from '../../lib/dynamicModelDiscovery';
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Check, Lock } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -182,6 +183,18 @@ const DEFAULT_GENERATOR_PLACEHOLDERS = [
   "Create a detailed brief for a UX designer..."
 ];
 
+const AGENT_PROVIDER_MAP: Record<string, string> = {
+  claude: 'anthropic',
+  chatgpt: 'openai',
+  llama: 'groq',
+  gemini: 'gemini',
+  mistral: 'mistral',
+  deepseek: 'deepseek',
+  grok: 'xai',
+  openrouter: 'openrouter',
+  cohere: 'cohere',
+};
+
 export function RichInput({
   value,
   onChange,
@@ -191,25 +204,36 @@ export function RichInput({
   onTargetTypeChange,
 }: RichInputProps) {
   const isDesktop = isDesktopApp();
-  const [dynamicClaudeModels, setDynamicClaudeModels] = useState(() => getCachedAnthropicModels());
+  const [discoveredModelsVersion, setDiscoveredModelsVersion] = useState(0);
 
   useEffect(() => {
+    if (!isDesktop) return;
     const onUpdated = () => {
-      setDynamicClaudeModels(getCachedAnthropicModels());
+      setDiscoveredModelsVersion((v) => v + 1);
     };
+    window.addEventListener(DYNAMIC_MODELS_UPDATED_EVENT, onUpdated);
     window.addEventListener(ANTHROPIC_MODELS_EVENT, onUpdated);
-    return () => window.removeEventListener(ANTHROPIC_MODELS_EVENT, onUpdated);
-  }, []);
+    return () => {
+      window.removeEventListener(DYNAMIC_MODELS_UPDATED_EVENT, onUpdated);
+      window.removeEventListener(ANTHROPIC_MODELS_EVENT, onUpdated);
+    };
+  }, [isDesktop]);
 
   const activeAiAgents = React.useMemo(() => {
+    if (!isDesktop) return AI_AGENTS;
+
     return AI_AGENTS.map((agent) => {
-      if (agent.id !== 'claude') return agent;
+      const provider = AGENT_PROVIDER_MAP[agent.id];
+      if (!provider) return agent;
+      const dynamicModels = getCachedProviderModels(provider);
+      if (!dynamicModels || dynamicModels.length === 0) return agent;
+
       const map = new Map<string, { id: string; name: string }>();
       for (const m of agent.models) map.set(m.id.toLowerCase(), m);
-      for (const m of dynamicClaudeModels) {
-        const k = m.id.toLowerCase();
+      for (const dm of dynamicModels) {
+        const k = dm.id.toLowerCase();
         if (!map.has(k)) {
-          map.set(k, { id: m.id, name: m.name });
+          map.set(k, { id: dm.id, name: dm.name });
         }
       }
       return {
@@ -217,7 +241,7 @@ export function RichInput({
         models: Array.from(map.values()),
       };
     });
-  }, [dynamicClaudeModels]);
+  }, [isDesktop, discoveredModelsVersion]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   

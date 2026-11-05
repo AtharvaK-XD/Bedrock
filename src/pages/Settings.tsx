@@ -36,6 +36,7 @@ import type { UpdateStatus } from '../lib/updater';
 import { isDesktopApp } from '../lib/platform';
 import { getModelGroups, type ModelGroup } from '../lib/modelCatalog';
 import { fetchAnthropicModels, ANTHROPIC_MODELS_EVENT } from '../lib/anthropicModels';
+import { syncAllConfiguredModels, DYNAMIC_MODELS_UPDATED_EVENT } from '../lib/dynamicModelDiscovery';
 import { checkProviderKey, type KeyCheckResult } from '../lib/keyCheck';
 import { showToast, osNotificationsSupported, requestOsNotificationPermission } from '../lib/notify';
 import { applyAnalyticsConsent } from '../lib/analyticsConsent';
@@ -395,11 +396,15 @@ export default function Settings() {
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>(getModelGroups);
 
   useEffect(() => {
-    const onAnthropicUpdate = () => {
+    const onModelsUpdate = () => {
       setModelGroups(getModelGroups());
     };
-    window.addEventListener(ANTHROPIC_MODELS_EVENT, onAnthropicUpdate);
-    return () => window.removeEventListener(ANTHROPIC_MODELS_EVENT, onAnthropicUpdate);
+    window.addEventListener(ANTHROPIC_MODELS_EVENT, onModelsUpdate);
+    window.addEventListener(DYNAMIC_MODELS_UPDATED_EVENT, onModelsUpdate);
+    return () => {
+      window.removeEventListener(ANTHROPIC_MODELS_EVENT, onModelsUpdate);
+      window.removeEventListener(DYNAMIC_MODELS_UPDATED_EVENT, onModelsUpdate);
+    };
   }, []);
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
   const [keyChecks, setKeyChecks] = useState<Record<string, KeyCheckResult | 'checking' | undefined>>({});
@@ -428,7 +433,9 @@ export default function Settings() {
       localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(apiKeys));
       setSavedApiKeys(apiKeys);
       window.dispatchEvent(new Event('bedrock_api_keys_updated'));
-      if (apiKeys.anthropicKey && apiKeys.anthropicKey.trim()) {
+      if (isDesktop) {
+        syncAllConfiguredModels();
+      } else if (apiKeys.anthropicKey && apiKeys.anthropicKey.trim()) {
         fetchAnthropicModels(apiKeys.anthropicKey.trim()).catch(() => {});
       }
       window.dispatchEvent(new Event(BEDROCK_SETTINGS_UPDATED_EVENT));
@@ -1165,16 +1172,31 @@ export default function Settings() {
                       })}
                     </div>
 
-                    <div className="sticky bottom-0 -mx-1 flex items-center gap-3 rounded-2xl border border-white/10 bg-sf-0d0f13/95 p-3 backdrop-blur-xl">
-                      <button
-                        type="button"
-                        onClick={handleSaveKeys}
-                        disabled={!keysDirty}
-                        className="cursor-pointer rounded-xl bg-white px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-black transition-all hover:bg-gray-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Save keys
-                      </button>
-                      <span className="text-xs text-gray-400">{keysDirty ? 'You have unsaved key changes.' : 'All keys are saved.'}</span>
+                    <div className="sticky bottom-0 -mx-1 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-sf-0d0f13/95 p-3 backdrop-blur-xl">
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={handleSaveKeys}
+                          disabled={!keysDirty}
+                          className="cursor-pointer rounded-xl bg-white px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-black transition-all hover:bg-gray-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Save keys
+                        </button>
+                        {isDesktop && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              syncAllConfiguredModels();
+                              showToast('Discovering dynamic models for all configured keys...', 'info');
+                            }}
+                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-white transition-all hover:bg-white/10 active:scale-[0.98]"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5 text-copper-400" />
+                            <span>Sync Models</span>
+                          </button>
+                        )}
+                        <span className="text-xs text-gray-400">{keysDirty ? 'You have unsaved key changes.' : 'All keys are saved.'}</span>
+                      </div>
                     </div>
                   </motion.div>
                 )}

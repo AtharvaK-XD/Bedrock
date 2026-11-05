@@ -19,6 +19,7 @@ function installBrowserStubs() {
   const listeners: Record<string, Function[]> = {};
   vi.stubGlobal('localStorage', localStorageStub);
   vi.stubGlobal('window', {
+    IS_ELECTRON: true,
     addEventListener: (type: string, fn: Function) => {
       listeners[type] = listeners[type] || [];
       listeners[type].push(fn);

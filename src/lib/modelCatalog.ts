@@ -1,4 +1,5 @@
-import { getCachedAnthropicModels } from './anthropicModels';
+import { isDesktopApp } from './platform';
+import { getCachedProviderModels } from './dynamicModelDiscovery';
 
 /** Models offered in Settings > Models. Moved out of the Settings page so other screens can reuse it. */
 export interface ModelOption {
@@ -116,19 +117,50 @@ export const MODEL_GROUPS: ModelGroup[] = [
   },
 ];
 
+const GROUP_PROVIDER_MAP: Record<string, string> = {
+  'Google DeepMind (Recommended)': 'gemini',
+  'Perplexity AI (Live Grounding)': 'perplexity',
+  'Groq (Lightning Fast Open Source)': 'groq',
+  'Anthropic': 'anthropic',
+  'OpenAI': 'openai',
+  'OpenRouter & Hugging Face': 'openrouter',
+  'DeepSeek': 'deepseek',
+  'Mistral AI': 'mistral',
+  'Cohere & Microsoft': 'cohere',
+  'xAI (Grok)': 'xai',
+  'Ollama (Local Models)': 'ollama',
+};
+
 /**
- * Returns model groups merged with dynamically discovered models (e.g. Anthropic BYOK).
+ * Returns model groups.
+ * Strict Invariant: On website (isDesktopApp() === false), returns ONLY static curated models.
+ * On desktop (isDesktopApp() === true), merges with dynamically discovered BYOK models.
  */
 export function getModelGroups(): ModelGroup[] {
-  const dynamicAnthropic = getCachedAnthropicModels();
+  if (!isDesktopApp()) {
+    return MODEL_GROUPS;
+  }
+
   return MODEL_GROUPS.map((grp) => {
-    if (grp.group !== 'Anthropic') return grp;
+    const provider = GROUP_PROVIDER_MAP[grp.group];
+    if (!provider) return grp;
+
+    const dynamicModels = getCachedProviderModels(provider);
+    if (!dynamicModels || dynamicModels.length === 0) return grp;
+
     const map = new Map<string, ModelOption>();
-    for (const m of grp.models) map.set(m.id.toLowerCase(), m);
-    for (const dm of dynamicAnthropic) {
+    for (const m of grp.models) {
+      map.set(m.id.toLowerCase(), m);
+    }
+    for (const dm of dynamicModels) {
       const k = dm.id.toLowerCase();
       if (!map.has(k)) {
-        map.set(k, { id: dm.id, name: dm.name, tag: dm.tag, tagColor: dm.tagColor });
+        map.set(k, {
+          id: dm.id,
+          name: dm.name,
+          tag: dm.tag,
+          tagColor: dm.tagColor,
+        });
       }
     }
     return {

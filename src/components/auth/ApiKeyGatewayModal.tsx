@@ -1,4 +1,5 @@
 import { fetchAnthropicModels } from '../../lib/anthropicModels';
+import { syncAllConfiguredModels } from '../../lib/dynamicModelDiscovery';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Key, Eye, EyeOff, ExternalLink, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react';
@@ -180,7 +181,9 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
 
       localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(updated));
       window.dispatchEvent(new Event(API_KEYS_UPDATED_EVENT));
-      if (aTrimmed) {
+      if (isDesktopApp()) {
+        syncAllConfiguredModels();
+      } else if (aTrimmed) {
         fetchAnthropicModels(aTrimmed).catch(() => {});
       }
       setIsSaved(true);
