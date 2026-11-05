@@ -28,6 +28,7 @@ import {
 } from './appSettings';
 import { isDesktopApp } from './platform';
 import { getRequiredProviderForModel, isModelKeyConfigured } from './apiKeysHelper';
+import { findDiscoveredModelProvider, type DirectProviderId } from './discoveredModelRouting';
 
 
 export type ModelTier = 'frontier' | 'mid' | 'compact';
@@ -1044,6 +1045,21 @@ async function dispatchProviderCall(
   const rawOnToken = options?.onToken;
   const onToken = rawOnToken ? createStreamingPacer(streamSpeed, rawOnToken) : undefined;
 
+  // Desktop BYOK: a model the user picked from their discovered list goes, exactly as listed, to the provider that
+  // listed it. No renaming, no substitute model, no silent switch to another provider: if it fails, the user sees
+  // that provider's error for the model they chose.
+  // (Only with that provider's own key: the Anthropic list also holds curated models that a user without an
+  // Anthropic key still reaches through OpenRouter below.)
+  const discoveredProvider = findDiscoveredModelProvider(effectiveModelId, options?.preferredProvider);
+  if (discoveredProvider && directProviderKey(discoveredProvider, keys)) {
+    return dispatchExactModel(discoveredProvider, effectiveModelId, effectiveUserPrompt, effectiveSystemPrompt, temperature, keys, {
+      maxOutputTokens,
+      topP,
+      strictJsonMode,
+      onToken,
+    });
+  }
+
   const lowerModel = effectiveModelId.toLowerCase();
   let text = '';
   let providerUsed = tuning.provider || 'unknown';
@@ -1471,9 +1487,238 @@ async function dispatchProviderCall(
   return { text, providerUsed };
 }
 
+const DIRECT_PROVIDER_NAMES: Record<DirectProviderId, string> = {
+  openai: 'OpenAI',
+  anthropic: 'Anthropic Claude',
+  gemini: 'Google Gemini',
+  groq: 'Groq',
+  mistral: 'Mistral AI',
+  xai: 'xAI (Grok)',
+  deepseek: 'DeepSeek',
+  cohere: 'Cohere',
+  ollama: 'Ollama Local',
+  openrouter: 'OpenRouter',
+};
+
+/** OpenAI-compatible chat endpoints of the providers that have no adapter of their own. */
+const OPENAI_COMPATIBLE_ENDPOINTS: Partial<Record<DirectProviderId, string>> = {
+  mistral: 'https://api.mistral.ai/v1/chat/completions',
+  xai: 'https://api.x.ai/v1/chat/completions',
+  deepseek: 'https://api.deepseek.com/chat/completions',
+};
+
+/** The user's key for a provider ('' when not set). Ollama runs locally and needs none. */
+function directProviderKey(provider: DirectProviderId, keys: ReturnType<typeof getActiveApiKeys>): string {
+  const keyByProvider: Record<DirectProviderId, string> = {
+    openai: keys.openAiKey,
+    anthropic: keys.anthropicKey,
+    gemini: keys.geminiKey,
+    groq: keys.groqKey,
+    mistral: keys.mistralKey,
+    xai: keys.xaiKey,
+    deepseek: keys.deepSeekKey,
+    cohere: keys.cohereKey,
+    ollama: 'local',
+    openrouter: keys.openRouterKey,
+  };
+  return keyByProvider[provider] || '';
+}
+
+/**
+ * Runs exactly `modelId` on `provider` with the user's own key. Used for desktop models from the discovered list.
+ */
+async function dispatchExactModel(
+  provider: DirectProviderId,
+  modelId: string,
+  userPrompt: string,
+  systemPrompt: string,
+  temperature: number,
+  keys: ReturnType<typeof getActiveApiKeys>,
+  opts: {
+    maxOutputTokens: number;
+    topP: number;
+    strictJsonMode: boolean;
+    onToken?: (token: string) => void | Promise<void>;
+  }
+): Promise<{ text: string; providerUsed: string }> {
+  const providerUsed = DIRECT_PROVIDER_NAMES[provider];
+  const { maxOutputTokens, topP, strictJsonMode, onToken } = opts;
+  const apiKey = directProviderKey(provider, keys);
+  if (!apiKey) {
+    throw new ApiError(
+      `API Key Required: Please add your ${providerUsed} API key in Settings > Models & API Keys to run ${modelId}.`,
+      false,
+      'MissingApiKey'
+    );
+  }
+
+  let text: string;
+  switch (provider) {
+    case 'openai':
+      text = await callOpenAiDirect(userPrompt, systemPrompt, apiKey, modelId, temperature, onToken, maxOutputTokens, topP, strictJsonMode, true);
+      break;
+    case 'anthropic':
+      text = await callAnthropicDirect(userPrompt, systemPrompt, apiKey, modelId, temperature, onToken, maxOutputTokens, topP, true);
+      break;
+    case 'gemini':
+      text = await callGeminiDirect(userPrompt, systemPrompt, apiKey, modelId, temperature, onToken, maxOutputTokens, topP, strictJsonMode, true);
+      break;
+    case 'groq':
+      text = await callGroqDirect(userPrompt, systemPrompt, apiKey, modelId, temperature, onToken, maxOutputTokens, topP, strictJsonMode, true);
+      break;
+    case 'openrouter':
+      text = await callOpenRouterDirect(userPrompt, systemPrompt, apiKey, modelId, temperature, onToken, maxOutputTokens, topP, strictJsonMode);
+      break;
+    case 'ollama':
+      text = await callOllamaDirect(userPrompt, systemPrompt, keys.ollamaEndpoint || 'http://localhost:11434', modelId, temperature, onToken, maxOutputTokens, topP, strictJsonMode);
+      break;
+    case 'cohere':
+      text = await callCohereDirect(userPrompt, systemPrompt, apiKey, modelId, temperature, onToken, maxOutputTokens, topP, strictJsonMode);
+      break;
+    default:
+      text = await callOpenAiCompatibleDirect(
+        providerUsed,
+        OPENAI_COMPATIBLE_ENDPOINTS[provider] as string,
+        userPrompt,
+        systemPrompt,
+        apiKey,
+        modelId,
+        temperature,
+        onToken,
+        maxOutputTokens,
+        topP,
+        strictJsonMode
+      );
+  }
+  return { text, providerUsed };
+}
+
 // ============================================================================
 // DIRECT CLIENT TRANSPORT ADAPTERS
 // ============================================================================
+
+/** Reads an OpenAI-style SSE stream ("data: {...}" lines) and returns the joined text. */
+async function readOpenAiStyleStream(
+  body: ReadableStream<Uint8Array>,
+  pick: (json: any) => string,
+  onToken?: (token: string) => void | Promise<void>
+): Promise<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let accumulated = '';
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const dataStr = trimmed.slice(5).trim();
+      if (!dataStr || dataStr === '[DONE]') continue;
+      try {
+        const chunk = pick(JSON.parse(dataStr));
+        if (chunk) {
+          accumulated += chunk;
+          if (onToken) await onToken(chunk);
+        }
+      } catch {
+        // Ignore partial chunks
+      }
+    }
+  }
+  return accumulated;
+}
+
+/** Mistral, xAI and DeepSeek: OpenAI-compatible chat completions, one exact model, no substitute. */
+async function callOpenAiCompatibleDirect(
+  providerName: string,
+  url: string,
+  prompt: string,
+  systemPrompt: string | undefined,
+  apiKey: string,
+  targetModel: string,
+  temperature: number,
+  onToken: ((token: string) => void | Promise<void>) | undefined,
+  maxOutputTokens: number,
+  topP: number,
+  strictJsonMode: boolean
+): Promise<string> {
+  const isStreaming = typeof onToken === 'function';
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: targetModel,
+      messages: [
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+        { role: 'user', content: prompt },
+      ],
+      temperature,
+      max_tokens: maxOutputTokens,
+      top_p: topP,
+      stream: isStreaming,
+      ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),
+    }),
+  });
+  if (!response.ok) {
+    throw parseApiErrorResponse(providerName, response.status, await response.text());
+  }
+  if (isStreaming && response.body) {
+    const streamed = await readOpenAiStyleStream(response.body, (j) => j.choices?.[0]?.delta?.content || '', onToken);
+    if (streamed) return streamed;
+    return '';
+  }
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+/** Cohere v2 Chat API (its own request and stream format), one exact model, no substitute. */
+async function callCohereDirect(
+  prompt: string,
+  systemPrompt: string | undefined,
+  apiKey: string,
+  targetModel: string,
+  temperature: number,
+  onToken: ((token: string) => void | Promise<void>) | undefined,
+  maxOutputTokens: number,
+  topP: number,
+  strictJsonMode: boolean
+): Promise<string> {
+  const isStreaming = typeof onToken === 'function';
+  const response = await fetch('https://api.cohere.com/v2/chat', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: targetModel,
+      messages: [
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+        { role: 'user', content: prompt },
+      ],
+      temperature,
+      max_tokens: maxOutputTokens,
+      // Cohere's nucleus sampling parameter is "p", at most 0.99
+      p: Math.min(0.99, Math.max(0.01, topP)),
+      stream: isStreaming,
+      ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),
+    }),
+  });
+  if (!response.ok) {
+    throw parseApiErrorResponse('Cohere', response.status, await response.text());
+  }
+  if (isStreaming && response.body) {
+    return readOpenAiStyleStream(
+      response.body,
+      (j) => (j.type === 'content-delta' ? j.delta?.message?.content?.text || '' : ''),
+      onToken
+    );
+  }
+  const data = await response.json();
+  const parts = Array.isArray(data.message?.content) ? data.message.content : [];
+  return parts.filter((c: any) => c?.type === 'text').map((c: any) => c.text || '').join('');
+}
 
 async function callOllamaDirect(
   prompt: string,
@@ -1638,22 +1883,22 @@ async function callGeminiDirect(
   onToken?: (token: string) => void | Promise<void>,
   maxOutputTokens = 4096,
   topP = 0.95,
-  strictJsonMode = false
+  strictJsonMode = false,
+  /** true: run exactly targetModel (a model the user picked), with no renaming and no substitute models */
+  exactModel = false
 ): Promise<string> {
   const normalized =
-    targetModel === 'gemini-flash-latest' ||
-    targetModel.includes('2.5') ||
-    targetModel.includes('1.5') ||
-    targetModel.includes('3.8')
+    !exactModel &&
+    (targetModel === 'gemini-flash-latest' ||
+      targetModel.includes('2.5') ||
+      targetModel.includes('1.5') ||
+      targetModel.includes('3.8'))
       ? 'gemini-3.5-flash-lite'
       : targetModel;
 
-  const modelsToTry = [
-    normalized,
-    'gemini-3.5-flash-lite',
-    'gemini-flash-lite-latest',
-    'gemma-4-26b-a4b-it',
-  ];
+  const modelsToTry = exactModel
+    ? [targetModel]
+    : [normalized, 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemma-4-26b-a4b-it'];
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
   const isStreaming = typeof onToken === 'function';
@@ -1743,14 +1988,18 @@ async function callGroqDirect(
   onToken?: (token: string) => void | Promise<void>,
   maxOutputTokens = 4096,
   topP = 0.95,
-  strictJsonMode = false
+  strictJsonMode = false,
+  /** true: run exactly targetModel (a model the user picked), with no renaming and no substitute models */
+  exactModel = false
 ): Promise<string> {
-  const modelsToTry = [
-    targetModel.includes('llama') ? 'qwen/qwen3.8-27b' : targetModel,
-    'qwen/qwen3.8-27b',
-    'openai/gpt-oss-120b',
-    'openai/gpt-oss-20b',
-  ];
+  const modelsToTry = exactModel
+    ? [targetModel]
+    : [
+        targetModel.includes('llama') ? 'qwen/qwen3.8-27b' : targetModel,
+        'qwen/qwen3.8-27b',
+        'openai/gpt-oss-120b',
+        'openai/gpt-oss-20b',
+      ];
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
   const isStreaming = typeof onToken === 'function';
@@ -1840,7 +2089,10 @@ async function callAnthropicDirect(
   temperature = 0.7,
   onToken?: (token: string) => void | Promise<void>,
   maxOutputTokens = 4096,
-  topP = 0.95
+  // Kept for the call signature; not sent (see the request body below)
+  _topP = 0.95,
+  /** true: run exactly targetModel (a model the user picked), with no renaming and no substitute models */
+  exactModel = false
 ): Promise<string> {
   const cleanTarget = targetModel.replace(/^anthropic\//i, '').trim();
   const lower = cleanTarget.toLowerCase();
@@ -1849,12 +2101,9 @@ async function callAnthropicDirect(
   else if (lower === 'claude-3-5-sonnet' || lower === 'claude-3.5-sonnet') normalizedModel = 'claude-3-5-sonnet-20241022';
   else if (lower === 'claude-3-5-haiku' || lower === 'claude-3.5-haiku') normalizedModel = 'claude-3-5-haiku-20241022';
 
-  const models = [
-    normalizedModel,
-    'claude-3-7-sonnet-20250219',
-    'claude-3-5-sonnet-20241022',
-    'claude-3-5-haiku-20241022',
-  ];
+  const models = exactModel
+    ? [cleanTarget]
+    : [normalizedModel, 'claude-3-7-sonnet-20250219', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'];
   const uniqueModels = Array.from(new Set(models));
   let lastError: Error | null = null;
   const isStreaming = typeof onToken === 'function';
@@ -1875,8 +2124,8 @@ async function callAnthropicDirect(
           max_tokens: maxOutputTokens,
           ...(systemPrompt?.trim() ? { system: systemPrompt.trim() } : {}),
           messages: [{ role: 'user', content: prompt }],
+          // temperature only: current Claude models refuse a request that sets both temperature and top_p
           temperature: clampedTemp,
-          top_p: topP,
           stream: isStreaming,
         }),
       });
@@ -1948,14 +2197,18 @@ async function callOpenAiDirect(
   onToken?: (token: string) => void | Promise<void>,
   maxOutputTokens = 4096,
   topP = 0.95,
-  strictJsonMode = false
+  strictJsonMode = false,
+  /** true: run exactly targetModel (a model the user picked), with no renaming and no substitute models */
+  exactModel = false
 ): Promise<string> {
-  const models = [targetModel, 'gpt-4o-mini', 'gpt-4o'];
+  const models = exactModel ? [targetModel] : [targetModel, 'gpt-4o-mini', 'gpt-4o'];
   const uniqueModels = Array.from(new Set(models));
   let lastError: Error | null = null;
   const isStreaming = typeof onToken === 'function';
 
   for (const model of uniqueModels) {
+    // Reasoning models (o1, o3, o4-mini, gpt-5 ...) refuse temperature / top_p and the old max_tokens name
+    const isReasoningModel = /^(o\d|gpt-5)/i.test(model);
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -1969,9 +2222,9 @@ async function callOpenAiDirect(
             ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
             { role: 'user', content: prompt },
           ],
-          temperature,
-          max_tokens: maxOutputTokens,
-          top_p: topP,
+          ...(isReasoningModel
+            ? { max_completion_tokens: maxOutputTokens }
+            : { temperature, max_tokens: maxOutputTokens, top_p: topP }),
           stream: isStreaming,
           ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),
         }),

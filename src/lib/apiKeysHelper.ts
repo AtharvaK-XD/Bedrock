@@ -1,4 +1,5 @@
 import { isDesktopApp } from './platform';
+import { findDiscoveredModelProvider } from './discoveredModelRouting';
 import { STORAGE_KEY_API_KEYS } from './appSettings';
 import type { ApiKeysState } from './appSettings';
 
@@ -103,6 +104,15 @@ export const PROVIDER_REQUIREMENTS: Record<string, ProviderKeyRequirement> = {
     helpUrl: 'https://console.x.ai/',
     description: 'API key for Grok 3 and Grok 2 reasoning models.',
   },
+  deepseek: {
+    providerId: 'deepseek',
+    providerName: 'DeepSeek',
+    keyField: 'deepSeekKey',
+    keyLabel: 'DeepSeek API Key',
+    placeholder: 'sk-...',
+    helpUrl: 'https://platform.deepseek.com/api_keys',
+    description: 'API key for DeepSeek chat and reasoning models.',
+  },
   nvidia: {
     providerId: 'nvidia',
     providerName: 'Nvidia NIM',
@@ -127,6 +137,12 @@ export const PROVIDER_REQUIREMENTS: Record<string, ProviderKeyRequirement> = {
  * Resolves which provider API key is required for a given model ID or agent ID.
  */
 export function getRequiredProviderForModel(modelId?: string, agentId?: string): ProviderKeyRequirement {
+  // Desktop: a model picked from the discovered list needs the key of the provider that listed it
+  const discovered = findDiscoveredModelProvider(modelId);
+  if (discovered && PROVIDER_REQUIREMENTS[discovered]) {
+    return PROVIDER_REQUIREMENTS[discovered];
+  }
+
   const m = (modelId || '').toLowerCase().trim();
   const a = (agentId || '').toLowerCase().trim();
 
@@ -161,6 +177,9 @@ export function getRequiredProviderForModel(modelId?: string, agentId?: string):
   }
   if (a === 'xai' || a === 'grok' || m.includes('grok')) {
     return PROVIDER_REQUIREMENTS.xai;
+  }
+  if (a === 'deepseek' || m.startsWith('deepseek-')) {
+    return PROVIDER_REQUIREMENTS.deepseek;
   }
   if (a === 'nvidia' || m.includes('nemotron')) {
     return PROVIDER_REQUIREMENTS.nvidia;
@@ -205,6 +224,11 @@ export function isModelKeyConfigured(modelId?: string, agentId?: string): boolea
         parsed.anthropicKey?.trim() ||
         parsed.perplexityKey?.trim()
       );
+    }
+
+    // Ollama needs no key: it runs on this computer (default http://localhost:11434)
+    if (req.providerId === 'ollama') {
+      return true;
     }
 
     // Specific provider key check

@@ -210,7 +210,9 @@ export function getActiveApiKeys() {
         mistralKey: (parsed.mistralKey || '').trim(),
         cohereKey: (parsed.cohereKey || '').trim(),
         xaiKey: (parsed.xaiKey || '').trim(),
-        ollamaEndpoint: (parsed.ollamaEndpoint || 'http://localhost:11434').trim(),
+        deepSeekKey: (parsed.deepSeekKey || '').trim(),
+        // Settings saves the Ollama address as ollamaHost (older builds: ollamaEndpoint)
+        ollamaEndpoint: (parsed.ollamaHost || parsed.ollamaEndpoint || 'http://localhost:11434').trim(),
       };
     }
 
@@ -225,7 +227,8 @@ export function getActiveApiKeys() {
       mistralKey: (parsed.mistralKey || getEnvVar('VITE_MISTRAL_API_KEY')).trim(),
       cohereKey: (parsed.cohereKey || getEnvVar('VITE_COHERE_API_KEY')).trim(),
       xaiKey: (parsed.xaiKey || getEnvVar('VITE_XAI_API_KEY')).trim(),
-      ollamaEndpoint: (parsed.ollamaEndpoint || 'http://localhost:11434').trim(),
+      deepSeekKey: (parsed.deepSeekKey || '').trim(),
+      ollamaEndpoint: (parsed.ollamaHost || parsed.ollamaEndpoint || 'http://localhost:11434').trim(),
     };
   } catch {
     if (isDesktopApp()) {
@@ -240,6 +243,7 @@ export function getActiveApiKeys() {
         mistralKey: '',
         cohereKey: '',
         xaiKey: '',
+        deepSeekKey: '',
         ollamaEndpoint: 'http://localhost:11434',
       };
     }
@@ -254,6 +258,7 @@ export function getActiveApiKeys() {
       mistralKey: getEnvVar('VITE_MISTRAL_API_KEY').trim(),
       cohereKey: getEnvVar('VITE_COHERE_API_KEY').trim(),
       xaiKey: getEnvVar('VITE_XAI_API_KEY').trim(),
+      deepSeekKey: '',
       ollamaEndpoint: 'http://localhost:11434',
     };
   }

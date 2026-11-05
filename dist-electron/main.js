@@ -896,7 +896,7 @@ const APP_CSP = [
 	"font-src 'self' data: https://fonts.gstatic.com",
 	"img-src 'self' data: blob: https:",
 	"media-src 'self' blob:",
-	`connect-src 'self' http://127.0.0.1:* http://localhost:* https://bedrockxai.com https://*.bedrockxai.com https://bedrock-steel.vercel.app ${CLERK_HOSTS} https://*.protect.clerk.com:* https://clerk-telemetry.com https://*.ingest.us.sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://generativelanguage.googleapis.com https://api.groq.com https://api.openai.com https://openrouter.ai https://api-inference.huggingface.co https://api.perplexity.ai https://api.github.com https://api.anthropic.com`,
+	`connect-src 'self' http://127.0.0.1:* http://localhost:* https://bedrockxai.com https://*.bedrockxai.com https://bedrock-steel.vercel.app ${CLERK_HOSTS} https://*.protect.clerk.com:* https://clerk-telemetry.com https://*.ingest.us.sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://generativelanguage.googleapis.com https://api.groq.com https://api.openai.com https://openrouter.ai https://api-inference.huggingface.co https://api.perplexity.ai https://api.github.com https://api.anthropic.com https://api.mistral.ai https://api.x.ai https://api.deepseek.com https://api.cohere.com`,
 	`frame-src 'self' https://challenges.cloudflare.com ${CLERK_HOSTS}`,
 	"worker-src 'self' blob:",
 	"object-src 'none'",

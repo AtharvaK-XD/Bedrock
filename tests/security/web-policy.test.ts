@@ -63,6 +63,21 @@ describe('website security headers', () => {
       expect(connect, host).toContain(host);
     }
   });
+
+  it('desktop app: allows every bring-your-own-key provider the app calls directly (OPEN-0075)', () => {
+    const desktopConnect = mainJs.match(/`connect-src [^`]*`/)?.[0] || '';
+    expect(desktopConnect).toBeTruthy();
+    for (const host of [
+      'https://api.openai.com', 'https://api.groq.com', 'https://generativelanguage.googleapis.com', 'https://api.anthropic.com',
+      'https://openrouter.ai', 'https://api.mistral.ai', 'https://api.x.ai', 'https://api.deepseek.com', 'https://api.cohere.com',
+      // Ollama on this computer, any port (default 11434)
+      'http://localhost:*', 'http://127.0.0.1:*',
+    ]) {
+      expect(desktopConnect, host).toContain(` ${host}`);
+    }
+    // exact hosts only, never a wildcard over the whole internet
+    expect(desktopConnect).not.toMatch(/ https: | \*[ `]|https:\/\/\*[ `]/);
+  });
 });
 
 describe('trust lists', () => {
