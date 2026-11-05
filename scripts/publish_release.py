@@ -14,29 +14,29 @@ if not token:
     sys.exit(1)
 
 repos = ['AtharvaK-XD/Bedrock', 'Bedrockxai/Bedrock']
-tag_name = 'v1.4.4'
-release_title = 'Bedrock v1.4.4 - Autonomous Workstation Architecture, BYOK Autonomy & Studio Layout Unification'
-body = """# Bedrock v1.4.4 - Autonomous Workstation Architecture, BYOK Autonomy & Studio Layout Unification
+tag_name = 'v1.4.5'
+release_title = 'Bedrock v1.4.5 - Dynamic Anthropic Models, Workstation Canvas Toolbar & Frontier Architecture'
+body = """# Bedrock v1.4.5 - Dynamic Anthropic Models, Workstation Canvas Toolbar & Frontier Architecture
 
 The unified workstation for frontier prompt engineering. Synthesize autonomous agent directives, orchestrate visual DAG workflows, and benchmark across 10 AI providers.
 
-### What's New in v1.4.4:
-- **Autonomous Desktop BYOK Architecture**: Removed subscription cards, "Manage Subscription" links, upgrade triggers, and session/weekly token quota bars from the desktop application, reflecting that desktop users provide their own API keys with zero local limits.
-- **Generator Studio Centering**: Vertically centered the "Craft the Perfect Prompt" header and prompt input studio in the workstation viewport, providing a clean, distraction-free desktop experience.
-- **Generator History Redundancy Isolation**: Removed duplicate inner History toggle buttons and slide-out sidebars from the Generator refinement studio on desktop, unlocking full workstation screen width while relying exclusively on the dedicated main History workspace (`Ctrl+6`).
-- **Active Navigation Tracking**: Synchronized the main sidebar active indicator to highlight the Generator workspace while viewing or refining prompts on `/app/result`.
+### What's New in v1.4.5:
+- **Dynamic Anthropic & Claude Integration**: Direct native Anthropic execution (`callAnthropicDirect`) targeting `https://api.anthropic.com/v1/messages` with streaming SSE token delivery.
+- **Dynamic Model Discovery (Option C)**: Automatic background query of `https://api.anthropic.com/v1/models` via user BYOK `anthropicKey`, dynamically unlocking frontier and fine-tuned Claude models (e.g. Claude 3.7 Sonnet, Opus 5.5, Sonnet 5.5, Haiku 5.5) in the model picker and settings.
+- **Workstation Canvas Toolbar Centering**: Repositioned the visual DAG workflow toolbar to the bottom-center of the canvas in desktop workstation views across Windows and macOS, maximizing canvas visibility and workflow focus.
+- **Zero-CORS Desktop Security Header Alignment**: Updated Electron CSP to permit direct, high-throughput connections to Anthropic API endpoints.
 
 ### Desktop Downloads:
-- **Windows Installer**: [Bedrock Setup 1.4.4.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.4/Bedrock.Setup.1.4.4.exe)
-- **Windows Portable / Direct**: [Bedrock-Setup.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.4/Bedrock-Setup.exe)
-- **macOS Desktop Build**: Dedicated release available at [v1.4.4-mac](https://github.com/AtharvaK-XD/Bedrock/releases/tag/v1.4.4-mac) (`Bedrock-Mac.dmg` / `Bedrock-Mac.zip`)
+- **Windows Installer**: [Bedrock Setup 1.4.5.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.5/Bedrock.Setup.1.4.5.exe)
+- **Windows Portable / Direct**: [Bedrock-Setup.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.5/Bedrock-Setup.exe)
+- **macOS Desktop Build**: Dedicated release available at [v1.4.5-mac](https://github.com/AtharvaK-XD/Bedrock/releases/tag/v1.4.5-mac) (`Bedrock-Mac.dmg` / `Bedrock-Mac.zip`)
 """
 
 assets = [
-    ('release/Bedrock Setup 1.4.4.exe', 'Bedrock Setup 1.4.4.exe', 'application/vnd.microsoft.portable-executable'),
-    ('release/Bedrock-Setup-1.4.4.exe', 'Bedrock-Setup-1.4.4.exe', 'application/vnd.microsoft.portable-executable'),
+    ('release/Bedrock Setup 1.4.5.exe', 'Bedrock Setup 1.4.5.exe', 'application/vnd.microsoft.portable-executable'),
+    ('release/Bedrock-Setup-1.4.5.exe', 'Bedrock-Setup-1.4.5.exe', 'application/vnd.microsoft.portable-executable'),
     ('release/Bedrock-Setup.exe', 'Bedrock-Setup.exe', 'application/vnd.microsoft.portable-executable'),
-    ('release/Bedrock Setup 1.4.4.exe.blockmap', 'Bedrock Setup 1.4.4.exe.blockmap', 'application/octet-stream'),
+    ('release/Bedrock Setup 1.4.5.exe.blockmap', 'Bedrock Setup 1.4.5.exe.blockmap', 'application/octet-stream'),
     ('release/latest.yml', 'latest.yml', 'text/yaml'),
 ]
 

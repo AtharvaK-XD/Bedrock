@@ -58,7 +58,7 @@ describe('website security headers', () => {
     for (const host of [
       'https://bedrock-steel.vercel.app', 'https://*.clerk.accounts.dev', 'https://*.clerk.com', 'https://*.ingest.us.sentry.io',
       'https://us.i.posthog.com', 'https://generativelanguage.googleapis.com', 'https://api.groq.com', 'https://api.openai.com',
-      'https://openrouter.ai', 'https://api-inference.huggingface.co', 'https://api.perplexity.ai', 'https://api.github.com', 'http://localhost:*',
+      'https://openrouter.ai', 'https://api-inference.huggingface.co', 'https://api.perplexity.ai', 'https://api.github.com', 'https://api.anthropic.com', 'http://localhost:*',
     ]) {
       expect(connect, host).toContain(host);
     }

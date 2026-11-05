@@ -1,3 +1,4 @@
+import { getCachedAnthropicModels, ANTHROPIC_MODELS_EVENT } from '../../lib/anthropicModels';
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Check, Lock } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -155,7 +156,11 @@ export const AI_AGENTS = [
     name: 'Claude',
     description: 'Nuanced writing and reasoning by Anthropic',
     models: [
+      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet' },
+      { id: 'claude-opus-5-5', name: 'Claude Opus 5.5' },
+      { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5' },
       { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
+      { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5' },
       { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku' }
     ]
   },
@@ -186,6 +191,33 @@ export function RichInput({
   onTargetTypeChange,
 }: RichInputProps) {
   const isDesktop = isDesktopApp();
+  const [dynamicClaudeModels, setDynamicClaudeModels] = useState(() => getCachedAnthropicModels());
+
+  useEffect(() => {
+    const onUpdated = () => {
+      setDynamicClaudeModels(getCachedAnthropicModels());
+    };
+    window.addEventListener(ANTHROPIC_MODELS_EVENT, onUpdated);
+    return () => window.removeEventListener(ANTHROPIC_MODELS_EVENT, onUpdated);
+  }, []);
+
+  const activeAiAgents = React.useMemo(() => {
+    return AI_AGENTS.map((agent) => {
+      if (agent.id !== 'claude') return agent;
+      const map = new Map<string, { id: string; name: string }>();
+      for (const m of agent.models) map.set(m.id.toLowerCase(), m);
+      for (const m of dynamicClaudeModels) {
+        const k = m.id.toLowerCase();
+        if (!map.has(k)) {
+          map.set(k, { id: m.id, name: m.name });
+        }
+      }
+      return {
+        ...agent,
+        models: Array.from(map.values()),
+      };
+    });
+  }, [dynamicClaudeModels]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -346,7 +378,7 @@ export function RichInput({
   };
 
   const selectedTarget = targetOptions.find(t => t.id === targetType) || targetOptions[0];
-  const selectedAgent = AI_AGENTS.find(a => a.id === selectedAgentId) || AI_AGENTS[0];
+  const selectedAgent = activeAiAgents.find(a => a.id === selectedAgentId) || activeAiAgents[0];
   const selectedModel = selectedAgent.models.find(m => m.id === selectedModelId) || selectedAgent.models[0];
 
   return (
@@ -432,7 +464,7 @@ export function RichInput({
                   data-lenis-prevent="true"
                   onWheel={(e) => e.stopPropagation()}
                 >
-                  {AI_AGENTS.map((agent) => {
+                  {activeAiAgents.map((agent) => {
                     const hasAccessibleModel = agent.models.some((m) => isModelAllowedForTier(m.id, profile?.plan));
                     const agentRequiredTier = agent.models.some((m) => getModelRequiredTier(m.id) === 'ultimate')
                       ? 'ultimate'

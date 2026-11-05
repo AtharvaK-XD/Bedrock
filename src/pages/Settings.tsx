@@ -34,7 +34,8 @@ import { AgentIcon, PerplexityLogo } from '../components/ui/ModelLogos';
 import { subscribeToUpdates, checkForUpdates, applyUpdate, CURRENT_APP_VERSION } from '../lib/updater';
 import type { UpdateStatus } from '../lib/updater';
 import { isDesktopApp } from '../lib/platform';
-import { MODEL_GROUPS } from '../lib/modelCatalog';
+import { getModelGroups, type ModelGroup } from '../lib/modelCatalog';
+import { fetchAnthropicModels, ANTHROPIC_MODELS_EVENT } from '../lib/anthropicModels';
 import { checkProviderKey, type KeyCheckResult } from '../lib/keyCheck';
 import { showToast, osNotificationsSupported, requestOsNotificationPermission } from '../lib/notify';
 import { applyAnalyticsConsent } from '../lib/analyticsConsent';
@@ -391,6 +392,15 @@ export default function Settings() {
   // ---- API keys (own Save button)
   const [apiKeys, setApiKeys] = useState<ApiKeysState>(getStoredApiKeys);
   const [savedApiKeys, setSavedApiKeys] = useState<ApiKeysState>(getStoredApiKeys);
+  const [modelGroups, setModelGroups] = useState<ModelGroup[]>(getModelGroups);
+
+  useEffect(() => {
+    const onAnthropicUpdate = () => {
+      setModelGroups(getModelGroups());
+    };
+    window.addEventListener(ANTHROPIC_MODELS_EVENT, onAnthropicUpdate);
+    return () => window.removeEventListener(ANTHROPIC_MODELS_EVENT, onAnthropicUpdate);
+  }, []);
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
   const [keyChecks, setKeyChecks] = useState<Record<string, KeyCheckResult | 'checking' | undefined>>({});
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -418,6 +428,9 @@ export default function Settings() {
       localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(apiKeys));
       setSavedApiKeys(apiKeys);
       window.dispatchEvent(new Event('bedrock_api_keys_updated'));
+      if (apiKeys.anthropicKey && apiKeys.anthropicKey.trim()) {
+        fetchAnthropicModels(apiKeys.anthropicKey.trim()).catch(() => {});
+      }
       window.dispatchEvent(new Event(BEDROCK_SETTINGS_UPDATED_EVENT));
       showToast('API keys saved.', 'success');
     } catch {
@@ -529,7 +542,7 @@ export default function Settings() {
     transition: { duration: 0.2 },
   };
 
-  const allModels = MODEL_GROUPS.flatMap((g) => g.models);
+  const allModels = modelGroups.flatMap((g) => g.models);
   const currentModel =
     allModels.find((m) => m.id === modelSettings.defaultModel) || {
       id: modelSettings.defaultModel,
@@ -885,7 +898,7 @@ export default function Settings() {
                             transition={{ duration: 0.15, ease: 'easeOut' }}
                             className="custom-scrollbar absolute left-0 right-0 top-full z-50 mt-2 max-h-80 space-y-3 overflow-y-auto rounded-2xl border border-white/15 bg-sf-0e1015/95 p-2.5 shadow-[0_24px_60px_rgba(0,0,0,0.9)] backdrop-blur-2xl"
                           >
-                            {MODEL_GROUPS.map((group) => (
+                            {modelGroups.map((group) => (
                               <div key={group.group} className="space-y-1">
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
                                   <span className="h-1.5 w-1.5 rounded-full bg-copper-400" />

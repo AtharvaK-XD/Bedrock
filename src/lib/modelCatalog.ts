@@ -1,3 +1,5 @@
+import { getCachedAnthropicModels } from './anthropicModels';
+
 /** Models offered in Settings > Models. Moved out of the Settings page so other screens can reuse it. */
 export interface ModelOption {
   id: string;
@@ -43,7 +45,10 @@ export const MODEL_GROUPS: ModelGroup[] = [
     group: 'Anthropic',
     models: [
       { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', tag: 'Hybrid Reasoning', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+      { id: 'claude-opus-5-5', name: 'Claude Opus 5.5', tag: 'Frontier Flagship', tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5', tag: 'Deep Reasoning', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
       { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', tag: 'Pro Coding', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+      { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5', tag: 'Ultra-Fast', tagColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
       { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', tag: 'Fast', tagColor: 'text-orange-300 bg-orange-500/10 border-orange-500/20' },
     ],
   },
@@ -110,3 +115,25 @@ export const MODEL_GROUPS: ModelGroup[] = [
     ],
   },
 ];
+
+/**
+ * Returns model groups merged with dynamically discovered models (e.g. Anthropic BYOK).
+ */
+export function getModelGroups(): ModelGroup[] {
+  const dynamicAnthropic = getCachedAnthropicModels();
+  return MODEL_GROUPS.map((grp) => {
+    if (grp.group !== 'Anthropic') return grp;
+    const map = new Map<string, ModelOption>();
+    for (const m of grp.models) map.set(m.id.toLowerCase(), m);
+    for (const dm of dynamicAnthropic) {
+      const k = dm.id.toLowerCase();
+      if (!map.has(k)) {
+        map.set(k, { id: dm.id, name: dm.name, tag: dm.tag, tagColor: dm.tagColor });
+      }
+    }
+    return {
+      ...grp,
+      models: Array.from(map.values()),
+    };
+  });
+}

@@ -6,6 +6,8 @@ import App from './App.tsx'
 import { initSecureKeyStore } from './lib/secureKeyStore'
 import { applyAppearanceToDom } from './lib/appSettings'
 import { applyAnalyticsConsent, isAnalyticsEnabled } from './lib/analyticsConsent'
+import { syncAnthropicModelsIfAvailable } from './lib/anthropicModels'
+
 
 // Crash reports and analytics start only if allowed in Settings > Privacy & Security
 applyAnalyticsConsent()
@@ -18,6 +20,7 @@ const posthogOptions = {
 
 // Restore saved appearance and initialize secure key store before render
 applyAppearanceToDom()
+syncAnthropicModelsIfAvailable()
 initSecureKeyStore().finally(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

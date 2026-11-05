@@ -323,6 +323,65 @@ Do not converse. Output strictly the requested technical artifact. Adhere to neg
   // FRONTIER & STRONGEST MODELS (Tier: 'frontier')
   // Tuning: Higher temp (0.6 - 0.7), Minimal examples (1), Light empowering wording
   // --------------------------------------------------------------------------
+  'claude-3-7-sonnet-20250219': {
+    modelId: 'claude-3-7-sonnet-20250219',
+    name: 'Claude 3.7 Sonnet',
+    tier: 'frontier',
+    temperature: 0.7,
+    numExamples: 1,
+    provider: 'anthropic',
+    maxTokens: 8192,
+    aliases: ['claude-3-7-sonnet', 'claude-3.7-sonnet', 'anthropic/claude-3-7-sonnet-20250219', 'anthropic/claude-3.7-sonnet'],
+    notes: 'Anthropic hybrid reasoning model with dynamic thinking effort and elite software engineering capabilities.',
+    extraWording: `[FRONTIER REASONING DIRECTIVE]
+- Exercise principal software architect craftsmanship: synthesize elegant systems design with complete contracts and robust verification protocols.
+- Provide production-grade, syntactically exact code with zero placeholders or superficial explanations.`,
+  },
+
+  'claude-opus-5-5': {
+    modelId: 'claude-opus-5-5',
+    name: 'Claude Opus 5.5',
+    tier: 'frontier',
+    temperature: 0.65,
+    numExamples: 1,
+    provider: 'anthropic',
+    maxTokens: 8192,
+    aliases: ['claude-opus-5.5', 'anthropic/claude-opus-5-5', 'anthropic/claude-opus-5.5', 'claude-opus'],
+    notes: 'Frontier flagship model for intricate systems architecture, multi-repository coordination, and deep mathematical reasoning.',
+    extraWording: `[FLAGSHIP ARCHITECT DIRECTIVE]
+- Deliver publication-grade technical specifications with complete schemas, failure mitigation protocols, and zero hand-waving.
+- Ground all designs in concrete, testable engineering contracts.`,
+  },
+
+  'claude-sonnet-5-5': {
+    modelId: 'claude-sonnet-5-5',
+    name: 'Claude Sonnet 5.5',
+    tier: 'frontier',
+    temperature: 0.7,
+    numExamples: 1,
+    provider: 'anthropic',
+    maxTokens: 8192,
+    aliases: ['claude-sonnet-5.5', 'anthropic/claude-sonnet-5-5', 'anthropic/claude-sonnet-5.5'],
+    notes: 'Next-generation core reasoning model balancing high throughput with frontier-grade reasoning.',
+    extraWording: `[PRODUCTION REASONING DIRECTIVE]
+- Deliver concise, dense architectural directives and executable specifications.
+- Prioritize actionable contracts and edge case coverage.`,
+  },
+
+  'claude-haiku-5-5': {
+    modelId: 'claude-haiku-5-5',
+    name: 'Claude Haiku 5.5',
+    tier: 'frontier',
+    temperature: 0.6,
+    numExamples: 1,
+    provider: 'anthropic',
+    maxTokens: 4096,
+    aliases: ['claude-haiku-5.5', 'anthropic/claude-haiku-5-5', 'anthropic/claude-haiku-5.5'],
+    notes: 'High-velocity frontier tier model; near-instantaneous execution with sharp reasoning.',
+    extraWording: `[HIGH-VELOCITY DIRECTIVE]
+- Combine swift execution with sharp architectural precision and dense, fluff-free directives.`,
+  },
+
   'claude-3-5-sonnet': {
     modelId: 'claude-3-5-sonnet',
     name: 'Claude 3.5 Sonnet',
@@ -948,6 +1007,8 @@ export async function callLLMWithMeta(
 function resolveOpenRouterModelId(modelId: string): string {
   if (modelId.includes('/')) return modelId;
   const lower = modelId.toLowerCase();
+  if (lower.includes('claude-3-7-sonnet') || lower.includes('claude-3.7-sonnet')) return 'anthropic/claude-3.7-sonnet';
+  if (lower.includes('opus')) return 'anthropic/claude-opus-5.5';
   if (lower.includes('claude-3-5-haiku') || lower.includes('claude-haiku')) return 'anthropic/claude-haiku-5.5';
   if (lower.startsWith('claude')) return 'anthropic/claude-sonnet-5.5';
   if (lower.includes('gpt-4o-mini') || lower.includes('gpt-3.5')) return 'openai/gpt-4o-mini';
@@ -1193,6 +1254,61 @@ async function dispatchProviderCall(
         );
       } else {
         throw openAiErr;
+      }
+    }
+  }
+  // F. Anthropic Direct (Claude 3.7 Sonnet, Opus 5.5, Sonnet 5.5, Haiku 5.5, etc.)
+  else if (
+    (options?.preferredProvider === 'anthropic' ||
+      tuning.provider === 'anthropic' ||
+      lowerModel.includes('claude') ||
+      lowerModel.startsWith('anthropic/')) &&
+    keys.anthropicKey
+  ) {
+    providerUsed = 'Anthropic Claude';
+    try {
+      text = await callAnthropicDirect(
+        effectiveUserPrompt,
+        effectiveSystemPrompt,
+        keys.anthropicKey,
+        effectiveModelId,
+        temperature,
+        onToken,
+        maxOutputTokens,
+        topP
+      );
+    } catch (anthropicErr) {
+      if (!autoFallback) throw anthropicErr;
+      console.warn('[Bedrock] Anthropic direct call failed, attempting auto-fallback...', anthropicErr);
+      if (keys.openRouterKey) {
+        providerUsed = 'OpenRouter (Claude Fallback)';
+        const targetOpenRouter = resolveOpenRouterModelId(effectiveModelId);
+        text = await callOpenRouterDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.openRouterKey,
+          targetOpenRouter,
+          temperature,
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
+        );
+      } else if (keys.openAiKey) {
+        providerUsed = 'OpenAI (Auto-Fallback)';
+        text = await callOpenAiDirect(
+          effectiveUserPrompt,
+          effectiveSystemPrompt,
+          keys.openAiKey,
+          'gpt-4o',
+          temperature,
+          onToken,
+          maxOutputTokens,
+          topP,
+          strictJsonMode
+        );
+      } else {
+        throw anthropicErr;
       }
     }
   }
@@ -1714,6 +1830,113 @@ async function callGroqDirect(
   }
 
   throw lastError || new ApiError('Failed to generate response from Groq', false, 'Groq');
+}
+
+async function callAnthropicDirect(
+  prompt: string,
+  systemPrompt?: string,
+  apiKey?: string,
+  targetModel = 'claude-3-7-sonnet-20250219',
+  temperature = 0.7,
+  onToken?: (token: string) => void | Promise<void>,
+  maxOutputTokens = 4096,
+  topP = 0.95
+): Promise<string> {
+  const cleanTarget = targetModel.replace(/^anthropic\//i, '').trim();
+  const lower = cleanTarget.toLowerCase();
+  let normalizedModel = cleanTarget;
+  if (lower === 'claude-3-7-sonnet' || lower === 'claude-3.7-sonnet') normalizedModel = 'claude-3-7-sonnet-20250219';
+  else if (lower === 'claude-3-5-sonnet' || lower === 'claude-3.5-sonnet') normalizedModel = 'claude-3-5-sonnet-20241022';
+  else if (lower === 'claude-3-5-haiku' || lower === 'claude-3.5-haiku') normalizedModel = 'claude-3-5-haiku-20241022';
+
+  const models = [
+    normalizedModel,
+    'claude-3-7-sonnet-20250219',
+    'claude-3-5-sonnet-20241022',
+    'claude-3-5-haiku-20241022',
+  ];
+  const uniqueModels = Array.from(new Set(models));
+  let lastError: Error | null = null;
+  const isStreaming = typeof onToken === 'function';
+  const clampedTemp = Math.max(0, Math.min(1, temperature));
+
+  for (const model of uniqueModels) {
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey || '',
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: maxOutputTokens,
+          ...(systemPrompt?.trim() ? { system: systemPrompt.trim() } : {}),
+          messages: [{ role: 'user', content: prompt }],
+          temperature: clampedTemp,
+          top_p: topP,
+          stream: isStreaming,
+        }),
+      });
+
+      if (response.ok) {
+        if (isStreaming && response.body) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let accumulated = '';
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith('data:')) continue;
+              const dataStr = trimmed.slice(5).trim();
+              if (!dataStr || dataStr === '[DONE]') continue;
+
+              try {
+                const json = JSON.parse(dataStr);
+                if (json.type === 'content_block_delta' && json.delta?.type === 'text_delta') {
+                  const chunk = json.delta.text || '';
+                  if (chunk) {
+                    accumulated += chunk;
+                    if (onToken) await onToken(chunk);
+                  }
+                }
+              } catch {
+                // Ignore partial JSON chunks
+              }
+            }
+          }
+          if (accumulated) return accumulated;
+        }
+
+        const data = await response.json();
+        const textBlocks = Array.isArray(data.content)
+          ? data.content.filter((c: any) => c.type === 'text').map((c: any) => c.text || '')
+          : [];
+        return textBlocks.join('') || '';
+      }
+
+      const errText = await response.text();
+      const parsedErr = parseApiErrorResponse('Anthropic', response.status, errText);
+      if (parsedErr.isApiKeyError) throw parsedErr;
+      lastError = parsedErr;
+    } catch (err: any) {
+      if (err.isApiKeyError) throw err;
+      lastError = err;
+    }
+  }
+
+  throw lastError || new ApiError('Failed to generate response from Anthropic', false, 'Anthropic');
 }
 
 async function callOpenAiDirect(

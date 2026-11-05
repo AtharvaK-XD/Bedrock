@@ -141,6 +141,8 @@ export function getModelRequiredTier(modelId: string): 'free' | 'pro' | 'ultimat
 
   // 1. Ultimate Tier Models (Frontier reasoning and flagship frontier intelligence)
   if (
+    m.includes('claude-3-7-sonnet') ||
+    m.includes('claude-3.7-sonnet') ||
     m.includes('claude-3-5-sonnet') ||
     m.includes('claude-sonnet') ||
     m.includes('claude-opus') ||
