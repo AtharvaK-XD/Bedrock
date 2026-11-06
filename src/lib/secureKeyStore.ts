@@ -4,8 +4,12 @@
  * localStorage.getItem/setItem/removeItem('bedrock_api_keys'); those calls are served from an
  * in-memory copy that is saved encrypted through window.electronSecrets.
  *
- * On the website (or if the OS cannot encrypt) nothing changes.
+ * On the website the user's own keys are not used at all (it runs on Bedrock's server keys, CHG-0086):
+ * keys saved there by older versions are deleted, so no plain-text key stays in the browser.
+ * If the OS cannot encrypt, the desktop app keeps browser storage.
  */
+
+import { isDesktopApp } from './platform';
 
 const SECURE_KEYS = new Set(['bedrock_api_keys']);
 
@@ -19,6 +23,16 @@ let installed = false;
 
 export async function initSecureKeyStore(): Promise<void> {
   if (installed || typeof window === 'undefined') return;
+  if (!isDesktopApp()) {
+    for (const key of SECURE_KEYS) {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {
+        // storage blocked: nothing stored either
+      }
+    }
+    return;
+  }
   const bridge = (window as any).electronSecrets as ElectronSecretsBridge | undefined;
   if (!bridge?.isAvailable) return;
 

@@ -6,6 +6,8 @@
  * Cached locally in localStorage for instant access without blocking launches.
  */
 
+import { isDesktopApp } from './platform';
+
 export interface AnthropicModel {
   id: string;
   name: string;
@@ -205,7 +207,8 @@ export async function fetchAnthropicModels(apiKey: string): Promise<AnthropicMod
  */
 export function syncAnthropicModelsIfAvailable(): void {
   try {
-    if (typeof window === 'undefined') return;
+    // Desktop only: the website runs on Bedrock's server keys and must never send a stored key anywhere
+    if (typeof window === 'undefined' || !isDesktopApp()) return;
     const raw = localStorage.getItem('bedrock_api_keys');
     if (!raw) return;
     const parsed = JSON.parse(raw);
