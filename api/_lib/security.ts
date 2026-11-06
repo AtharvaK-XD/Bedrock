@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import type { VercelResponse } from '@vercel/node';
 import { getDb, logSecurityEvent } from './db.js';
 import type { AuthenticatedUser } from './auth.js';
+import { getRedisClient } from './rateLimiter.js';
 
 // Suspicious patterns commonly used in prompt injection / system prompt extraction attacks.
 // Policy: FLAG ONLY. Bedrock users legitimately write about these topics (guardrail design),
@@ -101,6 +102,36 @@ export interface QuotaReservation {
   reservationId: string | null;
   /** Table holding reservationId: "QuotaEvent" (migration 0004) or the older "SecurityLog" path */
   store?: 'QuotaEvent' | 'SecurityLog';
+  /** Set when the shared daily ceiling for callers who are not signed in was reached */
+  reason?: 'anonymous_daily_cap';
+}
+
+/**
+ * One ceiling per day for ALL callers who are not signed in together (each one also has its own per-IP limit).
+ * Without it, many addresses (proxies, botnets) could use up the shared provider allowance and lock signed-in
+ * users out. Counted in Redis; when Redis is missing or fails the request is not blocked by this check (the
+ * per-IP quota in the database still applies). Tune with ANON_AI_DAILY_CAP_GENERATION / _ASSIST (0 = refuse all).
+ */
+const ANON_DAILY_CAP_DEFAULTS: Record<QuotaBucket, number> = { generation: 300, assist: 3000 };
+
+function anonymousDailyCap(bucket: QuotaBucket): number {
+  const raw = process.env[`ANON_AI_DAILY_CAP_${bucket.toUpperCase()}`];
+  const n = raw === undefined || raw.trim() === '' ? NaN : Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : ANON_DAILY_CAP_DEFAULTS[bucket];
+}
+
+async function anonymousDailyCapReached(bucket: QuotaBucket): Promise<boolean> {
+  const redis = getRedisClient();
+  if (!redis) return false;
+  const key = `quota:anon-daily:${bucket}:${new Date().toISOString().slice(0, 10)}`; // UTC day
+  try {
+    const used = await redis.incr(key);
+    if (used === 1) await redis.expire(key, 2 * 24 * 60 * 60);
+    return used > anonymousDailyCap(bucket);
+  } catch (err: any) {
+    console.warn('[Quota] Anonymous daily counter unavailable, relying on per-IP limits:', err?.message || err);
+    return false;
+  }
 }
 
 // Postgres codes for "function / table does not exist": migration 0004 is not applied to this database yet
@@ -155,6 +186,10 @@ export async function reserveQuota(params: {
   // Local development guest (only issued for localhost hosts): no metering
   if (user?.isGuest) {
     return { ...base, allowed: true, unavailable: false, reservationId: null };
+  }
+
+  if (!user && (await anonymousDailyCapReached(bucket))) {
+    return { ...base, allowed: false, unavailable: false, reservationId: null, reason: 'anonymous_daily_cap' };
   }
 
   const eventType = QUOTA_EVENT[bucket];
@@ -235,6 +270,13 @@ export function sendQuotaDenied(res: VercelResponse, quota: QuotaReservation) {
       message: 'Usage limits could not be verified right now. Please try again shortly.',
     });
   }
+  if (quota.reason === 'anonymous_daily_cap') {
+    return res.status(429).json({
+      error: 'Sign In Required',
+      code: 'ANONYMOUS_DAILY_LIMIT',
+      message: 'Free use without an account is used up for today. Sign in (free) to keep generating.',
+    });
+  }
   if (quota.bucket === 'generation') {
     return res.status(429).json({
       error: 'Free Tier Limit Reached',
@@ -248,7 +290,7 @@ export function sendQuotaDenied(res: VercelResponse, quota: QuotaReservation) {
   return res.status(429).json({
     error: 'Usage Limit Reached',
     code: 'AI_USAGE_LIMIT_EXCEEDED',
-    message: `Server AI usage limit of ${quota.limit} requests per 5 hours reached. Add your own API key in Settings for unlimited direct calls.`,
+    message: `Server AI usage limit of ${quota.limit} requests per 5 hours reached. Please try again when it resets. In the desktop app you can also add your own API key in Settings.`,
     limit: quota.limit,
     resetMs: quota.resetMs,
   });
