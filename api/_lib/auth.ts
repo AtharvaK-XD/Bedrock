@@ -62,9 +62,11 @@ function getAllowedIssuers(): Set<string> {
 }
 
 /**
- * Allowed `azp` origins from CLERK_AUTHORIZED_PARTIES (comma-separated). When the variable is
- * not set, azp is not enforced (warning logged once). Loopback origins on any port are always
- * allowed for the desktop app's external-browser sign-in.
+ * Allowed `azp` origins (the site a token was issued to) from CLERK_AUTHORIZED_PARTIES (comma-separated).
+ * When the variable is not set: on Vercel PRODUCTION the site's own addresses are enforced anyway
+ * (PRODUCTION_APP_ORIGINS), so a token issued to some other site that uses the same Clerk instance is not
+ * accepted; elsewhere (previews, local development) azp is not enforced (warning logged once). Loopback
+ * origins on any port are always allowed for the desktop app's external-browser sign-in.
  */
 const LOOPBACK_AZP_RE = /^http:\/\/(127\.0\.0\.1|localhost)(:\d{1,5})?$/;
 let authorizedPartiesCache: Set<string> | null | undefined;
@@ -74,11 +76,14 @@ function getAuthorizedParties(): Set<string> | null {
     .split(',')
     .map((p) => normalizeIssuer(p))
     .filter(Boolean);
-  if (parties.length === 0) {
+  if (parties.length > 0) {
+    authorizedPartiesCache = new Set(parties);
+  } else if (process.env.VERCEL_ENV === 'production') {
+    console.warn('[Auth] CLERK_AUTHORIZED_PARTIES is not set: enforcing the production origins only.');
+    authorizedPartiesCache = new Set(PRODUCTION_APP_ORIGINS);
+  } else {
     console.warn('[Auth] CLERK_AUTHORIZED_PARTIES is not set: token azp is not enforced.');
     authorizedPartiesCache = null;
-  } else {
-    authorizedPartiesCache = new Set(parties);
   }
   return authorizedPartiesCache;
 }

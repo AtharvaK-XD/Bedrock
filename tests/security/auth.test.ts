@@ -84,6 +84,31 @@ describe('authorized party (azp)', () => {
     expect(user?.id).toBe('user_a');
   });
 
+  it('enforces the production origins on Vercel production even when CLERK_AUTHORIZED_PARTIES is unset', async () => {
+    try {
+      const { authenticateRequest } = await loadAuth({ CLERK_ISSUER: issuer, CLERK_AUTHORIZED_PARTIES: undefined, VERCEL_ENV: 'production' });
+      const tok = (azp?: string) => sign({ sub: 'user_p', iss: issuer, exp: now() + 300, ...(azp === undefined ? {} : { azp }) });
+      for (const ok of ['https://bedrockxai.com', 'https://www.bedrockxai.com', 'https://bedrock-steel.vercel.app', 'http://127.0.0.1:53211']) {
+        expect((await authenticateRequest(req(tok(ok))))?.id, ok).toBe('user_p');
+      }
+      for (const bad of ['https://evil.example', 'https://bedrockxai.com.evil.example', 'https://preview-of-someone-else.vercel.app']) {
+        expect(await authenticateRequest(req(tok(bad))), bad).toBeNull();
+      }
+    } finally {
+      delete process.env.VERCEL_ENV;
+    }
+  });
+
+  it('stays unenforced on previews and local development when CLERK_AUTHORIZED_PARTIES is unset', async () => {
+    try {
+      const { authenticateRequest } = await loadAuth({ CLERK_ISSUER: issuer, CLERK_AUTHORIZED_PARTIES: undefined, VERCEL_ENV: 'preview' });
+      const user = await authenticateRequest(req(sign({ sub: 'user_v', iss: issuer, exp: now() + 300, azp: 'https://bedrock-git-x.vercel.app' })));
+      expect(user?.id).toBe('user_v');
+    } finally {
+      delete process.env.VERCEL_ENV;
+    }
+  });
+
   it('enforces the allow-list when set, always allowing loopback and tokens without azp', async () => {
     const { authenticateRequest } = await loadAuth({ CLERK_ISSUER: issuer, CLERK_AUTHORIZED_PARTIES: 'https://bedrock-steel.vercel.app, https://app.example' });
     const tok = (azp?: string) => sign({ sub: 'user_b', iss: issuer, exp: now() + 300, ...(azp === undefined ? {} : { azp }) });

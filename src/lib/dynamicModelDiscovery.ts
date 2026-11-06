@@ -272,9 +272,10 @@ export async function fetchProviderModels(
       }
 
       case 'gemini': {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`
-        );
+        // Key in a header, never in the URL (URLs reach browser history, proxies and crash reports)
+        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+          headers: { 'x-goog-api-key': cleanKey },
+        });
         if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
         const data = await res.json();
         const rawList = Array.isArray(data?.models) ? data.models : [];

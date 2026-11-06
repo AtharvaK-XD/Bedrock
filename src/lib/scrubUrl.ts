@@ -24,13 +24,34 @@ export function scrubSensitiveUrl(text: string): string {
   });
 }
 
+// Secrets recognisable by their shape, wherever they appear (an error message, a log line, an element text).
+// Always applied: unlike the user's "secret scrubbing" setting, telemetry has no off switch for this.
+const SECRET_SHAPES: Array<[RegExp, string]> = [
+  [/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{19,}/g, REDACTED], // OpenAI (sk-proj-), Anthropic (sk-ant-), OpenRouter (sk-or-v1-), DeepSeek
+  [/\bsk_(?:live|test)_[A-Za-z0-9]{16,}/g, REDACTED], // Clerk / Stripe secret key
+  [/\bAIza[0-9A-Za-z_-]{35}/g, REDACTED], // Google
+  [/\b(?:gsk|hf|ghp|github_pat)_[A-Za-z0-9_]{20,}/g, REDACTED], // Groq, Hugging Face, GitHub
+  [/\b(?:xai|pplx)-[A-Za-z0-9]{20,}/g, REDACTED], // xAI, Perplexity
+  [/\bwhsec_[A-Za-z0-9+/=]{16,}/g, REDACTED], // webhook signing secret
+  [/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, REDACTED], // JWT (session token)
+  [/\b(Bearer)\s+[A-Za-z0-9._~+/=-]{16,}/gi, `$1 ${REDACTED}`],
+  [/(postgres(?:ql)?:\/\/[^:\s/@]+:)[^@\s]+@/gi, `$1${REDACTED}@`], // database password in a connection string
+];
+
+/** Hides secret-looking URL parameters and secret-shaped values (API keys, tokens) in any text. */
+export function scrubText(text: string): string {
+  let out = scrubSensitiveUrl(text);
+  for (const [re, replacement] of SECRET_SHAPES) out = out.replace(re, replacement);
+  return out;
+}
+
 /** Scrubs every string inside an object (Sentry event, breadcrumb, span, replay event) in place; returns it. */
 export function scrubDeep<T>(value: T, depth = 0): T {
   if (depth > 12 || value === null || value === undefined) return value;
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i++) {
       const item = value[i];
-      if (typeof item === 'string') value[i] = scrubSensitiveUrl(item);
+      if (typeof item === 'string') value[i] = scrubText(item);
       else if (typeof item === 'object') scrubDeep(item, depth + 1);
     }
     return value;
@@ -38,7 +59,7 @@ export function scrubDeep<T>(value: T, depth = 0): T {
   if (typeof value === 'object') {
     for (const k of Object.keys(value as Record<string, unknown>)) {
       const item = (value as Record<string, unknown>)[k];
-      if (typeof item === 'string') (value as Record<string, unknown>)[k] = scrubSensitiveUrl(item);
+      if (typeof item === 'string') (value as Record<string, unknown>)[k] = scrubText(item);
       else if (typeof item === 'object') scrubDeep(item, depth + 1);
     }
   }

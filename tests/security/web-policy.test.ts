@@ -56,7 +56,7 @@ describe('website security headers', () => {
   it('allows the services the app really talks to', () => {
     const connect = directive(webCsp, 'connect-src');
     for (const host of [
-      'https://bedrockxai.com', 'https://clerk.bedrockxai.com', 'https://bedrock-steel.vercel.app', 'https://*.clerk.accounts.dev', 'https://*.clerk.com', 'https://*.ingest.us.sentry.io',
+      'https://bedrockxai.com', 'https://clerk.bedrockxai.com', 'https://bedrock-steel.vercel.app', 'https://quick-lobster-2101.clerk.accounts.dev', 'https://*.clerk.com', 'https://*.ingest.us.sentry.io',
       'https://us.i.posthog.com', 'https://generativelanguage.googleapis.com', 'https://api.groq.com', 'https://api.openai.com',
       'https://openrouter.ai', 'https://api-inference.huggingface.co', 'https://api.perplexity.ai', 'https://api.github.com', 'https://api.anthropic.com', 'http://localhost:*',
     ]) {
@@ -81,6 +81,13 @@ describe('website security headers', () => {
 });
 
 describe('trust lists', () => {
+  it('trust only Bedrock\'s own Clerk test instance, never any test instance (anyone can create one)', () => {
+    expect(webCsp).not.toContain('*.clerk.accounts.dev');
+    expect(mainJs).not.toMatch(/CLERK_HOSTS = "[^"]*\*\.clerk\.accounts\.dev/);
+    expect(mainJs).not.toMatch(/AUTH_POPUP_HOST_SUFFIXES = \[[^\]]*accounts\.dev/);
+    for (const d of ['script-src', 'connect-src', 'frame-src']) expect(directive(webCsp, d), d).toContain('https://quick-lobster-2101.clerk.accounts.dev');
+  });
+
   // bedrockxai.com is registered and owned by Atharva (registered 2026-11-05). It is now the official production domain.
   it('correctly names the registered production domain bedrockxai.com across configs', () => {
     for (const file of ['vercel.json', 'dist-electron/main.js', 'src/lib/sentryTargets.ts', 'api/_lib/auth.ts', 'api/auth/send-email.ts']) {

@@ -44,4 +44,12 @@ describe('Gemini key placement', () => {
       expect(src, name).not.toMatch(/generateContent\?key=|alt=sse&key=|[?&]key=\$\{/);
     }
   });
+
+  it('no file anywhere in src/ puts a key or token into a URL (new code included)', () => {
+    const sources = import.meta.glob(['../../**/*.{ts,tsx}', '!../../**/__tests__/**'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+    expect(Object.keys(sources).length).toBeGreaterThan(50);
+    for (const [name, src] of Object.entries(sources)) {
+      expect(src, name).not.toMatch(/[?&](key|api_key|apikey|token|access_token)=\$\{/);
+    }
+  });
 });

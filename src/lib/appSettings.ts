@@ -456,7 +456,10 @@ export function formatCurrency(amountUsd: number, currencyOverride?: TokenSettin
 
 const SECRET_PATTERNS = [
   /AIza[0-9A-Za-z-_]{35}/g, // Google API key
-  /sk-[a-zA-Z0-9]{20,}/g, // OpenAI key
+  // OpenAI (incl. sk-proj-), Anthropic (sk-ant-), OpenRouter (sk-or-v1-), DeepSeek: the old form stopped at the first "-"
+  /\bsk-[A-Za-z0-9][A-Za-z0-9_-]{19,}/g,
+  /\bsk_(?:live|test)_[A-Za-z0-9]{16,}/g, // Clerk / Stripe secret key
+  /hf_[a-zA-Z0-9]{20,}/g, // Hugging Face token
   /gsk_[a-zA-Z0-9]{20,}/g, // Groq key
   /xai-[a-zA-Z0-9]{20,}/g, // xAI key
   /pplx-[a-zA-Z0-9]{20,}/g, // Perplexity key

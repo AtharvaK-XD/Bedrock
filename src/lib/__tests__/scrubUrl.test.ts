@@ -36,6 +36,41 @@ describe('scrubSensitiveUrl', () => {
   });
 });
 
+describe('PostHog setup', () => {
+  it('records clicks without element text or attributes, and scrubs every event', async () => {
+    const mainSource = (await import('../../main.tsx?raw')).default as string;
+    expect(mainSource).toMatch(/mask_all_text: true/);
+    expect(mainSource).toMatch(/mask_all_element_attributes: true/);
+    expect(mainSource).toMatch(/before_send: \(\w+[^)]*\) => scrubDeep\(/);
+  });
+});
+
+describe('secret-shaped values anywhere in a text (scrubText)', () => {
+  it('hides every key shape Bedrock users hold, plus tokens and database passwords', async () => {
+    const { scrubText } = await import('../scrubUrl');
+    // Fake keys, joined at runtime so no key-shaped text sits in this file (scanners would flag it)
+    const secrets = [
+      ['sk-proj-', 'AbCdEf1234567890_GhIjKlMnOpQrStUv'], ['sk-ant-api03-', 'AbCdEf1234567890-GhIjKlMnOp'], ['sk-or-v1-', '0123456789abcdef0123456789abcdef'],
+      ['sk-', 'AbCdEfGhIjKlMnOpQrStUvWx'], ['sk_live_', 'AbCdEfGhIjKlMnOpQr12'], ['AIza', 'SyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q'], ['gsk_', 'AbCdEfGhIjKlMnOpQrStUvWx12'],
+      ['xai-', 'AbCdEfGhIjKlMnOpQrStUvWx'], ['hf_', 'AbCdEfGhIjKlMnOpQrStUvWx12'], ['whsec_', 'AbCdEfGhIjKlMnOpQr12'],
+      ['eyJhbGciOiJSUzI1NiJ9.', 'eyJzdWIiOiJ1c2VyX2EifQ.c2lnbmF0dXJlLXZhbHVl'],
+    ].map((parts) => parts.join(''));
+    for (const s of secrets) {
+      const out = scrubText(`request failed for key ${s} at 12:00`);
+      expect(out, s).not.toContain(s);
+      expect(out).toContain('request failed for key');
+    }
+    expect(scrubText('Authorization: Bearer abcdefghijklmnopqrstuvwxyz0123')).toBe(`Authorization: Bearer ${REDACTED}`);
+    const dbUrl = ['postgresql://neondb_owner:', 'npg_FakePassword123@ep-x.neon.tech/db'].join('');
+    expect(scrubText(dbUrl)).toBe(`postgresql://neondb_owner:${REDACTED}@ep-x.neon.tech/db`);
+  });
+
+  it('leaves ordinary words alone', async () => {
+    const { scrubText } = await import('../scrubUrl');
+    for (const t of ['a task-oriented skill-based approach', 'risk-free desk-sharing', 'Ask about pk_live keys']) expect(scrubText(t)).toBe(t);
+  });
+});
+
 describe('scrubDeep', () => {
   it('scrubs every string in a Sentry-shaped event, breadcrumb and replay record', () => {
     const event: any = {

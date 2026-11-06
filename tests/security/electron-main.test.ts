@@ -279,7 +279,7 @@ describe('browser permissions', () => {
 
 describe('in-app popups', () => {
   it('opens sign-in popups in-app only for exact auth hosts, sandboxed', () => {
-    for (const url of ['https://accounts.google.com/o/oauth2/v2/auth', 'https://github.com/login/oauth', 'https://foo-bar-12.clerk.accounts.dev/v1/oauth']) {
+    for (const url of ['https://accounts.google.com/o/oauth2/v2/auth', 'https://github.com/login/oauth', 'https://clerk.bedrockxai.com/v1/oauth', 'https://accounts.bedrockxai.com/sign-in', 'https://quick-lobster-2101.clerk.accounts.dev/v1/oauth']) {
       const result = state.windowOpenHandler!({ url });
       expect(result.action).toBe('allow');
       expect(result.overrideBrowserWindowOptions.webPreferences).toMatchObject({ sandbox: true, contextIsolation: true, nodeIntegration: false });
@@ -288,10 +288,12 @@ describe('in-app popups', () => {
   });
 
   it('never opens look-alike hosts in-app (they go to the system browser)', () => {
-    for (const url of ['https://google.evil.example/login', 'https://evilgoogle.com/', 'https://github.com.evil.example/', 'https://clerk-login.evil.example/']) {
+    for (const url of ['https://google.evil.example/login', 'https://evilgoogle.com/', 'https://github.com.evil.example/', 'https://clerk-login.evil.example/',
+      // anyone can create a Clerk test instance: only Bedrock's own may open in-app
+      'https://attacker-instance-99.clerk.accounts.dev/v1/oauth', 'https://attacker-instance-99.accounts.dev/sign-in', 'https://clerk.bedrockxai.com.evil.example/']) {
       expect(state.windowOpenHandler!({ url }).action).toBe('deny');
     }
-    expect(shell.openExternal).toHaveBeenCalledTimes(4);
+    expect(shell.openExternal).toHaveBeenCalledTimes(7);
   });
 });
 

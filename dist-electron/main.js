@@ -888,7 +888,7 @@ ipcMain.handle("file:save-with-dialog", async (_event, options) => {
 const DEV_CSP = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http://localhost:* http://127.0.0.1:* https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://accounts.google.com https://*.google.com https://*.googleapis.com https://github.com https://*.github.com https://fonts.googleapis.com https://fonts.gstatic.com https://bedrockxai.com https://bedrock-steel.vercel.app; object-src 'none'; base-uri 'self';";
 // sha256 of the inline popup-closing script in index.html (LF and CRLF checkouts)
 const INDEX_INLINE_SCRIPT_HASHES = "'sha256-4Bo01ZNy7SnDqO38T4qi0U10NKwmezB9OuofGmwyLtw=' 'sha256-KO0VPu5IYIyjwTyCO1dKZTc5y6RrRCB+BOVbBG7UA5U='";
-const CLERK_HOSTS = "https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com https://clerk.bedrockxai.com https://accounts.bedrockxai.com";
+const CLERK_HOSTS = "https://quick-lobster-2101.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com https://clerk.bedrockxai.com https://accounts.bedrockxai.com";
 const APP_CSP = [
 	"default-src 'self'",
 	`script-src 'self' ${INDEX_INLINE_SCRIPT_HASHES} ${CLERK_HOSTS} https://challenges.cloudflare.com https://us-assets.i.posthog.com`,
@@ -928,8 +928,9 @@ function cspForResponse(url) {
 }
 
 // In-app popups only for exact sign-in hosts (a name merely containing "google" is not enough)
-const AUTH_POPUP_HOSTS = new Set(["accounts.google.com", "github.com", "clerk.com", "localhost", "127.0.0.1"]);
-const AUTH_POPUP_HOST_SUFFIXES = [".clerk.accounts.dev", ".accounts.dev", ".clerk.com"];
+// Clerk: the production instance and Bedrock's own test instance only (anyone can create another *.accounts.dev)
+const AUTH_POPUP_HOSTS = new Set(["accounts.google.com", "github.com", "clerk.com", "localhost", "127.0.0.1", "clerk.bedrockxai.com", "accounts.bedrockxai.com", "quick-lobster-2101.clerk.accounts.dev", "quick-lobster-2101.accounts.dev"]);
+const AUTH_POPUP_HOST_SUFFIXES = [".clerk.com"];
 
 function isAuthPopupHost(hostname) {
 	const host = String(hostname || "").toLowerCase();

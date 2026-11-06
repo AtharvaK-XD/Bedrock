@@ -145,6 +145,24 @@ describe('secret scrubbing', () => {
     vi.resetModules();
   });
 
+  it('hides OpenAI project, Anthropic, OpenRouter and Clerk secret keys before a prompt is sent or saved', async () => {
+    installBrowserStubs();
+    const s = await import('../appSettings');
+    // Fake keys, joined at runtime so no key-shaped text sits in this file (scanners would flag it)
+    for (const key of [
+      ['sk-proj-', 'AbCdEf1234567890_GhIjKlMnOpQrStUv'],
+      ['sk-ant-api03-', 'AbCdEf1234567890-GhIjKlMnOpQr'],
+      ['sk-or-v1-', '0123456789abcdef0123456789abcdef'],
+      ['sk_live_', 'AbCdEfGhIjKlMnOpQr12'],
+      ['hf_', 'AbCdEfGhIjKlMnOpQrStUvWx12'],
+    ].map((parts) => parts.join(''))) {
+      const out = s.scrubSecrets(`my key is ${key} please use it`);
+      expect(out, key).not.toContain(key.slice(8));
+      expect(out).toContain('[REDACTED_API_KEY]');
+    }
+    expect(s.scrubSecrets('a task-oriented, risk-free plan')).toBe('a task-oriented, risk-free plan');
+  });
+
   it('hides keys and bearer tokens unless scrubbing is switched off', async () => {
     const { store } = installBrowserStubs();
     const s = await import('../appSettings');
