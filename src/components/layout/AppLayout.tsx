@@ -118,6 +118,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [isDesktop]);
 
   useEffect(() => {
+    if (!isDesktop) return;
     const handleOpenModal = (e: Event) => {
       const customEvent = e as CustomEvent<OpenApiKeyModalDetail>;
       if (customEvent.detail?.modelId || customEvent.detail?.agentId) {
@@ -183,27 +184,31 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <SyncNotice />
       <FirstTimeOnboardingModal />
 
-      {/* In-App API Key Gateway & Update Modal */}
-      <ApiKeyGatewayModal
-        isOpen={showKeyGateway}
-        initialError={gatewayError}
-        onSuccess={() => {
-          setShowKeyGateway(false);
-          setGatewayError(null);
-          setManuallyOpened(false);
-        }}
-        canDismiss={manuallyOpened || hasApiKeysConfigured()}
-      />
+      {/* In-App API Key Gateway & Update Modal (Desktop App Only) */}
+      {isDesktop && (
+        <ApiKeyGatewayModal
+          isOpen={showKeyGateway}
+          initialError={gatewayError}
+          onSuccess={() => {
+            setShowKeyGateway(false);
+            setGatewayError(null);
+            setManuallyOpened(false);
+          }}
+          canDismiss={manuallyOpened || hasApiKeysConfigured()}
+        />
+      )}
 
-      {/* Targeted Model / Agent API Key Prompt Modal */}
-      <ApiKeyPromptModal
-        isOpen={specificKeyModal.isOpen}
-        modelId={specificKeyModal.modelId}
-        agentId={specificKeyModal.agentId}
-        modelName={specificKeyModal.modelName}
-        onClose={() => setSpecificKeyModal({ isOpen: false })}
-        onKeySaved={() => setSpecificKeyModal({ isOpen: false })}
-      />
+      {/* Targeted Model / Agent API Key Prompt Modal (Desktop App Only) */}
+      {isDesktop && (
+        <ApiKeyPromptModal
+          isOpen={specificKeyModal.isOpen}
+          modelId={specificKeyModal.modelId}
+          agentId={specificKeyModal.agentId}
+          modelName={specificKeyModal.modelName}
+          onClose={() => setSpecificKeyModal({ isOpen: false })}
+          onKeySaved={() => setSpecificKeyModal({ isOpen: false })}
+        />
+      )}
     </div>
   );
 }

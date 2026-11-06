@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Key, Eye, EyeOff, ExternalLink, X, Check, ShieldCheck, ArrowRight } from 'lucide-react';
 import { AgentIcon } from './ModelLogos';
 import { getRequiredProviderForModel, saveModelApiKey } from '../../lib/apiKeysHelper';
+import { isDesktopApp } from '../../lib/platform';
 import { useNavigate } from 'react-router-dom';
 
 interface ApiKeyPromptModalProps {
@@ -48,7 +49,8 @@ export function ApiKeyPromptModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  // Strict Website Isolation: Targeted API key prompt is strictly for Desktop App only.
+  if (!isDesktopApp() || !isOpen) return null;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

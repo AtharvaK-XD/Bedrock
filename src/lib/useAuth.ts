@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth as useClerkAuth, useUser, useClerk } from '@clerk/react';
+import { isDesktopApp } from './platform';
 
 const AUTH_STORAGE_KEY = 'bedrock_auth_session';
 const AUTH_UPDATE_EVENT = 'bedrock_auth_update';
@@ -19,6 +20,9 @@ export interface AuthSession {
 }
 
 export function hasApiKeysConfigured(): boolean {
+  // Website uses developer's server keys strictly; BYOK is desktop-only.
+  if (!isDesktopApp()) return true;
+
   try {
     const raw = localStorage.getItem(API_KEYS_STORAGE_KEY);
     if (!raw) return false;

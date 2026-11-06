@@ -154,6 +154,13 @@ export default function Settings() {
   const isDesktop = isDesktopApp();
   const [activeTab, setActiveTab] = useState<Tab>('account');
 
+  // Strict Website Isolation: Ensure website users never land on desktop-only tabs
+  useEffect(() => {
+    if (!isDesktop && (activeTab === 'api-keys' || activeTab === 'tokens')) {
+      setActiveTab('account');
+    }
+  }, [isDesktop, activeTab]);
+
   // Small "Saved" confirmation next to the footer text
   const [showSaved, setShowSaved] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -534,8 +541,12 @@ export default function Settings() {
   const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'account', label: 'Account', icon: User },
     { id: 'models', label: 'Models', icon: Sliders },
-    { id: 'api-keys', label: 'API keys', icon: Key },
-    { id: 'tokens', label: 'Tokens & budget', icon: Gauge },
+    ...(isDesktop
+      ? [
+          { id: 'api-keys' as Tab, label: 'API keys', icon: Key },
+          { id: 'tokens' as Tab, label: 'Tokens & budget', icon: Gauge },
+        ]
+      : []),
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'privacy', label: 'Privacy & data', icon: Shield },
@@ -570,7 +581,11 @@ export default function Settings() {
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <h1 className="font-editorial text-3xl font-bold text-white md:text-4xl">Settings</h1>
-              <p className="mt-1 text-sm text-gray-400">Your profile, models, API keys, look and privacy. Changes save as you make them.</p>
+              <p className="mt-1 text-sm text-gray-400">
+                {isDesktop
+                  ? 'Your profile, models, API keys, look and privacy. Changes save as you make them.'
+                  : 'Your profile, models, look and privacy. Changes save as you make them.'}
+              </p>
             </div>
             <button
               type="button"
@@ -1047,8 +1062,8 @@ export default function Settings() {
                   </motion.div>
                 )}
 
-                {/* ============================ API KEYS ============================ */}
-                {activeTab === 'api-keys' && (
+                {/* ============================ API KEYS (Desktop Only) ============================ */}
+                {activeTab === 'api-keys' && isDesktop && (
                   <motion.div key="api-keys" {...tabMotion} className="space-y-6">
                     <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
                       <TabHeading
@@ -1202,7 +1217,8 @@ export default function Settings() {
                 )}
 
                 {/* ============================ TOKENS ============================ */}
-                {activeTab === 'tokens' && (
+                {/* ============================ TOKENS & BUDGET (Desktop Only) ============================ */}
+                {activeTab === 'tokens' && isDesktop && (
                   <motion.div key="tokens" {...tabMotion} className="space-y-6">
                     <TabHeading
                       icon={<Gauge className="h-5 w-5" />}

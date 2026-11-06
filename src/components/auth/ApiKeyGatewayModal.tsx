@@ -198,7 +198,8 @@ export function ApiKeyGatewayModal({ isOpen, onSuccess, canDismiss = false, init
     }
   };
 
-  if (!isOpen) return null;
+  // Strict Website Isolation: BYOK credentials modal is strictly for Desktop App only.
+  if (!isDesktopApp() || !isOpen) return null;
 
   return (
     <AnimatePresence>

@@ -289,16 +289,21 @@ export default function Result() {
                 err?.message?.toLowerCase().includes('api key') ||
                 err?.message?.toLowerCase().includes('api_key')
               );
-              if (isKeyError) {
+              if (isKeyError && isDesktopApp()) {
                 openApiKeyModal('API key rejected: Please update your key to continue.');
                 setChatHistory(prev => [...prev, { 
                   role: 'ai', 
-                  content: "⚠️ API Key Error: Your API key is invalid or not configured. Please enter a valid API key in the app to continue refinement." 
+                  content: "⚠️ API Key Error: Your API key is invalid or not configured. Please enter a valid API key in Settings > API Keys to continue refinement." 
+                }]);
+              } else if (err?.code === 'FREE_TIER_QUOTA_EXCEEDED' || err?.statusCode === 429 || err?.message?.toLowerCase().includes('limit')) {
+                setChatHistory(prev => [...prev, { 
+                  role: 'ai', 
+                  content: "⚠️ Daily Limit Reached: Free tier accounts can generate up to 10 prompts per 5-hour session. Please try again tomorrow or upgrade to Pro or Ultimate for unlimited refinements." 
                 }]);
               } else if (err?.code === 'AI_BUSY') {
                 setChatHistory(prev => [...prev, { role: 'ai', content: err.message }]);
               } else {
-                setChatHistory(prev => [...prev, { role: 'ai', content: "Sorry, I encountered an error while updating the document." }]);
+                setChatHistory(prev => [...prev, { role: 'ai', content: err?.message || "Sorry, I encountered an error while updating the document. Please try again tomorrow or upgrade your plan." }]);
               }
             } finally {
               setIsRefining(false);

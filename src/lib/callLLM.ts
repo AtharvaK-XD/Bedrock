@@ -1045,6 +1045,24 @@ async function dispatchProviderCall(
   const rawOnToken = options?.onToken;
   const onToken = rawOnToken ? createStreamingPacer(streamSpeed, rawOnToken) : undefined;
 
+  // Strict Website Invariant: On website (isDesktopApp() === false), users strictly use the developer's
+  // server API keys via the Bedrock backend proxy. BYOK client inference is strictly desktop-only.
+  if (!isDesktopApp()) {
+    return {
+      text: await callBackendProxy(
+        effectiveUserPrompt,
+        effectiveSystemPrompt,
+        effectiveModelId,
+        temperature,
+        onToken,
+        maxOutputTokens,
+        topP,
+        strictJsonMode
+      ),
+      providerUsed: 'Bedrock Cloud Backend',
+    };
+  }
+
   // Desktop BYOK: a model the user picked from their discovered list goes, exactly as listed, to the provider that
   // listed it. No renaming, no substitute model, no silent switch to another provider: if it fails, the user sees
   // that provider's error for the model they chose.

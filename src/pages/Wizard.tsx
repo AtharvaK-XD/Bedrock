@@ -14,7 +14,7 @@ import { cn } from '../lib/utils';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { PageTransition } from '../components/layout/PageTransition';
-import { KeyRound, PanelLeftOpen } from 'lucide-react';
+import { KeyRound, PanelLeftOpen, ArrowRight } from 'lucide-react';
 import { isDesktopApp } from '../lib/platform';
 import { GeneratorHistorySidebar } from '../components/generator/GeneratorHistorySidebar';
 import { addPromptToHistory, syncHistoryFromDb, type HistoryPromptItem } from '../lib/generatorHistory';
@@ -147,17 +147,21 @@ export default function Wizard() {
     if (!idea.trim()) return;
     setErrorBanner(null);
 
-    const keys = getActiveApiKeys();
-    const hasKey = Boolean(keys.geminiKey || keys.groqKey || keys.openAiKey || keys.anthropicKey);
-    if (!hasKey) {
-      const msg = 'Please enter your Google Gemini or Groq API key in the app to start generating prompts.';
-      setErrorBanner({
-        type: 'api_key',
-        title: 'API Key Required',
-        message: msg,
-      });
-      openApiKeyModal(msg);
-      return;
+    // Desktop BYOK check: Only the Desktop App requires user-added API keys.
+    // The website strictly uses developer API keys via the server backend proxy.
+    if (isDesktopApp()) {
+      const keys = getActiveApiKeys();
+      const hasKey = Boolean(keys.geminiKey || keys.groqKey || keys.openAiKey || keys.anthropicKey);
+      if (!hasKey) {
+        const msg = 'Please enter your Google Gemini or Groq API key in the app to start generating prompts.';
+        setErrorBanner({
+          type: 'api_key',
+          title: 'API Key Required',
+          message: msg,
+        });
+        openApiKeyModal(msg);
+        return;
+      }
     }
 
     setIsGenerating(true);
@@ -191,6 +195,23 @@ export default function Wizard() {
         latency: Date.now() - qStartTime,
         status: 'ERR',
       });
+
+      const isQuotaError = Boolean(
+        err?.code === 'FREE_TIER_QUOTA_EXCEEDED' ||
+        err?.statusCode === 429 ||
+        err?.message?.toLowerCase().includes('quota') ||
+        err?.message?.toLowerCase().includes('limit')
+      );
+
+      if (isQuotaError && !isDesktopApp()) {
+        setErrorBanner({
+          type: 'general',
+          title: 'Daily Limit Reached',
+          message: 'You have reached your daily generation limit. Please try again tomorrow or upgrade to a Pro or Ultimate plan.',
+        });
+        return;
+      }
+
       const isKeyError = Boolean(
         err?.isApiKeyError ||
         err?.message?.toLowerCase().includes('api key') ||
@@ -200,7 +221,7 @@ export default function Wizard() {
         err?.message?.toLowerCase().includes('permission denied')
       );
 
-      if (isKeyError) {
+      if (isKeyError && isDesktopApp()) {
         const keyMsg = err?.message || 'Your API key is invalid or not active. Please enter a valid API key.';
         setErrorBanner({
           type: 'api_key',
@@ -272,12 +293,28 @@ export default function Wizard() {
         status: 'ERR',
       });
 
+      const isQuotaError = Boolean(
+        err?.code === 'FREE_TIER_QUOTA_EXCEEDED' ||
+        err?.statusCode === 429 ||
+        err?.message?.toLowerCase().includes('quota') ||
+        err?.message?.toLowerCase().includes('limit')
+      );
+
+      if (isQuotaError && !isDesktopApp()) {
+        setErrorBanner({
+          type: 'general',
+          title: 'Daily Limit Reached',
+          message: 'You have reached your daily generation limit. Please try again tomorrow or upgrade to a Pro or Ultimate plan.',
+        });
+        return;
+      }
+
       const isKeyError = Boolean(
         err?.isApiKeyError ||
         err?.message?.toLowerCase().includes('api key') ||
         err?.message?.toLowerCase().includes('api_key')
       );
-      if (isKeyError) {
+      if (isKeyError && isDesktopApp()) {
         const keyMsg = err?.message || 'Unable to synthesize prompt: Your API key is invalid or missing.';
         setErrorBanner({
           type: 'api_key',
@@ -436,7 +473,7 @@ export default function Wizard() {
                       </div>
 
                       <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
-                        {errorBanner.type === 'api_key' && (
+                        {errorBanner.type === 'api_key' && isDesktop && (
                           <button
                             type="button"
                             onClick={() => openApiKeyModal(errorBanner.message)}
@@ -444,6 +481,16 @@ export default function Wizard() {
                           >
                             <KeyRound className="w-3.5 h-3.5" />
                             <span>Enter API Keys</span>
+                          </button>
+                        )}
+                        {!isDesktop && (errorBanner.title.toLowerCase().includes('limit') || errorBanner.message.toLowerCase().includes('upgrade')) && (
+                          <button
+                            type="button"
+                            onClick={() => navigate('/app/pricing')}
+                            className="px-4 py-2 rounded-xl text-xs font-semibold font-display bg-copper-500 hover:bg-copper-600 text-white shadow-md shadow-copper-500/25 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                          >
+                            <span>Upgrade Plan</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         )}
                         <button

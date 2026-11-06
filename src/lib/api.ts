@@ -757,28 +757,42 @@ export const generateQuestions = async (payload: IdeaPayload): Promise<Question[
       if (normalized.length > 0) {
         return normalized;
       }
+    } else if (response.status === 429) {
+      const errData = await response.json().catch(() => ({}));
+      const quotaErr = new ApiError(
+        errData.message || 'Free tier daily limit reached. Please try again tomorrow or upgrade to Pro or Ultimate plan.',
+        false,
+        'Bedrock Cloud',
+        429
+      );
+      (quotaErr as any).code = 'FREE_TIER_QUOTA_EXCEEDED';
+      throw quotaErr;
     } else {
       serverBusySeconds = await readServerBusySeconds(response);
     }
-  } catch (backendErr) {
+  } catch (backendErr: any) {
+    if (backendErr?.code === 'FREE_TIER_QUOTA_EXCEEDED' || backendErr?.statusCode === 429) {
+      throw backendErr;
+    }
     console.warn('[Bedrock] Server generation not available, falling back:', backendErr);
   }
 
-  // 2. Client fallback if client keys configured
-  const keys = getActiveApiKeys();
-  const hasClientKey = Boolean(
-    keys.geminiKey || keys.groqKey || keys.openAiKey || keys.openRouterKey || keys.huggingFaceKey
-  );
+  // 2. Client fallback if client keys configured (Strictly Desktop App only)
+  if (isDesktopApp()) {
+    const keys = getActiveApiKeys();
+    const hasClientKey = Boolean(
+      keys.geminiKey || keys.groqKey || keys.openAiKey || keys.openRouterKey || keys.huggingFaceKey
+    );
 
-  if (hasClientKey) {
-    const profile = getUseCaseProfile(payload.targetType);
-    const systemPrompt = profile.questionPrompt;
+    if (hasClientKey) {
+      const profile = getUseCaseProfile(payload.targetType);
+      const systemPrompt = profile.questionPrompt;
 
-    const fewShotSection = profile.fewShotExamples.length > 0
-      ? `\n\nFEW-SHOT EXAMPLES:\n` + profile.fewShotExamples.map((ex, idx) => `Example ${idx + 1}: ${ex.title}\nUser Input: ${ex.inputIdea}\nClarifying Questions:\n${JSON.stringify((ex.clarifyingQuestions || []).map((q: { id: string; questionText: string; questionType: string; options?: string[] }) => ({ id: q.id, questionText: q.questionText, questionType: q.questionType, options: q.options })), null, 2)}`).join('\n\n')
-      : '';
+      const fewShotSection = profile.fewShotExamples.length > 0
+        ? `\n\nFEW-SHOT EXAMPLES:\n` + profile.fewShotExamples.map((ex, idx) => `Example ${idx + 1}: ${ex.title}\nUser Input: ${ex.inputIdea}\nClarifying Questions:\n${JSON.stringify((ex.clarifyingQuestions || []).map((q: { id: string; questionText: string; questionType: string; options?: string[] }) => ({ id: q.id, questionText: q.questionText, questionType: q.questionType, options: q.options })), null, 2)}`).join('\n\n')
+        : '';
 
-    const userPrompt = `TARGET USE CASE: ${profile.name} (${profile.tag})
+      const userPrompt = `TARGET USE CASE: ${profile.name} (${profile.tag})
 DESCRIPTION: ${profile.description}
 ${fewShotSection}
 
@@ -787,62 +801,40 @@ ${payload.ideaText}
 
 Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored specifically to this mode's purpose.`;
 
-    try {
-      const raw = await callClientAi(userPrompt, systemPrompt, {
-        temperature: profile.temperature,
-        purpose: 'questions',
-        targetType: payload.targetType,
-        userIdea: payload.ideaText,
-        validateAndRetry: true,
-      });
+      try {
+        const raw = await callClientAi(userPrompt, systemPrompt, {
+          temperature: profile.temperature,
+          purpose: 'questions',
+          targetType: payload.targetType,
+          userIdea: payload.ideaText,
+          validateAndRetry: true,
+        });
 
-      const qVal = validateQuestionsOutput(raw, payload.targetType, payload.ideaText);
-      if (qVal.isValid && qVal.data && qVal.data.length > 0) {
-        return normalizeQuestions(qVal.data);
-      }
+        const qVal = validateQuestionsOutput(raw, payload.targetType, payload.ideaText);
+        if (qVal.isValid && qVal.data && qVal.data.length > 0) {
+          return normalizeQuestions(qVal.data);
+        }
 
-      const cleaned = raw
-        .replace(/^```json\s*/i, '')
-        .replace(/^```\s*/i, '')
-        .replace(/\s*```$/i, '')
-        .trim();
+        const cleaned = raw
+          .replace(/^```json\s*/i, '')
+          .replace(/^```\s*/i, '')
+          .replace(/\s*```$/i, '')
+          .trim();
 
-      const parsed = JSON.parse(cleaned);
-      const normalized = normalizeQuestions(parsed);
-      if (normalized.length > 0) {
-        return normalized;
-      }
-    } catch (err: any) {
-      if (err.isApiKeyError) {
-        throw err;
-      }
-      console.warn('[Bedrock] Direct question generation parse error, falling back to curated questions:', err);
-      return getFallbackQuestions(payload.targetType);
-    }
-  }
-
-  // Fallback to backend if available
-  try {
-    const response = await fetch('/api/ai/generate-questions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const normalized = normalizeQuestions(data);
-      if (normalized.length > 0) {
-        return normalized;
+        const parsed = JSON.parse(cleaned);
+        const normalized = normalizeQuestions(parsed);
+        if (normalized.length > 0) {
+          return normalized;
+        }
+      } catch (err: any) {
+        if (err.isApiKeyError) {
+          throw err;
+        }
+        console.warn('[Bedrock] Direct question generation parse error, falling back to curated questions:', err);
+        return getFallbackQuestions(payload.targetType);
       }
     }
-    serverBusySeconds = (await readServerBusySeconds(response)) ?? serverBusySeconds;
-  } catch (backendErr) {
-    console.warn('[Bedrock] Backend not available:', backendErr);
-  }
 
-  // If no client keys were configured
-  if (!hasClientKey) {
     if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
     throw new ApiError(
       'Please enter your Google Gemini or Groq API key in the app to start generating prompts.',
@@ -852,6 +844,8 @@ Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored 
     );
   }
 
+  // On the website, fallback to curated questions if backend had a temporary parse error
+  if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
   return getFallbackQuestions(payload.targetType);
 };
 
@@ -1056,29 +1050,39 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
     console.warn('[Bedrock] Server synthesis not available, falling back:', err);
   }
 
-  // 2. Client fallback if client keys configured
-  if (hasClientKey) {
-    const raw = await callClientAi(userPrompt, systemPrompt, {
-      temperature: profile.temperature,
-      onToken,
-      purpose: 'synthesize',
-      targetType: idea.targetType,
-      userIdea: idea.ideaText,
-      validateAndRetry: true,
-    });
-    const sVal = validateSynthesisOutput(raw, idea.targetType, idea.ideaText);
-    if (!sVal.isValid) {
-      console.warn(`[Bedrock Validation] Client output post-retry validation warnings for ${idea.targetType}:`, sVal.issues.map((i: ValidationIssue) => i.message));
+  // 2. Client fallback if client keys configured (Strictly Desktop App only)
+  if (isDesktopApp()) {
+    if (hasClientKey) {
+      const raw = await callClientAi(userPrompt, systemPrompt, {
+        temperature: profile.temperature,
+        onToken,
+        purpose: 'synthesize',
+        targetType: idea.targetType,
+        userIdea: idea.ideaText,
+        validateAndRetry: true,
+      });
+      const sVal = validateSynthesisOutput(raw, idea.targetType, idea.ideaText);
+      if (!sVal.isValid) {
+        console.warn(`[Bedrock Validation] Client output post-retry validation warnings for ${idea.targetType}:`, sVal.issues.map((i: ValidationIssue) => i.message));
+      }
+      return sanitizePromptOutput(raw);
     }
-    return sanitizePromptOutput(raw);
+
+    if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
+    throw new ApiError(
+      'No API key configured. Please set your Google Gemini or Groq key in Settings or connect to Bedrock Cloud.',
+      true,
+      'Bedrock Workspace',
+      401
+    );
   }
 
   if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
   throw new ApiError(
-    'No API key configured. Please set your Google Gemini or Groq key in Settings or connect to Bedrock Cloud.',
-    true,
-    'Bedrock Workspace',
-    401
+    'Daily generation limit reached or server unavailable. Please try again tomorrow or upgrade to Pro or Ultimate plan.',
+    false,
+    'Bedrock Cloud',
+    429
   );
 };
 
@@ -1087,12 +1091,14 @@ export const refinePrompt = async (
   followUp: string,
   conversationHistory?: Array<{ role: string; content: string }>
 ): Promise<{ updatedMarkdown: string; summary: string }> => {
+  const isDesktop = isDesktopApp();
   const keys = getActiveApiKeys();
   const hasClientKey = Boolean(
     keys.geminiKey || keys.groqKey || keys.openAiKey || keys.openRouterKey || keys.huggingFaceKey
   );
 
-  if (hasClientKey) {
+  // Client BYOK refinement: Strictly Desktop App only
+  if (isDesktop && hasClientKey) {
     const systemPrompt = buildRefineSystemPrompt();
 
     const recentHistoryText = conversationHistory && conversationHistory.length > 0
@@ -1151,18 +1157,41 @@ export const refinePrompt = async (
           summary: data.summary || extracted.summary,
         };
       }
+    } else if (response.status === 429) {
+      const errData = await response.json().catch(() => ({}));
+      const quotaErr = new ApiError(
+        errData.message || 'Free tier daily limit reached. Please try again tomorrow or upgrade to Pro or Ultimate plan.',
+        false,
+        'Bedrock Cloud',
+        429
+      );
+      (quotaErr as any).code = 'FREE_TIER_QUOTA_EXCEEDED';
+      throw quotaErr;
     }
     serverBusySeconds = await readServerBusySeconds(response);
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === 'FREE_TIER_QUOTA_EXCEEDED' || err?.statusCode === 429) {
+      throw err;
+    }
     console.warn('[Bedrock] Server refine not available, falling back:', err);
   }
 
   if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
+
+  if (isDesktop) {
+    throw new ApiError(
+      'No API key configured. Please set your Google Gemini or Groq key to refine prompt.',
+      true,
+      'Bedrock Workspace',
+      401
+    );
+  }
+
   throw new ApiError(
-    'No API key configured. Please set your Google Gemini or Groq key to refine prompt.',
-    true,
-    'Bedrock Workspace',
-    401
+    'Daily refinement limit reached or server unavailable. Please try again tomorrow or upgrade to Pro or Ultimate plan.',
+    false,
+    'Bedrock Cloud',
+    429
   );
 };
 
