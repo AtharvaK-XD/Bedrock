@@ -2,11 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ShieldCheck, 
   Check, 
   X, 
   ArrowRight, 
-  Lock, 
   CreditCard,
   Mail,
   User,
@@ -291,25 +289,6 @@ export default function Pricing() {
               </motion.div>
             );
           })}
-        </div>
-
-        {/* Security & Anti-Fraud Guarantee Bar */}
-        <div className="max-w-4xl mx-auto mt-16 p-6 rounded-3xl bg-white/[0.02] border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-white font-mono">100% Secure Cryptographic Billing Gate</p>
-              <p className="text-[11px] text-zinc-400 font-sans mt-0.5">
-                Activations occur strictly after HMAC SHA256 payment verification. Automated GST tax invoices emailed instantly.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 text-zinc-500 font-mono text-[11px]">
-            <Lock className="w-3.5 h-3.5 text-zinc-400" />
-            <span>256-bit TLS Encryption</span>
-          </div>
         </div>
 
       </div>
