@@ -262,19 +262,20 @@ export async function releaseQuota(reservation: QuotaReservation | null | undefi
 
 /** Sends the standard 429 / 503 response for a refused reservation. */
 export function sendQuotaDenied(res: VercelResponse, quota: QuotaReservation) {
+  // Shared daily ceiling for callers who are not signed in: signing in (free) gives them their own limit
+  if (quota.reason === 'anonymous_daily_cap') {
+    return res.status(429).json({
+      error: 'Sign In Required',
+      code: 'ANONYMOUS_DAILY_LIMIT',
+      message: 'Free use without an account is used up for today. Sign in (free) to keep generating.',
+    });
+  }
   if (quota.unavailable) {
     res.setHeader('Retry-After', '30');
     return res.status(503).json({
       error: 'Service Temporarily Unavailable',
       code: 'QUOTA_SERVICE_UNAVAILABLE',
       message: 'Usage limits could not be verified right now. Please try again shortly.',
-    });
-  }
-  if (quota.reason === 'anonymous_daily_cap') {
-    return res.status(429).json({
-      error: 'Sign In Required',
-      code: 'ANONYMOUS_DAILY_LIMIT',
-      message: 'Free use without an account is used up for today. Sign in (free) to keep generating.',
     });
   }
   if (quota.bucket === 'generation') {
@@ -290,7 +291,7 @@ export function sendQuotaDenied(res: VercelResponse, quota: QuotaReservation) {
   return res.status(429).json({
     error: 'Usage Limit Reached',
     code: 'AI_USAGE_LIMIT_EXCEEDED',
-    message: `Server AI usage limit of ${quota.limit} requests per 5 hours reached. Please try again when it resets. In the desktop app you can also add your own API key in Settings.`,
+    message: `Server AI usage limit of ${quota.limit} requests per 5 hours reached. Add your own API key in Settings for unlimited direct calls.`,
     limit: quota.limit,
     resetMs: quota.resetMs,
   });
