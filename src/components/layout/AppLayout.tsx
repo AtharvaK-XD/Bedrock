@@ -139,7 +139,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener(OPEN_API_KEY_MODAL_EVENT, handleOpenModal);
     };
-  }, []);
+  }, [isDesktop]);
 
   // Returned after all hooks so React always sees the same hooks in the same order
   if (isPopup) {

@@ -251,7 +251,7 @@ export async function enforceRateLimit(
 
   let limitResult: { success: boolean; limit: number; remaining: number; reset: number };
 
-  const useMemory = () => safeMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
+  const checkMemoryLimit = () => safeMemoryRateLimit(`${preset}:${identifier}`, allowedRequests, cfg.windowSeconds);
   // /api/health keeps answering during an outage: reporting that Redis is down is its whole job
   const memoryAllowed = !redisConfigured || preset === 'health';
 
@@ -268,11 +268,11 @@ export async function enforceRateLimit(
     } catch (redisErr) {
       console.error(`[RateLimiter] Upstash Redis call failed for ${preset}:`, redisErr);
       if (!memoryAllowed) return sendLimiterUnavailable(res);
-      limitResult = useMemory();
+      limitResult = checkMemoryLimit();
     }
   } else {
     if (!memoryAllowed) return sendLimiterUnavailable(res);
-    limitResult = useMemory();
+    limitResult = checkMemoryLimit();
   }
 
   const { success, limit, remaining, reset } = limitResult;
