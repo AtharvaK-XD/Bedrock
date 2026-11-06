@@ -4,6 +4,7 @@ import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQu
 import { executeAiCompletion, refineOutputBudget, truncatedOutputError, tokensForTrace } from '../_lib/ai.js';
 import {
   INPUT_LIMITS,
+  readTextField,
   firstLengthError,
   sendAiFailure,
   getRequestId,
@@ -38,8 +39,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!allowed) return;
 
   const body = req.body || {};
-  const currentPrompt = (body.currentPrompt || body.prompt || '').trim();
-  const instruction = (body.instruction || body.refinement || '').trim();
+  const promptField = readTextField(body, ['currentPrompt', 'prompt']);
+  const instructionField = readTextField(body, ['instruction', 'refinement']);
+  const typeField = readTextField(body, ['targetType']);
+  for (const field of [promptField, instructionField, typeField]) {
+    if ('error' in field) return res.status(400).json({ error: field.error });
+  }
+  const currentPrompt = (promptField as { value: string }).value;
+  const instruction = (instructionField as { value: string }).value;
+  const targetType = (typeField as { value: string }).value;
 
   if (!currentPrompt || !instruction) {
     return res.status(400).json({ error: 'currentPrompt and instruction are required' });
@@ -61,17 +69,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // The role decides which rules apply (an image prompt must not get the coding rules). The website does not send
   // it yet, so it is read from the document's own sections; unknown -> only the universal rules.
-  const role =
-    typeof body.targetType === 'string' && body.targetType.trim() ? roleKey(body.targetType) : inferRoleFromDocument(currentPrompt);
+  const role = targetType ? roleKey(targetType) : inferRoleFromDocument(currentPrompt);
   const systemPrompt = buildRefineSystemPrompt(role);
   const payload = `EXISTING PROMPT:\n${currentPrompt}\n\nREFINEMENT INSTRUCTION:\n${instruction}`;
   const safeContent = sanitizeAndDelimitPrompt(payload);
 
+  let answered = false;
   try {
     const { text, model, truncated, usage } = await executeAiCompletion(safeContent, systemPrompt, user?.id, undefined, undefined, {
       maxOutputTokens: refineOutputBudget(currentPrompt.length),
       signal: clientAbortSignal(res),
     });
+    answered = true;
     // A rewrite cut off at the output limit would replace the user's prompt with half of one: refuse it instead
     if (truncated) {
       const cutOff = truncatedOutputError();
@@ -100,7 +109,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: any) {
     const outcome = failureOutcome(err);
     if (outcome === 'error') {
-      await releaseQuota(quota);
+      // Refund only when no provider answered. An answer that was paid for but unusable (cut off, rejected) keeps
+      // its unit: otherwise repeating such a request would run paid model calls for free.
+      if (!answered) await releaseQuota(quota);
       await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'RefineModal.refine', err, latencyMs: Date.now() - startTime });
       console.error('[Refine] Error:', err);
     }

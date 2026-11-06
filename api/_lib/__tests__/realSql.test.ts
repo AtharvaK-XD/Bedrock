@@ -365,6 +365,20 @@ describe.skipIf(!PGlite)('backend SQL on a real Postgres engine (PGlite + all mi
     expect(taken.body.code).toBe('PROFILE_VALUE_TAKEN');
     expect((await call(profile, 'PUT', { username: 'bob', website: 'https://bob.dev' })).statusCode).toBe(200);
     expect((await q(`SELECT username, website FROM "User" WHERE id = 'user_B'`))[0]).toEqual({ username: 'bob', website: 'https://bob.dev' });
+
+    // A save with only the name (onboarding, the name repair in the app) keeps everything else (it used to set it to NULL)
+    expect((await call(profile, 'PUT', { bio: 'my bio', github: 'bob-gh' })).statusCode).toBe(200);
+    expect((await call(profile, 'PUT', { name: 'Bob Builder' })).statusCode).toBe(200);
+    expect((await q(`SELECT name, username, bio, github, website FROM "User" WHERE id = 'user_B'`))[0]).toEqual({
+      name: 'Bob Builder',
+      username: 'bob',
+      bio: 'my bio',
+      github: 'bob-gh',
+      website: 'https://bob.dev',
+    });
+    // '' clears exactly the field it names
+    expect((await call(profile, 'PUT', { bio: '' })).statusCode).toBe(200);
+    expect((await q(`SELECT bio, github FROM "User" WHERE id = 'user_B'`))[0]).toEqual({ bio: null, github: 'bob-gh' });
   });
 
   it('traces: dashboard totals cover all 150 runs through trace_totals(), the list shows the last 100', async () => {

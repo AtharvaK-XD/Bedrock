@@ -26,6 +26,23 @@ const BUSY_CODES: ReadonlySet<AiErrorCode> = new Set<AiErrorCode>(['AI_ALL_PROVI
 /** Matches the circuit-breaker cooldown after a provider 429 (RATE_LIMIT_COOLDOWN_MS in loadBalancer.ts). */
 export const AI_BUSY_RETRY_AFTER_SECONDS = 15;
 
+/**
+ * Reads one text field from a request body, trying each name in turn (aliases such as "ideaText" / "rawText").
+ * Absent, null or '' moves on to the next name; the first real value must be a string. Returns the trimmed text
+ * ('' when none was sent) or `{ error }` naming the field. Before, a number or object in these fields reached
+ * `.trim()` and crashed the request outside its error handling.
+ */
+export function readTextField(source: unknown, names: string[]): { value: string } | { error: string } {
+  const obj = source && typeof source === 'object' ? (source as Record<string, unknown>) : {};
+  for (const name of names) {
+    const v = obj[name];
+    if (v === undefined || v === null || v === '') continue;
+    if (typeof v !== 'string') return { error: `${name} must be text` };
+    return { value: v.trim() };
+  }
+  return { value: '' };
+}
+
 /** Returns an error message for the first value longer than its limit, or null when all fit. */
 export function firstLengthError(checks: Array<[value: unknown, max: number, label: string]>): string | null {
   for (const [value, max, label] of checks) {

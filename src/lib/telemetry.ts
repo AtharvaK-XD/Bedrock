@@ -2,6 +2,7 @@ import type { HistoryPromptItem } from './generatorHistory';
 import { getActivePrivacySettings, scrubSecrets, getSessionTokensCount, isLocalVaultOnly } from './appSettings';
 import { announceRunFinished } from './notify';
 import { reportSyncProblem, describeSaveLimit } from './syncNotice';
+import { isDesktopApp } from './platform';
 
 // Only server-side trouble (5xx) or rate limiting (429) is worth interrupting the user for.
 // Other statuses (e.g. 401 when signed out on desktop) are expected and stay quiet.
@@ -78,6 +79,13 @@ export async function recordExecutionTrace(params: {
   const privacy = getActivePrivacySettings();
   if (!privacy.telemetry) {
     // User turned off diagnostics in Settings > Privacy & Security
+    return;
+  }
+
+  // On the website every AI run goes through Bedrock's server (CHG-0086), which already stores its trace with the
+  // real model, tokens and latency. Posting one here too counted every website run twice on the dashboard. Only the
+  // desktop app's own-key calls bypass the server, so only they are recorded from here.
+  if (!isDesktopApp()) {
     return;
   }
 

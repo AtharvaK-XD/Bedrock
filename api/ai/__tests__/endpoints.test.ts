@@ -284,7 +284,7 @@ describe('AI endpoints', () => {
       expect(systemPrompt).toContain('"questionType"');
     });
 
-    it('falls back to the built-in questions (and refunds the quota) when nothing usable came back', async () => {
+    it('falls back to the built-in questions when the answer is unusable, and keeps the quota unit (the call was paid)', async () => {
       const profile = getUseCaseProfile('image-prompt');
       for (const text of ['[{"options":["a","b"]},{"id":"q2"}]', 'Sorry, I cannot help with that.', '[{"question":"Only one?"}]']) {
         releaseQuota.mockClear();
@@ -292,8 +292,17 @@ describe('AI endpoints', () => {
         const res = await ask();
         expect(res.statusCode).toBe(200);
         expect(res.body).toEqual(profile.fallbackQuestions);
-        expect(releaseQuota).toHaveBeenCalledTimes(1);
+        // Refunding here made "ask again until the answer is rejected" an endless run of free paid model calls
+        expect(releaseQuota).not.toHaveBeenCalled();
       }
+    });
+
+    it('refunds the quota when no provider answered at all, and still shows the built-in questions', async () => {
+      executeAiCompletion.mockRejectedValue(new AiCompletionError('AI_ALL_PROVIDERS_FAILED', 'busy'));
+      const res = await ask();
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(getUseCaseProfile('image-prompt').fallbackQuestions);
+      expect(releaseQuota).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -421,7 +430,8 @@ describe('AI endpoints', () => {
         expect(res.body).toMatchObject({ code: 'AI_OUTPUT_TRUNCATED' });
         expect(res.body).not.toHaveProperty('updatedMarkdown');
         expect(typeof res.body.message).toBe('string');
-        expect(releaseQuota).toHaveBeenCalledTimes(1);
+        // The model did answer (a paid call): no refund, or oversized rewrites would run for free again and again
+        expect(releaseQuota).not.toHaveBeenCalled();
       });
 
       it('synthesize: asks for at most 4,000 tokens, and flags a cut-off answer without repairing it', async () => {
@@ -645,7 +655,7 @@ describe('AI endpoints', () => {
       { question: 'Which lens and framing should it use?', type: 'single_select', options: ['35mm wide', '85mm portrait'] },
     ];
 
-    it('shows good questions, and falls back (refund + error trace) when one is too short to mean anything', async () => {
+    it('shows good questions, and falls back (no refund, error trace) when one is too short to mean anything', async () => {
       signIn();
       answer(good);
       const ok = await ask({ ideaText: 'a lighthouse keeper at dusk', targetType: 'image-prompt' });
@@ -655,7 +665,7 @@ describe('AI endpoints', () => {
       const short = await ask({ ideaText: 'a lighthouse keeper at dusk', targetType: 'image-prompt' });
       expect(short.statusCode).toBe(200);
       expect(short.body).toEqual(getUseCaseProfile('image-prompt').fallbackQuestions);
-      expect(releaseQuota).toHaveBeenCalledTimes(1);
+      expect(releaseQuota).not.toHaveBeenCalled(); // the model answered: the paid call keeps its quota unit
       expect(recordExecutionTrace.mock.calls.at(-1)![0]).toMatchObject({ status: 'error', modelTarget: 'm' });
     });
 

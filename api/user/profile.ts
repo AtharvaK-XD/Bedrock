@@ -142,10 +142,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (hasControlChars(referralSource)) {
       return res.status(400).json({ error: 'referralSource must be plain text' });
     }
-    // A request that carries only onboarding answers must not touch the other profile fields (the normal save below
-    // writes every field, so a missing one would be cleared).
+    // Partial update: a field that is not in the request is left as it is; '' or null clears it. (Before, every save
+    // wrote all eight columns, so a request with only { name } - onboarding, the name repair in useUserProfile -
+    // set the user's username, bio, location, organization and links to NULL.)
     const PROFILE_FIELDS = ['name', 'username', 'bio', 'location', 'organization', 'github', 'huggingface', 'website'] as const;
-    const onboardingOnly = (hasBirthDate || hasReferralSource) && PROFILE_FIELDS.every((f) => body[f] === undefined);
+    const has = (f: (typeof PROFILE_FIELDS)[number]) => body[f] !== undefined;
+    const onboardingOnly = (hasBirthDate || hasReferralSource) && !PROFILE_FIELDS.some(has);
     for (const field of ['github', 'huggingface', 'website'] as const) {
       if (body[field] && isUnsafeLink(body[field])) {
         return res.status(400).json({ error: `${field} must be a normal web link (http or https)` });
@@ -179,26 +181,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      const name = body.name || user.name;
-      const username = body.username || null;
-      const bio = body.bio || null;
-      const location = body.location || null;
-      const organization = body.organization || null;
-      const github = body.github || null;
-      const huggingface = body.huggingface || null;
-      const website = body.website || null;
+      // Nothing of the regular profile was sent (for example an empty body): nothing to change
+      if (!PROFILE_FIELDS.some(has)) {
+        return res.status(200).json({ message: 'Profile updated successfully', success: true });
+      }
+
+      // The name is required in the table: an empty one keeps the current name
+      const name = typeof body.name === 'string' && body.name.trim() ? body.name : null;
+      const value = (f: (typeof PROFILE_FIELDS)[number]) => (typeof body[f] === 'string' && body[f] ? body[f] : null);
 
       await sql`
         UPDATE "User"
-        SET 
-          name = ${name},
-          username = ${username},
-          bio = ${bio},
-          location = ${location},
-          organization = ${organization},
-          github = ${github},
-          huggingface = ${huggingface},
-          website = ${website},
+        SET
+          name = CASE WHEN ${name !== null}::boolean THEN ${name}::text ELSE name END,
+          username = CASE WHEN ${has('username')}::boolean THEN ${value('username')}::text ELSE username END,
+          bio = CASE WHEN ${has('bio')}::boolean THEN ${value('bio')}::text ELSE bio END,
+          location = CASE WHEN ${has('location')}::boolean THEN ${value('location')}::text ELSE location END,
+          organization = CASE WHEN ${has('organization')}::boolean THEN ${value('organization')}::text ELSE organization END,
+          github = CASE WHEN ${has('github')}::boolean THEN ${value('github')}::text ELSE github END,
+          huggingface = CASE WHEN ${has('huggingface')}::boolean THEN ${value('huggingface')}::text ELSE huggingface END,
+          website = CASE WHEN ${has('website')}::boolean THEN ${value('website')}::text ELSE website END,
           updated_at = NOW()
         WHERE id = ${user.id}
       `;

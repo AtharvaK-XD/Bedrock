@@ -4,6 +4,7 @@ import { checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, reco
 import { executeAiCompletion, testOutputBudget, tokensForTrace } from '../_lib/ai.js';
 import {
   INPUT_LIMITS,
+  readTextField,
   firstLengthError,
   sendAiFailure,
   getRequestId,
@@ -52,15 +53,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const maxOutputTokens = testOutputBudget(body.maxOutputTokens);
   // Stops the paid provider call when the user closes the tab or cancels
   const signal = clientAbortSignal(res);
-  const prompt = (body.prompt || body.promptText || '').trim();
-  const rawSystemPrompt = (body.systemPrompt || '').trim();
+  const promptField = readTextField(body, ['prompt', 'promptText']);
+  const systemField = readTextField(body, ['systemPrompt']);
+  const typeField = readTextField(body, ['targetType']);
+  for (const field of [promptField, systemField, typeField]) {
+    if ('error' in field) return res.status(400).json({ error: field.error });
+  }
+  const prompt = (promptField as { value: string }).value;
+  const rawSystemPrompt = (systemField as { value: string }).value;
+  const targetType = (typeField as { value: string }).value;
   // Bedrock's rules for the role when the client names it, otherwise only the universal ones. (Before, the CODING
   // rules - React 19, Next.js, tsc - were added to every call, including image, video and writing prompts; the
   // website's own system prompts already carry their role's rules.)
-  const guardrails =
-    typeof body.targetType === 'string' && body.targetType.trim()
-      ? resolveDomainGuardrails(body.targetType)
-      : BEDROCK_UNIVERSAL_GUARDRAILS;
+  const guardrails = targetType ? resolveDomainGuardrails(targetType) : BEDROCK_UNIVERSAL_GUARDRAILS;
   const systemPrompt = rawSystemPrompt ? `${rawSystemPrompt}\n\n${guardrails}` : guardrails;
 
   if (!prompt) {
@@ -83,6 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const wantsStream = Boolean(body.stream || req.query?.stream === 'true' || req.headers.accept?.includes('text/event-stream'));
 
+  let answered = false;
   try {
     if (wantsStream) {
       res.writeHead(200, {
@@ -105,6 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         undefined,
         { maxOutputTokens, signal }
       );
+      answered = true;
 
       const latency = Date.now() - startTime;
       const tokens = tokensForTrace(usage, Math.max(100, Math.round(text.length / 4)));
@@ -128,6 +135,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { text, model, truncated, usage } = await executeAiCompletion(prompt, systemPrompt, user?.id, undefined, undefined, { maxOutputTokens, signal });
+    answered = true;
     const latency = Date.now() - startTime;
     const tokens = tokensForTrace(usage, Math.max(100, Math.round(text.length / 4)));
 
@@ -155,7 +163,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: any) {
     const outcome = failureOutcome(err);
     if (outcome === 'error') {
-      await releaseQuota(quota);
+      // Refund only when no provider answered. An answer that was paid for but unusable (cut off, rejected) keeps
+      // its unit: otherwise repeating such a request would run paid model calls for free.
+      if (!answered) await releaseQuota(quota);
       await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Tester.test', err, latencyMs: Date.now() - startTime });
       console.error('[Tester] Error:', err);
     }

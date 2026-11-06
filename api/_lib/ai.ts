@@ -661,7 +661,16 @@ import {
   orderForFailover,
 } from './loadBalancer.js';
 
+import { waitUntil } from '@vercel/functions';
 import { recordLangfuseGeneration } from './langfuse.js';
+
+/**
+ * Telemetry runs after the answer is sent. On Vercel the function can be frozen as soon as the response ends, so
+ * the send is registered with waitUntil (the platform keeps the function alive for it). Outside Vercel it simply runs.
+ */
+function sendTelemetry(task: Promise<void>): void {
+  waitUntil(task);
+}
 
 /**
  * A failure that counts against the provider's circuit breaker. A request the provider refused because
@@ -823,7 +832,7 @@ export async function executeAiCompletion(
         const modelName = `${provider.name} (${provider.model})`;
 
         // Async non-blocking telemetry to Langfuse (sizes and timing only, never user text or output)
-        recordLangfuseGeneration({
+        sendTelemetry(recordLangfuseGeneration({
           traceName: 'bedrock_ai_completion',
           model: modelName,
           userId,
@@ -839,7 +848,7 @@ export async function executeAiCompletion(
               ? { inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens }
               : {}),
           },
-        }).catch((e) => console.warn('[Langfuse] Error in recordLangfuseGeneration:', e));
+        }).catch((e) => console.warn('[Langfuse] Error in recordLangfuseGeneration:', e)));
 
         return {
           text,
@@ -887,7 +896,7 @@ export async function executeAiCompletion(
   const failureCode: AiErrorCode = deadlineExceeded ? 'AI_DEADLINE_EXCEEDED' : 'AI_ALL_PROVIDERS_FAILED';
 
   // Record failure trace in Langfuse (error code only: upstream messages can echo request content)
-  recordLangfuseGeneration({
+  sendTelemetry(recordLangfuseGeneration({
     traceName: 'bedrock_ai_completion',
     model: 'all_providers_failed',
     userId,
@@ -896,7 +905,7 @@ export async function executeAiCompletion(
     level: 'ERROR',
     statusMessage: failureCode,
     metadata: { inputChars: prompt.length + (systemPrompt?.length ?? 0) },
-  }).catch((e) => console.warn('[Langfuse] Error reporting failure:', e));
+  }).catch((e) => console.warn('[Langfuse] Error reporting failure:', e)));
 
   console.error(
     `[AI] ${deadlineExceeded ? 'Deadline reached before a provider succeeded' : 'All providers failed'}. Last error: ${clip(lastError?.message || 'Unknown provider error')}`

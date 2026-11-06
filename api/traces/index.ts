@@ -229,7 +229,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST') {
     const body = req.body || {};
     const fieldError = firstFieldError([
-      [body.id, DATA_LIMITS.id, 'id'],
       [body.node || body.nodeOrigin, DATA_LIMITS.traceLabel, 'node'],
       [body.model || body.modelTarget, DATA_LIMITS.traceLabel, 'model'],
     ]);
@@ -238,7 +237,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-      const id = body.id || `TRC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+      // Always a server id: a client-chosen id could collide with another account's row (a 500) or reveal that one
+      // exists. The app never sends one.
+      const id = `TRC-${crypto.randomUUID()}`;
       const nodeOrigin = body.node || body.nodeOrigin || 'PROMPT_GEN';
       const modelTarget = body.model || body.modelTarget || 'gemini-2.5-flash';
       // Client-reported numbers cannot be verified; keep them within plausible bounds

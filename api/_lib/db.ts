@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 
 function getDatabaseUrl(): string {
@@ -64,7 +65,7 @@ export async function logSecurityEvent(params: {
 }) {
   try {
     const sql = getDb();
-    const id = `sec_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const id = `sec_${crypto.randomUUID()}`;
     const eventType = cut(params.eventType, SECURITY_LOG_LIMITS.eventType) || 'UNKNOWN';
     const message = cut(String(params.message ?? ''), SECURITY_LOG_LIMITS.message) || '';
     await sql`

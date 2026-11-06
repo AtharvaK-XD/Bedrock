@@ -748,6 +748,62 @@ describe('profile onboarding fields (birthDate, referralSource)', () => {
   });
 });
 
+// Launch review: a profile save changes only the fields it sends (a { name } save used to set bio, links ... to NULL)
+describe('PUT /api/user/profile is a partial update', () => {
+  const lastUpdate = () => h.state.calls.filter((c) => c.text.startsWith('UPDATE "User"')).at(-1)!;
+
+  it('a save with only { name } leaves every other field as it is', async () => {
+    const res = mockRes();
+    await profile(mockReq('PUT', { name: 'Alice Smith' }), res);
+    expect(res.statusCode).toBe(200);
+    const { text, values } = lastUpdate();
+    expect(text).toContain('bio = CASE WHEN $::boolean THEN $::text ELSE bio END');
+    // [name set?, name, then (sent?, value) for username, bio, location, organization, github, huggingface, website, user id]
+    expect(values).toEqual([true, 'Alice Smith', false, null, false, null, false, null, false, null, false, null, false, null, false, null, 'user_A']);
+  });
+
+  it("'' or null clears a field; a field that is not sent is kept", async () => {
+    await profile(mockReq('PUT', { bio: '', website: null, location: 'Pune' }), mockRes());
+    const { values } = lastUpdate();
+    // name not sent -> kept (not reset to the sign-in name)
+    expect(values.slice(0, 2)).toEqual([false, null]);
+    expect(values.slice(2, 16)).toEqual([false, null, true, null, true, 'Pune', false, null, false, null, false, null, true, null]);
+  });
+
+  it('an empty name keeps the current name (the column is required)', async () => {
+    await profile(mockReq('PUT', { name: '   ', bio: 'hi' }), mockRes());
+    expect(lastUpdate().values.slice(0, 2)).toEqual([false, null]);
+  });
+
+  it('an empty body changes nothing at all', async () => {
+    const res = mockRes();
+    await profile(mockReq('PUT', {}), res);
+    expect(res.statusCode).toBe(200);
+    expect(h.state.calls.filter((c) => c.text.startsWith('UPDATE'))).toHaveLength(0);
+  });
+
+  it('a taken username still answers 409', async () => {
+    h.state.responder = () => {
+      throw Object.assign(new Error('duplicate key'), { code: '23505' });
+    };
+    const res = mockRes();
+    await profile(mockReq('PUT', { username: 'taken' }), res);
+    expect(res.statusCode).toBe(409);
+  });
+});
+
+describe('POST /api/traces always uses a server id', () => {
+  it('ignores an id sent by the client', async () => {
+    const res = mockRes();
+    await traces(mockReq('POST', { id: 'TRC-someone-elses', node: 'n', model: 'm', tokens: 5, latency: 9 }), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.id).toMatch(/^TRC-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    const insert = h.state.calls.find((c) => c.text.startsWith('INSERT INTO "Trace"'))!;
+    expect(insert.values[0]).toBe(res.body.id);
+    expect(insert.values).not.toContain('TRC-someone-elses');
+  });
+});
+
 describe('GET /api/health', () => {
   async function loadHealth() {
     vi.resetModules();

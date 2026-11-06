@@ -4,6 +4,7 @@ import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQu
 import { executeAiCompletion, AI_OUTPUT_BUDGET, tokensForTrace, QuestionOutput } from '../_lib/ai.js';
 import {
   INPUT_LIMITS,
+  readTextField,
   firstLengthError,
   getRequestId,
   logAiRequest,
@@ -36,8 +37,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!allowed) return;
 
   const body = req.body || {};
-  const ideaText = (body.ideaText || body.rawText || '').trim();
-  const targetType = body.targetType || 'coding-agent';
+  const ideaField = readTextField(body, ['ideaText', 'rawText']);
+  const typeField = readTextField(body, ['targetType']);
+  if ('error' in ideaField) return res.status(400).json({ error: ideaField.error });
+  if ('error' in typeField) return res.status(400).json({ error: typeField.error });
+  const ideaText = ideaField.value;
+  const targetType = typeField.value || 'coding-agent';
 
   if (!ideaText) {
     return res.status(400).json({ error: 'ideaText is required' });
@@ -102,7 +107,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 'fallback' when the built-in questions are sent instead, 'aborted' when the user already left
     const aborted = failureOutcome(err) === 'aborted';
     if (!aborted) {
-      await releaseQuota(quota);
+      // Refund only when no provider answered. An answer that was paid for but unusable (cut off, rejected) keeps
+      // its unit: otherwise repeating such a request would run paid model calls for free.
+      if (!answeredBy) await releaseQuota(quota);
       await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Wizard.generateQuestions', err, latencyMs: Date.now() - startTime, model: answeredBy });
       console.error('[GenerateQuestions] Error:', err);
     }

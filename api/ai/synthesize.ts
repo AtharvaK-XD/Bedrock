@@ -4,6 +4,7 @@ import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQu
 import { executeAiCompletion, AI_DEFAULT_BUDGET_MS, AI_OUTPUT_BUDGET, sumUsage, tokensForTrace } from '../_lib/ai.js';
 import {
   INPUT_LIMITS,
+  readTextField,
   firstLengthError,
   sendAiFailure,
   getRequestId,
@@ -22,6 +23,68 @@ import { getGroundedFacts } from '../_lib/ragGrounding.js';
 
 /** A repair retry is only worth starting if this much of the request budget is left. */
 const REPAIR_MIN_REMAINING_MS = 15_000;
+
+type SynthesisAnswer = { questionId: string; value: string | string[] };
+type SynthesisQuestion = { id: string; questionText: string };
+
+const asText = (v: unknown): string | null =>
+  typeof v === 'string' ? v : typeof v === 'number' || typeof v === 'boolean' ? String(v) : null;
+
+/**
+ * Reads and checks the request body. Before, a non-string idea reached `.trim()`, and a `null` entry or a non-list
+ * in `answers` reached `answers.map(a => a.questionId)`: both crashed the request outside its error handling.
+ * Numbers and booleans in answers and ids are accepted as text (a free-text answer like 42 is a fair answer).
+ */
+function readSynthesisInput(body: Record<string, unknown>):
+  | { error: string }
+  | { rawIdea: string; targetType: string; answers: SynthesisAnswer[]; questions: SynthesisQuestion[] } {
+  const idea = body.idea && typeof body.idea === 'object' && !Array.isArray(body.idea) ? body.idea : {};
+  let ideaField = readTextField(idea, ['rawText']);
+  if ('error' in ideaField) return ideaField;
+  if (!ideaField.value) ideaField = readTextField(body, ['rawText']);
+  if ('error' in ideaField) return ideaField;
+  let typeField = readTextField(idea, ['targetType']);
+  if ('error' in typeField) return typeField;
+  if (!typeField.value) typeField = readTextField(body, ['targetType']);
+  if ('error' in typeField) return typeField;
+
+  const rawAnswers = body.answers ?? [];
+  const rawQuestions = body.questions ?? [];
+  if (!Array.isArray(rawAnswers)) return { error: 'answers must be a list' };
+  if (!Array.isArray(rawQuestions)) return { error: 'questions must be a list' };
+
+  const answers: SynthesisAnswer[] = [];
+  for (const a of rawAnswers) {
+    if (!a || typeof a !== 'object') return { error: 'Each answer must be an object with questionId and value' };
+    const questionId = asText((a as any).questionId) ?? '';
+    const rawValue = (a as any).value;
+    let value: string | string[];
+    if (Array.isArray(rawValue)) {
+      const parts = rawValue.map(asText);
+      if (parts.some((p) => p === null)) return { error: 'Each answer value must be text or a list of texts' };
+      value = parts as string[];
+    } else if (rawValue === undefined || rawValue === null) {
+      value = '';
+    } else {
+      const text = asText(rawValue);
+      if (text === null) return { error: 'Each answer value must be text or a list of texts' };
+      value = text;
+    }
+    answers.push({ questionId, value });
+  }
+
+  const questions: SynthesisQuestion[] = [];
+  for (const q of rawQuestions) {
+    if (!q || typeof q !== 'object') return { error: 'Each question must be an object with id and questionText' };
+    const questionText = (q as any).questionText;
+    if (questionText !== undefined && questionText !== null && typeof questionText !== 'string') {
+      return { error: 'Each questionText must be text' };
+    }
+    questions.push({ id: asText((q as any).id) ?? '', questionText: questionText ?? '' });
+  }
+
+  return { rawIdea: ideaField.value, targetType: typeField.value || 'coding-agent', answers, questions };
+}
 
 /** Returns a message for the first over-long input, or null (checked before any quota is reserved). */
 function findInputLimitError(
@@ -68,12 +131,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const allowed = await enforceRateLimit(req, res, 'synthesize', user?.id || ip, isPaid);
   if (!allowed) return;
 
-  const body = req.body || {};
-  const idea = body.idea || {};
-  const rawIdea = (idea.rawText || body.rawText || '').trim();
-  const targetType = idea.targetType || body.targetType || 'coding-agent';
-  const answers: Array<{ questionId: string; value: string | string[] }> = body.answers || [];
-  const questions: Array<{ id: string; questionText: string }> = body.questions || [];
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const input = readSynthesisInput(body);
+  if ('error' in input) {
+    return res.status(400).json({ error: input.error });
+  }
+  const { rawIdea, targetType, answers, questions } = input;
 
   if (!rawIdea) {
     return res.status(400).json({ error: 'rawIdea is required' });
@@ -117,6 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Stops the paid provider call when the user closes the tab or cancels
   const signal = clientAbortSignal(res);
 
+  let answered = false;
   try {
     if (wantsStream) {
       res.writeHead(200, {
@@ -139,6 +203,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         profile.temperature,
         { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize, signal }
       );
+      answered = true;
 
       // The tokens are already with the client, so a stream cannot be repaired here;
       // run the same checks as the JSON path and report them in the final event.
@@ -189,6 +254,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       profile.temperature,
       { deadlineAt, maxOutputTokens: AI_OUTPUT_BUDGET.synthesize, signal }
     );
+    answered = true;
 
     // A repair call is paid too, so the trace counts both calls
     let totalUsage = usage;
@@ -271,7 +337,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const outcome = failureOutcome(err);
     // A user who left keeps their quota decision as is (refunding it would make "start and cancel" free)
     if (outcome === 'error') {
-      await releaseQuota(quota);
+      // Refund only when no provider answered. An answer that was paid for but unusable (cut off, rejected) keeps
+      // its unit: otherwise repeating such a request would run paid model calls for free.
+      if (!answered) await releaseQuota(quota);
       await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Wizard.synthesize', err, latencyMs: Date.now() - startTime });
       console.error('[Synthesize] Error:', err);
     }

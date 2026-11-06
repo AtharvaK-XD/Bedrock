@@ -96,6 +96,8 @@ export interface QuotaReservation {
   unavailable: boolean;
   bucket: QuotaBucket;
   limit: number;
+  /** The caller is on a paid plan (decides the wording of the "limit reached" answer) */
+  paid?: boolean;
   resetMs: number;
   /** Row holding this unit of usage; null when nothing was recorded */
   reservationId: string | null;
@@ -150,7 +152,7 @@ export async function reserveQuota(params: {
   const { bucket, endpoint, user, ip } = params;
   const paid = Boolean(user && !user.isGuest && isPaidTier(user.subscriptionTier));
   const limit = paid ? QUOTA_LIMITS[bucket].paid : QUOTA_LIMITS[bucket].free;
-  const base = { bucket, limit, resetMs: FIVE_HOURS_MS };
+  const base = { bucket, limit, paid, resetMs: FIVE_HOURS_MS };
 
   // Local development guest (only issued for localhost hosts): no metering
   if (user?.isGuest) {
@@ -235,11 +237,15 @@ export function sendQuotaDenied(res: VercelResponse, quota: QuotaReservation) {
       message: 'Usage limits could not be verified right now. Please try again shortly.',
     });
   }
+  // Paid plans have higher limits, not unlimited ones, and the website has no own-key option any more (CHG-0086):
+  // the messages say exactly that. A paid user at the limit is not told to upgrade or called "free tier".
   if (quota.bucket === 'generation') {
     return res.status(429).json({
-      error: 'Free Tier Limit Reached',
-      code: 'FREE_TIER_QUOTA_EXCEEDED',
-      message: `Free tier accounts can generate up to ${quota.limit} prompts per 5-hour session. Please upgrade to Pro for unlimited prompts.`,
+      error: quota.paid ? 'Plan Limit Reached' : 'Free Tier Limit Reached',
+      code: quota.paid ? 'PLAN_QUOTA_EXCEEDED' : 'FREE_TIER_QUOTA_EXCEEDED',
+      message: quota.paid
+        ? `You have reached your plan's limit of ${quota.limit} prompts per 5 hours. Please try again later.`
+        : `Free accounts can generate up to ${quota.limit} prompts per 5 hours. Please try again later, or upgrade for a higher limit.`,
       sessionLimit: quota.limit,
       sessionPrompts: quota.limit,
       resetMs: quota.resetMs,
@@ -248,7 +254,9 @@ export function sendQuotaDenied(res: VercelResponse, quota: QuotaReservation) {
   return res.status(429).json({
     error: 'Usage Limit Reached',
     code: 'AI_USAGE_LIMIT_EXCEEDED',
-    message: `Server AI usage limit of ${quota.limit} requests per 5 hours reached. Add your own API key in Settings for unlimited direct calls.`,
+    message: quota.paid
+      ? `You have reached your plan's limit of ${quota.limit} AI requests per 5 hours. Please try again later.`
+      : `You have reached the limit of ${quota.limit} AI requests per 5 hours. Please try again later, or upgrade for a higher limit.`,
     limit: quota.limit,
     resetMs: quota.resetMs,
   });
@@ -267,7 +275,7 @@ export async function recordExecutionTrace(params: {
 }) {
   try {
     const sql = getDb();
-    const traceId = `TRC-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const traceId = `TRC-${crypto.randomUUID()}`;
 
     await sql`
       INSERT INTO "Trace" (id, user_id, node_origin, model_target, tokens_used, latency_ms, status, created_at)
