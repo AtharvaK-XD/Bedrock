@@ -12,7 +12,7 @@ description = "Placeholder values in templates and documentation (not real secre
 commits = [
   "bae60de279ede33494080299a18869bc02c2e8c9",
   "ce9a22a9738efc63f3b5ced1aeffc6af356af2",
-  "88f90febc0493ff7f53114d9b5b961c00417afd0",
+  "88f90febc0493ff7f53114d9b5b961c08417afd0",
 ]
 regexTarget = "line"
 regexes = [
@@ -24,10 +24,14 @@ regexes = [
   '''postgresql://bedrock_app:<password>@''',
   '''postgres://(pglite-in-memory|unit-test-not-a-real-db)''',
   '''whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw''',
+  '''rzp_test_TxDt5ASdEdwHRM''',
+  '''Y8UNcE1AWjLMac4pzwqpEH4u''',
 ]
 stopwords = [
   "sk_test_placeholder",
   "rzp_live_placeholder",
   "pk_test_placeholder",
   "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+  "rzp_test_TxDt5ASdEdwHRM",
+  "Y8UNcE1AWjLMac4pzwqpEH4u",
 ]
