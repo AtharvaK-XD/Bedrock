@@ -105,8 +105,11 @@ function AnimatedRoutes() {
 
   const isExternalLoopback = 
     !isDesktop && 
+    !import.meta.env.DEV &&
     typeof window !== 'undefined' && 
-    (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost');
+    (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') &&
+    window.location.port !== '5173' &&
+    window.location.port !== '3000';
 
   // Decided here, but returned only after all hooks below have run (React needs the same hooks every render)
   const showLoopbackNotice =
@@ -230,6 +233,7 @@ function AnimatedRoutes() {
         <Route path="/browser-auth-callback" element={<BrowserAuthCallback />} />
         <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
         <Route path="/terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
+        <Route path="/pricing" element={<Suspense fallback={<PageLoader />}><Pricing /></Suspense>} />
         <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
         
         {/* App Routes (Strictly protected by authentication) */}
