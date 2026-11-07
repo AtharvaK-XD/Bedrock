@@ -19,7 +19,12 @@ export const KNOWN_SERVER_ONLY_VITE_VARS = [
 ] as const;
 
 /** Meant to be public (they are in the browser by design). */
-const PUBLIC_BY_DESIGN = new Set(['VITE_CLERK_PUBLISHABLE_KEY', 'VITE_POSTHOG_PROJECT_TOKEN', 'VITE_POSTHOG_HOST']);
+const PUBLIC_BY_DESIGN = new Set([
+  'VITE_CLERK_PUBLISHABLE_KEY',
+  'VITE_RAZORPAY_KEY_ID',
+  'VITE_POSTHOG_PROJECT_TOKEN',
+  'VITE_POSTHOG_HOST',
+]);
 
 /** A name that says "secret": covers keys nobody listed, such as VITE_COHERE_API_KEY or VITE_HF_API_KEY. */
 const SECRET_NAME_RE = /(SECRET|PRIVATE|PASSWORD|PASSWD|API_KEY|ACCESS_KEY|SERVICE_ROLE|DATABASE_URL|CONNECTION_STRING|TOKEN)/i;

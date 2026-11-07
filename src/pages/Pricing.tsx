@@ -14,6 +14,7 @@ import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
 import { useUserProfile } from '../lib/useUserProfile';
 import { normalizeTier } from '../lib/subscriptionTiers';
+import { startRazorpayCheckout } from '../lib/razorpay';
 
 interface PricingTier {
   name: string;
@@ -116,61 +117,41 @@ export default function Pricing() {
     setErrorMessage(null);
 
     const targetPlanName = checkoutTier.slug === 'ultimate' ? 'Ultimate Plan' : 'Pro Plan';
-    const orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('bedrock_token') : null;
+    const amountInPaise = checkoutTier.slug === 'ultimate' ? 99900 : 39900;
 
     try {
-      // 1. Submit verified payment request to backend billing API
-      const response = await fetch('/api/billing/verify-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      await startRazorpayCheckout({
+        tier: checkoutTier.slug,
+        planName: targetPlanName,
+        amount: amountInPaise,
+        currency: 'INR',
+        userName: billingName,
+        userEmail: billingEmail,
+        onSuccess: (_verifyResult) => {
+          updateProfile({
+            name: billingName,
+            email: billingEmail,
+            plan: targetPlanName,
+          });
+
+          setPaymentSuccess(true);
+          setTimeout(() => {
+            setIsProcessing(false);
+            setCheckoutTier(null);
+            navigate('/app/billing');
+          }, 1500);
         },
-        body: JSON.stringify({
-          orderId,
-          paymentId,
-          signature: 'mock_sig', // Verified by server cryptographic bypass in development/sandbox mode
-          tier: checkoutTier.slug,
-          userEmail: billingEmail,
-          userName: billingName,
-        }),
-      });
-
-      // 2. Regardless of whether running with full backend server or Vite client preview,
-      // update user profile only upon verified completion
-      if (response.ok || !response.status || response.status === 404 || response.status === 401) {
-        updateProfile({
-          name: billingName,
-          email: billingEmail,
-          plan: targetPlanName,
-        });
-
-        setPaymentSuccess(true);
-        setTimeout(() => {
+        onError: (err) => {
           setIsProcessing(false);
-          setCheckoutTier(null);
-          navigate('/app/billing');
-        }, 1500);
-      } else {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || 'Payment confirmation failed. Please try again.');
-      }
-    } catch (err: any) {
-      // In offline/client-only environment, complete activation gracefully
-      updateProfile({
-        name: billingName,
-        email: billingEmail,
-        plan: targetPlanName,
+          setErrorMessage(err || 'Payment processing failed. Please try again.');
+        },
+        onDismiss: () => {
+          setIsProcessing(false);
+        },
       });
-
-      setPaymentSuccess(true);
-      setTimeout(() => {
-        setIsProcessing(false);
-        setCheckoutTier(null);
-        navigate('/app/billing');
-      }, 1500);
+    } catch (err: any) {
+      setIsProcessing(false);
+      setErrorMessage(err?.message || 'Failed to initiate Razorpay checkout.');
     }
   };
 
@@ -319,6 +300,7 @@ export default function Pricing() {
                 </div>
                 <button
                   type="button"
+                  aria-label="Close checkout modal"
                   onClick={() => setCheckoutTier(null)}
                   disabled={isProcessing}
                   className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
@@ -401,12 +383,12 @@ export default function Pricing() {
                     {isProcessing ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Verifying Cryptographic Payment...</span>
+                        <span>Opening Secure Razorpay Checkout...</span>
                       </>
                     ) : (
                       <>
                         <Zap className="w-4 h-4" />
-                        <span>Pay ₹{checkoutTier.totalPrice} & Activate Plan</span>
+                        <span>Pay ₹{checkoutTier.totalPrice} with Razorpay</span>
                       </>
                     )}
                   </button>

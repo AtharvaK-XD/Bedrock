@@ -1,11 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import Razorpay from 'razorpay';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, logSecurityEvent } from '../_lib/db.js';
 
 const TIER_PRICES: Record<string, number> = {
+  pro: 39900,      // ₹399 in paise
   advanced: 39900, // ₹399 in paise
   ultimate: 99900, // ₹999 in paise
-  pro: 39900,
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -19,45 +20,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const body = req.body || {};
-  const tier = (body.tier || 'advanced').toLowerCase();
-  const amount = TIER_PRICES[tier];
+  let amount: number | undefined;
+  let tier = 'pro';
 
-  if (!amount) {
-    return res.status(400).json({ error: 'Invalid subscription tier' });
+  if (typeof body.amount === 'number' && !isNaN(body.amount)) {
+    amount = Math.round(body.amount);
+  } else if (typeof body.amount === 'string' && !isNaN(Number(body.amount))) {
+    amount = Math.round(Number(body.amount));
+  } else if (body.tier && typeof body.tier === 'string') {
+    tier = body.tier.toLowerCase();
+    amount = TIER_PRICES[tier];
+  } else {
+    // Default tier
+    amount = TIER_PRICES.pro;
   }
+
+  // Minimum order amount validation (must be at least 100 paise / ₹1)
+  if (!amount || typeof amount !== 'number' || isNaN(amount) || amount < 100) {
+    return res.status(400).json({ error: 'Amount must be at least 100 paise' });
+  }
+
+  const currency = typeof body.currency === 'string' ? body.currency.toUpperCase() : 'INR';
+  const receipt = typeof body.receipt === 'string' && body.receipt.trim().length > 0
+    ? body.receipt.trim().slice(0, 40)
+    : `rcpt_${(user.id || 'usr').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10)}_${Date.now()}`;
 
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
-  let orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-  // If live Razorpay credentials exist, create order via Razorpay API
-  if (keyId && keySecret) {
-    try {
-      const basicAuth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
-      const rzResponse = await fetch('https://api.razorpay.com/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Basic ${basicAuth}`,
-        },
-        body: JSON.stringify({
-          amount,
-          currency: 'INR',
-          receipt: `rcpt_${user.id.slice(0, 10)}_${Date.now()}`,
-          notes: {
-            userId: user.id,
-            tier,
-          },
-        }),
-      });
+  if (!keyId || !keySecret) {
+    console.error('[Billing] Razorpay credentials missing from server environment.');
+    return res.status(500).json({ error: 'Razorpay payment gateway not configured on server' });
+  }
 
-      if (rzResponse.ok) {
-        const rzOrder = await rzResponse.json();
-        orderId = rzOrder.id;
-      }
-    } catch (rzErr) {
-      console.warn('[Billing] Razorpay API call failed, using internal order ID:', rzErr);
-    }
+  let orderId: string;
+  try {
+    const razorpay = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    });
+
+    const rzOrder = await razorpay.orders.create({
+      amount,
+      currency,
+      receipt,
+      notes: {
+        userId: user.id,
+        tier,
+        ...(typeof body.notes === 'object' && body.notes !== null ? body.notes : {}),
+      },
+    });
+
+    orderId = rzOrder.id;
+  } catch (rzErr: any) {
+    console.error('[Billing] Razorpay API order creation failed:', rzErr);
+    return res.status(500).json({
+      error: 'Failed to create Razorpay order',
+      message: rzErr?.message || rzErr?.description || 'Razorpay order creation failed',
+    });
   }
 
   // Record pending payment in Neon DB
@@ -67,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await sql`
       INSERT INTO "PaymentRecord" (id, user_id, order_id, amount, currency, status, tier, created_at, updated_at)
-      VALUES (${paymentId}, ${user.id}, ${orderId}, ${amount}, ${'INR'}, ${'created'}, ${tier}, NOW(), NOW())
+      VALUES (${paymentId}, ${user.id}, ${orderId}, ${amount}, ${currency}, ${'created'}, ${tier}, NOW(), NOW())
     `;
 
     await logSecurityEvent({
@@ -76,16 +96,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       severity: 'INFO',
       message: `Created order ${orderId} for tier ${tier} (₹${amount / 100})`,
     });
-
-    return res.status(200).json({
-      orderId,
-      amount,
-      currency: 'INR',
-      tier,
-      keyId: keyId || null,
-    });
-  } catch (err: any) {
-    console.error('[Billing] Create order failed:', err);
-    return res.status(500).json({ error: 'Failed to create order', message: err.message });
+  } catch (dbErr: any) {
+    console.warn('[Billing] Non-fatal DB logging failure for order creation:', dbErr?.message || dbErr);
   }
+
+  return res.status(200).json({
+    order_id: orderId,
+    orderId,
+    amount,
+    currency,
+    receipt,
+    tier,
+    keyId,
+  });
 }

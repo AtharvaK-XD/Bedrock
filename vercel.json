@@ -16,6 +16,14 @@
       "destination": "/api/traces?action=purge-logs"
     },
     {
+      "source": "/api/create-order",
+      "destination": "/api/billing/create-order"
+    },
+    {
+      "source": "/api/verify-payment",
+      "destination": "/api/billing/verify-payment"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
@@ -46,7 +54,7 @@
         },
         {
           "key": "Content-Security-Policy-Report-Only",
-          "value": "default-src 'self'; script-src 'self' 'sha256-4Bo01ZNy7SnDqO38T4qi0U10NKwmezB9OuofGmwyLtw=' 'sha256-KO0VPu5IYIyjwTyCO1dKZTc5y6RrRCB+BOVbBG7UA5U=' https://quick-lobster-2101.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com https://clerk.bedrockxai.com https://accounts.bedrockxai.com https://challenges.cloudflare.com https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://bedrockxai.com https://*.bedrockxai.com https://bedrock-steel.vercel.app https://clerk.bedrockxai.com https://accounts.bedrockxai.com https://quick-lobster-2101.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com:* https://clerk-telemetry.com https://*.ingest.us.sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://generativelanguage.googleapis.com https://api.groq.com https://api.openai.com https://openrouter.ai https://api-inference.huggingface.co https://api.perplexity.ai https://api.github.com https://api.anthropic.com http://localhost:* http://127.0.0.1:*; frame-src 'self' https://challenges.cloudflare.com https://*.protect.clerk.com https://quick-lobster-2101.clerk.accounts.dev https://*.clerk.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'sha256-4Bo01ZNy7SnDqO38T4qi0U10NKwmezB9OuofGmwyLtw=' 'sha256-KO0VPu5IYIyjwTyCO1dKZTc5y6RrRCB+BOVbBG7UA5U=' https://quick-lobster-2101.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com https://clerk.bedrockxai.com https://accounts.bedrockxai.com https://challenges.cloudflare.com https://us-assets.i.posthog.com https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://bedrockxai.com https://*.bedrockxai.com https://bedrock-steel.vercel.app https://clerk.bedrockxai.com https://accounts.bedrockxai.com https://quick-lobster-2101.clerk.accounts.dev https://*.clerk.com https://clerk.com https://*.protect.clerk.com:* https://clerk-telemetry.com https://*.ingest.us.sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://generativelanguage.googleapis.com https://api.groq.com https://api.openai.com https://openrouter.ai https://api-inference.huggingface.co https://api.perplexity.ai https://api.github.com https://api.anthropic.com https://lumberjack.razorpay.com https://api.razorpay.com http://localhost:* http://127.0.0.1:*; frame-src 'self' https://challenges.cloudflare.com https://*.protect.clerk.com https://quick-lobster-2101.clerk.accounts.dev https://*.clerk.com https://api.razorpay.com https://checkout.razorpay.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         }
       ]
     },

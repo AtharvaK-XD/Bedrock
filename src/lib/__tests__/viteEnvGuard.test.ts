@@ -25,7 +25,7 @@ describe('isSecretLikeViteVar', () => {
   });
 
   it('lets the public ones through', () => {
-    for (const name of ['VITE_CLERK_PUBLISHABLE_KEY', 'VITE_POSTHOG_PROJECT_TOKEN', 'VITE_POSTHOG_HOST', 'VITE_APP_VERSION', 'VITE_SENTRY_DSN']) {
+    for (const name of ['VITE_CLERK_PUBLISHABLE_KEY', 'VITE_RAZORPAY_KEY_ID', 'VITE_POSTHOG_PROJECT_TOKEN', 'VITE_POSTHOG_HOST', 'VITE_APP_VERSION', 'VITE_SENTRY_DSN']) {
       expect(isSecretLikeViteVar(name), name).toBe(false);
     }
   });
