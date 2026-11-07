@@ -575,8 +575,9 @@ function createWindow() {
 			}
 
 			const parsed = new URL(url);
-			// Allow Google OAuth, GitHub OAuth, Clerk authentication, and local loopback popups in-app (exact hosts)
-			if ((parsed.protocol === "https:" || parsed.protocol === "http:") && isAuthPopupHost(parsed.hostname)) {
+			// Allow Google OAuth, GitHub OAuth, Clerk authentication, and local loopback popups in-app (exact hosts).
+			// Sign-in hosts over https only; plain http only for this computer's own loopback address.
+			if (isSafePopupUrl(parsed) && isAuthPopupHost(parsed.hostname)) {
 				return {
 					action: "allow",
 					overrideBrowserWindowOptions: {
@@ -594,6 +595,26 @@ function createWindow() {
 			// Ignore invalid URLs
 		}
 		return { action: "deny" };
+	});
+
+	// Sign-in popups: they may follow the OAuth redirects (https, or back to the loopback app), but cannot
+	// load local files or other schemes, and cannot open further in-app windows (links go to the system browser).
+	win.webContents.on("did-create-window", (child) => {
+		const guard = (event, targetUrl) => {
+			try {
+				if (targetUrl.startsWith("about:blank") || isSafePopupUrl(new URL(targetUrl))) return;
+			} catch {
+				// invalid URL: blocked below
+			}
+			event.preventDefault();
+			console.warn("[Security] Blocked popup navigation to:", String(targetUrl).slice(0, 120));
+		};
+		child.webContents.on("will-navigate", guard);
+		child.webContents.on("will-redirect", guard);
+		child.webContents.setWindowOpenHandler(({ url: nestedUrl }) => {
+			openExternalSafe(nestedUrl);
+			return { action: "deny" };
+		});
 	});
 
 	win.webContents.on("did-finish-load", () => {
@@ -937,6 +958,13 @@ function isAuthPopupHost(hostname) {
 	return AUTH_POPUP_HOSTS.has(host) || AUTH_POPUP_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix));
 }
 
+// https anywhere; plain http only to this computer's own loopback address (the app's local server, dev server)
+const LOOPBACK_POPUP_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+function isSafePopupUrl(parsed) {
+	if (parsed.protocol === "https:") return true;
+	return parsed.protocol === "http:" && LOOPBACK_POPUP_HOSTS.has(String(parsed.hostname || "").toLowerCase());
+}
+
 const POPUP_WEB_PREFERENCES = {
 	webSecurity: true,
 	devTools: false,
@@ -1031,6 +1059,16 @@ if (!hasSingleInstanceLock) {
 				handleProtocolUrl(deepLink);
 			}
 		}
+	});
+
+	// Every window the app ever creates: no embedded <webview>, and no new windows unless a window
+	// sets its own stricter rule (the main window does in createWindow). Links go to the system browser.
+	app.on("web-contents-created", (_event, contents) => {
+		contents.on("will-attach-webview", (event) => event.preventDefault());
+		contents.setWindowOpenHandler(({ url }) => {
+			openExternalSafe(url);
+			return { action: "deny" };
+		});
 	});
 
 	app.on("window-all-closed", () => {

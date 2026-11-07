@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+// No runtime code generation: zod otherwise probes `Function('')` to pick a faster path, which a strict
+// Content-Security-Policy (no 'unsafe-eval') reports as a violation on every page. Same results either way.
+z.config({ jitless: true });
+
 export interface Question {
   id: string;
   questionText: string;

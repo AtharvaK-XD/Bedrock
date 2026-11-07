@@ -128,6 +128,32 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
     expect(await userRow('u_bob')).toEqual({ subscription_tier: 'ultimate', plan: 'Ultimate Plan' });
   });
 
+  it('a 1 rupee order left over from the old create-order cannot unlock any plan, even when paid', async () => {
+    // Rows the old create-order wrote with the browser's amount (before 2026-11-07)
+    await q(`INSERT INTO "PaymentRecord"(id,user_id,order_id,amount,currency,status,tier,updated_at)
+             VALUES ('pr_old1','u_bob','order_OldCheapUlt1',100,'INR','created','ultimate',now()),
+                    ('pr_old2','u_bob','order_OldUsdPro001',47082,'USD','created','pro',now())`);
+    await q(`UPDATE "User" SET subscription_tier = 'free', plan = 'Free Plan' WHERE id = 'u_bob'`);
+    as('u_bob');
+    for (const [orderId, paymentId] of [['order_OldCheapUlt1', 'pay_OldCheap00001'], ['order_OldUsdPro001', 'pay_OldUsd000001']]) {
+      const r = await verify(orderId, paymentId);
+      expect(r.statusCode).toBe(409);
+      expect(r.body.code).toBe('ORDER_AMOUNT_MISMATCH');
+      expect((await q(`SELECT status FROM "PaymentRecord" WHERE order_id = $1`, [orderId]))[0].status).toBe('created');
+    }
+    expect(await userRow('u_bob')).toEqual({ subscription_tier: 'free', plan: 'Free Plan' });
+  });
+
+  it('a Pro payment never lowers an Ultimate account (the order is still recorded as paid)', async () => {
+    await q(`UPDATE "User" SET subscription_tier = 'ultimate', plan = 'Ultimate Plan' WHERE id = 'u_bob'`);
+    as('u_bob');
+    h.state.nextOrder = 'order_BobProLater1';
+    expect((await call(createOrder, { tier: 'pro' })).statusCode).toBe(200);
+    expect((await verify('order_BobProLater1', 'pay_BobProLater01')).statusCode).toBe(200);
+    expect(await userRow('u_bob')).toEqual({ subscription_tier: 'ultimate', plan: 'Ultimate Plan' });
+    expect((await q(`SELECT status FROM "PaymentRecord" WHERE order_id = 'order_BobProLater1'`))[0].status).toBe('captured');
+  });
+
   it('a payment id already used on another order is refused (unique payment_id)', async () => {
     as('u_alice');
     h.state.nextOrder = 'order_AliceAgain001';

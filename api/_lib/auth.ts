@@ -369,6 +369,30 @@ function isLocalDevRequest(req: VercelRequest): boolean {
   return LOCAL_DEV_HOSTNAMES.has(hostname);
 }
 
+const COOKIE_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/**
+ * CSRF guard for the cookie sign-in path. A browser attaches the Clerk "__session" cookie by itself, also to
+ * requests another site triggers; a Bearer header it never adds on its own. So for a state-changing request the
+ * cookie only counts when the request comes from Bedrock's own pages (Origin, or Referer when Origin is absent).
+ */
+function cookieSessionAllowed(req: VercelRequest): boolean {
+  const method = String(req.method || 'GET').toUpperCase();
+  if (COOKIE_SAFE_METHODS.has(method)) return true;
+  let origin = typeof req.headers.origin === 'string' ? req.headers.origin : '';
+  if (!origin && typeof req.headers.referer === 'string') {
+    try {
+      origin = new URL(req.headers.referer).origin;
+    } catch {
+      origin = '';
+    }
+  }
+  const host = typeof req.headers.host === 'string' ? req.headers.host : undefined;
+  if (origin && origin !== 'null' && isAllowedAppOrigin(origin, host)) return true;
+  console.warn(`[Auth] Ignored the session cookie on a ${method} request from origin ${origin.slice(0, 120) || '(none)'} (CSRF guard)`);
+  return false;
+}
+
 /**
  * Authenticates request via Clerk JWT or Bearer token, auto-provisioning the user in Neon DB.
  */
@@ -380,8 +404,8 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
   if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.slice(7).trim();
   } else if (cookieHeader) {
-    const match = cookieHeader.match(/__session=([^;]+)/);
-    if (match && match[1]) {
+    const match = cookieHeader.match(/(?:^|;\s*)__session=([^;]+)/);
+    if (match && match[1] && cookieSessionAllowed(req)) {
       token = match[1];
     }
   }

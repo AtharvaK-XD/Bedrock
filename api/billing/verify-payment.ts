@@ -4,6 +4,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, logSecurityEvent } from '../_lib/db.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import {
+  BILLING_CURRENCY,
   BILLING_PLANS,
   normalizePaidTier,
   RAZORPAY_ORDER_ID_RE,
@@ -79,12 +80,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const sql = getDb();
-    // Mark THIS user's still-unpaid order as paid and apply the plan stored on it, in one atomic statement
+    // Mark THIS user's still-unpaid order as paid and apply the plan stored on it, in one atomic statement.
+    // The stored amount must cover today's price of that plan: an order row written by the old create-order
+    // (which took the amount from the browser, so ₹1 orders exist) can never unlock a plan.
+    // A Pro payment never lowers an Ultimate account (the order is still recorded as paid).
     const upgraded = (await sql`
       WITH paid AS (
         UPDATE "PaymentRecord"
         SET payment_id = ${paymentId}, signature = ${signature}, status = 'captured', updated_at = NOW()
         WHERE order_id = ${orderId} AND user_id = ${user.id} AND status = 'created'
+          AND currency = ${BILLING_CURRENCY}
+          AND amount >= CASE WHEN tier = 'ultimate' THEN ${BILLING_PLANS.ultimate.amountPaise}::int ELSE ${BILLING_PLANS.pro.amountPaise}::int END
         RETURNING user_id, CASE WHEN tier = 'ultimate' THEN 'ultimate' ELSE 'pro' END AS tier
       )
       UPDATE "User" AS u
@@ -93,6 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           updated_at = NOW()
       FROM paid
       WHERE u.id = paid.user_id
+        AND (paid.tier = 'ultimate' OR COALESCE(u.subscription_tier, 'free') <> 'ultimate')
       RETURNING paid.tier AS tier
     `) as Array<{ tier: string }>;
 
@@ -100,8 +107,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!tier) {
       // Nothing changed: find out why (already verified, someone else's order, or an order we never created)
       const [order] = (await sql`
-        SELECT tier, status, payment_id FROM "PaymentRecord" WHERE order_id = ${orderId} AND user_id = ${user.id} LIMIT 1
-      `) as Array<{ tier: string; status: string; payment_id: string | null }>;
+        SELECT tier, status, payment_id, amount, currency FROM "PaymentRecord" WHERE order_id = ${orderId} AND user_id = ${user.id} LIMIT 1
+      `) as Array<{ tier: string; status: string; payment_id: string | null; amount: number; currency: string }>;
       if (!order) {
         await logSecurityEvent({
           userId: user.id,
@@ -115,6 +122,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           error: 'Order not found',
           code: 'ORDER_NOT_FOUND',
           message: 'This payment does not belong to an order of your account. If you were charged, please contact support.',
+        });
+      }
+      if (order.status === 'created') {
+        // Still unpaid after the update above: only the price check refuses that (an under-priced old order)
+        await logSecurityEvent({
+          userId: user.id,
+          eventType: 'PAYMENT_AMOUNT_MISMATCH',
+          severity: 'CRITICAL',
+          ipAddress: getClientIp(req),
+          message: `Order ${orderId} (${order.amount} ${order.currency}, ${order.tier}) does not cover the plan price; not upgraded`,
+        });
+        return res.status(409).json({
+          success: false,
+          error: 'Order does not match the plan price',
+          code: 'ORDER_AMOUNT_MISMATCH',
+          message: 'This order was created for a different price, so it cannot unlock a plan. If you were charged, please contact support.',
         });
       }
       if (order.status === 'captured' && order.payment_id === paymentId) {

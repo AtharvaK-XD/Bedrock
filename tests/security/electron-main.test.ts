@@ -11,6 +11,7 @@ const h = vi.hoisted(() => {
   const state = {
     handlers: new Map<string, (...args: any[]) => any>(),
     webContentsEvents: new Map<string, (...args: any[]) => any>(),
+    appEvents: new Map<string, (...args: any[]) => any>(),
     windowOpenHandler: null as null | ((d: { url: string }) => any),
     loadedUrl: '' as string,
     windowOptions: null as any,
@@ -77,7 +78,7 @@ vi.mock('electron', () => {
     setAppUserModelId: () => {},
     setAsDefaultProtocolClient: () => true,
     requestSingleInstanceLock: () => true,
-    on: () => {},
+    on: (event: string, fn: any) => state.appEvents.set(event, fn),
     whenReady: () => Promise.resolve(),
     getVersion: () => '0.0.0-test',
     getPath: () => state.userData,
@@ -294,6 +295,57 @@ describe('in-app popups', () => {
       expect(state.windowOpenHandler!({ url }).action).toBe('deny');
     }
     expect(shell.openExternal).toHaveBeenCalledTimes(7);
+  });
+
+  it('opens sign-in hosts in-app over https only; plain http only for this computer\'s loopback address', () => {
+    for (const url of ['http://accounts.google.com/o/oauth2/v2/auth', 'http://github.com/login/oauth', 'http://clerk.bedrockxai.com/v1/oauth']) {
+      expect(state.windowOpenHandler!({ url }).action).toBe('deny');
+    }
+    for (const url of ['http://127.0.0.1:43123/#/browser-auth', 'http://localhost:5173/sso-callback']) {
+      expect(state.windowOpenHandler!({ url }).action).toBe('allow');
+    }
+  });
+
+  function openPopup() {
+    const events = new Map<string, (...args: any[]) => any>();
+    let nestedOpen: null | ((d: { url: string }) => any) = null;
+    const child = { webContents: { on: (e: string, fn: any) => events.set(e, fn), setWindowOpenHandler: (fn: any) => { nestedOpen = fn; } } };
+    state.webContentsEvents.get('did-create-window')!(child, {});
+    const navigate = (url: string, event = 'will-navigate') => {
+      const ev = { preventDefault: vi.fn() };
+      events.get(event)!(ev, url);
+      return ev.preventDefault.mock.calls.length > 0 ? 'blocked' : 'allowed';
+    };
+    return { navigate, nestedOpen: (url: string) => nestedOpen!({ url }) };
+  }
+
+  it('lets a sign-in popup follow OAuth redirects, but never to local files or other schemes', () => {
+    const popup = openPopup();
+    for (const url of ['https://accounts.google.com/signin/oauth', 'https://clerk.bedrockxai.com/v1/oauth_callback', 'http://127.0.0.1:43123/sso-callback', 'about:blank']) {
+      expect(popup.navigate(url)).toBe('allowed');
+    }
+    for (const url of ['file:///C:/Windows/System32/drivers/etc/hosts', 'javascript:alert(1)', 'ms-msdt:/id', 'http://evil.example/phish', 'data:text/html,<h1>x</h1>']) {
+      expect(popup.navigate(url)).toBe('blocked');
+      expect(popup.navigate(url, 'will-redirect')).toBe('blocked');
+    }
+  });
+
+  it('a sign-in popup cannot open further in-app windows (http/https links go to the system browser)', () => {
+    const popup = openPopup();
+    expect(popup.nestedOpen('https://accounts.google.com/x').action).toBe('deny');
+    expect(popup.nestedOpen('file:///C:/x').action).toBe('deny');
+    expect(shell.openExternal).toHaveBeenCalledTimes(1);
+  });
+
+  it('every window the app creates refuses <webview> and new windows by default', () => {
+    const events = new Map<string, (...args: any[]) => any>();
+    let openHandler: null | ((d: { url: string }) => any) = null;
+    const contents = { on: (e: string, fn: any) => events.set(e, fn), setWindowOpenHandler: (fn: any) => { openHandler = fn; } };
+    state.appEvents.get('web-contents-created')!({}, contents);
+    const ev = { preventDefault: vi.fn() };
+    events.get('will-attach-webview')!(ev);
+    expect(ev.preventDefault).toHaveBeenCalled();
+    expect(openHandler!({ url: 'https://example.com/' }).action).toBe('deny');
   });
 });
 

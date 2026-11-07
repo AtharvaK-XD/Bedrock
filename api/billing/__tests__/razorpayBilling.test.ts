@@ -223,7 +223,8 @@ describe('POST /api/billing/verify-payment', () => {
     expect(r.body).toMatchObject({ success: true, tier: 'pro', plan: 'Pro Plan', order_id: ORDER, payment_id: PAYMENT });
     const stmt = h.state.sqlCalls[0];
     expect(stmt.text).toContain('WHERE order_id = $ AND user_id = $ AND status = \'created\'');
-    expect(stmt.values).toEqual([PAYMENT, body().razorpay_signature, ORDER, 'user_A']);
+    // + the price guard: currency and today's Ultimate / Pro prices (server constants, never from the request)
+    expect(stmt.values).toEqual([PAYMENT, body().razorpay_signature, ORDER, 'user_A', 'INR', 117_882, 47_082]);
     expect(stmt.values).not.toContain('ultimate');
   });
 
