@@ -7,6 +7,13 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { vi } from 'vitest';
+
+// Every file in tests/db imports this helper, so this applies to all of them. Starting an in-memory Postgres (a
+// WebAssembly engine) takes 1-3 s on an idle machine and several times that when the whole repo's tests run in parallel
+// (OPEN-0084); vitest's default of 5 s per test then fails a healthy test at random. 120 s only matters when
+// something is really stuck.
+vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
 
 export const DB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../db');
 export const MIGRATIONS_DIR = path.join(DB_DIR, 'migrations');

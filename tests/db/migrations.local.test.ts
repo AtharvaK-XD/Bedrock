@@ -1,7 +1,7 @@
 // In-memory Postgres (PGlite) tests for migrations 0005 and newer. Each protection is shown to be MISSING at 0004
 // and PRESENT after its migration, and the API's real query shapes are checked to still work.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { errorOf, loadPglite, migrateDown, migrateUp, newPrompt, readMigration, rows, seedUsers, splitStatements } from './helper';
+import { errorOf, loadPglite, migrateDown, migrateUp, newPrompt, readMigration, rows, runSql, seedUsers, splitStatements } from './helper';
 
 const PGlite = await loadPglite();
 
@@ -255,6 +255,19 @@ describe.skipIf(!PGlite)('migrations on in-memory Postgres', () => {
       expect(await errorOf(db, `UPDATE "User" SET birth_date = '2000-01-31', referral_source = repeat('r',500) WHERE id = 'ua'`)).toBeNull();
       expect(await errorOf(db, `UPDATE "User" SET birth_date = NULL, referral_source = NULL WHERE id = 'ua'`)).toBeNull();
     });
+
+    it('running the up file a second time (an interrupted run, then a retry) changes nothing and keeps saved answers', async () => {
+      const d = new PGlite();
+      const a = new Set<string>();
+      await migrateUp(d, a);
+      await seedUsers(d);
+      await d.query(`UPDATE "User" SET birth_date = '2000-01-31', referral_source = 'youtube' WHERE id = 'ua'`);
+      await runSql(d, readMigration('0018_onboarding_fields.up.sql'));
+      await runSql(d, readMigration('0018_onboarding_fields.up.sql'));
+      expect(await rows(d, `SELECT birth_date, referral_source FROM "User" WHERE id = 'ua'`)).toEqual([{ birth_date: '2000-01-31', referral_source: 'youtube' }]);
+      expect(await rows(d, `SELECT count(*)::int c FROM pg_constraint WHERE conname = 'User_onboarding_size_chk'`)).toEqual([{ c: 1 }]);
+      await d.close();
+    }, 120_000);
 
     it('the existing "User" checks still apply next to it', async () => {
       expect(await errorOf(db, `UPDATE "User" SET bio = repeat('b',5001) WHERE id = 'ub'`)).toMatch(/User_text_size_chk/);
