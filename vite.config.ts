@@ -6,6 +6,7 @@ import { KNOWN_SERVER_ONLY_VITE_VARS, isSecretLikeViteVar } from './viteEnvGuard
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const serverEnv = loadEnv(mode, process.cwd(), '');
   // The known server-only names, plus ANY VITE_ variable whose name looks like a secret (viteEnvGuard.ts)
   const FORBIDDEN_SECRETS = [
     ...new Set([...KNOWN_SERVER_ONLY_VITE_VARS, ...Object.keys(env).filter(isSecretLikeViteVar)]),
@@ -45,8 +46,8 @@ export default defineConfig(({ mode }) => {
                   try {
                     const body = bodyStr ? JSON.parse(bodyStr) : {};
                     const amount = Number(body.amount) || 39900;
-                    const keyId = process.env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TxDt5ASdEdwHRM';
-                    const keySecret = process.env.RAZORPAY_KEY_SECRET || 'Y8UNcE1AWjLMac4pzwqpEH4u';
+                    const keyId = serverEnv.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID || '';
+                    const keySecret = serverEnv.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET || '';
 
                     const Razorpay = (await import('razorpay')).default;
                     const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
@@ -86,7 +87,7 @@ export default defineConfig(({ mode }) => {
                     const orderId = body.razorpay_order_id || body.orderId || body.order_id;
                     const paymentId = body.razorpay_payment_id || body.paymentId || body.payment_id;
                     const signature = body.razorpay_signature || body.signature;
-                    const keySecret = process.env.RAZORPAY_KEY_SECRET || 'Y8UNcE1AWjLMac4pzwqpEH4u';
+                    const keySecret = serverEnv.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET || '';
 
                     const crypto = await import('node:crypto');
                     const text = `${orderId}|${paymentId}`;
