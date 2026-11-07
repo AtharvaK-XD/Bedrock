@@ -15,6 +15,7 @@ import { cn } from '../lib/utils';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
 import { addPromptToHistory, getStoredGeneratorHistory, type HistoryPromptItem } from '../lib/generatorHistory';
 import { recordExecutionTrace } from '../lib/telemetry';
+import { isQuotaCode } from '../lib/quotaErrors';
 import { isDesktopApp } from '../lib/platform';
 import { ExportModal } from '../components/ui/ExportModal';
 import { GeneratorHistorySidebar } from '../components/generator/GeneratorHistorySidebar';
@@ -295,15 +296,12 @@ export default function Result() {
                   role: 'ai', 
                   content: "⚠️ API Key Error: Your API key is invalid or not configured. Please enter a valid API key in Settings > API Keys to continue refinement." 
                 }]);
-              } else if (err?.code === 'FREE_TIER_QUOTA_EXCEEDED' || err?.statusCode === 429 || err?.message?.toLowerCase().includes('limit')) {
-                setChatHistory(prev => [...prev, { 
-                  role: 'ai', 
-                  content: "⚠️ Daily Limit Reached: Free tier accounts can generate up to 10 prompts per 5-hour session. Please try again tomorrow or upgrade to Pro or Ultimate for unlimited refinements." 
-                }]);
+              } else if (isQuotaCode(err?.code) || err?.statusCode === 429) {
+                setChatHistory(prev => [...prev, { role: 'ai', content: err?.message || 'You have reached your usage limit for now. Please try again in a little while.' }]);
               } else if (err?.code === 'AI_BUSY') {
                 setChatHistory(prev => [...prev, { role: 'ai', content: err.message }]);
               } else {
-                setChatHistory(prev => [...prev, { role: 'ai', content: err?.message || "Sorry, I encountered an error while updating the document. Please try again tomorrow or upgrade your plan." }]);
+                setChatHistory(prev => [...prev, { role: 'ai', content: err?.message || "Sorry, I couldn't update the document just now. Please try again." }]);
               }
             } finally {
               setIsRefining(false);

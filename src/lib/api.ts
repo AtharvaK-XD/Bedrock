@@ -43,6 +43,8 @@ import {
 } from './appSettings';
 import { isDesktopApp } from './platform';
 import { reportSyncProblem, describeSaveLimit } from './syncNotice';
+import { parseQuotaResponse } from './quotaErrors';
+import { GROQ_MAIN_MODEL, GROQ_FAST_MODEL, replaceRetiredModel, groqModelExtras } from './retiredModels';
 export type {
 
   ModelTuningConfig,
@@ -405,10 +407,11 @@ export async function callGroq(
   const strictJsonMode = modelSettings.strictJsonMode || false;
   const pacedOnToken = onToken ? createStreamingPacer(modelSettings.streamSpeed, onToken) : undefined;
 
-  // Official production Groq models (zero 404 fictitious slugs)
-  const modelsToTry = targetModel && !targetModel.includes('gpt-oss') && !targetModel.includes('qwen3.8')
-    ? [targetModel, 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'deepseek-r1-distill-llama-70b']
-    : ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'deepseek-r1-distill-llama-70b'];
+  // Current Groq production models. A retired model the caller still names is swapped for its replacement.
+  const requested = replaceRetiredModel(targetModel);
+  const modelsToTry = requested && requested !== GROQ_MAIN_MODEL && requested !== GROQ_FAST_MODEL
+    ? [requested, GROQ_MAIN_MODEL, GROQ_FAST_MODEL]
+    : [GROQ_MAIN_MODEL, GROQ_FAST_MODEL];
 
   const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: Error | null = null;
@@ -429,7 +432,7 @@ export async function callGroq(
             { role: 'user', content: prompt },
           ],
           temperature: effectiveTemp,
-          max_tokens: maxOutputTokens,
+          ...groqModelExtras(model, maxOutputTokens),
           top_p: topP,
           stream: isStreaming,
           ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),
@@ -716,6 +719,15 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+/** The error for a 429 from the Bedrock server, using the server's own (accurate) message and code. */
+async function quotaApiError(response: Response): Promise<ApiError> {
+  const info = await parseQuotaResponse(response);
+  const err = new ApiError(info.message, false, 'Bedrock Cloud', 429);
+  (err as any).code = info.code;
+  (err as any).showUpgrade = info.showUpgrade;
+  return err;
+}
+
 /** Seconds to wait when the Bedrock server answered 503 "AI providers busy" (see api/_lib/aiHttp.ts), else null. */
 export async function readServerBusySeconds(response: Response): Promise<number | null> {
   if (response.status !== 503) return null;
@@ -729,13 +741,25 @@ export async function readServerBusySeconds(response: Response): Promise<number 
 /** Shown instead of the "no API key" message when the only reason we failed is a busy server. */
 export function serverBusyError(seconds: number): ApiError {
   const err = new ApiError(
-    `Bedrock's AI is busy right now. Please try again in ${seconds} seconds.`,
+    `Bedrock is busy right now. Please try again in ${seconds} seconds.`,
     false,
     'Bedrock Cloud',
     503
   );
   (err as any).code = 'AI_BUSY';
   (err as any).retryAfterSeconds = seconds;
+  return err;
+}
+
+/** Used when the server could not be reached or answered with an error that has no usable message. Not a usage limit. */
+export function serverUnavailableError(): ApiError {
+  const err = new ApiError(
+    "Bedrock couldn't complete that request right now. Please try again in a moment.",
+    false,
+    'Bedrock Cloud',
+    503
+  );
+  (err as any).code = 'SERVER_UNAVAILABLE';
   return err;
 }
 
@@ -758,15 +782,7 @@ export const generateQuestions = async (payload: IdeaPayload): Promise<Question[
         return normalized;
       }
     } else if (response.status === 429) {
-      const errData = await response.json().catch(() => ({}));
-      const quotaErr = new ApiError(
-        errData.message || 'Free tier daily limit reached. Please try again tomorrow or upgrade to Pro or Ultimate plan.',
-        false,
-        'Bedrock Cloud',
-        429
-      );
-      (quotaErr as any).code = 'FREE_TIER_QUOTA_EXCEEDED';
-      throw quotaErr;
+      throw await quotaApiError(response);
     } else {
       serverBusySeconds = await readServerBusySeconds(response);
     }
@@ -1032,15 +1048,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
     }
 
     if (response.status === 429) {
-      const errData = await response.json().catch(() => ({}));
-      const quotaErr = new ApiError(
-        errData.message || 'Free tier accounts can generate up to 10 prompts per 5-hour session. Please upgrade to Pro for unlimited prompts.',
-        false,
-        'Bedrock Vault',
-        429
-      );
-      (quotaErr as any).code = 'FREE_TIER_QUOTA_EXCEEDED';
-      throw quotaErr;
+      throw await quotaApiError(response);
     }
     serverBusySeconds = await readServerBusySeconds(response);
   } catch (err: any) {
@@ -1078,12 +1086,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
   }
 
   if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
-  throw new ApiError(
-    'Daily generation limit reached or server unavailable. Please try again tomorrow or upgrade to Pro or Ultimate plan.',
-    false,
-    'Bedrock Cloud',
-    429
-  );
+  throw serverUnavailableError();
 };
 
 export const refinePrompt = async (
@@ -1158,15 +1161,7 @@ export const refinePrompt = async (
         };
       }
     } else if (response.status === 429) {
-      const errData = await response.json().catch(() => ({}));
-      const quotaErr = new ApiError(
-        errData.message || 'Free tier daily limit reached. Please try again tomorrow or upgrade to Pro or Ultimate plan.',
-        false,
-        'Bedrock Cloud',
-        429
-      );
-      (quotaErr as any).code = 'FREE_TIER_QUOTA_EXCEEDED';
-      throw quotaErr;
+      throw await quotaApiError(response);
     }
     serverBusySeconds = await readServerBusySeconds(response);
   } catch (err: any) {
@@ -1187,12 +1182,7 @@ export const refinePrompt = async (
     );
   }
 
-  throw new ApiError(
-    'Daily refinement limit reached or server unavailable. Please try again tomorrow or upgrade to Pro or Ultimate plan.',
-    false,
-    'Bedrock Cloud',
-    429
-  );
+  throw serverUnavailableError();
 };
 
 export interface ArenaBenchmarkMetrics {

@@ -95,7 +95,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     recommendedModels: [
       'gemini-3.8-flash',
       'claude-3-5-sonnet',
-      'deepseek-r1-distill-llama-70b',
+      'openai/gpt-oss-20b',
       'gpt-4o-mini',
     ],
     unreliableModels: ['hf/zephyr-7b-beta', 'hf/Meta-Llama-3-8B-Instruct'],
@@ -186,7 +186,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     recommendedModels: [
       'gemini-3.8-flash',
       'gpt-4o-mini',
-      'llama-3.3-70b-versatile',
+      'openai/gpt-oss-120b',
       'claude-3-5-sonnet',
     ],
     unreliableModels: ['hf/zephyr-7b-beta'],
@@ -259,7 +259,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
       'gemini-3.8-flash',
       'claude-3-5-sonnet',
       'gpt-4o-mini',
-      'llama-3.3-70b-versatile',
+      'openai/gpt-oss-120b',
     ],
     unreliableModels: ['hf/zephyr-7b-beta'],
     questionPrompt: buildQuestionsSystemPrompt('writing'),
@@ -315,7 +315,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     ],
     recommendedModels: [
       'gemini-3.8-flash',
-      'llama-3.3-70b-versatile',
+      'openai/gpt-oss-120b',
       'gpt-4o-mini',
       'claude-3-5-sonnet',
     ],
@@ -371,10 +371,10 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
       '## Tech Stack & Sponsor Bounties',
     ],
     recommendedModels: [
-      'llama-3.3-70b-versatile',
+      'openai/gpt-oss-120b',
       'gemini-3.8-flash',
       'gpt-4o-mini',
-      'deepseek-r1-distill-llama-70b',
+      'openai/gpt-oss-20b',
     ],
     unreliableModels: ['hf/zephyr-7b-beta'],
     questionPrompt: buildQuestionsSystemPrompt('hackathon_pitch'),
@@ -431,7 +431,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     ],
     recommendedModels: [
       'gemini-3.8-flash',
-      'llama-3.3-70b-versatile',
+      'openai/gpt-oss-120b',
       'gpt-4o-mini',
     ],
     unreliableModels: ['hf/zephyr-7b-beta'],
@@ -482,7 +482,7 @@ export const USE_CASE_PROFILES: Record<UseCaseProfileId, UseCaseProfile> = {
     recommendedModels: [
       'gemini-3.8-flash',
       'gpt-4o-mini',
-      'llama-3.3-70b-versatile',
+      'openai/gpt-oss-120b',
     ],
     unreliableModels: ['hf/zephyr-7b-beta'],
     questionPrompt: buildQuestionsSystemPrompt('video_generation'),

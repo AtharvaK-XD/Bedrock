@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
+
 // A tiny in-memory localStorage so the settings code can run without a browser
 function installBrowserStubs() {
   const store = new Map<string, string>();

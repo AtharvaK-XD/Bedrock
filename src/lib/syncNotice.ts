@@ -25,3 +25,14 @@ export function reportSyncProblem(message: string): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent<string>(SYNC_NOTICE_EVENT, { detail: message }));
 }
+
+/**
+ * Text for a failed cloud call. When the server says it is briefly unavailable (HTTP 503, for example while its
+ * rate limiter or usage check is down) the user is told to simply try again, instead of getting the generic message.
+ */
+export function syncFailureMessage(res: Response, fallback: string): string {
+  if (res.status === 503) {
+    return 'Bedrock is briefly unavailable. Please try again in a moment. Anything you saved is still on this device.';
+  }
+  return fallback;
+}

@@ -1,7 +1,7 @@
 import type { HistoryPromptItem } from './generatorHistory';
 import { getActivePrivacySettings, scrubSecrets, getSessionTokensCount, isLocalVaultOnly } from './appSettings';
 import { announceRunFinished } from './notify';
-import { reportSyncProblem, describeSaveLimit } from './syncNotice';
+import { reportSyncProblem, describeSaveLimit, syncFailureMessage } from './syncNotice';
 import { isDesktopApp } from './platform';
 
 // Only server-side trouble (5xx) or rate limiting (429) is worth interrupting the user for.
@@ -200,7 +200,7 @@ export async function savePromptToDb(prompt: {
     if (limitMessage) {
       reportSyncProblem(limitMessage);
     } else if (isSyncFailure(res)) {
-      reportSyncProblem("Couldn't back up your prompt to the cloud. It is still saved on this device.");
+      reportSyncProblem(syncFailureMessage(res, "Couldn't back up your prompt to the cloud. It is still saved on this device."));
     } else if (res.ok) {
       const data = await res.json().catch(() => null);
       return typeof data?.id === 'string' && data.id ? data.id : null;
@@ -239,7 +239,7 @@ export async function fetchUserPromptsFromDb(): Promise<HistoryPromptItem[]> {
         }));
       }
     } else if (isSyncFailure(res)) {
-      reportSyncProblem("Couldn't load your cloud history. Showing what is saved on this device.");
+      reportSyncProblem(syncFailureMessage(res, "Couldn't load your cloud history. Showing what is saved on this device."));
     }
   } catch (err) {
     console.warn('[Prompts] Failed to fetch prompts from DB:', err);
@@ -257,7 +257,7 @@ export async function deletePromptFromDb(id: string): Promise<void> {
       headers,
     });
     if (isSyncFailure(res)) {
-      reportSyncProblem("Couldn't remove this prompt from the cloud. It may reappear after a refresh.");
+      reportSyncProblem(syncFailureMessage(res, "Couldn't remove this prompt from the cloud. It may reappear after a refresh."));
     }
   } catch (err) {
     console.warn('[Prompts] Failed to delete prompt from DB:', err);

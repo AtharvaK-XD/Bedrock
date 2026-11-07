@@ -29,6 +29,7 @@ import {
 import { isDesktopApp } from './platform';
 import { getRequiredProviderForModel, isModelKeyConfigured } from './apiKeysHelper';
 import { findDiscoveredModelProvider, type DirectProviderId } from './discoveredModelRouting';
+import { GROQ_MAIN_MODEL, replaceRetiredModel, groqModelExtras } from './retiredModels';
 
 
 export type ModelTier = 'frontier' | 'mid' | 'compact';
@@ -816,7 +817,7 @@ export async function callLLMWithMeta(
     if (modelSettings.defaultModel && modelSettings.defaultModel !== 'auto') {
       effectiveModelId = modelSettings.defaultModel;
     } else if (keys.geminiKey) effectiveModelId = 'gemini-flash-latest';
-    else if (keys.groqKey) effectiveModelId = 'llama-3.3-70b-versatile';
+    else if (keys.groqKey) effectiveModelId = GROQ_MAIN_MODEL;
     else if (keys.openAiKey) effectiveModelId = 'gpt-4o';
     else if (keys.openRouterKey) effectiveModelId = 'openai/gpt-4o-mini';
     else effectiveModelId = 'gemini-flash-latest';
@@ -1148,7 +1149,7 @@ async function dispatchProviderCall(
           effectiveUserPrompt,
           effectiveSystemPrompt,
           keys.groqKey,
-          'llama-3.3-70b-versatile',
+          GROQ_MAIN_MODEL,
           temperature,
           onToken,
           maxOutputTokens,
@@ -1279,7 +1280,7 @@ async function dispatchProviderCall(
           effectiveUserPrompt,
           effectiveSystemPrompt,
           keys.groqKey,
-          'llama-3.3-70b-versatile',
+          GROQ_MAIN_MODEL,
           temperature,
           onToken,
           maxOutputTokens,
@@ -1434,7 +1435,7 @@ async function dispatchProviderCall(
           effectiveUserPrompt,
           effectiveSystemPrompt,
           keys.groqKey,
-          'llama-3.3-70b-versatile',
+          GROQ_MAIN_MODEL,
           temperature,
           onToken,
           maxOutputTokens,
@@ -1466,7 +1467,7 @@ async function dispatchProviderCall(
       effectiveUserPrompt,
       effectiveSystemPrompt,
       keys.groqKey,
-      'llama-3.3-70b-versatile',
+      GROQ_MAIN_MODEL,
       temperature,
       onToken,
       maxOutputTokens,
@@ -2010,10 +2011,12 @@ async function callGroqDirect(
   /** true: run exactly targetModel (a model the user picked), with no renaming and no substitute models */
   exactModel = false
 ): Promise<string> {
+  // A retired model (for example from an old saved workflow) is swapped for its replacement first
+  const requestedModel = replaceRetiredModel(targetModel);
   const modelsToTry = exactModel
-    ? [targetModel]
+    ? [requestedModel]
     : [
-        targetModel.includes('llama') ? 'qwen/qwen3.8-27b' : targetModel,
+        requestedModel.includes('llama') ? 'qwen/qwen3.8-27b' : requestedModel,
         'qwen/qwen3.8-27b',
         'openai/gpt-oss-120b',
         'openai/gpt-oss-20b',
@@ -2037,7 +2040,7 @@ async function callGroqDirect(
             { role: 'user', content: prompt },
           ],
           temperature,
-          max_tokens: maxOutputTokens,
+          ...groqModelExtras(model, maxOutputTokens),
           top_p: topP,
           stream: isStreaming,
           ...(strictJsonMode ? { response_format: { type: 'json_object' } } : {}),

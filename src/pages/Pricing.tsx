@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -8,13 +8,17 @@ import {
   CreditCard,
   Mail,
   User,
-  Zap
+  Zap,
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
-import { useUserProfile } from '../lib/useUserProfile';
+import { useUserProfile, syncRemoteUserProfile } from '../lib/useUserProfile';
 import { normalizeTier } from '../lib/subscriptionTiers';
 import { startRazorpayCheckout } from '../lib/razorpay';
+
+const SUPPORT_EMAIL = 'bedrockofficialpage@gmail.com';
 
 interface PricingTier {
   name: string;
@@ -97,12 +101,18 @@ export default function Pricing() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Messages about the payment itself. They live on the page (not inside the confirmation window), because that
+  // window closes as soon as Razorpay opens, and a declined, cancelled or unconfirmed payment must never go unnoticed.
+  const [paymentNotice, setPaymentNotice] = useState<{ kind: 'error' | 'pending' | 'info'; title: string; message: string } | null>(null);
+  const razorpayOpenRef = useRef(false);
+  const paymentDoneRef = useRef(false);
 
   const handleOpenCheckout = (tier: PricingTier) => {
     if (tier.slug === 'free') return;
     setBillingName(profile?.name || 'Prompt Architect');
     setBillingEmail(profile?.email || '');
     setErrorMessage(null);
+    setPaymentNotice(null);
     setPaymentSuccess(false);
     setCheckoutTier(tier);
   };
@@ -116,6 +126,9 @@ export default function Pricing() {
 
     setIsProcessing(true);
     setErrorMessage(null);
+    setPaymentNotice(null);
+    razorpayOpenRef.current = false;
+    paymentDoneRef.current = false;
 
     const targetPlanName = checkoutTier.slug === 'ultimate' ? 'Ultimate Plan' : 'Pro Plan';
     // totalPrice is display text such as '1,178.82': parseFloat stops at the comma (it read 1, so Ultimate was
@@ -132,11 +145,15 @@ export default function Pricing() {
         userName: billingName,
         userEmail: billingEmail,
         onOpen: () => {
+          razorpayOpenRef.current = true;
           // Dismiss the intermediate Bedrock confirmation modal so Razorpay floats cleanly above Bedrock
           setCheckoutTier(null);
           setIsProcessing(false);
         },
         onSuccess: (_verifyResult) => {
+          paymentDoneRef.current = true;
+          // Take the plan from the server (it is the source of truth), then keep the local copy in step
+          syncRemoteUserProfile().catch(() => {});
           updateProfile({
             name: billingName,
             email: billingEmail,
@@ -152,10 +169,38 @@ export default function Pricing() {
         },
         onError: (err) => {
           setIsProcessing(false);
-          setErrorMessage(err || 'Payment processing failed. Please try again.');
+          const text = err || 'Payment processing failed. Please try again.';
+          if (razorpayOpenRef.current) {
+            // The confirmation window is already closed: show the reason on the page
+            setPaymentNotice({
+              kind: 'error',
+              title: 'Payment did not go through',
+              message: `${text} You have not been charged for a failed payment. You can try again whenever you are ready.`,
+            });
+          } else {
+            setErrorMessage(text);
+          }
+        },
+        onVerificationFailed: ({ message, paymentId }) => {
+          setIsProcessing(false);
+          paymentDoneRef.current = true;
+          setPaymentNotice({
+            kind: 'pending',
+            title: 'Your payment went through, but we could not activate your plan yet',
+            message: `Please do not pay again. Your payment reference is ${paymentId}. Your plan should update on its own shortly; if it has not within a few minutes, email ${SUPPORT_EMAIL} with that reference and we will fix it. (${message})`,
+          });
+          // Ask the server again: the payment may already be recorded
+          syncRemoteUserProfile().catch(() => {});
         },
         onDismiss: () => {
           setIsProcessing(false);
+          if (!paymentDoneRef.current) {
+            setPaymentNotice({
+              kind: 'info',
+              title: 'Payment cancelled',
+              message: 'No payment was taken. You can start again from any plan below.',
+            });
+          }
         },
       });
     } catch (err: any) {
@@ -186,6 +231,43 @@ export default function Pricing() {
             Predictable flat-rate pricing for high-throughput prompt engineering and multi-agent DAG pipelines.
           </motion.p>
         </div>
+
+        {/* Payment status banner: stays visible after the Razorpay window closes */}
+        <AnimatePresence>
+          {paymentNotice && (
+            <motion.div
+              key={paymentNotice.title}
+              role="alert"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className={cn(
+                'max-w-3xl mx-auto mb-10 flex items-start gap-3 rounded-2xl border p-4 text-sm',
+                paymentNotice.kind === 'error' && 'border-rose-500/30 bg-rose-500/10 text-rose-100',
+                paymentNotice.kind === 'pending' && 'border-amber-500/30 bg-amber-500/10 text-amber-100',
+                paymentNotice.kind === 'info' && 'border-white/15 bg-white/[0.04] text-gray-200'
+              )}
+            >
+              {paymentNotice.kind === 'info' ? (
+                <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              ) : (
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              )}
+              <div className="flex-1 space-y-1">
+                <p className="font-semibold">{paymentNotice.title}</p>
+                <p className="text-xs leading-relaxed opacity-90">{paymentNotice.message}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentNotice(null)}
+                aria-label="Dismiss payment message"
+                className="shrink-0 cursor-pointer opacity-70 transition-opacity hover:opacity-100"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Tier Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
@@ -332,7 +414,7 @@ export default function Pricing() {
                   <div>
                     <h4 className="text-xl font-bold text-white font-display">Payment Confirmed!</h4>
                     <p className="text-xs text-zinc-400 mt-1 max-w-sm">
-                      Your workspace has been upgraded to the <span className="text-white font-semibold">{(purchasedTier || checkoutTier)?.name} Plan</span>. Tax invoice emailed to <span className="text-copper-300 font-mono">{billingEmail}</span>.
+                      Your workspace has been upgraded to the <span className="text-white font-semibold">{(purchasedTier || checkoutTier)?.name} Plan</span>.
                     </p>
                   </div>
                 </div>
@@ -409,7 +491,7 @@ export default function Pricing() {
                   </button>
 
                   <p className="text-[10px] text-zinc-500 text-center font-mono">
-                    Instant activation · Cancel or switch plans anytime · Tax invoice sent to email
+                    Activated as soon as the payment is confirmed · Secure checkout by Razorpay
                   </p>
                 </div>
               ) : null}

@@ -10,6 +10,7 @@
  */
 
 import { ApiError } from './api';
+import { replaceRetiredModel } from './retiredModels';
 
 // ============================================================================
 // STORAGE KEYS & EVENT CONSTANTS
@@ -170,7 +171,10 @@ function readStored<T extends object>(key: string, defaults: T): T {
 }
 
 export function getActiveModelSettings(): ModelInferenceSettings {
-  return readStored(STORAGE_KEY_MODEL_SETTINGS, DEFAULT_MODEL_SETTINGS);
+  const stored = readStored(STORAGE_KEY_MODEL_SETTINGS, DEFAULT_MODEL_SETTINGS);
+  // A default model that Groq has since retired is replaced, so older saved settings keep working
+  const defaultModel = replaceRetiredModel(stored.defaultModel);
+  return defaultModel === stored.defaultModel ? stored : { ...stored, defaultModel };
 }
 
 export function getActiveTokenSettings(): TokenSettings {

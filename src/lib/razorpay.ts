@@ -27,6 +27,11 @@ export interface RazorpayCheckoutConfig {
   userEmail: string;
   onSuccess: (verifyResult: any) => void;
   onError: (error: string) => void;
+  /**
+   * The payment WENT THROUGH at Razorpay, but our server could not confirm it (network or server error).
+   * Different from onError: the user may have been charged, so the screen must say so and must not invite a second payment.
+   */
+  onVerificationFailed?: (info: { message: string; paymentId: string }) => void;
   onOpen?: () => void;
   onDismiss?: () => void;
 }
@@ -199,6 +204,8 @@ export async function startRazorpayCheckout(config: RazorpayCheckoutConfig): Pro
       color: '#2C9A8B', // Bedrock signature copper/teal accent
       backdrop_color: '#050505',
     },
+    // Close the checkout by itself after 15 minutes without a payment (the dismiss callback then runs)
+    timeout: 900,
     handler: async function (response: RazorpayPaymentSuccessResponse) {
       try {
         const verifyResult = await verifyRazorpayPayment({
@@ -209,7 +216,12 @@ export async function startRazorpayCheckout(config: RazorpayCheckoutConfig): Pro
         });
         config.onSuccess(verifyResult);
       } catch (verifyErr: any) {
-        config.onError(verifyErr.message || 'Payment verification failed. Please contact support.');
+        const message = verifyErr?.message || 'Payment verification failed.';
+        if (config.onVerificationFailed) {
+          config.onVerificationFailed({ message, paymentId: response.razorpay_payment_id });
+        } else {
+          config.onError(message);
+        }
       }
     },
     modal: {

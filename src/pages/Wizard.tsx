@@ -8,6 +8,7 @@ import PixelCard from '../components/ui/PixelCard';
 import { EncryptedText } from '../components/ui/encrypted-text';
 import { Button as StatefulButton } from '../components/ui/stateful-button';
 import { generateQuestions, synthesizePrompt, getActiveApiKeys, normalizeQuestions } from '../lib/api';
+import { isQuotaCode, quotaTitle } from '../lib/quotaErrors';
 import type { Question, Answer, IdeaPayload } from '../lib/api';
 import { openApiKeyModal } from '../lib/apiKeyEvents';
 import { cn } from '../lib/utils';
@@ -87,6 +88,7 @@ export default function Wizard() {
     type: 'api_key' | 'general';
     title: string;
     message: string;
+    showUpgrade?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -196,18 +198,15 @@ export default function Wizard() {
         status: 'ERR',
       });
 
-      const isQuotaError = Boolean(
-        err?.code === 'FREE_TIER_QUOTA_EXCEEDED' ||
-        err?.statusCode === 429 ||
-        err?.message?.toLowerCase().includes('quota') ||
-        err?.message?.toLowerCase().includes('limit')
-      );
+      // The server says exactly which limit was hit and what to do about it, so its message is shown as written
+      const isQuotaError = isQuotaCode(err?.code) || err?.statusCode === 429;
 
       if (isQuotaError && !isDesktopApp()) {
         setErrorBanner({
           type: 'general',
-          title: 'Daily Limit Reached',
-          message: 'You have reached your daily generation limit. Please try again tomorrow or upgrade to a Pro or Ultimate plan.',
+          title: quotaTitle(err?.code),
+          message: err?.message || 'You have reached your usage limit for now. Please try again in a little while.',
+          showUpgrade: Boolean(err?.showUpgrade),
         });
         return;
       }
@@ -293,18 +292,15 @@ export default function Wizard() {
         status: 'ERR',
       });
 
-      const isQuotaError = Boolean(
-        err?.code === 'FREE_TIER_QUOTA_EXCEEDED' ||
-        err?.statusCode === 429 ||
-        err?.message?.toLowerCase().includes('quota') ||
-        err?.message?.toLowerCase().includes('limit')
-      );
+      // The server says exactly which limit was hit and what to do about it, so its message is shown as written
+      const isQuotaError = isQuotaCode(err?.code) || err?.statusCode === 429;
 
       if (isQuotaError && !isDesktopApp()) {
         setErrorBanner({
           type: 'general',
-          title: 'Daily Limit Reached',
-          message: 'You have reached your daily generation limit. Please try again tomorrow or upgrade to a Pro or Ultimate plan.',
+          title: quotaTitle(err?.code),
+          message: err?.message || 'You have reached your usage limit for now. Please try again in a little while.',
+          showUpgrade: Boolean(err?.showUpgrade),
         });
         return;
       }
@@ -483,7 +479,7 @@ export default function Wizard() {
                             <span>Enter API Keys</span>
                           </button>
                         )}
-                        {!isDesktop && (errorBanner.title.toLowerCase().includes('limit') || errorBanner.message.toLowerCase().includes('upgrade')) && (
+                        {!isDesktop && errorBanner.showUpgrade && (
                           <button
                             type="button"
                             onClick={() => navigate('/app/pricing')}
