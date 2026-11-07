@@ -11,8 +11,8 @@ import { getUserTelemetry, clearUserTraces, TELEMETRY_UPDATE_EVENT, type UserTel
 import { useUserProfile } from '../lib/useUserProfile';
 import { usePromptQuota } from '../lib/usePromptQuota';
 import { normalizeTier } from '../lib/subscriptionTiers';
-import { formatCurrency } from '../lib/appSettings';
 import { isDesktopApp, modKeyLabel } from '../lib/platform';
+import { planPriceLabel } from '../lib/pricing';
 
 
 const QUICK_ACTIONS = [
@@ -215,7 +215,7 @@ export default function Dashboard() {
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-mono text-xs uppercase tracking-wider font-bold transition-all shadow-lg shadow-copper-500/25 active:scale-[0.98]"
                   >
                     <Zap className="w-3.5 h-3.5" />
-                    <span>Upgrade Plan ({formatCurrency(4.99)})</span>
+                    <span>Upgrade Plan ({planPriceLabel('pro')})</span>
                   </Link>
 
                 ) : (

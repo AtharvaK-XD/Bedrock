@@ -38,6 +38,7 @@ import { getModelGroups, type ModelGroup } from '../lib/modelCatalog';
 import { fetchAnthropicModels, ANTHROPIC_MODELS_EVENT } from '../lib/anthropicModels';
 import { syncAllConfiguredModels, DYNAMIC_MODELS_UPDATED_EVENT } from '../lib/dynamicModelDiscovery';
 import { checkProviderKey, type KeyCheckResult } from '../lib/keyCheck';
+import { useDialogBehavior } from '../lib/useDialogBehavior';
 import { showToast, osNotificationsSupported, requestOsNotificationPermission } from '../lib/notify';
 import { applyAnalyticsConsent } from '../lib/analyticsConsent';
 import { isBackupKey } from '../lib/backupPolicy';
@@ -187,11 +188,19 @@ export default function Settings() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
   const [deleteState, setDeleteState] = useState<{
     status: 'idle' | 'deleting' | 'error' | 'success';
     message?: string;
   }>({ status: 'idle' });
+
+  useDialogBehavior(
+    deleteDialogRef,
+    showDeleteModal,
+    // Escape cancels, except while the deletion is running or has finished
+    deleteState.status === 'idle' || deleteState.status === 'error' ? () => setShowDeleteModal(false) : undefined
+  );
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmInput !== 'DELETE') return;
@@ -225,7 +234,10 @@ export default function Settings() {
 
       setDeleteState({
         status: 'success',
-        message: data.message || 'Your account and all associated data have been permanently deleted.',
+        message:
+          (data.message || 'Your account and all associated data have been permanently deleted.') +
+          // The data is gone, but removing the sign-in itself can lag behind: say so instead of implying it is instant
+          (data.signInRemoved === false ? ' Removing your sign-in can take a few more minutes.' : ''),
       });
 
       setTimeout(async () => {
@@ -1617,6 +1629,10 @@ export default function Settings() {
         {showDeleteModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <motion.div
+              ref={deleteDialogRef}
+              role="alertdialog"
+              aria-modal="true"
+              aria-label="Delete account"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -1639,6 +1655,7 @@ export default function Settings() {
                   <li>All saved prompts and templates</li>
                   <li>All branching trees and workflows</li>
                   <li>All usage telemetry, quota records, and history</li>
+                  <li>Settings and any API keys saved on this device (you will need to enter keys again if you sign up later)</li>
                 </ul>
               </div>
 

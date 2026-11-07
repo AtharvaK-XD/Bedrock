@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useDialogBehavior } from '../lib/useDialogBehavior';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -17,6 +18,7 @@ import { PageTransition } from '../components/layout/PageTransition';
 import { useUserProfile, syncRemoteUserProfile } from '../lib/useUserProfile';
 import { normalizeTier } from '../lib/subscriptionTiers';
 import { startRazorpayCheckout } from '../lib/razorpay';
+import { getPlanPrice } from '../lib/pricing';
 
 const SUPPORT_EMAIL = 'bedrockofficialpage@gmail.com';
 
@@ -54,9 +56,9 @@ const TIERS: PricingTier[] = [
     name: 'Pro',
     slug: 'pro',
     description: 'Uncapped prompts, frontier Pro models, and extended DAG architectures',
-    price: '399',
-    gstPrice: '71.82',
-    totalPrice: '470.82',
+    price: getPlanPrice('pro').base,
+    gstPrice: getPlanPrice('pro').gst,
+    totalPrice: getPlanPrice('pro').total,
     isPopular: true,
     features: [
       { text: 'Unlimited daily prompt generations ($0 marginal cost)', active: true, bold: true },
@@ -73,9 +75,9 @@ const TIERS: PricingTier[] = [
     name: 'Ultimate',
     slug: 'ultimate',
     description: 'State-of-the-art frontier intelligence for principal prompt engineers',
-    price: '999',
-    gstPrice: '179.82',
-    totalPrice: '1,178.82',
+    price: getPlanPrice('ultimate').base,
+    gstPrice: getPlanPrice('ultimate').gst,
+    totalPrice: getPlanPrice('ultimate').total,
     features: [
       { text: 'Everything in Pro, plus:', active: true, bold: true },
       { text: 'Claude 3.5 Sonnet (20241022) & GPT-4o Flagship', active: true, bold: true },
@@ -106,6 +108,13 @@ export default function Pricing() {
   const [paymentNotice, setPaymentNotice] = useState<{ kind: 'error' | 'pending' | 'info'; title: string; message: string } | null>(null);
   const razorpayOpenRef = useRef(false);
   const paymentDoneRef = useRef(false);
+  const checkoutDialogRef = useRef<HTMLDivElement>(null);
+  useDialogBehavior(
+    checkoutDialogRef,
+    Boolean(checkoutTier || paymentSuccess),
+    // Escape closes the window unless a payment is being started or has just succeeded
+    checkoutTier && !isProcessing && !paymentSuccess ? () => setCheckoutTier(null) : undefined
+  );
 
   const handleOpenCheckout = (tier: PricingTier) => {
     if (tier.slug === 'free') return;
@@ -131,9 +140,8 @@ export default function Pricing() {
     paymentDoneRef.current = false;
 
     const targetPlanName = checkoutTier.slug === 'ultimate' ? 'Ultimate Plan' : 'Pro Plan';
-    // totalPrice is display text such as '1,178.82': parseFloat stops at the comma (it read 1, so Ultimate was
-    // offered for 100 paise). The server sets the real price; this only lets it check what the user was shown.
-    const amountInPaise = Math.round(parseFloat(checkoutTier.totalPrice.replace(/,/g, '')) * 100);
+    // The server sets the real price; this is only the amount the user was shown, from the shared price table
+    const amountInPaise = getPlanPrice(checkoutTier.slug === 'ultimate' ? 'ultimate' : 'pro').totalPaise;
     setPurchasedTier(checkoutTier);
 
     try {
@@ -370,6 +378,10 @@ export default function Pricing() {
         {(checkoutTier || paymentSuccess) && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
             <motion.div
+              ref={checkoutDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={paymentSuccess ? 'Payment confirmed' : 'Confirm subscription'}
               initial={{ scale: 0.95, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 10 }}

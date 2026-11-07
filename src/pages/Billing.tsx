@@ -16,6 +16,7 @@ import { cn } from '../lib/utils';
 import { useUserProfile } from '../lib/useUserProfile';
 import { usePromptQuota } from '../lib/usePromptQuota';
 import { normalizeTier, TIER_LIMITS } from '../lib/subscriptionTiers';
+import { getPlanPrice, planPriceLabel } from '../lib/pricing';
 
 export default function Billing() {
   const { profile } = useUserProfile();
@@ -52,9 +53,10 @@ export default function Billing() {
     }, 600);
   };
 
-  const invoiceAmount = currentTier === 'ultimate' ? '₹1,178.82' : '₹470.82';
-  const basePrice = currentTier === 'ultimate' ? '₹999.00' : '₹399.00';
-  const gstPrice = currentTier === 'ultimate' ? '₹179.82' : '₹71.82';
+  const planPrice = getPlanPrice(currentTier === 'ultimate' ? 'ultimate' : 'pro');
+  const invoiceAmount = `₹${planPrice.total}`;
+  const basePrice = `₹${planPrice.base}.00`;
+  const gstPrice = `₹${planPrice.gst}`;
   const planDisplayName = currentTier === 'ultimate' ? 'Ultimate Plan' : currentTier === 'pro' ? 'Pro Plan' : 'Free Tier';
 
   const invoiceItems = isFree ? [] : [
@@ -127,7 +129,7 @@ export default function Billing() {
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-mono text-xs uppercase tracking-wider font-bold transition-all shadow-lg shadow-copper-500/25 active:scale-[0.98]"
                   >
                     <Zap className="w-4 h-4" />
-                    <span>Upgrade to Pro (₹399)</span>
+                    <span>Upgrade to Pro ({planPriceLabel('pro')})</span>
                   </Link>
                 </div>
               </div>

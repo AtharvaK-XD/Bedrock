@@ -13,6 +13,7 @@ import { getUserTelemetry, TELEMETRY_UPDATE_EVENT, type UserTelemetrySummary } f
 import { syncHistoryFromDb, HISTORY_UPDATE_EVENT, type HistoryPromptItem } from '../lib/generatorHistory';
 import { usePromptQuota } from '../lib/usePromptQuota';
 import { getPlanLimits } from '../lib/subscriptionTiers';
+import { planPriceLabel } from '../lib/pricing';
 import { isDesktopApp } from '../lib/platform';
 
 const BANNER_THEMES = [
@@ -1282,7 +1283,7 @@ export default function Profile() {
                     <div>
                       <h3 className="text-2xl font-bold font-display text-white">Bedrock Pro</h3>
                       <p className="text-3xl font-bold text-white mt-2">
-                        ₹399 <span className="text-xs text-gray-400 font-normal">/ month</span>
+                        {planPriceLabel('pro')} <span className="text-xs text-gray-400 font-normal">/ month</span>
                       </p>
                       <p className="text-xs text-gray-400 mt-2 font-sans">Designed for high-throughput AI builders & production teams.</p>
                     </div>

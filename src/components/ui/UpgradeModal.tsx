@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Check, X, ArrowRight, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { planPriceLabel } from '../../lib/pricing';
 
 export interface UpgradeModalProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ export function UpgradeModal({
 
   const isUltimate = requiredTier === 'ultimate';
   const planTitle = isUltimate ? 'Ultimate Plan' : 'Pro Plan';
-  const planPrice = isUltimate ? '₹999' : '₹399';
+  const planPrice = planPriceLabel(isUltimate ? 'ultimate' : 'pro');
   const planUsd = isUltimate ? '~$12' : '~$5';
 
   const proFeatures = [
