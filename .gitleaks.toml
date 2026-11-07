@@ -12,6 +12,7 @@ description = "Placeholder values in templates and documentation (not real secre
 commits = [
   "bae60de279ede33494080299a18869bc02c2e8c9",
   "ce9a22a9738efc63f3b5ced1aeffc6af356af2",
+  "88f90febc0493ff7f53114d9b5b961c00417afd0",
 ]
 regexTarget = "line"
 regexes = [
