@@ -236,6 +236,7 @@ describe('src/lib/razorpay', () => {
 
       const onSuccess = vi.fn();
       const onError = vi.fn();
+      const onOpen = vi.fn();
       const onDismiss = vi.fn();
 
       await startRazorpayCheckout({
@@ -246,11 +247,13 @@ describe('src/lib/razorpay', () => {
         userEmail: 'user@example.com',
         onSuccess,
         onError,
+        onOpen,
         onDismiss,
       });
 
       expect(MockRazorpay).toHaveBeenCalled();
       expect(mockOpen).toHaveBeenCalled();
+      expect(onOpen).toHaveBeenCalled();
       expect(instanceOptions.name).toBe('Bedrock');
       expect(instanceOptions.theme.color).toBe('#2C9A8B');
       expect(instanceOptions.prefill.email).toBe('user@example.com');

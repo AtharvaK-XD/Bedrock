@@ -91,6 +91,7 @@ export default function Pricing() {
   const navigate = useNavigate();
 
   const [checkoutTier, setCheckoutTier] = useState<PricingTier | null>(null);
+  const [purchasedTier, setPurchasedTier] = useState<PricingTier | null>(null);
   const [billingName, setBillingName] = useState(profile?.name || 'Prompt Architect');
   const [billingEmail, setBillingEmail] = useState(profile?.email || 'user@example.com');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -117,7 +118,8 @@ export default function Pricing() {
     setErrorMessage(null);
 
     const targetPlanName = checkoutTier.slug === 'ultimate' ? 'Ultimate Plan' : 'Pro Plan';
-    const amountInPaise = checkoutTier.slug === 'ultimate' ? 99900 : 39900;
+    const amountInPaise = Math.round(parseFloat(checkoutTier.totalPrice) * 100);
+    setPurchasedTier(checkoutTier);
 
     try {
       await startRazorpayCheckout({
@@ -127,6 +129,11 @@ export default function Pricing() {
         currency: 'INR',
         userName: billingName,
         userEmail: billingEmail,
+        onOpen: () => {
+          // Dismiss the intermediate Bedrock confirmation modal so Razorpay floats cleanly above Bedrock
+          setCheckoutTier(null);
+          setIsProcessing(false);
+        },
         onSuccess: (_verifyResult) => {
           updateProfile({
             name: billingName,
@@ -137,9 +144,9 @@ export default function Pricing() {
           setPaymentSuccess(true);
           setTimeout(() => {
             setIsProcessing(false);
-            setCheckoutTier(null);
+            setPurchasedTier(null);
             navigate('/app/billing');
-          }, 1500);
+          }, 2000);
         },
         onError: (err) => {
           setIsProcessing(false);
@@ -157,7 +164,7 @@ export default function Pricing() {
 
   return (
     <PageTransition>
-      <div className="w-full px-4 sm:px-8 py-12 lg:py-16 min-h-[calc(100vh-80px)] text-white">
+      <div className="w-full px-4 sm:px-8 py-12 lg:py-16 min-h-screen bg-[#050505] text-white">
         
         {/* Header */}
         <div className="text-center mb-16">
@@ -274,9 +281,9 @@ export default function Pricing() {
 
       </div>
 
-      {/* CHECKOUT MODAL */}
+      {/* CHECKOUT & SUCCESS MODAL */}
       <AnimatePresence>
-        {checkoutTier && (
+        {(checkoutTier || paymentSuccess) && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 10 }}
@@ -294,19 +301,25 @@ export default function Pricing() {
                     <CreditCard className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-display font-bold text-base text-white">Confirm Subscription</h3>
-                    <p className="text-[11px] font-mono text-zinc-400">Cryptographically Secured Checkout</p>
+                    <h3 className="font-display font-bold text-base text-white">
+                      {paymentSuccess ? 'Payment Confirmed' : 'Confirm Subscription'}
+                    </h3>
+                    <p className="text-[11px] font-mono text-zinc-400">
+                      {paymentSuccess ? 'Account Upgraded Instantly' : 'Cryptographically Secured Checkout'}
+                    </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  aria-label="Close checkout modal"
-                  onClick={() => setCheckoutTier(null)}
-                  disabled={isProcessing}
-                  className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                {!paymentSuccess && (
+                  <button
+                    type="button"
+                    aria-label="Close checkout modal"
+                    onClick={() => setCheckoutTier(null)}
+                    disabled={isProcessing}
+                    className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
               {paymentSuccess ? (
@@ -317,11 +330,11 @@ export default function Pricing() {
                   <div>
                     <h4 className="text-xl font-bold text-white font-display">Payment Confirmed!</h4>
                     <p className="text-xs text-zinc-400 mt-1 max-w-sm">
-                      Your workspace has been upgraded to the <span className="text-white font-semibold">{checkoutTier.name} Plan</span>. Tax invoice emailed to <span className="text-copper-300 font-mono">{billingEmail}</span>.
+                      Your workspace has been upgraded to the <span className="text-white font-semibold">{(purchasedTier || checkoutTier)?.name} Plan</span>. Tax invoice emailed to <span className="text-copper-300 font-mono">{billingEmail}</span>.
                     </p>
                   </div>
                 </div>
-              ) : (
+              ) : checkoutTier ? (
                 <div className="space-y-5">
                   {/* Customer Information */}
                   <div className="space-y-3">
@@ -397,7 +410,7 @@ export default function Pricing() {
                     Instant activation · Cancel or switch plans anytime · Tax invoice sent to email
                   </p>
                 </div>
-              )}
+              ) : null}
             </motion.div>
           </div>
         )}

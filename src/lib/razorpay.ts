@@ -27,6 +27,7 @@ export interface RazorpayCheckoutConfig {
   userEmail: string;
   onSuccess: (verifyResult: any) => void;
   onError: (error: string) => void;
+  onOpen?: () => void;
   onDismiss?: () => void;
 }
 
@@ -195,6 +196,7 @@ export async function startRazorpayCheckout(config: RazorpayCheckoutConfig): Pro
     },
     theme: {
       color: '#2C9A8B', // Bedrock signature copper/teal accent
+      backdrop_color: '#050505',
     },
     handler: async function (response: RazorpayPaymentSuccessResponse) {
       try {
@@ -210,6 +212,11 @@ export async function startRazorpayCheckout(config: RazorpayCheckoutConfig): Pro
       }
     },
     modal: {
+      backdropclose: false,
+      escape: true,
+      handleback: true,
+      confirm_close: true,
+      animation: true,
       ondismiss: function () {
         if (config.onDismiss) {
           config.onDismiss();
@@ -225,6 +232,9 @@ export async function startRazorpayCheckout(config: RazorpayCheckoutConfig): Pro
       config.onError(desc);
     });
     rzp.open();
+    if (config.onOpen) {
+      config.onOpen();
+    }
   } catch (openErr: any) {
     config.onError(openErr.message || 'Failed to open Razorpay payment modal');
   }

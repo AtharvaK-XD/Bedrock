@@ -404,4 +404,27 @@ body {
   }
 }
 
+/* Razorpay Custom Modal & Backdrop Glass Styling (keeps Bedrock workstation dark theme) */
+.razorpay-container,
+.razorpay-container *,
+[class*="razorpay"],
+iframe[src*="razorpay"],
+iframe.razorpay-checkout-frame {
+  color-scheme: light !important;
+}
+
+.razorpay-container {
+  z-index: 2147483647 !important;
+  background-color: rgba(5, 5, 5, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.razorpay-backdrop {
+  background: rgba(5, 5, 5, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+
 
