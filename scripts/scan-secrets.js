@@ -9,6 +9,8 @@ const PATTERNS = [
   { name: 'OpenAI Secret Key', regex: /sk-(?:live|test|proj)-[A-Za-z0-9_-]{20,}/g },
   { name: 'Anthropic Key', regex: /sk-ant-[A-Za-z0-9_-]{20,}/g },
   { name: 'Razorpay Live Key', regex: /rzp_live_[A-Za-z0-9]{10,}/g },
+  // A Razorpay key secret has no prefix; catch it where it is written as a value (test files, configs, .env copies)
+  { name: 'Razorpay Key Secret', regex: /(?:RAZORPAY_KEY_SECRET|KEY_SECRET|key_secret|keySecret)['"]?\s*[:=]\s*['"][A-Za-z0-9]{20,}['"]/g },
   { name: 'Private Key Block', regex: /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/g },
 ];
 

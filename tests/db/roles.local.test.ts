@@ -125,6 +125,22 @@ describe.skipIf(!PGlite)('db/roles.sql on in-memory Postgres', () => {
     ]);
   });
 
+  it('billing can store and complete orders as bedrock_app, but never delete a payment record', async () => {
+    await runSql(db, rolesSql);
+    await asApp(async () => {
+      expect(
+        await errorOf(db, `INSERT INTO "PaymentRecord"(id,user_id,order_id,amount,currency,status,tier,created_at,updated_at) VALUES ('payrec_t','ua','order_RoleTest001',47082,'INR','created','pro',NOW(),NOW())`),
+      ).toBeNull();
+      expect(
+        await errorOf(db, `WITH paid AS (UPDATE "PaymentRecord" SET payment_id='pay_RoleTest0001', signature='s', status='captured', updated_at=NOW() WHERE order_id='order_RoleTest001' AND user_id='ua' AND status='created' RETURNING user_id, tier) UPDATE "User" AS u SET subscription_tier = paid.tier, plan = 'Pro Plan', updated_at = NOW() FROM paid WHERE u.id = paid.user_id RETURNING paid.tier`),
+      ).toBeNull();
+      expect(await errorOf(db, `SELECT tier, status, payment_id FROM "PaymentRecord" WHERE order_id='order_RoleTest001' AND user_id='ua'`)).toBeNull();
+      expect(await errorOf(db, `DELETE FROM "PaymentRecord" WHERE id='payrec_t'`)).toMatch(/permission denied/);
+    });
+    await db.query(`DELETE FROM "PaymentRecord" WHERE id='payrec_t'`);
+    await db.query(`UPDATE "User" SET subscription_tier='free', plan='Free Plan' WHERE id='ua'`);
+  });
+
   it('dangerous actions are refused as bedrock_app', async () => {
     const refused: Record<string, string> = {
       'read password_hash': `SELECT password_hash FROM "User" LIMIT 1`,

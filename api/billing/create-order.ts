@@ -1,112 +1,132 @@
+import crypto from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Razorpay from 'razorpay';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, logSecurityEvent } from '../_lib/db.js';
+import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
+import { BILLING_PLANS, BILLING_CURRENCY, normalizePaidTier } from '../_lib/billing.js';
 
-const TIER_PRICES: Record<string, number> = {
-  pro: 39900,      // ₹399 in paise
-  advanced: 39900, // ₹399 in paise
-  ultimate: 99900, // ₹999 in paise
-};
-
+/**
+ * POST /api/billing/create-order   body: { tier: "pro" | "ultimate", amount?: <paise>, currency?: "INR" }
+ *
+ * The price comes from BILLING_PLANS, never from the browser. A browser that sends an `amount` must send exactly the
+ * plan's price: anything else is refused (409 PRICE_MISMATCH) instead of creating an order for a different amount.
+ * The order is stored BEFORE it is returned, so verify-payment can always find which plan it was for.
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+  res.setHeader('Cache-Control', 'no-store');
+
+  if (!(await enforceRateLimit(req, res, 'billing', getClientIp(req)))) return;
 
   const user = await authenticateRequest(req);
-  if (!user) {
+  // The local development guest has no real account to upgrade
+  if (!user || user.isGuest) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const body = req.body || {};
-  let amount: number | undefined;
-  let tier = 'pro';
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
 
-  if (typeof body.amount === 'number' && !isNaN(body.amount)) {
-    amount = Math.round(body.amount);
-  } else if (typeof body.amount === 'string' && !isNaN(Number(body.amount))) {
-    amount = Math.round(Number(body.amount));
-  } else if (body.tier && typeof body.tier === 'string') {
-    tier = body.tier.toLowerCase();
-    amount = TIER_PRICES[tier];
-  } else {
-    // Default tier
-    amount = TIER_PRICES.pro;
+  const tier = normalizePaidTier(body.tier);
+  if (!tier) {
+    return res.status(400).json({ error: 'tier must be "pro" or "ultimate"', code: 'INVALID_TIER' });
+  }
+  const plan = BILLING_PLANS[tier];
+
+  if (body.currency !== undefined && body.currency !== null && body.currency !== BILLING_CURRENCY) {
+    return res.status(400).json({ error: `Only ${BILLING_CURRENCY} payments are supported`, code: 'INVALID_CURRENCY' });
   }
 
-  // Minimum order amount validation (must be at least 100 paise / ₹1)
-  if (!amount || typeof amount !== 'number' || isNaN(amount) || amount < 100) {
-    return res.status(400).json({ error: 'Amount must be at least 100 paise' });
+  // The browser's amount is only a check of what the user was shown: it never sets the price
+  if (body.amount !== undefined && body.amount !== null) {
+    const shown = typeof body.amount === 'number' ? body.amount : Number(body.amount);
+    if (!Number.isFinite(shown) || Math.round(shown) !== plan.amountPaise) {
+      await logSecurityEvent({
+        userId: user.id,
+        eventType: 'PAYMENT_PRICE_MISMATCH',
+        severity: 'WARN',
+        ipAddress: getClientIp(req),
+        message: `Order refused: ${tier} costs ${plan.amountPaise} paise, the request said ${String(body.amount).slice(0, 40)}`,
+      });
+      return res.status(409).json({
+        error: 'Price mismatch',
+        code: 'PRICE_MISMATCH',
+        message: 'The price changed or could not be confirmed. Please reload the page and try again.',
+        amount: plan.amountPaise,
+        currency: BILLING_CURRENCY,
+      });
+    }
   }
-
-  const currency = typeof body.currency === 'string' ? body.currency.toUpperCase() : 'INR';
-  const receipt = typeof body.receipt === 'string' && body.receipt.trim().length > 0
-    ? body.receipt.trim().slice(0, 40)
-    : `rcpt_${(user.id || 'usr').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10)}_${Date.now()}`;
 
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
-
   if (!keyId || !keySecret) {
     console.error('[Billing] Razorpay credentials missing from server environment.');
-    return res.status(500).json({ error: 'Razorpay payment gateway not configured on server' });
+    return res.status(503).json({
+      error: 'Payments are not available right now',
+      code: 'BILLING_NOT_CONFIGURED',
+      message: 'Payments are not available right now. Please try again later.',
+    });
   }
+
+  // Our own receipt id: never taken from the request (Razorpay allows 40 characters)
+  const receipt = `rcpt_${crypto.randomUUID().replace(/-/g, '').slice(0, 30)}`;
 
   let orderId: string;
   try {
-    const razorpay = new Razorpay({
-      key_id: keyId,
-      key_secret: keySecret,
-    });
-
+    const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
     const rzOrder = await razorpay.orders.create({
-      amount,
-      currency,
+      amount: plan.amountPaise,
+      currency: BILLING_CURRENCY,
       receipt,
-      notes: {
-        userId: user.id,
-        tier,
-        ...(typeof body.notes === 'object' && body.notes !== null ? body.notes : {}),
-      },
+      // Server-set only: notes are shown in the Razorpay dashboard and sent in webhooks
+      notes: { userId: user.id, tier },
     });
-
     orderId = rzOrder.id;
   } catch (rzErr: any) {
-    console.error('[Billing] Razorpay API order creation failed:', rzErr);
-    return res.status(500).json({
+    // The detail stays in the server log: Razorpay's error text is not for end users
+    console.error('[Billing] Razorpay order creation failed:', rzErr?.error?.description || rzErr?.message || rzErr);
+    return res.status(502).json({
       error: 'Failed to create Razorpay order',
-      message: rzErr?.message || rzErr?.description || 'Razorpay order creation failed',
+      code: 'BILLING_ORDER_FAILED',
+      message: 'The payment could not be started. Please try again in a moment.',
     });
   }
 
-  // Record pending payment in Neon DB
+  // Must be stored: without this row, verify-payment cannot tell which plan the payment bought and refuses it.
+  // (It used to be "non-fatal", so a user could pay for an order that could then never be verified.)
   try {
     const sql = getDb();
-    const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-
     await sql`
       INSERT INTO "PaymentRecord" (id, user_id, order_id, amount, currency, status, tier, created_at, updated_at)
-      VALUES (${paymentId}, ${user.id}, ${orderId}, ${amount}, ${currency}, ${'created'}, ${tier}, NOW(), NOW())
+      VALUES (${`payrec_${crypto.randomUUID()}`}, ${user.id}, ${orderId}, ${plan.amountPaise}, ${BILLING_CURRENCY}, ${'created'}, ${tier}, NOW(), NOW())
     `;
-
-    await logSecurityEvent({
-      userId: user.id,
-      eventType: 'PAYMENT_ORDER_CREATED',
-      severity: 'INFO',
-      message: `Created order ${orderId} for tier ${tier} (₹${amount / 100})`,
-    });
   } catch (dbErr: any) {
-    console.warn('[Billing] Non-fatal DB logging failure for order creation:', dbErr?.message || dbErr);
+    console.error('[Billing] Could not store the new order; refusing it so it cannot be paid:', dbErr?.code || dbErr?.message || dbErr);
+    return res.status(503).json({
+      error: 'Payments are not available right now',
+      code: 'BILLING_UNAVAILABLE',
+      message: 'The payment could not be started. Nothing was charged. Please try again in a moment.',
+    });
   }
+
+  await logSecurityEvent({
+    userId: user.id,
+    eventType: 'PAYMENT_ORDER_CREATED',
+    severity: 'INFO',
+    message: `Created order ${orderId} for tier ${tier} (${plan.amountPaise} paise)`,
+  });
 
   return res.status(200).json({
     order_id: orderId,
     orderId,
-    amount,
-    currency,
+    amount: plan.amountPaise,
+    currency: BILLING_CURRENCY,
     receipt,
     tier,
+    // The key id is public by design (Razorpay Checkout needs it in the browser); the secret never leaves the server
     keyId,
   });
 }

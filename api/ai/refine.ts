@@ -17,7 +17,7 @@ import {
 } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { buildRefineSystemPrompt, extractRefineResult } from '../_lib/aiPrompts.js';
-import { inferRoleFromDocument } from '../_lib/validation.js';
+import { inferRoleFromDocument, stripInternalChecklist } from '../_lib/validation.js';
 import { roleKey } from '../_lib/useCaseProfiles.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -88,6 +88,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw cutOff;
     }
     const extracted = extractRefineResult(text, currentPrompt, instruction);
+    // Same clean-up as a synthesized document: never hand back Bedrock's internal self-audit checklist
+    extracted.updatedMarkdown = stripInternalChecklist(extracted.updatedMarkdown);
 
     if (user?.id) {
       await recordExecutionTrace({

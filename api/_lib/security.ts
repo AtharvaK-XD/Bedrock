@@ -106,6 +106,8 @@ export interface QuotaReservation {
   store?: 'QuotaEvent' | 'SecurityLog';
   /** Set when the shared daily ceiling for callers who are not signed in was reached */
   reason?: 'anonymous_daily_cap';
+  /** Anonymous requests: today's shared counter this request was counted in (given back by releaseQuota) */
+  anonDailyKey?: string;
 }
 
 /**
@@ -122,17 +124,43 @@ function anonymousDailyCap(bucket: QuotaBucket): number {
   return Number.isInteger(n) && n >= 0 ? n : ANON_DAILY_CAP_DEFAULTS[bucket];
 }
 
-async function anonymousDailyCapReached(bucket: QuotaBucket): Promise<boolean> {
+const anonymousDailyKey = (bucket: QuotaBucket) => `quota:anon-daily:${bucket}:${new Date().toISOString().slice(0, 10)}`; // UTC day
+
+/**
+ * The anonymous counter for today, or null when Redis is missing or failing (then the ceiling does not block anyone;
+ * per-IP limits still apply). Reading does not count: only granted requests are counted (countAnonymousDaily).
+ */
+async function readAnonymousDaily(key: string): Promise<number | null> {
   const redis = getRedisClient();
-  if (!redis) return false;
-  const key = `quota:anon-daily:${bucket}:${new Date().toISOString().slice(0, 10)}`; // UTC day
+  if (!redis) return null;
+  try {
+    return Number(await redis.get(key)) || 0;
+  } catch (err: any) {
+    console.warn('[Quota] Anonymous daily counter unavailable, relying on per-IP limits:', err?.message || err);
+    return null;
+  }
+}
+
+/** Counts one granted anonymous request; the new total, or null when Redis is unavailable. */
+async function countAnonymousDaily(key: string): Promise<number | null> {
+  const redis = getRedisClient();
+  if (!redis) return null;
   try {
     const used = await redis.incr(key);
     if (used === 1) await redis.expire(key, 2 * 24 * 60 * 60);
-    return used > anonymousDailyCap(bucket);
+    return used;
   } catch (err: any) {
     console.warn('[Quota] Anonymous daily counter unavailable, relying on per-IP limits:', err?.message || err);
-    return false;
+    return null;
+  }
+}
+
+/** Gives one anonymous request back (it was refused after counting, or refunded). */
+async function uncountAnonymousDaily(key: string): Promise<void> {
+  try {
+    await getRedisClient()?.decr(key);
+  } catch {
+    // The ceiling is a safety net: being one too strict for the rest of the day is acceptable
   }
 }
 
@@ -171,10 +199,54 @@ async function reserveViaQuotaTable(
 export const isPaidTier = (tier?: string | null) => tier === 'advanced' || tier === 'ultimate' || tier === 'pro';
 
 /**
- * Atomically checks the caller's rolling-window usage and records one unit if
- * under the limit. Fails closed if the database is unavailable.
+ * Atomically checks the caller's rolling-window usage and records one unit if under the limit, then (for callers
+ * who are not signed in) counts it against the shared daily ceiling. Fails closed if the database is unavailable.
+ *
+ * Only GRANTED anonymous requests count against the ceiling. Before, every anonymous attempt was counted first,
+ * including requests the per-IP limit then refused, so one address repeating a request could use up the whole day's
+ * allowance for every signed-out user (about 25 minutes for generation at 12 requests a minute).
  */
 export async function reserveQuota(params: {
+  bucket: QuotaBucket;
+  endpoint: string;
+  user: AuthenticatedUser | null;
+  ip: string;
+}): Promise<QuotaReservation> {
+  const { bucket, user } = params;
+  if (user) return reserveForCaller(params);
+
+  const key = anonymousDailyKey(bucket);
+  const cap = anonymousDailyCap(bucket);
+  const refused = (): QuotaReservation => ({
+    bucket,
+    limit: QUOTA_LIMITS[bucket].free,
+    paid: false,
+    resetMs: FIVE_HOURS_MS,
+    allowed: false,
+    unavailable: false,
+    reservationId: null,
+    reason: 'anonymous_daily_cap',
+  });
+
+  const used = await readAnonymousDaily(key);
+  if (used !== null && used >= cap) return refused();
+
+  const reservation = await reserveForCaller(params);
+  if (!reservation.allowed) return reservation;
+
+  const total = await countAnonymousDaily(key);
+  if (total === null) return reservation;
+  if (total > cap) {
+    // Parallel requests passed the check together: the last ones over the ceiling are refused after all
+    await uncountAnonymousDaily(key);
+    await releaseQuota(reservation);
+    return refused();
+  }
+  return { ...reservation, anonDailyKey: key };
+}
+
+/** The per-user / per-IP rolling-window reservation (reserve_quota() or the locked SecurityLog fallback). */
+async function reserveForCaller(params: {
   bucket: QuotaBucket;
   endpoint: string;
   user: AuthenticatedUser | null;
@@ -188,10 +260,6 @@ export async function reserveQuota(params: {
   // Local development guest (only issued for localhost hosts): no metering
   if (user?.isGuest) {
     return { ...base, allowed: true, unavailable: false, reservationId: null };
-  }
-
-  if (!user && (await anonymousDailyCapReached(bucket))) {
-    return { ...base, allowed: false, unavailable: false, reservationId: null, reason: 'anonymous_daily_cap' };
   }
 
   const eventType = QUOTA_EVENT[bucket];
@@ -250,6 +318,7 @@ export async function reserveQuota(params: {
 /** Refunds a reserved unit (call when the AI request ultimately failed). */
 export async function releaseQuota(reservation: QuotaReservation | null | undefined): Promise<void> {
   if (!reservation?.reservationId) return;
+  if (reservation.anonDailyKey) await uncountAnonymousDaily(reservation.anonDailyKey);
   try {
     const sql = getDb();
     if (reservation.store === 'QuotaEvent') {

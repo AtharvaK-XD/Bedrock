@@ -57,6 +57,10 @@ GRANT SELECT, INSERT, DELETE ON "Trace", "SecurityLog", "QuotaEvent" TO bedrock_
 -- cleanup of expired keys only
 GRANT SELECT, DELETE ON "IdempotencyKey" TO bedrock_app;
 -- migrate:break
+-- payments: create-order inserts the pending order, verify-payment reads it and marks it paid. No DELETE: payment
+-- records are kept (tax and dispute evidence).
+GRANT SELECT, INSERT, UPDATE ON "PaymentRecord" TO bedrock_app;
+-- migrate:break
 -- Functions: only the app (and the owner) may run them. This also covers migration 0006, whichever runs first.
 REVOKE EXECUTE ON FUNCTION reserve_quota(text, text, text, text, text, integer, interval) FROM PUBLIC;
 -- migrate:break

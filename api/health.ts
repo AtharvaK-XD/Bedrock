@@ -17,6 +17,12 @@ interface HealthBody {
 let cached: { at: number; body: HealthBody } | null = null;
 
 /**
+ * 503 when degraded: uptime monitors (UptimeRobot, Vercel checks) look at the HTTP status, not the body, so a 200
+ * with "degraded" inside never raised an alert when the database was down.
+ */
+const httpStatusFor = (body: HealthBody) => (body.status === 'ok' ? 200 : 503);
+
+/**
  * Public liveness check. It reports only whether the database and Redis respond: no error text,
  * provider configuration or circuit-breaker state, since anyone can call it.
  */
@@ -30,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!allowed) return;
 
   if (cached && Date.now() - cached.at < HEALTH_CACHE_MS) {
-    return res.status(200).json(cached.body);
+    return res.status(httpStatusFor(cached.body)).json(cached.body);
   }
 
   const commit = (process.env.VERCEL_GIT_COMMIT_SHA || '').replace(/[^0-9a-f]/gi, '').slice(0, 7);
@@ -61,12 +67,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const body: HealthBody = {
-    status: dbStatus === 'connected' ? 'ok' : 'degraded',
+    // A configured Redis that fails stops every API route (rateLimiter.ts refuses instead of guessing), so it counts
+    // as degraded too. Redis left out on purpose (local development) does not.
+    status: dbStatus === 'connected' && redisStatus !== 'error' ? 'ok' : 'degraded',
     timestamp: new Date().toISOString(),
     database: { status: dbStatus },
     redis: { status: redisStatus },
     ...(commit ? { version: commit } : {}),
   };
   cached = { at: Date.now(), body };
-  return res.status(200).json(body);
+  return res.status(httpStatusFor(body)).json(body);
 }

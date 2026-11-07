@@ -828,10 +828,29 @@ describe('GET /api/health', () => {
     const res = mockRes();
     await health(mockReq('GET'), res);
 
-    expect(res.statusCode).toBe(200);
+    // 503, so uptime monitors (they read the HTTP status) raise an alert; it was 200 with "degraded" in the body
+    expect(res.statusCode).toBe(503);
     expect(Object.keys(res.body).sort()).toEqual(['database', 'redis', 'status', 'timestamp']);
     expect(res.body).toMatchObject({ status: 'degraded', database: { status: 'error' }, redis: { status: 'connected' } });
     expect(JSON.stringify(res.body)).not.toContain('neondb_owner');
+  });
+
+  it('a failing Redis is degraded (503) too, because it stops the API; Redis left out is not', async () => {
+    const health = await loadHealth();
+    h.state.responder = () => [{ alive: 1 }];
+    h.state.redis = { ping: vi.fn(async () => { throw new Error('ECONNREFUSED upstash-host:6379'); }) };
+    const down = mockRes();
+    await health(mockReq('GET'), down);
+    expect(down.statusCode).toBe(503);
+    expect(down.body).toMatchObject({ status: 'degraded', redis: { status: 'error' } });
+    expect(JSON.stringify(down.body)).not.toContain('upstash-host');
+
+    const fresh = await loadHealth();
+    h.state.redis = null;
+    const local = mockRes();
+    await fresh(mockReq('GET'), local);
+    expect(local.statusCode).toBe(200);
+    expect(local.body).toMatchObject({ status: 'ok', redis: { status: 'unconfigured' } });
   });
 
   it('says which version is live (first 7 characters of the deployed commit), and nothing when Vercel sets none', async () => {

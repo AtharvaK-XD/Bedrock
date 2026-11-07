@@ -139,6 +139,19 @@ describe('quota refund: only when no provider answered', () => {
   });
 });
 
+describe('refine never hands back the internal self-audit checklist', () => {
+  it('strips it like a synthesized document', async () => {
+    executeAiCompletion.mockResolvedValue({
+      text: '<summary>s</summary><updated_prompt># Doc\n\nreal content\n\n### PRE-FLIGHT SILENT SELF-AUDIT (internal)\n1. did I?\n</updated_prompt>',
+      model: 'm',
+    });
+    const r = await call(refine, { currentPrompt: '# Doc', instruction: 'tighten' });
+    expect(r.statusCode).toBe(200);
+    expect(r.body.updatedMarkdown).toContain('real content');
+    expect(r.body.updatedMarkdown).not.toMatch(/SELF-AUDIT|did I\?/);
+  });
+});
+
 describe('"limit reached" answers say what is true', () => {
   const quota = (bucket: 'generation' | 'assist', paid: boolean): QuotaReservation => ({
     allowed: false,

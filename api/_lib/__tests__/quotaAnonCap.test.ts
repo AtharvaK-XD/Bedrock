@@ -5,14 +5,21 @@ const h = vi.hoisted(() => ({
   counters: new Map<string, number>(),
   redis: null as any,
   sqlCalls: 0,
+  /** what the per-IP quota (database) answers */
+  perIpGranted: true,
+  deletes: 0,
 }));
 
 vi.mock('../rateLimiter.js', () => ({ getRedisClient: () => h.redis }));
 vi.mock('../db.js', () => ({
   getDb: () => {
-    const sql: any = async () => {
+    const sql: any = async (strings: TemplateStringsArray) => {
       h.sqlCalls += 1;
-      return [{ granted: true }];
+      if (strings.join('').startsWith('DELETE')) {
+        h.deletes += 1;
+        return [];
+      }
+      return [{ granted: h.perIpGranted }];
     };
     sql.transaction = async () => [[], [{ id: 'x' }]];
     return sql;
@@ -20,7 +27,7 @@ vi.mock('../db.js', () => ({
   logSecurityEvent: vi.fn(),
 }));
 
-import { reserveQuota, sendQuotaDenied } from '../security.js';
+import { reserveQuota, releaseQuota, sendQuotaDenied } from '../security.js';
 
 const user = { id: 'user_S', email: 's@example.com', name: 'S', role: 'r', plan: 'Free Plan', subscriptionTier: 'free', isGuest: false } as any;
 const anon = (bucket: 'generation' | 'assist' = 'generation') => reserveQuota({ bucket, endpoint: '/x', user: null, ip: '203.0.113.1' });
@@ -28,7 +35,15 @@ const anon = (bucket: 'generation' | 'assist' = 'generation') => reserveQuota({ 
 beforeEach(() => {
   h.counters.clear();
   h.sqlCalls = 0;
+  h.perIpGranted = true;
+  h.deletes = 0;
   h.redis = {
+    get: vi.fn(async (k: string) => (h.counters.has(k) ? String(h.counters.get(k)) : null)),
+    decr: vi.fn(async (k: string) => {
+      const n = (h.counters.get(k) || 0) - 1;
+      h.counters.set(k, n);
+      return n;
+    }),
     incr: vi.fn(async (k: string) => {
       const n = (h.counters.get(k) || 0) + 1;
       h.counters.set(k, n);
@@ -72,7 +87,8 @@ describe('daily ceiling for callers who are not signed in', () => {
     vi.stubEnv('ANON_AI_DAILY_CAP_GENERATION', '0');
     h.redis = null;
     expect((await anon()).allowed).toBe(true);
-    h.redis = { incr: vi.fn(async () => { throw new Error('redis down'); }), expire: vi.fn() };
+    const down = vi.fn(async () => { throw new Error('redis down'); });
+    h.redis = { get: down, incr: down, decr: down, expire: vi.fn() };
     expect((await anon()).allowed).toBe(true);
   });
 
@@ -83,5 +99,37 @@ describe('daily ceiling for callers who are not signed in', () => {
     sendQuotaDenied(res, q);
     expect(res.status).toHaveBeenCalledWith(429);
     expect(res.json.mock.calls[0][0]).toMatchObject({ code: 'ANONYMOUS_DAILY_LIMIT' });
+  });
+
+  it('requests the per-IP limit refuses do NOT use up the shared allowance (one address could lock everyone out)', async () => {
+    vi.stubEnv('ANON_AI_DAILY_CAP_GENERATION', '3');
+    h.perIpGranted = false; // this address is over its own limit
+    for (let i = 0; i < 50; i++) expect((await anon()).allowed).toBe(false);
+    expect([...h.counters.values()].reduce((a, b) => a + b, 0)).toBe(0);
+    // everybody else still gets the full allowance
+    h.perIpGranted = true;
+    expect([await anon(), await anon(), await anon()].map((r) => r.allowed)).toEqual([true, true, true]);
+    expect((await anon()).allowed).toBe(false);
+  });
+
+  it('a refunded request (no provider answered) gives its unit back', async () => {
+    vi.stubEnv('ANON_AI_DAILY_CAP_GENERATION', '1');
+    const first = await anon();
+    expect(first.allowed).toBe(true);
+    expect((await anon()).allowed).toBe(false);
+    await releaseQuota(first);
+    expect(h.deletes).toBe(1);
+    expect((await anon()).allowed).toBe(true);
+  });
+
+  it('parallel requests that pass the check together cannot overshoot: the extra one is refused and refunded', async () => {
+    vi.stubEnv('ANON_AI_DAILY_CAP_GENERATION', '1');
+    // both read 0 before either counts
+    h.redis.get = vi.fn(async () => '0');
+    const results = await Promise.all([anon(), anon()]);
+    expect(results.map((r) => r.allowed).sort()).toEqual([false, true]);
+    expect(results.find((r) => !r.allowed)).toMatchObject({ reason: 'anonymous_daily_cap' });
+    expect(h.deletes).toBe(1); // the refused one's per-IP unit was given back
+    expect([...h.counters.values()][0]).toBe(1);
   });
 });

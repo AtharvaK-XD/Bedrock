@@ -98,7 +98,8 @@ export async function createRazorpayOrder(params: {
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody.error || errorBody.message || `Failed to create payment order (HTTP ${response.status})`);
+    // message is the sentence written for the user; error is a short title
+    throw new Error(errorBody.message || errorBody.error || `Failed to create payment order (HTTP ${response.status})`);
   }
 
   return response.json();
@@ -141,7 +142,7 @@ export async function verifyRazorpayPayment(params: {
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody.error || errorBody.message || 'Payment signature verification failed');
+    throw new Error(errorBody.message || errorBody.error || 'Payment signature verification failed');
   }
 
   return response.json();

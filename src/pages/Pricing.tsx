@@ -118,7 +118,9 @@ export default function Pricing() {
     setErrorMessage(null);
 
     const targetPlanName = checkoutTier.slug === 'ultimate' ? 'Ultimate Plan' : 'Pro Plan';
-    const amountInPaise = Math.round(parseFloat(checkoutTier.totalPrice) * 100);
+    // totalPrice is display text such as '1,178.82': parseFloat stops at the comma (it read 1, so Ultimate was
+    // offered for 100 paise). The server sets the real price; this only lets it check what the user was shown.
+    const amountInPaise = Math.round(parseFloat(checkoutTier.totalPrice.replace(/,/g, '')) * 100);
     setPurchasedTier(checkoutTier);
 
     try {
