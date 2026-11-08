@@ -15,6 +15,11 @@ import {
   RAZORPAY_PAYMENT_ID_RE,
   RAZORPAY_SIGNATURE_RE,
 } from '../_lib/billing.js';
+import {
+  sendBedrockEmail,
+  renderInvoiceEmail,
+  DEFAULT_FROM_BILLING,
+} from '../_lib/email.js';
 
 const PG_UNIQUE_VIOLATION = '23505';
 
@@ -141,14 +146,45 @@ async function handleVerify(req: VercelRequest, res: VercelResponse) {
       return billingError(res, 409, 'ORDER_AMOUNT_MISMATCH', 'Order does not match the plan price', 'This order was created for a different price, so it cannot unlock a plan. If you were charged, please contact support.');
     case 'paid_by_other_payment':
       return billingError(res, 409, 'ORDER_ALREADY_PAID', 'Order already paid', 'This order was already paid with another payment. If you were charged twice, please contact support.');
-    case 'paid':
+    case 'paid': {
       await logSecurityEvent({
         userId: user.id,
         eventType: 'SUBSCRIPTION_UPGRADED',
         severity: 'INFO',
         message: `Order ${orderId} (${outcome.orderTier}) paid with ${paymentId}; account plan: ${outcome.accountTier}`,
       });
+
+      // Dispatch official tax invoice & payment receipt email via Resend
+      if (user.email && user.email.includes('@')) {
+        try {
+          const planInfo = BILLING_PLANS[outcome.orderTier] || BILLING_PLANS.pro;
+          const { basePaise, gstPaise } = splitGst(planInfo.amountPaise);
+          const { subject, html } = renderInvoiceEmail({
+            name: user.name,
+            email: user.email,
+            planName: planInfo.planName,
+            tier: outcome.orderTier,
+            amountPaise: planInfo.amountPaise,
+            basePaise,
+            gstPaise,
+            orderId,
+            paymentId,
+          });
+
+          sendBedrockEmail({
+            to: user.email,
+            from: DEFAULT_FROM_BILLING,
+            subject,
+            html,
+          }).catch((err) => {
+            console.error('[Billing] Invoice email dispatch error:', err?.message || err);
+          });
+        } catch (mailErr) {
+          console.error('[Billing] Invoice email preparation error:', mailErr);
+        }
+      }
       break;
+    }
     case 'already_paid':
       break;
   }
