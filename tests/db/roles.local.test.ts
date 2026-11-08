@@ -141,6 +141,23 @@ describe.skipIf(!PGlite)('db/roles.sql on in-memory Postgres', () => {
     await db.query(`UPDATE "User" SET subscription_tier='free', plan='Free Plan' WHERE id='ua'`);
   });
 
+  it('the app can erase an account that has paid and unpaid orders (0019): paid rows stay, unlinked; the app still cannot delete payment rows itself', async () => {
+    await runSql(db, rolesSql);
+    await db.query(`INSERT INTO "User"(id,email,password_hash,name,updated_at) VALUES ('payer','payer@x.test','x','p',now())`);
+    await db.query(`INSERT INTO "PaymentRecord"(id,user_id,order_id,payment_id,signature,amount,currency,status,tier,updated_at) VALUES
+      ('pr_paid','payer','order_PayerPaid01','pay_PayerPaid0001','sig',47082,'INR','captured','pro',now()),
+      ('pr_open','payer','order_PayerOpen01',NULL,NULL,47082,'INR','created','pro',now())`);
+    await asApp(async () => {
+      expect(await errorOf(db, `DELETE FROM "PaymentRecord" WHERE id='pr_open'`)).toMatch(/permission denied/);
+      const [r] = (await db.query(`SELECT * FROM delete_user_data('payer')`)).rows;
+      expect(r).toMatchObject({ deleted_user: true });
+    });
+    expect(await rows(db, `SELECT id, user_id, order_id, payment_id, amount, status FROM "PaymentRecord" WHERE id IN ('pr_paid','pr_open') ORDER BY id`)).toEqual([
+      { id: 'pr_paid', user_id: null, order_id: 'order_PayerPaid01', payment_id: 'pay_PayerPaid0001', amount: 47082, status: 'captured' },
+    ]);
+    await db.query(`DELETE FROM "PaymentRecord" WHERE id = 'pr_paid'`);
+  });
+
   it('dangerous actions are refused as bedrock_app', async () => {
     const refused: Record<string, string> = {
       'read password_hash': `SELECT password_hash FROM "User" LIMIT 1`,
