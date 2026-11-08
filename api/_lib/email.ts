@@ -503,3 +503,4 @@ export function renderAnnouncementEmail(params: {
 
   return { subject, html: baseEmailWrapper(content, previewText) };
 }
+

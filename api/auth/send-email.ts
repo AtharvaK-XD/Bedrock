@@ -100,6 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // The name is Clerk's; it is still escaped before it is placed into the HTML template
   const rawName = identity.identity.name || to.split('@')[0];
   const displayName = escapeHtml(rawName);
+  const safeTo = escapeHtml(to);
   const isSignup = type === 'signup';
   let subject = '';
   let html = '';
