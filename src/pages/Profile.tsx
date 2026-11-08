@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Check, Camera, UploadCloud, Trash2 } from 'lucide-react';
+import { Camera, UploadCloud, Trash2 } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { useUserProfile, resolveCleanName, resolveInitials, getBlankProfile } from '../lib/useUserProfile';
@@ -90,8 +90,6 @@ export default function Profile() {
   const effectiveInitials = resolveInitials(effectiveName);
 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [bannerTheme, setBannerTheme] = useState('copper');
-  const [showThemePicker, setShowThemePicker] = useState(false);
   const [copiedHandle, setCopiedHandle] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -99,7 +97,6 @@ export default function Profile() {
   const [isDragging, setIsDragging] = useState(false);
   const [photoMessage, setPhotoMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const themePickerRef = useRef<HTMLDivElement>(null);
 
   const [telemetry, setTelemetry] = useState<UserTelemetrySummary>({
     totalInferences: 0,
@@ -144,17 +141,7 @@ export default function Profile() {
     };
   }, []);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (themePickerRef.current && !themePickerRef.current.contains(e.target as Node)) {
-        setShowThemePicker(false);
-      }
-    }
-    if (showThemePicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showThemePicker]);
+
 
   const [formData, setFormData] = useState({
     name: profile.name,
@@ -185,7 +172,7 @@ export default function Profile() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const activeTheme = BANNER_THEMES.find((t) => t.id === bannerTheme) || BANNER_THEMES[0];
+  const activeTheme = BANNER_THEMES[0];
 
   const handleCopyHandle = () => {
     navigator.clipboard.writeText(`@${profile.username}`);
@@ -375,55 +362,7 @@ export default function Profile() {
               <div className={cn("absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_var(--tw-gradient-stops))] transition-all duration-500", activeTheme.radial2)} />
             </div>
             
-            {/* Top-Right Theme & Status Controls (Unclipped & elevated above profile card body) */}
-            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2.5 z-20 pointer-events-auto">
-              <div className="relative" ref={themePickerRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowThemePicker(!showThemePicker)}
-                  className="px-3 py-1.5 rounded-full text-xs font-mono font-medium bg-black/60 hover:bg-black/80 text-gray-300 hover:text-white border border-white/15 backdrop-blur-md shadow-sm transition-all cursor-pointer uppercase tracking-wider"
-                >
-                  Theme
-                </button>
 
-                {showThemePicker && (
-                  <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-sf-15181b/98 backdrop-blur-2xl border border-white/20 p-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 space-y-1 font-mono">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-400 px-2.5 py-1">Banner Theme</p>
-                    {BANNER_THEMES.map((theme) => (
-                      <button
-                        key={theme.id}
-                        type="button"
-                        onClick={() => {
-                          setBannerTheme(theme.id);
-                          setShowThemePicker(false);
-                        }}
-                        className={cn(
-                          "w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer",
-                          bannerTheme === theme.id 
-                            ? "bg-white/10 text-white font-semibold" 
-                            : "text-gray-400 hover:text-white hover:bg-white/5"
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className={cn("w-2 h-2 rounded-full", theme.dotBg)} />
-                          <span>{theme.name}</span>
-                        </div>
-                        {bannerTheme === theme.id && <Check className="w-3.5 h-3.5 text-copper-400" />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Verified Member Badge */}
-              <span className={cn(
-                "inline-flex items-center px-3 py-1.5 rounded-full text-xs font-mono font-semibold bg-black/60 backdrop-blur-md shadow-sm border transition-all uppercase tracking-wider",
-                activeTheme.accentColor,
-                activeTheme.badgeBorder
-              )}>
-                Bedrock Architect
-              </span>
-            </div>
           </div>
 
           {/* Profile Header Content (Elevated above banner at z-30 to prevent clipping) */}
