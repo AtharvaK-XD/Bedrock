@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, Component, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Environment, MeshTransmissionMaterial, Float, ContactShadows } from '@react-three/drei';
+import { Environment, Lightformer, MeshTransmissionMaterial, Float, ContactShadows } from '@react-three/drei';
 import { EffectComposer, Bloom, Noise, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { BlendFunction } from 'postprocessing';
@@ -62,9 +62,10 @@ const AmbientVisualFallback = () => {
   );
 };
 
-// An organic, liquid-like glass object
+// An organic, liquid-like glass object with an internal luminous geometric core
 const LiquidGlassCore = () => {
   const mesh = useRef<THREE.Mesh>(null);
+  const innerCore = useRef<THREE.Mesh>(null);
   const materialRef = useRef<any>(null);
 
   const currentScrollProgress = useRef(0);
@@ -91,27 +92,52 @@ const LiquidGlassCore = () => {
       mesh.current.rotation.x = (state.clock.elapsedTime * 0.1) + (currentScrollProgress.current * Math.PI * 2);
       mesh.current.rotation.y = (state.clock.elapsedTime * 0.15) + (currentScrollProgress.current * Math.PI * 4);
     }
+
+    if (innerCore.current) {
+      innerCore.current.rotation.x = -state.clock.elapsedTime * 0.2;
+      innerCore.current.rotation.y = -state.clock.elapsedTime * 0.25;
+    }
   });
 
   return (
     <Float speed={2.5} rotationIntensity={0.8} floatIntensity={1.5} floatingRange={[-0.2, 0.2]}>
-      <mesh ref={mesh} position={[0, 0, 0]} scale={2.5}>
-        <icosahedronGeometry args={[1, 8]} />
-        <MeshTransmissionMaterial
-          ref={materialRef}
-          backside
-          samples={2}
-          thickness={1.5}
-          chromaticAberration={0.06}
-          anisotropy={0.3}
-          distortion={0.6}
-          distortionScale={0.5}
-          temporalDistortion={0.2}
-          ior={1.5}
-          color="#ffffff"
-          resolution={128}
-        />
-      </mesh>
+      <group position={[0, 0, 0]}>
+        {/* Luminous Core: ensures radiant visibility and internal refraction against dark canvas */}
+        <mesh ref={innerCore} scale={1.2}>
+          <icosahedronGeometry args={[1, 1]} />
+          <meshBasicMaterial
+            wireframe
+            color="#2c9a8b"
+            transparent
+            opacity={0.4}
+          />
+        </mesh>
+
+        {/* Central Point Glow */}
+        <pointLight position={[0, 0, 0]} intensity={3.5} color="#2c9a8b" distance={8} />
+
+        {/* Outer Liquid Glass Refractive Sphere */}
+        <mesh ref={mesh} scale={2.5}>
+          <icosahedronGeometry args={[1, 16]} />
+          <MeshTransmissionMaterial
+            ref={materialRef}
+            backside
+            samples={4}
+            thickness={1.5}
+            roughness={0.12}
+            chromaticAberration={0.08}
+            anisotropy={0.3}
+            distortion={0.5}
+            distortionScale={0.5}
+            temporalDistortion={0.2}
+            ior={1.45}
+            color="#ffffff"
+            attenuationColor="#2c9a8b"
+            attenuationDistance={1.8}
+            resolution={256}
+          />
+        </mesh>
+      </group>
     </Float>
   );
 };
@@ -158,7 +184,7 @@ export const Scene3D = () => {
       <Scene3DErrorBoundary fallback={<AmbientVisualFallback />}>
         <Canvas 
           camera={{ position: [0, 0, 8], fov: 45 }} 
-          gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
+          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
           dpr={[1, 1.5]}
           onCreated={({ gl }) => {
             gl.domElement.addEventListener('webglcontextlost', (e) => {
@@ -167,24 +193,33 @@ export const Scene3D = () => {
             }, false);
           }}
         >
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[10, 10, 5]} intensity={2} color="#ffffff" />
-          <directionalLight position={[-10, -10, -5]} intensity={1.5} color="#2c9a8b" /> {/* Copper tint */}
+          <ambientLight intensity={0.8} />
+          <directionalLight position={[10, 10, 5]} intensity={3} color="#ffffff" />
+          <directionalLight position={[-10, -10, -5]} intensity={2.5} color="#2c9a8b" /> {/* Copper tint */}
+          <pointLight position={[0, 4, 3]} intensity={2} color="#34d399" />
           
           <LiquidGlassCore />
           <ScrollManager />
           
-          {/* Photorealistic Environment */}
-          <Environment preset="city" />
+          {/* Fully self-contained, zero-network Procedural Lighting & Environment (No external CDN/HDR dependency) */}
+          <Environment resolution={256}>
+            <group rotation={[-Math.PI / 3, 0.4, 1]}>
+              <Lightformer form="circle" intensity={5} rotation-x={Math.PI / 2} position={[0, 6, -9]} scale={5} />
+              <Lightformer form="circle" intensity={3} color="#2c9a8b" rotation-y={Math.PI / 2} position={[-8, 1, -1]} scale={4} />
+              <Lightformer form="circle" intensity={3} color="#ffffff" rotation-y={-Math.PI / 2} position={[10, 2, 0]} scale={6} />
+              <Lightformer form="rect" intensity={3} color="#34d399" position={[0, -5, 0]} scale={[12, 6, 1]} />
+              <Lightformer form="ring" intensity={2.5} color="#2c9a8b" position={[0, 0, 8]} scale={6} />
+            </group>
+          </Environment>
           
           {/* Soft grounding shadow */}
-          <ContactShadows position={[0, -3.5, 0]} opacity={0.5} scale={15} blur={2.5} far={4} resolution={256} frames={1} />
+          <ContactShadows position={[0, -3.5, 0]} opacity={0.6} scale={15} blur={2.5} far={4} resolution={256} frames={1} />
           
-          {/* Cinematic Post-Processing */}
+          {/* Cinematic Post-Processing with balanced vignette and vibrant bloom */}
           <EffectComposer multisampling={0}>
-            <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} height={300} opacity={0.5} />
-            <Noise opacity={0.035} blendFunction={BlendFunction.OVERLAY} />
-            <Vignette eskil={false} offset={0.1} darkness={1.1} />
+            <Bloom luminanceThreshold={0.35} luminanceSmoothing={0.85} height={300} intensity={1.2} />
+            <Noise opacity={0.03} blendFunction={BlendFunction.OVERLAY} />
+            <Vignette eskil={false} offset={0.15} darkness={0.7} />
           </EffectComposer>
         </Canvas>
       </Scene3DErrorBoundary>
