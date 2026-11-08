@@ -22,11 +22,87 @@ let cached: { at: number; body: HealthBody } | null = null;
  */
 const httpStatusFor = (body: HealthBody) => (body.status === 'ok' ? 200 : 503);
 
+const MAX_REPORT_BYTES = 16 * 1024;
+const MAX_REPORTS_PER_REQUEST = 5;
+
+/** A URL reduced to origin + path: query strings and fragments can hold sign-in tokens (Clerk handshake), never logged. */
+function safeUrl(raw: unknown): string {
+  if (typeof raw !== 'string' || !raw) return '';
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(raw)) return raw.slice(0, 40); // "inline", "eval", "self", "data", ...
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? `${u.origin}${u.pathname}`.slice(0, 200) : `${u.protocol}`;
+  } catch {
+    return 'unparsable';
+  }
+}
+
+function readReportBody(req: VercelRequest): unknown {
+  let body: unknown;
+  try {
+    body = req.body; // @vercel/node parses lazily and throws on invalid JSON
+  } catch {
+    return null;
+  }
+  if (Buffer.isBuffer(body)) body = body.toString('utf8');
+  if (typeof body === 'string') {
+    if (body.length > MAX_REPORT_BYTES) return null;
+    try {
+      return JSON.parse(body);
+    } catch {
+      return null;
+    }
+  }
+  return body && typeof body === 'object' && JSON.stringify(body).length <= MAX_REPORT_BYTES ? body : null;
+}
+
+/**
+ * Content-Security-Policy violation reports from visitors' browsers (legacy "report-uri" and Reporting API "report-to").
+ * Written to the server log only (Vercel > Logs, search "[CSP]"): no database write, so a flood of fake reports costs
+ * nothing but log lines, and it is rate limited like the health check. Only the directive, the blocked origin/path and
+ * the page path are kept.
+ */
+async function handleCspReport(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+  if (!(await enforceRateLimit(req, res, 'health'))) return;
+
+  const parsed = readReportBody(req);
+  const items: any[] = Array.isArray(parsed)
+    ? parsed.filter((r) => r && typeof r === 'object' && r.type === 'csp-violation').map((r) => r.body || {})
+    : parsed && typeof parsed === 'object' && (parsed as any)['csp-report']
+      ? [(parsed as any)['csp-report']]
+      : [];
+
+  for (const r of items.slice(0, MAX_REPORTS_PER_REQUEST)) {
+    if (!r || typeof r !== 'object') continue;
+    const directive = String(r.effectiveDirective || r['effective-directive'] || r['violated-directive'] || '').split(' ')[0].slice(0, 40);
+    console.warn(
+      '[CSP] ' +
+        JSON.stringify({
+          directive,
+          blocked: safeUrl(r.blockedURL ?? r['blocked-uri']),
+          page: safeUrl(r.documentURL ?? r['document-uri']).replace(/^https?:\/\/[^/]+/, ''),
+          source: safeUrl(r.sourceFile ?? r['source-file']),
+          line: Number(r.lineNumber ?? r['line-number']) || undefined,
+          mode: String(r.disposition || '').slice(0, 10) || undefined,
+        })
+    );
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(204).end();
+}
+
 /**
  * Public liveness check. It reports only whether the database and Redis respond: no error text,
  * provider configuration or circuit-breaker state, since anyone can call it.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // POST /api/csp-report (rewritten here in vercel.json: no extra function, Hobby plan cap of 12)
+  if (req.query?.action === 'csp-report') {
+    return handleCspReport(req, res);
+  }
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

@@ -306,6 +306,14 @@ describe('in-app popups', () => {
     }
   });
 
+  it('"Upgrade" (https://bedrockxai.com/pricing) goes to the system browser, never an in-app window; payment hosts likewise', () => {
+    for (const url of ['https://bedrockxai.com/pricing', 'https://checkout.razorpay.com/v1/checkout.js', 'https://api.razorpay.com/v1/checkout/embedded']) {
+      shell.openExternal.mockClear();
+      expect(state.windowOpenHandler!({ url }).action).toBe('deny');
+      expect(shell.openExternal).toHaveBeenCalledWith(url);
+    }
+  });
+
   function openPopup() {
     const events = new Map<string, (...args: any[]) => any>();
     let nestedOpen: null | ((d: { url: string }) => any) = null;

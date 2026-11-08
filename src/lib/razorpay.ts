@@ -3,6 +3,16 @@
  * Official Docs: https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps/
  */
 
+import { isDesktopApp } from './platform';
+
+/**
+ * Where desktop users pay. The desktop app never loads payment code: its strict Content-Security-Policy has no
+ * payment hosts, and checkout belongs in the user's own browser (address bar, padlock, saved cards, 3-D Secure).
+ * window.open() of this https address is handed to the system browser by the desktop app's window rule
+ * (dist-electron/main.js setWindowOpenHandler -> openExternalSafe); it never opens inside the app.
+ */
+export const WEB_PRICING_URL = 'https://bedrockxai.com/pricing';
+
 export interface RazorpayOrderResponse {
   order_id: string;
   orderId?: string;
@@ -34,6 +44,8 @@ export interface RazorpayCheckoutConfig {
   onVerificationFailed?: (info: { message: string; paymentId: string }) => void;
   onOpen?: () => void;
   onDismiss?: () => void;
+  /** Desktop app: checkout was opened in the system browser instead (falls back to onDismiss when not given). */
+  onOpenedInBrowser?: (url: string) => void;
 }
 
 /**
@@ -41,7 +53,8 @@ export interface RazorpayCheckoutConfig {
  */
 export function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (typeof window === 'undefined') {
+    // No payment code in the desktop app (see WEB_PRICING_URL)
+    if (typeof window === 'undefined' || isDesktopApp()) {
       resolve(false);
       return;
     }
@@ -161,6 +174,13 @@ export async function verifyRazorpayPayment(params: {
  * 4. Calls backend verify-payment on successful authorization
  */
 export async function startRazorpayCheckout(config: RazorpayCheckoutConfig): Promise<void> {
+  if (isDesktopApp()) {
+    window.open(WEB_PRICING_URL, '_blank', 'noopener,noreferrer');
+    if (config.onOpenedInBrowser) config.onOpenedInBrowser(WEB_PRICING_URL);
+    else config.onDismiss?.();
+    return;
+  }
+
   const isLoaded = await loadRazorpayScript();
   if (!isLoaded || !(window as any).Razorpay) {
     config.onError('Unable to load Razorpay payment gateway. Please check your connection and try again.');

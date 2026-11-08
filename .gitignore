@@ -44,3 +44,19 @@ scratch/
 *.db-journal
 *.sqlite
 
+
+# Code-signing certificates and private keys (Windows/macOS signing is coming: never commit the certificate)
+*.pfx
+*.p12
+*.pem
+*.key
+*.p8
+*.cer
+*.crt
+*.keystore
+*.jks
+*.mobileprovision
+# Vercel CLI project folder (`vercel link` / `vercel env pull`)
+.vercel
+# Browser network dumps: they contain cookies and session tokens
+*.har

@@ -9,6 +9,7 @@ import {
   BILLING_CURRENCY,
   normalizePaidTier,
   billingError,
+  billingTestModeBlocked,
   withTimeout,
   BillingTimeoutError,
   RAZORPAY_ORDER_ID_RE,
@@ -86,6 +87,10 @@ async function createOrder(req: VercelRequest, res: VercelResponse) {
   if (!keyId || !keySecret) {
     console.error('[Billing] Razorpay credentials missing from server environment.');
     return billingError(res, 503, 'BILLING_NOT_CONFIGURED', 'Payments are not available right now', 'Payments are not available right now. Please try again later.');
+  }
+  if (billingTestModeBlocked(keyId)) {
+    console.error('[Billing] Production is configured with a Razorpay TEST key: refusing orders (set live keys, or BILLING_ALLOW_TEST_MODE=true for a test run).');
+    return billingError(res, 503, 'BILLING_TEST_MODE', 'Payments are not available right now', 'Payments are not available right now. Please try again later.');
   }
 
   // Our own receipt id: never taken from the request (Razorpay allows 40 characters)

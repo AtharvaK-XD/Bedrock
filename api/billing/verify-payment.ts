@@ -7,6 +7,7 @@ import { readRawBody } from '../_lib/accountDeletion.js';
 import {
   BILLING_PLANS,
   billingError,
+  billingTestModeBlocked,
   completePaidOrder,
   normalizePaidTier,
   splitGst,
@@ -81,6 +82,11 @@ async function handleVerify(req: VercelRequest, res: VercelResponse) {
   if (!keySecret) {
     console.error('[Billing] RAZORPAY_KEY_SECRET missing from server environment.');
     return billingError(res, 503, 'BILLING_NOT_CONFIGURED', 'Payments are not available right now');
+  }
+  // A test-mode payment proves nothing on the live site (public test cards): never upgrade from one there
+  if (billingTestModeBlocked()) {
+    console.error('[Billing] Production is configured with a Razorpay TEST key: refusing to upgrade from a test payment.');
+    return billingError(res, 503, 'BILLING_TEST_MODE', 'Payments are not available right now');
   }
 
   const expected = crypto.createHmac('sha256', keySecret).update(`${orderId}|${paymentId}`).digest();
@@ -210,6 +216,11 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
   const paymentId = typeof payment.id === 'string' ? payment.id : null;
 
   if (eventName === 'payment.captured' || eventName === 'order.paid') {
+    // Same rule as verify: on the live site a TEST-mode payment unlocks nothing. Answered 200 so Razorpay stops retrying.
+    if (billingTestModeBlocked()) {
+      console.error(`[RazorpayWebhook] Ignored ${eventName} for order ${String(orderId).slice(0, 60)}: production runs on a Razorpay TEST key`);
+      return res.status(200).json({ success: true, ignored: true, reason: 'test_mode' });
+    }
     if (typeof orderId !== 'string' || !RAZORPAY_ORDER_ID_RE.test(orderId) || !paymentId || !RAZORPAY_PAYMENT_ID_RE.test(paymentId)) {
       // Not a payment for an order (e.g. a payment link): nothing of ours to complete
       return res.status(200).json({ success: true, ignored: true });

@@ -34,6 +34,20 @@ export function normalizePaidTier(raw: unknown): PaidTier | null {
   return null;
 }
 
+/**
+ * Razorpay TEST mode on the live site would sell every plan for free: test card numbers are public and a test
+ * payment carries a valid signature. So on Vercel production a `rzp_test_` key is refused unless the owner turns
+ * test payments on explicitly (BILLING_ALLOW_TEST_MODE=true) for a short test run. Live keys are never affected.
+ */
+export function billingTestModeBlocked(keyId: string | undefined = process.env.RAZORPAY_KEY_ID): boolean {
+  return (
+    process.env.VERCEL_ENV === 'production' &&
+    typeof keyId === 'string' &&
+    keyId.trim().startsWith('rzp_test_') &&
+    process.env.BILLING_ALLOW_TEST_MODE !== 'true'
+  );
+}
+
 /** Razorpay's own id formats. Anything else is refused before it reaches Razorpay or the database. */
 export const RAZORPAY_ORDER_ID_RE = /^order_[A-Za-z0-9]{6,40}$/;
 export const RAZORPAY_PAYMENT_ID_RE = /^pay_[A-Za-z0-9]{6,40}$/;

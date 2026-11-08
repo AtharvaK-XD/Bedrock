@@ -23,11 +23,23 @@ const FLAG_PATTERNS = [
 export type PromptInjectionLevel = 'none' | 'flag' | 'high';
 
 /**
+ * Invisible characters that can hide text from a human reviewer while a model still reads it, or reorder what is
+ * shown: Unicode "tag" characters (U+E0000-U+E007F, used for "ASCII smuggling"), direction overrides and isolates,
+ * zero-width space / word joiners, the BOM and interlinear annotations. Zero-width (non-)joiners U+200C/U+200D are
+ * kept in prompts: Devanagari and other Indic scripts, and emoji, need them.
+ */
+const HIDDEN_FORMAT_CHARS = /[\u{E0000}-\u{E007F}‪-‮⁦-⁩​‎‏⁠-⁤﻿᠎￹-￻]/gu;
+/** Our own delimiters, also with spaces inside the brackets, so user text cannot close or open them */
+const DELIMITER_TAG_RE = /<\s*\/?\s*(UNTRUSTED_USER_INPUT|SYSTEM_INSTRUCTION|PROMPT_OVERRIDE)\s*>/gi;
+
+/**
  * Classifies text against the injection patterns. Zero-width and other invisible characters are
  * removed first so obfuscated phrases ("ign​ore previous instructions") are still detected.
  */
 export function assessPromptInjection(text: string): { level: PromptInjectionLevel; pattern: string | null } {
-  const normalized = String(text ?? '').replace(/[​-‏⁠-⁤﻿­]/g, '');
+  const normalized = String(text ?? '')
+    .replace(HIDDEN_FORMAT_CHARS, '')
+    .replace(/[‌‍­]/g, '');
   for (const pattern of HIGH_CONFIDENCE_PATTERNS) {
     if (pattern.test(normalized)) return { level: 'high', pattern: pattern.toString() };
   }
@@ -38,15 +50,19 @@ export function assessPromptInjection(text: string): { level: PromptInjectionLev
 }
 
 /**
- * Strips invisible unicode escapes and delimits user input safely
+ * Strips control characters and invisible formatting characters, removes look-alikes of our delimiters,
+ * and wraps the text as untrusted input.
  */
 export function sanitizeAndDelimitPrompt(rawText: string): string {
-  const cleaned = rawText
+  let cleaned = String(rawText ?? '')
     .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '')
-    .replace(/<\/?(UNTRUSTED_USER_INPUT|SYSTEM_INSTRUCTION|PROMPT_OVERRIDE)>/gi, '')
-    .trim();
-
-  return `<UNTRUSTED_USER_INPUT>\n${cleaned}\n</UNTRUSTED_USER_INPUT>`;
+    .replace(HIDDEN_FORMAT_CHARS, '');
+  // Repeat until stable: removing one fake tag must not join the pieces of another ("<UNTRUS<UNTRUSTED_USER_INPUT>TED_...")
+  for (let previous = ''; previous !== cleaned; ) {
+    previous = cleaned;
+    cleaned = cleaned.replace(DELIMITER_TAG_RE, '');
+  }
+  return `<UNTRUSTED_USER_INPUT>\n${cleaned.trim()}\n</UNTRUSTED_USER_INPUT>`;
 }
 
 /**
