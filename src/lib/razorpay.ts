@@ -201,8 +201,8 @@ export async function startRazorpayCheckout(config: RazorpayCheckoutConfig): Pro
       email: config.userEmail,
     },
     theme: {
-      color: '#2C9A8B', // Bedrock signature copper/teal accent
-      backdrop_color: '#050505',
+      color: '#000000', // Pure black theme for Razorpay checkout
+      backdrop_color: '#000000',
     },
     // Close the checkout by itself after 15 minutes without a payment (the dismiss callback then runs)
     timeout: 900,

@@ -255,7 +255,7 @@ describe('src/lib/razorpay', () => {
       expect(mockOpen).toHaveBeenCalled();
       expect(onOpen).toHaveBeenCalled();
       expect(instanceOptions.name).toBe('Bedrock');
-      expect(instanceOptions.theme.color).toBe('#2C9A8B');
+      expect(instanceOptions.theme.color).toBe('#000000');
       expect(instanceOptions.prefill.email).toBe('user@example.com');
 
       // Simulate payment success handler
