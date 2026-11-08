@@ -9,11 +9,11 @@
 export type PaidPlan = 'pro' | 'ultimate';
 
 const BASE_PRICE_INR: Record<PaidPlan, number> = {
-  pro: 1,
-  ultimate: 2,
+  pro: 399,
+  ultimate: 999,
 };
 
-const GST_RATE = 0; // Testing mode: ₹1 for Pro, ₹2 for Ultimate
+const GST_RATE = 0.18;
 
 export interface PlanPrice {
   /** Price before GST, whole rupees (e.g. "399") */

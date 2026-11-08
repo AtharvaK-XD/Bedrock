@@ -80,9 +80,12 @@ afterEach(() => {
 });
 
 describe('plan prices', () => {
-  it('match the pricing page: base price in paise for testing mode', () => {
-    expect(BILLING_PLANS.pro.amountPaise).toBe(100); // ₹1
-    expect(BILLING_PLANS.ultimate.amountPaise).toBe(200); // ₹2
+  it('match the pricing page: base price + 18% GST, in paise', () => {
+    for (const p of Object.values(BILLING_PLANS)) {
+      expect(p.amountPaise, p.tier).toBe(Math.round(p.basePriceInr * 1.18 * 100));
+    }
+    expect(BILLING_PLANS.pro.amountPaise).toBe(47_082); // ₹470.82
+    expect(BILLING_PLANS.ultimate.amountPaise).toBe(117_882); // ₹1,178.82
   });
 });
 
@@ -107,9 +110,9 @@ describe('POST /api/billing/create-order', () => {
   );
 
   it.each([
-    ['pro', 50, 'an order below ₹1 (amount tampered)'],
-    ['ultimate', 100, 'the Pro price for Ultimate'],
-    ['ultimate', 500, 'a non-matching amount for Ultimate'],
+    ['pro', 100, 'a ₹1 order (amount tampered)'],
+    ['ultimate', 100, 'what the old page sent for Ultimate (parseFloat("1,178.82") = 1)'],
+    ['ultimate', BILLING_PLANS.pro.amountPaise, 'the Pro price for Ultimate'],
     ['pro', 'abc', 'a non-number'],
   ])('refuses %s with amount %j: %s', async (tier, amount, _why) => {
     const r = await call(createOrder, 'POST', { tier, amount });
@@ -128,26 +131,26 @@ describe('POST /api/billing/create-order', () => {
   it('creates the order at the SERVER price, with server-set notes and receipt only', async () => {
     const r = await call(createOrder, 'POST', {
       tier: 'Ultimate',
-      amount: '200',
+      amount: '117882',
       currency: 'INR',
       receipt: 'attacker-receipt',
       notes: { userId: 'someone_else', tier: 'ultimate-forever' },
     });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toMatchObject({ order_id: ORDER, orderId: ORDER, amount: 200, currency: 'INR', tier: 'ultimate', keyId: TEST_KEY_ID });
+    expect(r.body).toMatchObject({ order_id: ORDER, orderId: ORDER, amount: 117_882, currency: 'INR', tier: 'ultimate', keyId: TEST_KEY_ID });
     expect(JSON.stringify(r.body)).not.toContain(TEST_SECRET);
     const sent = h.state.razorpayOrdersCreate.mock.calls[0][0];
-    expect(sent).toMatchObject({ amount: 200, currency: 'INR', notes: { userId: 'user_A', tier: 'ultimate' } });
+    expect(sent).toMatchObject({ amount: 117_882, currency: 'INR', notes: { userId: 'user_A', tier: 'ultimate' } });
     expect(sent.receipt).toMatch(/^rcpt_[0-9a-f]{30}$/);
     expect(sent.receipt.length).toBeLessThanOrEqual(40);
     const insert = h.state.sqlCalls.find((c) => c.text.startsWith('INSERT INTO "PaymentRecord"'))!;
-    expect(insert.values).toEqual([expect.stringMatching(/^payrec_/), 'user_A', ORDER, 200, 'INR', 'created', 'ultimate']);
+    expect(insert.values).toEqual([expect.stringMatching(/^payrec_/), 'user_A', ORDER, 117_882, 'INR', 'created', 'ultimate']);
   });
 
   it('accepts a request without an amount, and "advanced" as the older name of Pro', async () => {
     const r = await call(createOrder, 'POST', { tier: 'advanced' });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toMatchObject({ tier: 'pro', amount: 100 });
+    expect(r.body).toMatchObject({ tier: 'pro', amount: 47_082 });
   });
 
   it('refuses the order (503) when it cannot be stored, so it can never be paid without a record', async () => {
@@ -221,7 +224,7 @@ describe('POST /api/billing/verify-payment', () => {
     const stmt = h.state.sqlCalls[0];
     expect(stmt.text).toContain('WHERE order_id = $ AND user_id = $ AND status = \'created\'');
     // + the price guard: currency and today's Ultimate / Pro prices (server constants, never from the request)
-    expect(stmt.values).toEqual([PAYMENT, body().razorpay_signature, ORDER, 'user_A', 'INR', 200, 100]);
+    expect(stmt.values).toEqual([PAYMENT, body().razorpay_signature, ORDER, 'user_A', 'INR', 117_882, 47_082]);
     expect(stmt.values).not.toContain('ultimate');
   });
 

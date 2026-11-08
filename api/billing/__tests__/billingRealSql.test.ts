@@ -80,10 +80,10 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
   it('a Pro order cannot be verified as Ultimate; the stored plan is applied atomically', async () => {
     as('u_alice');
     h.state.nextOrder = 'order_AlicePro0001';
-    const order = await call(createOrder, { tier: 'pro', amount: 100 });
+    const order = await call(createOrder, { tier: 'pro', amount: 47_082 });
     expect(order.statusCode).toBe(200);
     expect((await q(`SELECT amount, status, tier FROM "PaymentRecord" WHERE order_id = $1`, [order.body.order_id]))[0]).toEqual({
-      amount: 100,
+      amount: 47_082,
       status: 'created',
       tier: 'pro',
     });
@@ -123,7 +123,7 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
   it('Ultimate at the Ultimate price works end to end', async () => {
     as('u_bob');
     h.state.nextOrder = 'order_BobUltimate01';
-    expect((await call(createOrder, { tier: 'ultimate', amount: '200' })).statusCode).toBe(200);
+    expect((await call(createOrder, { tier: 'ultimate', amount: '117882' })).statusCode).toBe(200);
     expect((await verify('order_BobUltimate01', 'pay_BobPay0000001')).statusCode).toBe(200);
     expect(await userRow('u_bob')).toEqual({ subscription_tier: 'ultimate', plan: 'Ultimate Plan' });
   });
@@ -132,7 +132,7 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
     // Rows the old create-order wrote with the browser's amount (before 2026-11-07)
     await q(`INSERT INTO "PaymentRecord"(id,user_id,order_id,amount,currency,status,tier,updated_at)
              VALUES ('pr_old1','u_bob','order_OldCheapUlt1',100,'INR','created','ultimate',now()),
-                    ('pr_old2','u_bob','order_OldUsdPro001',100,'USD','created','pro',now())`);
+                    ('pr_old2','u_bob','order_OldUsdPro001',47082,'USD','created','pro',now())`);
     await q(`UPDATE "User" SET subscription_tier = 'free', plan = 'Free Plan' WHERE id = 'u_bob'`);
     as('u_bob');
     for (const [orderId, paymentId] of [['order_OldCheapUlt1', 'pay_OldCheap00001'], ['order_OldUsdPro001', 'pay_OldUsd000001']]) {

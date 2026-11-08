@@ -17,10 +17,10 @@ export interface BillingPlan {
   amountPaise: number;
 }
 
-/** Testing prices: Pro ₹1 = 100 paise; Ultimate ₹2 = 200 paise. (Will be restored to ₹399 / ₹999 before launch) */
+/** Matches src/pages/Pricing.tsx: Pro ₹399 + ₹71.82 GST = ₹470.82; Ultimate ₹999 + ₹179.82 GST = ₹1,178.82. */
 export const BILLING_PLANS: Record<PaidTier, BillingPlan> = {
-  pro: { tier: 'pro', planName: 'Pro Plan', basePriceInr: 1, amountPaise: 100 },
-  ultimate: { tier: 'ultimate', planName: 'Ultimate Plan', basePriceInr: 2, amountPaise: 200 },
+  pro: { tier: 'pro', planName: 'Pro Plan', basePriceInr: 399, amountPaise: 47_082 },
+  ultimate: { tier: 'ultimate', planName: 'Ultimate Plan', basePriceInr: 999, amountPaise: 117_882 },
 };
 
 export const BILLING_CURRENCY = 'INR';

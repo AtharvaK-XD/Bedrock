@@ -68,17 +68,17 @@ describe('retired Groq models', () => {
 });
 
 describe('plan prices', () => {
-  it('adds 0% GST (testing mode) to the base price, to the paisa', () => {
-    expect(getPlanPrice('pro')).toMatchObject({ base: '1', gst: '0.00', total: '1.00', totalPaise: 100 });
-    expect(getPlanPrice('ultimate')).toMatchObject({ base: '2', gst: '0.00', total: '2.00', totalPaise: 200 });
+  it('adds 18% GST to the base price, to the paisa', () => {
+    expect(getPlanPrice('pro')).toMatchObject({ base: '399', gst: '71.82', total: '470.82', totalPaise: 47082 });
+    expect(getPlanPrice('ultimate')).toMatchObject({ base: '999', gst: '179.82', total: '1,178.82', totalPaise: 117882 });
   });
 
   it('never produces the 100-paise Ultimate order that parsing "1,178.82" with parseFloat gave', () => {
-    expect(getPlanPrice('ultimate').totalPaise).toBe(200);
+    expect(getPlanPrice('ultimate').totalPaise).toBeGreaterThan(100000);
   });
 
   it('has one label for the base price', () => {
-    expect(planPriceLabel('pro')).toBe('₹1');
-    expect(planPriceLabel('ultimate')).toBe('₹2');
+    expect(planPriceLabel('pro')).toBe('₹399');
+    expect(planPriceLabel('ultimate')).toBe('₹999');
   });
 });
