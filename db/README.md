@@ -47,6 +47,8 @@ Roles: `db/ROLES.md` + `db/roles.sql`.
 | 0015_trace_daily_cap | At most 5,000 usage records per user per 24 hours (error `DAILY_TRACE_LIMIT`, 23514). Existing rows untouched. |
 | 0016_validate_size_checks | Makes the 0003/0005 size rules cover old rows too. Refuses (changes nothing for that table) if an old row breaks a rule. Down is a no-op. |
 | 0017_paging_indexes | Two indexes (built `CONCURRENTLY`) for stable, fast paging of the prompts and workflows lists (`db/PAGING.md`). |
+| 0018_onboarding_fields | Two empty optional columns on "User" (birth date, referral answer) and a loose size check. Nothing is changed for existing accounts. |
+| 0019_payment_records_survive_erasure | Order rows may lose their account link (`user_id` nullable, `ON DELETE SET NULL`); `delete_user_data()` deletes the account's unpaid orders and keeps paid ones unlinked; new index `(user_id, status)`. Nothing changes for existing rows. Down refuses while unlinked paid rows exist. |
 | 0018_onboarding_fields | Two optional "User" columns for the sign-up wizard, `birth_date` and `referral_source` (both text, NULL for every existing account), plus a loose size check (150 / 500 characters; the API allows 30 / 100). No data is changed. If the app role is in use, run `node db/migrate.mjs roles --yes --host <host>` again afterwards (it grants the two columns). Until then, the profile route keeps working without them (see CHG-0064). |
 
 ## Limits: database vs API (on purpose the database is looser)
