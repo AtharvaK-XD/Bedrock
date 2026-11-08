@@ -46,6 +46,11 @@ export default defineConfig(({ mode }) => {
                   try {
                     const body = bodyStr ? JSON.parse(bodyStr) : {};
                     const amount = Number(body.amount) || 39900;
+                    if (amount < 100) {
+                      res.writeHead(400, { 'Content-Type': 'application/json' });
+                      res.end(JSON.stringify({ error: 'Amount must be at least 100 paise' }));
+                      return;
+                    }
                     const keyId = serverEnv.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID || '';
                     const keySecret = serverEnv.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET || '';
 
@@ -87,6 +92,11 @@ export default defineConfig(({ mode }) => {
                     const orderId = body.razorpay_order_id || body.orderId || body.order_id;
                     const paymentId = body.razorpay_payment_id || body.paymentId || body.payment_id;
                     const signature = body.razorpay_signature || body.signature;
+                    if (!orderId || !paymentId || !signature) {
+                      res.writeHead(400, { 'Content-Type': 'application/json' });
+                      res.end(JSON.stringify({ error: 'Missing required parameters: order_id, payment_id, and signature are required' }));
+                      return;
+                    }
                     const keySecret = serverEnv.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET || '';
 
                     const crypto = await import('node:crypto');
