@@ -6,6 +6,9 @@ import { Ratelimit } from '@upstash/ratelimit';
 // Server-side variables only. A VITE_ name is meant for the browser and must never carry this token (OPEN-0043).
 let redisClient: Redis | null = null;
 
+/** Longest a single Redis call may take before it counts as failed (see the client options below). */
+export const REDIS_CALL_TIMEOUT_MS = 1_500;
+
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
@@ -21,6 +24,12 @@ if (redisUrl && redisToken) {
     redisClient = new Redis({
       url: redisUrl,
       token: redisToken,
+      // The client's default is 5 retries with growing waits (about 4.3 s in total) per call, and an AI request makes
+      // two limiter calls: an Upstash outage held every request for about 9 s before it was refused. One quick retry
+      // and a 1.5 s limit per call keep an outage (or a very slow Redis) to a fast 503 instead. Upstash normally
+      // answers in a few milliseconds from the same region.
+      retry: { retries: 1, backoff: () => 100 },
+      signal: () => AbortSignal.timeout(REDIS_CALL_TIMEOUT_MS),
     });
     console.log('⚡ [Upstash Redis] Successfully connected for Edge Rate Limiting & Load Balancing');
   } catch (err) {

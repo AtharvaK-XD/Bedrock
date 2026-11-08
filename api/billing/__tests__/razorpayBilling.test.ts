@@ -217,15 +217,25 @@ describe('POST /api/billing/verify-payment', () => {
 
   it('a valid payment applies the plan STORED ON THE ORDER, never the tier the browser names', async () => {
     // The order row says Pro; the browser claims Ultimate
-    h.state.responder = (text) => (text.startsWith('WITH paid AS') ? [{ tier: 'pro' }] : []);
+    h.state.responder = (text) => (text.startsWith('WITH paid AS') ? [{ user_id: 'user_A', tier: 'pro', upgraded: 1 }] : []);
     const r = await call(verifyPayment, 'POST', body({ tier: 'ultimate' }));
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatchObject({ success: true, tier: 'pro', plan: 'Pro Plan', order_id: ORDER, payment_id: PAYMENT });
     const stmt = h.state.sqlCalls[0];
-    expect(stmt.text).toContain('WHERE order_id = $ AND user_id = $ AND status = \'created\'');
-    // + the price guard: currency and today's Ultimate / Pro prices (server constants, never from the request)
-    expect(stmt.values).toEqual([PAYMENT, body().razorpay_signature, ORDER, 'user_A', 'INR', 117_882, 47_082]);
+    expect(stmt.text).toContain("AND status = 'created'");
+    expect(stmt.text).toContain('user_id = $::text');
+    // the price guard uses today's Ultimate / Pro prices (server constants, never from the request)
+    expect(stmt.values).toEqual(expect.arrayContaining([PAYMENT, body().razorpay_signature, ORDER, 'user_A', 'INR', 117_882, 47_082]));
     expect(stmt.values).not.toContain('ultimate');
+  });
+
+  it('an Ultimate account that pays for Pro keeps Ultimate, and the answer says so (was: "upgraded to Pro Plan")', async () => {
+    // the order was paid, but the account update was skipped because the account already has Ultimate
+    h.state.responder = (text) => (text.startsWith('WITH paid AS') ? [{ user_id: 'user_A', tier: 'pro', upgraded: 0 }] : []);
+    const r = await call(verifyPayment, 'POST', body());
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toMatchObject({ success: true, tier: 'ultimate', plan: 'Ultimate Plan' });
+    expect(r.body.message).toMatch(/keeps the Ultimate Plan/);
   });
 
   it("an order that is not this account's (or unknown): 404, no upgrade", async () => {
@@ -238,7 +248,7 @@ describe('POST /api/billing/verify-payment', () => {
 
   it('the same verified payment sent again (a retry): success, nothing changed twice', async () => {
     h.state.responder = (text) =>
-      text.startsWith('SELECT tier, status, payment_id') ? [{ tier: 'ultimate', status: 'captured', payment_id: PAYMENT }] : [];
+      text.startsWith('SELECT o.user_id') ? [{ user_id: 'user_A', tier: 'ultimate', status: 'captured', payment_id: PAYMENT, subscription_tier: 'ultimate' }] : [];
     const r = await call(verifyPayment, 'POST', body());
     expect(r.statusCode).toBe(200);
     expect(r.body.tier).toBe('ultimate');
@@ -247,7 +257,7 @@ describe('POST /api/billing/verify-payment', () => {
 
   it('an order already paid with ANOTHER payment: 409', async () => {
     h.state.responder = (text) =>
-      text.startsWith('SELECT tier, status, payment_id') ? [{ tier: 'pro', status: 'captured', payment_id: 'pay_Earlier00000' }] : [];
+      text.startsWith('SELECT o.user_id') ? [{ user_id: 'user_A', tier: 'pro', status: 'captured', payment_id: 'pay_Earlier00000', subscription_tier: 'pro' }] : [];
     const r = await call(verifyPayment, 'POST', body());
     expect(r.statusCode).toBe(409);
     expect(r.body.code).toBe('ORDER_ALREADY_PAID');

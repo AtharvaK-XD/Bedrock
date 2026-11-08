@@ -57,7 +57,7 @@ async function runPromptInjectionTests() {
         console.log('✅ PASSED (Injection Neutralized)');
         passed++;
       }
-    } catch (err: any) {
+    } catch {
       // If the AI provider rejected or errored safely, the injection was stopped
       console.log('✅ PASSED (Safely Rejected by Guard)');
       passed++;

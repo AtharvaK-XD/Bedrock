@@ -3,10 +3,13 @@ import crypto from 'node:crypto';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, logSecurityEvent } from '../_lib/db.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
+import { readRawBody } from '../_lib/accountDeletion.js';
 import {
-  BILLING_CURRENCY,
   BILLING_PLANS,
+  billingError,
+  completePaidOrder,
   normalizePaidTier,
+  splitGst,
   RAZORPAY_ORDER_ID_RE,
   RAZORPAY_PAYMENT_ID_RE,
   RAZORPAY_SIGNATURE_RE,
@@ -20,27 +23,46 @@ const firstString = (...values: unknown[]): string | null => {
 };
 
 /**
+ * Billing routes that share this one function file (Vercel Hobby allows 12 function files, all in use):
+ *   POST /api/billing/verify-payment                      the browser confirms a payment (below)
+ *   POST /api/billing/webhook  -> ?action=webhook         Razorpay reports payments itself (handleWebhook)
+ *   GET  /api/billing/history  -> ?action=history         the signed-in user's paid orders (handleHistory)
+ * (the two rewrites are in vercel.json). Every failure answers { success: false, error, code, message? }.
+ */
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const action = req.query?.action;
+    if (action === 'webhook') return await handleWebhook(req, res);
+    if (action === 'history') return await handleHistory(req, res);
+    return await handleVerify(req, res);
+  } catch (err: any) {
+    // Last line of defence: an unexpected throw must still give the caller a readable answer
+    console.error('[Billing] Unexpected failure:', err?.code || err?.message || err);
+    if (res.headersSent) return;
+    return billingError(res, 500, 'BILLING_INTERNAL_ERROR', 'Billing request failed', 'Something went wrong on our side. Please try again.');
+  }
+}
+
+/**
  * POST /api/billing/verify-payment   body: { razorpay_order_id, razorpay_payment_id, razorpay_signature }
  *
  * 1. Razorpay's signature (HMAC-SHA256 of "<order_id>|<payment_id>" with the key secret) proves the payment was made
  *    for that order. Compared in constant time.
- * 2. The plan comes from the order row create-order stored for THIS user, never from the request (a `tier` in the
- *    body is ignored). Before, a valid payment for any order upgraded the account to whatever tier the browser named.
- * 3. One statement marks that order paid (only while it is still unpaid) and upgrades the account, so a payment
- *    cannot be used twice, an order of another account cannot be claimed, and the two updates cannot half-happen.
- * Sending the same verified payment again (a retry after a network error) answers success without changing anything.
+ * 2. completePaidOrder() marks THIS user's still-unpaid order paid and applies the plan stored on it (a `tier` in the
+ *    body is ignored), in one statement. Another account's order, an unknown order, a second payment for a paid
+ *    order and an under-priced old order are refused. The same payment sent again answers success, changing nothing.
+ * 3. The answer names the plan the ACCOUNT has now (an Ultimate account that pays for Pro keeps Ultimate).
  */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handleVerify(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return billingError(res, 405, 'METHOD_NOT_ALLOWED', 'Method not allowed');
   }
-  res.setHeader('Cache-Control', 'no-store');
-
   if (!(await enforceRateLimit(req, res, 'billing', getClientIp(req)))) return;
 
   const user = await authenticateRequest(req);
   if (!user || user.isGuest) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return billingError(res, 401, 'AUTH_REQUIRED', 'Unauthorized', 'Please sign in again to finish the upgrade.');
   }
 
   const body = req.body && typeof req.body === 'object' ? req.body : {};
@@ -49,25 +71,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const signature = firstString(body.razorpay_signature, body.signature);
 
   if (!orderId || !paymentId || !signature) {
-    return res.status(400).json({
-      error: 'Missing required parameters: order_id, payment_id, and signature are required',
-    });
+    return billingError(res, 400, 'MISSING_PARAMETERS', 'Missing required parameters: order_id, payment_id, and signature are required');
   }
   if (!RAZORPAY_ORDER_ID_RE.test(orderId) || !RAZORPAY_PAYMENT_ID_RE.test(paymentId) || !RAZORPAY_SIGNATURE_RE.test(signature)) {
-    return res.status(400).json({ success: false, error: 'Invalid payment signature. Verification failed.' });
+    return billingError(res, 400, 'INVALID_SIGNATURE', 'Invalid payment signature. Verification failed.');
   }
 
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keySecret) {
     console.error('[Billing] RAZORPAY_KEY_SECRET missing from server environment.');
-    return res.status(503).json({ error: 'Payments are not available right now', code: 'BILLING_NOT_CONFIGURED' });
+    return billingError(res, 503, 'BILLING_NOT_CONFIGURED', 'Payments are not available right now');
   }
 
   const expected = crypto.createHmac('sha256', keySecret).update(`${orderId}|${paymentId}`).digest();
   const given = Buffer.from(signature, 'hex');
-  const isValid = given.length === expected.length && crypto.timingSafeEqual(given, expected);
-
-  if (!isValid) {
+  if (!(given.length === expected.length && crypto.timingSafeEqual(given, expected))) {
     await logSecurityEvent({
       userId: user.id,
       eventType: 'PAYMENT_SIGNATURE_MISMATCH',
@@ -75,109 +93,222 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ipAddress: getClientIp(req),
       message: `Razorpay signature verification failed for order ${orderId}`,
     });
-    return res.status(400).json({ success: false, error: 'Invalid payment signature. Verification failed.' });
+    return billingError(res, 400, 'INVALID_SIGNATURE', 'Invalid payment signature. Verification failed.');
   }
 
+  let outcome;
   try {
-    const sql = getDb();
-    // Mark THIS user's still-unpaid order as paid and apply the plan stored on it, in one atomic statement.
-    // The stored amount must cover today's price of that plan: an order row written by the old create-order
-    // (which took the amount from the browser, so ₹1 orders exist) can never unlock a plan.
-    // A Pro payment never lowers an Ultimate account (the order is still recorded as paid).
-    const upgraded = (await sql`
-      WITH paid AS (
-        UPDATE "PaymentRecord"
-        SET payment_id = ${paymentId}, signature = ${signature}, status = 'captured', updated_at = NOW()
-        WHERE order_id = ${orderId} AND user_id = ${user.id} AND status = 'created'
-          AND currency = ${BILLING_CURRENCY}
-          AND amount >= CASE WHEN tier = 'ultimate' THEN ${BILLING_PLANS.ultimate.amountPaise}::int ELSE ${BILLING_PLANS.pro.amountPaise}::int END
-        RETURNING user_id, CASE WHEN tier = 'ultimate' THEN 'ultimate' ELSE 'pro' END AS tier
-      )
-      UPDATE "User" AS u
-      SET subscription_tier = paid.tier,
-          plan = CASE WHEN paid.tier = 'ultimate' THEN 'Ultimate Plan' ELSE 'Pro Plan' END,
-          updated_at = NOW()
-      FROM paid
-      WHERE u.id = paid.user_id
-        AND (paid.tier = 'ultimate' OR COALESCE(u.subscription_tier, 'free') <> 'ultimate')
-      RETURNING paid.tier AS tier
-    `) as Array<{ tier: string }>;
+    outcome = await completePaidOrder(getDb(), { orderId, paymentId, signature, userId: user.id });
+  } catch (err: any) {
+    if (err?.code === PG_UNIQUE_VIOLATION) {
+      // The payment id is already stored on another order (payment_id is unique)
+      return billingError(res, 409, 'PAYMENT_ALREADY_USED', 'Payment already used');
+    }
+    console.error('[Billing] Verify payment error:', err?.code || err?.message || err);
+    return billingError(
+      res,
+      500,
+      'BILLING_UPDATE_FAILED',
+      'Failed to complete payment verification',
+      'Your payment was received but your plan could not be updated yet. Please retry, or contact support.'
+    );
+  }
 
-    let tier = normalizePaidTier(upgraded[0]?.tier);
-    if (!tier) {
-      // Nothing changed: find out why (already verified, someone else's order, or an order we never created)
-      const [order] = (await sql`
-        SELECT tier, status, payment_id, amount, currency FROM "PaymentRecord" WHERE order_id = ${orderId} AND user_id = ${user.id} LIMIT 1
-      `) as Array<{ tier: string; status: string; payment_id: string | null; amount: number; currency: string }>;
-      if (!order) {
-        await logSecurityEvent({
-          userId: user.id,
-          eventType: 'PAYMENT_ORDER_UNKNOWN',
-          severity: 'CRITICAL',
-          ipAddress: getClientIp(req),
-          message: `Verified payment ${paymentId} names order ${orderId}, which is not an order of this account`,
-        });
-        return res.status(404).json({
-          success: false,
-          error: 'Order not found',
-          code: 'ORDER_NOT_FOUND',
-          message: 'This payment does not belong to an order of your account. If you were charged, please contact support.',
-        });
-      }
-      if (order.status === 'created') {
-        // Still unpaid after the update above: only the price check refuses that (an under-priced old order)
-        await logSecurityEvent({
-          userId: user.id,
-          eventType: 'PAYMENT_AMOUNT_MISMATCH',
-          severity: 'CRITICAL',
-          ipAddress: getClientIp(req),
-          message: `Order ${orderId} (${order.amount} ${order.currency}, ${order.tier}) does not cover the plan price; not upgraded`,
-        });
-        return res.status(409).json({
-          success: false,
-          error: 'Order does not match the plan price',
-          code: 'ORDER_AMOUNT_MISMATCH',
-          message: 'This order was created for a different price, so it cannot unlock a plan. If you were charged, please contact support.',
-        });
-      }
-      if (order.status === 'captured' && order.payment_id === paymentId) {
-        tier = normalizePaidTier(order.tier) ?? 'pro'; // the same payment sent again: already applied
-      } else {
-        return res.status(409).json({
-          success: false,
-          error: 'Order already paid',
-          code: 'ORDER_ALREADY_PAID',
-          message: 'This order was already paid with another payment. If you were charged twice, please contact support.',
-        });
-      }
-    } else {
+  switch (outcome.kind) {
+    case 'not_found':
+      await logSecurityEvent({
+        userId: user.id,
+        eventType: 'PAYMENT_ORDER_UNKNOWN',
+        severity: 'CRITICAL',
+        ipAddress: getClientIp(req),
+        message: `Verified payment ${paymentId} names order ${orderId}, which is not an order of this account`,
+      });
+      return billingError(res, 404, 'ORDER_NOT_FOUND', 'Order not found', 'This payment does not belong to an order of your account. If you were charged, please contact support.');
+    case 'amount_mismatch':
+      await logSecurityEvent({
+        userId: user.id,
+        eventType: 'PAYMENT_AMOUNT_MISMATCH',
+        severity: 'CRITICAL',
+        ipAddress: getClientIp(req),
+        message: `Order ${orderId} (${outcome.amount} ${outcome.currency}, ${outcome.tier}) does not cover the plan price; not upgraded`,
+      });
+      return billingError(res, 409, 'ORDER_AMOUNT_MISMATCH', 'Order does not match the plan price', 'This order was created for a different price, so it cannot unlock a plan. If you were charged, please contact support.');
+    case 'paid_by_other_payment':
+      return billingError(res, 409, 'ORDER_ALREADY_PAID', 'Order already paid', 'This order was already paid with another payment. If you were charged twice, please contact support.');
+    case 'paid':
       await logSecurityEvent({
         userId: user.id,
         eventType: 'SUBSCRIPTION_UPGRADED',
         severity: 'INFO',
-        message: `Upgraded to ${BILLING_PLANS[tier].planName} via payment ${paymentId} (order ${orderId})`,
+        message: `Order ${orderId} (${outcome.orderTier}) paid with ${paymentId}; account plan: ${outcome.accountTier}`,
+      });
+      break;
+    case 'already_paid':
+      break;
+  }
+
+  const plan = BILLING_PLANS[outcome.accountTier];
+  return res.status(200).json({
+    success: true,
+    message: outcome.accountTier === outcome.orderTier ? `Subscription successfully upgraded to ${plan.planName}` : `Payment received. Your account keeps the ${plan.planName}.`,
+    plan: plan.planName,
+    tier: outcome.accountTier,
+    order_id: orderId,
+    payment_id: paymentId,
+  });
+}
+
+/**
+ * POST /api/billing/webhook (rewritten to ?action=webhook). Razorpay calls this itself, so a user who closes the tab
+ * right after paying is still upgraded. Set it up in Razorpay Dashboard > Webhooks with this URL, a secret, and the
+ * events payment.captured and order.paid (refund.processed / payment.failed are logged for a human).
+ *
+ * - Signature: X-Razorpay-Signature = HMAC-SHA256(raw body, RAZORPAY_WEBHOOK_SECRET), compared in constant time.
+ * - Replay-safe: completing an order only moves it from unpaid to paid once, so a repeated or re-sent event changes
+ *   nothing. Razorpay retries non-2xx answers, so: bad signature 401, not configured 503, database error 500, and
+ *   events that need no action (or a human) 200.
+ */
+async function handleWebhook(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return billingError(res, 405, 'METHOD_NOT_ALLOWED', 'Method not allowed');
+  }
+  const secret = (process.env.RAZORPAY_WEBHOOK_SECRET || '').trim();
+  if (!secret) {
+    console.error('[RazorpayWebhook] RAZORPAY_WEBHOOK_SECRET is not configured');
+    return billingError(res, 503, 'WEBHOOK_NOT_CONFIGURED', 'Webhook not configured');
+  }
+  const header = req.headers['x-razorpay-signature'];
+  const signature = (Array.isArray(header) ? header[0] : header) || '';
+  if (!RAZORPAY_SIGNATURE_RE.test(signature)) {
+    return billingError(res, 401, 'INVALID_SIGNATURE', 'Invalid signature');
+  }
+
+  // The exact bytes Razorpay signed; a compact re-serialization only as a fallback (the signature must still match)
+  const raw = await readRawBody(req);
+  const candidates = [raw, req.body && typeof req.body === 'object' ? JSON.stringify(req.body) : typeof req.body === 'string' ? req.body : null]
+    .filter((b): b is string => typeof b === 'string' && b.length > 0);
+  const given = Buffer.from(signature, 'hex');
+  const verifiedBody = candidates.find((b) => {
+    const expected = crypto.createHmac('sha256', secret).update(b).digest();
+    return given.length === expected.length && crypto.timingSafeEqual(given, expected);
+  });
+  if (!verifiedBody) {
+    // Log only, no database row: unauthenticated callers must not be able to fill a table
+    console.warn('[RazorpayWebhook] Rejected a request with an invalid signature');
+    return billingError(res, 401, 'INVALID_SIGNATURE', 'Invalid signature');
+  }
+
+  let event: any;
+  try {
+    event = JSON.parse(verifiedBody);
+  } catch {
+    return billingError(res, 400, 'INVALID_PAYLOAD', 'Payload is not JSON');
+  }
+  const eventName = typeof event?.event === 'string' ? event.event : '';
+  const payment = event?.payload?.payment?.entity ?? {};
+  const orderId = typeof payment.order_id === 'string' ? payment.order_id : event?.payload?.order?.entity?.id;
+  const paymentId = typeof payment.id === 'string' ? payment.id : null;
+
+  if (eventName === 'payment.captured' || eventName === 'order.paid') {
+    if (typeof orderId !== 'string' || !RAZORPAY_ORDER_ID_RE.test(orderId) || !paymentId || !RAZORPAY_PAYMENT_ID_RE.test(paymentId)) {
+      // Not a payment for an order (e.g. a payment link): nothing of ours to complete
+      return res.status(200).json({ success: true, ignored: true });
+    }
+    let outcome;
+    try {
+      outcome = await completePaidOrder(getDb(), {
+        orderId,
+        paymentId,
+        signature: null,
+        userId: null,
+        paidAmount: typeof payment.amount === 'number' ? payment.amount : undefined,
+        paidCurrency: typeof payment.currency === 'string' ? payment.currency : undefined,
+      });
+    } catch (err: any) {
+      if (err?.code === PG_UNIQUE_VIOLATION) {
+        await logSecurityEvent({ eventType: 'PAYMENT_WEBHOOK_REVIEW', severity: 'CRITICAL', message: `Webhook: payment ${paymentId} is already stored on another order (order ${orderId})` });
+        return res.status(200).json({ success: true, review: true });
+      }
+      console.error('[RazorpayWebhook] Database error:', err?.code || err?.message || err);
+      return billingError(res, 500, 'BILLING_UPDATE_FAILED', 'Could not record the payment'); // Razorpay retries
+    }
+    if (outcome.kind === 'paid') {
+      await logSecurityEvent({
+        userId: outcome.userId,
+        eventType: 'SUBSCRIPTION_UPGRADED',
+        severity: 'INFO',
+        message: `Webhook ${eventName}: order ${orderId} (${outcome.orderTier}) paid with ${paymentId}; account plan: ${outcome.accountTier}`,
+      });
+    } else if (outcome.kind !== 'already_paid') {
+      // Money arrived for an order we cannot complete: a human must look (refund or upgrade by hand)
+      await logSecurityEvent({
+        eventType: 'PAYMENT_WEBHOOK_REVIEW',
+        severity: 'CRITICAL',
+        message: `Webhook ${eventName}: payment ${paymentId} for order ${orderId} not applied (${outcome.kind})`,
       });
     }
+    return res.status(200).json({ success: true, result: outcome.kind });
+  }
 
-    const plan = BILLING_PLANS[tier];
+  if (eventName === 'refund.processed' || eventName === 'payment.refunded' || eventName.startsWith('payment.dispute')) {
+    // What a refund or dispute does to the plan is a business decision (OPEN-0086): record it for a human
+    await logSecurityEvent({
+      eventType: 'PAYMENT_WEBHOOK_REVIEW',
+      severity: 'CRITICAL',
+      message: `Webhook ${eventName} for payment ${paymentId ?? 'unknown'} (order ${typeof orderId === 'string' ? orderId : 'unknown'}): plan unchanged, review by hand`,
+    });
+    return res.status(200).json({ success: true, review: true });
+  }
+
+  // payment.failed, payment.authorized and anything else: no action needed
+  return res.status(200).json({ success: true, ignored: true });
+}
+
+/**
+ * GET /api/billing/history (rewritten to ?action=history): the signed-in user's PAID orders, newest first, for the
+ * Billing page (replaces its invented sample invoices, OPEN-0092). Unpaid orders (checkout opened, never paid) are
+ * not listed. Amounts are in paise, with the 18% GST split out; the payment signature is never returned.
+ */
+async function handleHistory(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return billingError(res, 405, 'METHOD_NOT_ALLOWED', 'Method not allowed');
+  }
+  if (!(await enforceRateLimit(req, res, 'general', getClientIp(req)))) return;
+  const user = await authenticateRequest(req);
+  if (!user || user.isGuest) {
+    return billingError(res, 401, 'AUTH_REQUIRED', 'Unauthorized');
+  }
+
+  try {
+    const rows = (await getDb()`
+      SELECT order_id, payment_id, amount, currency, tier, created_at, updated_at
+      FROM "PaymentRecord"
+      WHERE user_id = ${user.id} AND status = 'captured'
+      ORDER BY updated_at DESC
+      LIMIT 100
+    `) as Array<{ order_id: string; payment_id: string | null; amount: number; currency: string; tier: string; created_at: string; updated_at: string }>;
+
     return res.status(200).json({
       success: true,
-      message: `Subscription successfully upgraded to ${plan.planName}`,
-      plan: plan.planName,
-      tier,
-      order_id: orderId,
-      payment_id: paymentId,
+      items: rows.map((r) => {
+        const tier = normalizePaidTier(r.tier) ?? 'pro';
+        const amountPaise = Number(r.amount) || 0;
+        return {
+          orderId: r.order_id,
+          paymentId: r.payment_id,
+          tier,
+          planName: BILLING_PLANS[tier].planName,
+          amountPaise,
+          ...splitGst(amountPaise),
+          currency: r.currency,
+          status: 'paid',
+          orderedAt: r.created_at,
+          paidAt: r.updated_at,
+        };
+      }),
     });
   } catch (err: any) {
-    if (err?.code === PG_UNIQUE_VIOLATION) {
-      // The payment id is already stored on another order (payment_id is unique)
-      return res.status(409).json({ success: false, error: 'Payment already used', code: 'PAYMENT_ALREADY_USED' });
-    }
-    console.error('[Billing] Verify payment error:', err?.code || err?.message || err);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to complete payment verification',
-      message: 'Your payment was received but your plan could not be updated yet. Please retry, or contact support.',
-    });
+    console.error('[Billing] Payment history error:', err?.code || err?.message || err);
+    return billingError(res, 500, 'BILLING_HISTORY_FAILED', 'Could not load payment history', 'Your payment history could not be loaded. Please try again.');
   }
 }

@@ -1,5 +1,4 @@
 import { wafShield } from '../src/middleware/wafShield.js';
-import { ThreatIntelligence } from '../src/services/threatIntelligence.js';
 import { CircuitBreaker } from '../src/services/circuitBreaker.js';
 import { CacheService } from '../src/services/cacheService.js';
 

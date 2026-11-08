@@ -24,6 +24,14 @@
       "destination": "/api/billing/verify-payment"
     },
     {
+      "source": "/api/billing/webhook",
+      "destination": "/api/billing/verify-payment?action=webhook"
+    },
+    {
+      "source": "/api/billing/history",
+      "destination": "/api/billing/verify-payment?action=history"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

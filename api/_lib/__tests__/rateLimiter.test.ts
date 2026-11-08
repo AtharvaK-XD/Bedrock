@@ -93,9 +93,22 @@ describe('rate limiter environment', () => {
       VITE_UPSTASH_REDIS_REST_TOKEN: 'vite-token',
     });
     expect(getRedisClient()).not.toBeNull();
-    expect(h.redisConstructed).toEqual([{ url: 'https://redis.example', token: 'server-token' }]);
+    expect(h.redisConstructed).toHaveLength(1);
+    expect(h.redisConstructed[0]).toMatchObject({ url: 'https://redis.example', token: 'server-token' });
     expect(await enforceRateLimit(req, mockRes(), 'general')).toBe(true);
     expect(h.limit).toHaveBeenCalledWith('203.0.113.7');
+  });
+
+  it('an unreachable or slow Redis fails fast: one quick retry and a per-call timeout (the default stalled about 4 s per call)', async () => {
+    const { REDIS_CALL_TIMEOUT_MS } = await load(BOTH);
+    const opts: any = h.redisConstructed[0];
+    expect(opts.retry.retries).toBe(1);
+    expect(opts.retry.backoff(0)).toBeLessThanOrEqual(100);
+    expect(REDIS_CALL_TIMEOUT_MS).toBeLessThanOrEqual(2_000);
+    const signal = typeof opts.signal === 'function' ? opts.signal() : opts.signal;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    // a fresh signal per call, so one slow call cannot cancel the next one
+    expect(opts.signal()).not.toBe(opts.signal());
   });
 
   it('both variables omitted: in-memory limits still apply and answer 429 over the limit', async () => {

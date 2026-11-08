@@ -225,7 +225,7 @@ const MAX_WEBHOOK_BODY_BYTES = 256 * 1024;
  * The exact bytes Clerk sent (the signature covers them). Vercel's helpers read the body once and replay it to
  * "data"/"end" listeners (restoreBody in @vercel/node), so it can still be read here. Gives up after 3 s or 256 KB.
  */
-function readRawBody(req: VercelRequest): Promise<string | null> {
+export function readRawBody(req: VercelRequest): Promise<string | null> {
   return new Promise((resolve) => {
     if (typeof (req as any).on !== 'function') return resolve(null);
     const chunks: Buffer[] = [];

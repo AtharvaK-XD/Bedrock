@@ -11,11 +11,7 @@ import {
   extractRefineResult,
 } from './aiPrompts.js';
 import { getModelTuning } from './modelTuning.js';
-import {
-  getUseCaseProfile,
-  classifyUseCase,
-  validatePromptAgainstForbiddenTerms,
-} from './useCaseProfiles.js';
+import { getUseCaseProfile } from './useCaseProfiles.js';
 import { ValidationService } from './validationService.js';
 
 export interface Question {
@@ -39,11 +35,6 @@ const LLMQuestionsSchema = z.array(
     options: z.array(z.string()).optional(),
   })
 );
-
-const LLMRefineSchema = z.object({
-  updatedMarkdown: z.string().min(1),
-  summary: z.string().min(1),
-});
 
 export class AiService {
   private static REQUEST_TIMEOUT_MS = 30000;

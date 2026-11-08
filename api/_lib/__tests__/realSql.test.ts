@@ -12,6 +12,9 @@ import { fileURLToPath } from 'node:url';
 
 const h = vi.hoisted(() => ({ state: { db: null as any, user: null as any } }));
 
+// In-memory Postgres is slow to start under a whole-repo run: 5 s per test was not enough (timeouts in CHG-0109)
+vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
+
 // Neon's tagged template -> PGlite query with $1..$n. int8 and numeric stay strings, as Neon returns them.
 vi.mock('@neondatabase/serverless', () => ({
   neon: () => (strings: TemplateStringsArray, ...values: unknown[]) => {

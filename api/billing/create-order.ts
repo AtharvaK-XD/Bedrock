@@ -4,7 +4,15 @@ import Razorpay from 'razorpay';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, logSecurityEvent } from '../_lib/db.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
-import { BILLING_PLANS, BILLING_CURRENCY, normalizePaidTier } from '../_lib/billing.js';
+import {
+  BILLING_PLANS,
+  BILLING_CURRENCY,
+  normalizePaidTier,
+  billingError,
+  withTimeout,
+  BillingTimeoutError,
+  RAZORPAY_ORDER_ID_RE,
+} from '../_lib/billing.js';
 
 /**
  * POST /api/billing/create-order   body: { tier: "pro" | "ultimate", amount?: <paise>, currency?: "INR" }
@@ -12,10 +20,22 @@ import { BILLING_PLANS, BILLING_CURRENCY, normalizePaidTier } from '../_lib/bill
  * The price comes from BILLING_PLANS, never from the browser. A browser that sends an `amount` must send exactly the
  * plan's price: anything else is refused (409 PRICE_MISMATCH) instead of creating an order for a different amount.
  * The order is stored BEFORE it is returned, so verify-payment can always find which plan it was for.
+ * Every failure answers JSON { success: false, error, code, message? } (billingError), never a platform error page.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  try {
+    return await createOrder(req, res);
+  } catch (err: any) {
+    // Last line of defence: an unexpected throw must still give the app a readable answer
+    console.error('[Billing] create-order failed unexpectedly:', err?.code || err?.message || err);
+    if (res.headersSent) return;
+    return billingError(res, 500, 'BILLING_INTERNAL_ERROR', 'Payment could not be started', 'Something went wrong on our side. Nothing was charged. Please try again.');
+  }
+}
+
+async function createOrder(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return billingError(res, 405, 'METHOD_NOT_ALLOWED', 'Method not allowed');
   }
   res.setHeader('Cache-Control', 'no-store');
 
@@ -24,19 +44,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const user = await authenticateRequest(req);
   // The local development guest has no real account to upgrade
   if (!user || user.isGuest) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return billingError(res, 401, 'AUTH_REQUIRED', 'Unauthorized', 'Please sign in to upgrade your plan.');
   }
 
   const body = req.body && typeof req.body === 'object' ? req.body : {};
 
   const tier = normalizePaidTier(body.tier);
   if (!tier) {
-    return res.status(400).json({ error: 'tier must be "pro" or "ultimate"', code: 'INVALID_TIER' });
+    return billingError(res, 400, 'INVALID_TIER', 'tier must be "pro" or "ultimate"');
   }
   const plan = BILLING_PLANS[tier];
 
   if (body.currency !== undefined && body.currency !== null && body.currency !== BILLING_CURRENCY) {
-    return res.status(400).json({ error: `Only ${BILLING_CURRENCY} payments are supported`, code: 'INVALID_CURRENCY' });
+    return billingError(res, 400, 'INVALID_CURRENCY', `Only ${BILLING_CURRENCY} payments are supported`);
   }
 
   // The browser's amount is only a check of what the user was shown: it never sets the price
@@ -51,6 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         message: `Order refused: ${tier} costs ${plan.amountPaise} paise, the request said ${String(body.amount).slice(0, 40)}`,
       });
       return res.status(409).json({
+        success: false,
         error: 'Price mismatch',
         code: 'PRICE_MISMATCH',
         message: 'The price changed or could not be confirmed. Please reload the page and try again.',
@@ -64,11 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) {
     console.error('[Billing] Razorpay credentials missing from server environment.');
-    return res.status(503).json({
-      error: 'Payments are not available right now',
-      code: 'BILLING_NOT_CONFIGURED',
-      message: 'Payments are not available right now. Please try again later.',
-    });
+    return billingError(res, 503, 'BILLING_NOT_CONFIGURED', 'Payments are not available right now', 'Payments are not available right now. Please try again later.');
   }
 
   // Our own receipt id: never taken from the request (Razorpay allows 40 characters)
@@ -77,22 +94,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let orderId: string;
   try {
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
-    const rzOrder = await razorpay.orders.create({
-      amount: plan.amountPaise,
-      currency: BILLING_CURRENCY,
-      receipt,
-      // Server-set only: notes are shown in the Razorpay dashboard and sent in webhooks
-      notes: { userId: user.id, tier },
-    });
+    // The SDK has no timeout of its own: without this, a hung call ran into Vercel's 60 s limit (a non-JSON 504)
+    const rzOrder = await withTimeout(
+      razorpay.orders.create({
+        amount: plan.amountPaise,
+        currency: BILLING_CURRENCY,
+        receipt,
+        // Server-set only: notes are shown in the Razorpay dashboard and sent in webhooks
+        notes: { userId: user.id, tier },
+      })
+    );
+    if (typeof rzOrder?.id !== 'string' || !RAZORPAY_ORDER_ID_RE.test(rzOrder.id)) {
+      throw new Error('Razorpay answered without a valid order id');
+    }
     orderId = rzOrder.id;
   } catch (rzErr: any) {
     // The detail stays in the server log: Razorpay's error text is not for end users
     console.error('[Billing] Razorpay order creation failed:', rzErr?.error?.description || rzErr?.message || rzErr);
-    return res.status(502).json({
-      error: 'Failed to create Razorpay order',
-      code: 'BILLING_ORDER_FAILED',
-      message: 'The payment could not be started. Please try again in a moment.',
-    });
+    if (rzErr instanceof BillingTimeoutError) {
+      return billingError(res, 504, 'BILLING_GATEWAY_TIMEOUT', 'The payment service did not answer', 'The payment could not be started. Nothing was charged. Please try again in a moment.');
+    }
+    return billingError(res, 502, 'BILLING_ORDER_FAILED', 'Failed to create Razorpay order', 'The payment could not be started. Please try again in a moment.');
   }
 
   // Must be stored: without this row, verify-payment cannot tell which plan the payment bought and refuses it.
@@ -105,11 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
   } catch (dbErr: any) {
     console.error('[Billing] Could not store the new order; refusing it so it cannot be paid:', dbErr?.code || dbErr?.message || dbErr);
-    return res.status(503).json({
-      error: 'Payments are not available right now',
-      code: 'BILLING_UNAVAILABLE',
-      message: 'The payment could not be started. Nothing was charged. Please try again in a moment.',
-    });
+    return billingError(res, 503, 'BILLING_UNAVAILABLE', 'Payments are not available right now', 'The payment could not be started. Nothing was charged. Please try again in a moment.');
   }
 
   await logSecurityEvent({
@@ -120,6 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   });
 
   return res.status(200).json({
+    success: true,
     order_id: orderId,
     orderId,
     amount: plan.amountPaise,

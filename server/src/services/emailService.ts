@@ -645,8 +645,8 @@ export async function sendPaymentConfirmationEmail(options: {
 async function handleResendError(
   error: any,
   intendedRecipient: string,
-  type: 'signup' | 'signin' | 'payment',
-  displayName: string
+  _type: 'signup' | 'signin' | 'payment',
+  _displayName: string
 ): Promise<EmailSendResult> {
   const errMsg = error?.message || String(error);
   const isSandboxRestriction = errMsg.includes('testing emails to your own email address') || errMsg.includes('verify a domain');

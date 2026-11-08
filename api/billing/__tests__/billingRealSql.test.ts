@@ -3,11 +3,13 @@ import crypto from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EventEmitter } from 'node:events';
 
 // Billing SQL on a real Postgres engine (PGlite, in memory, every db/migrations/*.up.sql applied): the atomic
 // "mark paid + upgrade" statement, replay and cross-account claims. Only auth, the rate limiter and Razorpay are faked.
 // Skipped unless the dev package is installed (npm i -D -E @electric-sql/pglite@0.3.15).
 const KEY_SECRET = crypto.randomBytes(18).toString('base64url');
+const WEBHOOK_SECRET = crypto.randomBytes(18).toString('base64url');
 
 const h = vi.hoisted(() => ({ state: { db: null as any, user: null as any, nextOrder: '' } }));
 
@@ -57,7 +59,7 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
   const originalEnv = process.env;
 
   beforeAll(async () => {
-    process.env = { ...originalEnv, DATABASE_URL: 'postgres://pglite', RAZORPAY_KEY_ID: 'rzp_test_fake', RAZORPAY_KEY_SECRET: KEY_SECRET };
+    process.env = { ...originalEnv, DATABASE_URL: 'postgres://pglite', RAZORPAY_KEY_ID: 'rzp_test_fake', RAZORPAY_KEY_SECRET: KEY_SECRET, RAZORPAY_WEBHOOK_SECRET: WEBHOOK_SECRET };
     h.state.db = new PGlite();
     for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.up.sql')).sort()) {
       const statements = readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8')
@@ -149,7 +151,10 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
     as('u_bob');
     h.state.nextOrder = 'order_BobProLater1';
     expect((await call(createOrder, { tier: 'pro' })).statusCode).toBe(200);
-    expect((await verify('order_BobProLater1', 'pay_BobProLater01')).statusCode).toBe(200);
+    const kept = await verify('order_BobProLater1', 'pay_BobProLater01');
+    expect(kept.statusCode).toBe(200);
+    // the answer names the plan the account HAS (it said "upgraded to Pro Plan" and the page then showed Pro)
+    expect(kept.body).toMatchObject({ tier: 'ultimate', plan: 'Ultimate Plan' });
     expect(await userRow('u_bob')).toEqual({ subscription_tier: 'ultimate', plan: 'Ultimate Plan' });
     expect((await q(`SELECT status FROM "PaymentRecord" WHERE order_id = 'order_BobProLater1'`))[0].status).toBe('captured');
   });
@@ -161,5 +166,84 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
     const reused = await verify('order_AliceAgain001', 'pay_BobPay0000001');
     expect(reused.statusCode).toBe(409);
     expect(await userRow('u_alice')).toEqual({ subscription_tier: 'pro', plan: 'Pro Plan' });
+  });
+
+  /** A webhook call whose raw body can be read from "data"/"end", as Vercel replays it. */
+  async function webhook(event: unknown) {
+    const raw = JSON.stringify(event);
+    const req: any = new EventEmitter();
+    Object.assign(req, {
+      method: 'POST',
+      query: { action: 'webhook' },
+      headers: { 'x-razorpay-signature': crypto.createHmac('sha256', WEBHOOK_SECRET).update(raw).digest('hex') },
+      body: event,
+    });
+    const on = req.on.bind(req);
+    let sent = false;
+    req.on = (ev: string, fn: any) => {
+      on(ev, fn);
+      if (!sent) {
+        sent = true;
+        setImmediate(() => {
+          req.emit('data', Buffer.from(raw));
+          req.emit('end');
+        });
+      }
+      return req;
+    };
+    const r: any = { statusCode: 200, body: undefined, headersSent: false };
+    r.status = (c: number) => ((r.statusCode = c), r);
+    r.json = (b: unknown) => ((r.body = b), r);
+    r.setHeader = () => {};
+    await verifyPayment(req, r);
+    return r;
+  }
+  const captured = (orderId: string, paymentId: string, amount: number) => ({
+    event: 'payment.captured',
+    payload: { payment: { entity: { id: paymentId, order_id: orderId, amount, currency: 'INR', status: 'captured' } } },
+  });
+
+  it("webhook: a user who closed the tab after paying is upgraded by Razorpay's own call; replays change nothing", async () => {
+    await q(`INSERT INTO "User"(id,email,password_hash,name,updated_at) VALUES ('u_carol','c@x.test','x','Carol',now())`);
+    as('u_carol');
+    h.state.nextOrder = 'order_CarolPro0001';
+    expect((await call(createOrder, { tier: 'pro' })).statusCode).toBe(200);
+    // the browser never calls verify-payment (tab closed); Razorpay's webhook arrives instead
+    h.state.user = null;
+    const first = await webhook(captured('order_CarolPro0001', 'pay_CarolPay00001', 47_082));
+    expect(first.body).toMatchObject({ success: true, result: 'paid' });
+    expect(await userRow('u_carol')).toEqual({ subscription_tier: 'pro', plan: 'Pro Plan' });
+    const again = await webhook(captured('order_CarolPro0001', 'pay_CarolPay00001', 47_082));
+    expect(again.body).toMatchObject({ success: true, result: 'already_paid' });
+    // and the browser arriving late is a harmless success
+    as('u_carol');
+    const late = await verify('order_CarolPro0001', 'pay_CarolPay00001');
+    expect(late.statusCode).toBe(200);
+    expect(late.body.tier).toBe('pro');
+  });
+
+  it('webhook: a captured amount below the order price unlocks nothing', async () => {
+    as('u_carol');
+    h.state.nextOrder = 'order_CarolUlt00001';
+    expect((await call(createOrder, { tier: 'ultimate' })).statusCode).toBe(200);
+    h.state.user = null;
+    const r = await webhook(captured('order_CarolUlt00001', 'pay_CarolShort001', 100));
+    expect(r.body.result).toBe('amount_mismatch');
+    expect(await userRow('u_carol')).toEqual({ subscription_tier: 'pro', plan: 'Pro Plan' });
+    expect((await q(`SELECT status FROM "PaymentRecord" WHERE order_id = 'order_CarolUlt00001'`))[0].status).toBe('created');
+  });
+
+  it("history: only this account's paid orders, newest first, with the GST split", async () => {
+    as('u_carol');
+    const r: any = { statusCode: 200, body: undefined };
+    r.status = (c: number) => ((r.statusCode = c), r);
+    r.json = (b: unknown) => ((r.body = b), r);
+    r.setHeader = () => {};
+    await verifyPayment({ method: 'GET', query: { action: 'history' }, headers: {}, body: undefined } as any, r);
+    expect(r.statusCode).toBe(200);
+    // the unpaid Ultimate order is not listed; Alice's and Bob's orders are not either
+    expect(r.body.items).toHaveLength(1);
+    expect(r.body.items[0]).toMatchObject({ orderId: 'order_CarolPro0001', paymentId: 'pay_CarolPay00001', tier: 'pro', amountPaise: 47_082, basePaise: 39_900, gstPaise: 7_182, status: 'paid' });
+    expect(JSON.stringify(r.body)).not.toContain('signature');
   });
 });
