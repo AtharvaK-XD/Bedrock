@@ -7,23 +7,43 @@
  */
 
 export type PaidTier = 'pro' | 'ultimate';
+export type BillingCurrency = 'USD' | 'INR';
 
 export interface BillingPlan {
   tier: PaidTier;
   planName: string;
+  /** Price in USD dollars ($20 / $50) */
+  basePriceUsd: number;
+  /** Amount in cents for USD payments (2000 / 5000) */
+  amountCents: number;
   /** Price shown on the pricing page before tax, in rupees */
   basePriceInr: number;
   /** What the customer pays: base price + 18% GST, in paise (the unit Razorpay uses) */
   amountPaise: number;
 }
 
-/** Matches src/pages/Pricing.tsx: Pro ₹399 + ₹71.82 GST = ₹470.82; Ultimate ₹999 + ₹179.82 GST = ₹1,178.82. */
+/** Matches $20 Pro / $50 Ultimate international pricing, with INR ₹1,699 / ₹4,199 options. */
 export const BILLING_PLANS: Record<PaidTier, BillingPlan> = {
-  pro: { tier: 'pro', planName: 'Pro Plan', basePriceInr: 399, amountPaise: 47_082 },
-  ultimate: { tier: 'ultimate', planName: 'Ultimate Plan', basePriceInr: 999, amountPaise: 117_882 },
+  pro: {
+    tier: 'pro',
+    planName: 'Pro Plan',
+    basePriceUsd: 20,
+    amountCents: 2000,
+    basePriceInr: 399,
+    amountPaise: 47_082,
+  },
+  ultimate: {
+    tier: 'ultimate',
+    planName: 'Ultimate Plan',
+    basePriceUsd: 50,
+    amountCents: 5000,
+    basePriceInr: 999,
+    amountPaise: 117_882,
+  },
 };
 
 export const BILLING_CURRENCY = 'INR';
+export const SUPPORTED_CURRENCIES: readonly BillingCurrency[] = ['USD', 'INR'];
 
 /** "pro", "Pro", "advanced" (older name of Pro) -> 'pro'; "ultimate" -> 'ultimate'; anything else -> null. */
 export function normalizePaidTier(raw: unknown): PaidTier | null {
@@ -118,7 +138,7 @@ export async function completePaidOrder(
   p: { orderId: string; paymentId: string; signature: string | null; userId: string | null; paidAmount?: number; paidCurrency?: string }
 ): Promise<OrderCompletion> {
   const paidAmount = typeof p.paidAmount === 'number' && Number.isFinite(p.paidAmount) ? Math.round(p.paidAmount) : null;
-  const paidCurrency = p.paidCurrency ?? BILLING_CURRENCY;
+  const paidCurrency = p.paidCurrency ? p.paidCurrency.toUpperCase().trim() : null;
   const rows = (await sql`
     WITH paid AS (
       UPDATE "PaymentRecord"
@@ -128,10 +148,12 @@ export async function completePaidOrder(
         -- an order whose account was erased (migration 0019 sets user_id to NULL) can never be completed
         AND user_id IS NOT NULL
         AND status = 'created'
-        AND currency = ${BILLING_CURRENCY}
-        AND ${paidCurrency}::text = ${BILLING_CURRENCY}
         AND (${paidAmount}::int IS NULL OR ${paidAmount}::int >= amount)
-        AND amount >= CASE WHEN tier = 'ultimate' THEN ${BILLING_PLANS.ultimate.amountPaise}::int ELSE ${BILLING_PLANS.pro.amountPaise}::int END
+        AND (
+          (currency = 'USD' AND (${paidCurrency}::text IS NULL OR ${paidCurrency}::text = 'USD') AND amount = CASE WHEN tier = 'ultimate' THEN 5000 ELSE 2000 END)
+          OR
+          (currency = ${BILLING_CURRENCY} AND (${paidCurrency}::text IS NULL OR ${paidCurrency}::text = ${BILLING_CURRENCY}) AND amount >= CASE WHEN tier = 'ultimate' THEN ${BILLING_PLANS.ultimate.amountPaise}::int ELSE ${BILLING_PLANS.pro.amountPaise}::int END)
+        )
       RETURNING user_id, CASE WHEN tier = 'ultimate' THEN 'ultimate' ELSE 'pro' END AS tier
     ),
     upgraded AS (

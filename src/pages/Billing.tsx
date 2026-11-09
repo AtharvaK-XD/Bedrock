@@ -54,9 +54,9 @@ export default function Billing() {
   };
 
   const planPrice = getPlanPrice(currentTier === 'ultimate' ? 'ultimate' : 'pro');
-  const invoiceAmount = `₹${planPrice.total}`;
-  const basePrice = `₹${planPrice.base}.00`;
-  const gstPrice = `₹${planPrice.gst}`;
+  const invoiceAmount = `${planPrice.symbol}${planPrice.total}`;
+  const basePrice = `${planPrice.symbol}${planPrice.base}`;
+  const gstPrice = `${planPrice.symbol}${planPrice.gst}`;
   const planDisplayName = currentTier === 'ultimate' ? 'Ultimate Plan' : currentTier === 'pro' ? 'Pro Plan' : 'Free Tier';
 
   const invoiceItems = isFree ? [] : [

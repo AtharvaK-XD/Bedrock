@@ -6,7 +6,6 @@ import { getDb, logSecurityEvent } from '../_lib/db.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import {
   BILLING_PLANS,
-  BILLING_CURRENCY,
   normalizePaidTier,
   billingError,
   billingTestModeBlocked,
@@ -56,28 +55,42 @@ async function createOrder(req: VercelRequest, res: VercelResponse) {
   }
   const plan = BILLING_PLANS[tier];
 
-  if (body.currency !== undefined && body.currency !== null && body.currency !== BILLING_CURRENCY) {
-    return billingError(res, 400, 'INVALID_CURRENCY', `Only ${BILLING_CURRENCY} payments are supported`);
+  // Infer currency: explicit currency, or USD if amount is in USD cents (2000/5000), or INR if amount is paise / default
+  const rawCurrency = body.currency !== undefined && body.currency !== null
+    ? String(body.currency).toUpperCase().trim()
+    : (body.amount === 2000 || body.amount === 5000 ? 'USD' : 'INR');
+
+  if (rawCurrency !== 'INR' && rawCurrency !== 'USD') {
+    return billingError(res, 400, 'INVALID_CURRENCY', 'Only USD and INR payments are supported');
   }
+  const currency: 'USD' | 'INR' = rawCurrency as 'USD' | 'INR';
+
+  const expectedAmount = currency === 'USD'
+    ? plan.amountCents
+    : plan.amountPaise;
 
   // The browser's amount is only a check of what the user was shown: it never sets the price
   if (body.amount !== undefined && body.amount !== null) {
     const shown = typeof body.amount === 'number' ? body.amount : Number(body.amount);
-    if (!Number.isFinite(shown) || Math.round(shown) !== plan.amountPaise) {
+    const isValid = Number.isFinite(shown) && (
+      (currency === 'USD' && Math.round(shown) === plan.amountCents) ||
+      (currency === 'INR' && (Math.round(shown) === plan.amountPaise || Math.round(shown) === plan.basePriceInr * 100))
+    );
+    if (!isValid) {
       await logSecurityEvent({
         userId: user.id,
         eventType: 'PAYMENT_PRICE_MISMATCH',
         severity: 'WARN',
         ipAddress: getClientIp(req),
-        message: `Order refused: ${tier} costs ${plan.amountPaise} paise, the request said ${String(body.amount).slice(0, 40)}`,
+        message: `Order refused: ${tier} in ${currency} costs ${expectedAmount}, the request said ${String(body.amount).slice(0, 40)}`,
       });
       return res.status(409).json({
         success: false,
         error: 'Price mismatch',
         code: 'PRICE_MISMATCH',
         message: 'The price changed or could not be confirmed. Please reload the page and try again.',
-        amount: plan.amountPaise,
-        currency: BILLING_CURRENCY,
+        amount: expectedAmount,
+        currency,
       });
     }
   }
@@ -102,8 +115,8 @@ async function createOrder(req: VercelRequest, res: VercelResponse) {
     // The SDK has no timeout of its own: without this, a hung call ran into Vercel's 60 s limit (a non-JSON 504)
     const rzOrder = await withTimeout(
       razorpay.orders.create({
-        amount: plan.amountPaise,
-        currency: BILLING_CURRENCY,
+        amount: expectedAmount,
+        currency,
         receipt,
         // Server-set only: notes are shown in the Razorpay dashboard and sent in webhooks
         notes: { userId: user.id, tier },
@@ -128,7 +141,7 @@ async function createOrder(req: VercelRequest, res: VercelResponse) {
     const sql = getDb();
     await sql`
       INSERT INTO "PaymentRecord" (id, user_id, order_id, amount, currency, status, tier, created_at, updated_at)
-      VALUES (${`payrec_${crypto.randomUUID()}`}, ${user.id}, ${orderId}, ${plan.amountPaise}, ${BILLING_CURRENCY}, ${'created'}, ${tier}, NOW(), NOW())
+      VALUES (${`payrec_${crypto.randomUUID()}`}, ${user.id}, ${orderId}, ${expectedAmount}, ${currency}, ${'created'}, ${tier}, NOW(), NOW())
     `;
   } catch (dbErr: any) {
     console.error('[Billing] Could not store the new order; refusing it so it cannot be paid:', dbErr?.code || dbErr?.message || dbErr);
@@ -139,15 +152,15 @@ async function createOrder(req: VercelRequest, res: VercelResponse) {
     userId: user.id,
     eventType: 'PAYMENT_ORDER_CREATED',
     severity: 'INFO',
-    message: `Created order ${orderId} for tier ${tier} (${plan.amountPaise} paise)`,
+    message: `Created order ${orderId} for tier ${tier} (${expectedAmount} ${currency})`,
   });
 
   return res.status(200).json({
     success: true,
     order_id: orderId,
     orderId,
-    amount: plan.amountPaise,
-    currency: BILLING_CURRENCY,
+    amount: expectedAmount,
+    currency,
     receipt,
     tier,
     // The key id is public by design (Razorpay Checkout needs it in the browser); the secret never leaves the server

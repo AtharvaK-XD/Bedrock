@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useDialogBehavior } from '../lib/useDialogBehavior';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,14 +11,15 @@ import {
   User,
   Zap,
   AlertTriangle,
-  Info
+  Info,
+  Globe
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
 import { useUserProfile, syncRemoteUserProfile } from '../lib/useUserProfile';
 import { normalizeTier } from '../lib/subscriptionTiers';
 import { startRazorpayCheckout } from '../lib/razorpay';
-import { getPlanPrice } from '../lib/pricing';
+import { getPlanPrice, type BillingCurrency } from '../lib/pricing';
 
 const SUPPORT_EMAIL = 'bedrockofficialpage@gmail.com';
 
@@ -27,76 +28,20 @@ interface PricingTier {
   slug: 'free' | 'pro' | 'advanced' | 'ultimate';
   description: string;
   price: string;
+  symbol: string;
+  subtext?: string;
   gstPrice: string;
   totalPrice: string;
   features: { text: string; active: boolean; bold?: boolean }[];
   isPopular?: boolean;
 }
 
-const TIERS: PricingTier[] = [
-  {
-    name: 'Free',
-    slug: 'free',
-    description: 'Zero-cost frontier exploration with core daily limits',
-    price: '0',
-    gstPrice: '0',
-    totalPrice: '0',
-    features: [
-      { text: 'Core Gemini 3.5 Flash Lite & Groq GPT-OSS 120B', active: true },
-      { text: '10 prompt generations per day', active: true },
-      { text: '3 DAG canvas pipeline nodes', active: true },
-      { text: 'Up to 5 custom prompt library slots', active: true },
-      { text: 'Local Ollama & OpenRouter Free models', active: true },
-      { text: 'Claude Sonnet 5.5 & GPT-6.1 Sol access', active: false },
-      { text: 'DeepSeek R1 & o3-mini reasoning models', active: false },
-      { text: 'Automated assertion & rubric scoring', active: false },
-    ],
-  },
-  {
-    name: 'Pro',
-    slug: 'pro',
-    description: 'Uncapped prompts, frontier Pro models, and extended DAG architectures',
-    price: getPlanPrice('pro').base,
-    gstPrice: getPlanPrice('pro').gst,
-    totalPrice: getPlanPrice('pro').total,
-    isPopular: true,
-    features: [
-      { text: 'Unlimited daily prompt generations ($0 marginal cost)', active: true, bold: true },
-      { text: 'Claude Sonnet 5.5 & GPT-6.1 Sol / Luna frontier models', active: true, bold: true },
-      { text: 'o3-mini, DeepSeek R1 & Grok 4.7 reasoning', active: true },
-      { text: 'Llama 3.3 70B, Gemini 3.6 Flash & Mistral Large 2411', active: true },
-      { text: '15 DAG canvas pipeline nodes with branching logic', active: true },
-      { text: 'Up to 100 library prompt templates with tags', active: true },
-      { text: 'Export to .cursorrules & production system prompts', active: true },
-      { text: 'Zero queue delays & priority inference dispatch', active: true },
-      { text: 'Claude Opus 5.5, GPT-6 Astra & OpenAI o1 access', active: false },
-    ],
-  },
-  {
-    name: 'Ultimate',
-    slug: 'ultimate',
-    description: 'State-of-the-art frontier intelligence for principal prompt engineers',
-    price: getPlanPrice('ultimate').base,
-    gstPrice: getPlanPrice('ultimate').gst,
-    totalPrice: getPlanPrice('ultimate').total,
-    features: [
-      { text: 'Everything in Pro, plus:', active: true, bold: true },
-      { text: 'Claude Opus 5.5, GPT-6 Astra & OpenAI o1 Flagships', active: true, bold: true },
-      { text: 'Gemini 4 Argon (1M+ Context) & Llama 3.1 405B Giant', active: true, bold: true },
-      { text: 'Perplexity Sonar Reasoning Pro (Chain-of-Thought Search)', active: true },
-      { text: 'Unlimited DAG pipeline nodes & infinite canvas branches', active: true },
-      { text: 'Automated assertion evals & quality rubric judge', active: true },
-      { text: 'Unlimited prompt library templates & multi-export formats', active: true },
-      { text: 'VIP low-latency queue & lifetime execution traces', active: true },
-    ],
-  }
-];
-
 export default function Pricing() {
   const { profile, updateProfile } = useUserProfile();
   const currentTier = normalizeTier(profile?.plan);
   const navigate = useNavigate();
 
+  const [currency, setCurrency] = useState<BillingCurrency>('USD');
   const [checkoutTier, setCheckoutTier] = useState<PricingTier | null>(null);
   const [purchasedTier, setPurchasedTier] = useState<PricingTier | null>(null);
   const [billingName, setBillingName] = useState(profile?.name || 'Prompt Architect');
@@ -116,6 +61,75 @@ export default function Pricing() {
     // Escape closes the window unless a payment is being started or has just succeeded
     checkoutTier && !isProcessing && !paymentSuccess ? () => setCheckoutTier(null) : undefined
   );
+
+  const tiers: PricingTier[] = useMemo(() => [
+    {
+      name: 'Free',
+      slug: 'free',
+      description: 'Zero-cost frontier exploration with core daily limits',
+      price: '0',
+      symbol: currency === 'USD' ? '$' : '₹',
+      subtext: 'Free forever · No credit card required',
+      gstPrice: '0',
+      totalPrice: '0',
+      features: [
+        { text: 'Core Gemini 3.5 Flash Lite & Groq GPT-OSS 120B', active: true },
+        { text: '10 prompt generations per day', active: true },
+        { text: '3 DAG canvas pipeline nodes', active: true },
+        { text: 'Up to 5 custom prompt library slots', active: true },
+        { text: 'Local Ollama & OpenRouter Free models', active: true },
+        { text: 'Claude Sonnet 5.5 & GPT-6.1 Sol access', active: false },
+        { text: 'DeepSeek R1 & o3-mini reasoning models', active: false },
+        { text: 'Automated assertion & rubric scoring', active: false },
+      ],
+    },
+    {
+      name: 'Pro',
+      slug: 'pro',
+      description: 'Uncapped prompts, frontier Pro models, and extended DAG architectures',
+      price: getPlanPrice('pro', currency).base,
+      symbol: getPlanPrice('pro', currency).symbol,
+      subtext: currency === 'USD' 
+        ? 'Flat $20 USD / mo · Global cards & PayPal' 
+        : '₹399 / mo + 18% GST (₹470.82) · UPI & RuPay',
+      gstPrice: getPlanPrice('pro', currency).gst,
+      totalPrice: getPlanPrice('pro', currency).total,
+      isPopular: true,
+      features: [
+        { text: 'Unlimited daily prompt generations ($0 marginal cost)', active: true, bold: true },
+        { text: 'Claude Sonnet 5.5 & GPT-6.1 Sol / Luna frontier models', active: true, bold: true },
+        { text: 'o3-mini, DeepSeek R1 & Grok 4.7 reasoning', active: true },
+        { text: 'Llama 3.3 70B, Gemini 3.6 Flash & Mistral Large 2411', active: true },
+        { text: '15 DAG canvas pipeline nodes with branching logic', active: true },
+        { text: 'Up to 100 library prompt templates with tags', active: true },
+        { text: 'Export to .cursorrules & production system prompts', active: true },
+        { text: 'Zero queue delays & priority inference dispatch', active: true },
+        { text: 'Claude Opus 5.5, GPT-6 Astra & OpenAI o1 access', active: false },
+      ],
+    },
+    {
+      name: 'Ultimate',
+      slug: 'ultimate',
+      description: 'State-of-the-art frontier intelligence for principal prompt engineers',
+      price: getPlanPrice('ultimate', currency).base,
+      symbol: getPlanPrice('ultimate', currency).symbol,
+      subtext: currency === 'USD' 
+        ? 'Flat $50 USD / mo · All international cards' 
+        : '₹999 / mo + 18% GST (₹1,178.82) · UPI & RuPay',
+      gstPrice: getPlanPrice('ultimate', currency).gst,
+      totalPrice: getPlanPrice('ultimate', currency).total,
+      features: [
+        { text: 'Everything in Pro, plus:', active: true, bold: true },
+        { text: 'Claude Opus 5.5, GPT-6 Astra & OpenAI o1 Flagships', active: true, bold: true },
+        { text: 'Gemini 4 Argon (1M+ Context) & Llama 3.1 405B Giant', active: true, bold: true },
+        { text: 'Perplexity Sonar Reasoning Pro (Chain-of-Thought Search)', active: true },
+        { text: 'Unlimited DAG pipeline nodes & infinite canvas branches', active: true },
+        { text: 'Automated assertion evals & quality rubric judge', active: true },
+        { text: 'Unlimited prompt library templates & multi-export formats', active: true },
+        { text: 'VIP low-latency queue & lifetime execution traces', active: true },
+      ],
+    }
+  ], [currency]);
 
   const handleOpenCheckout = (tier: PricingTier) => {
     if (tier.slug === 'free') return;
@@ -141,16 +155,16 @@ export default function Pricing() {
     paymentDoneRef.current = false;
 
     const targetPlanName = checkoutTier.slug === 'ultimate' ? 'Ultimate Plan' : 'Pro Plan';
-    // The server sets the real price; this is only the amount the user was shown, from the shared price table
-    const amountInPaise = getPlanPrice(checkoutTier.slug === 'ultimate' ? 'ultimate' : 'pro').totalPaise;
+    const planPrice = getPlanPrice(checkoutTier.slug === 'ultimate' ? 'ultimate' : 'pro', currency);
+    const amountSubunits = planPrice.totalSubunits;
     setPurchasedTier(checkoutTier);
 
     try {
       await startRazorpayCheckout({
         tier: checkoutTier.slug,
         planName: targetPlanName,
-        amount: amountInPaise,
-        currency: 'INR',
+        amount: amountSubunits,
+        currency,
         userName: billingName,
         userEmail: billingEmail,
         onOpen: () => {
@@ -223,7 +237,7 @@ export default function Pricing() {
       <div className="w-full px-4 sm:px-8 py-12 lg:py-16 min-h-screen bg-black text-white">
         
         {/* Header */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-10">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -239,6 +253,43 @@ export default function Pricing() {
           >
             Predictable flat-rate pricing for high-throughput prompt engineering and multi-agent DAG pipelines.
           </motion.p>
+
+          {/* Interactive Currency Switcher */}
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="flex items-center justify-center mt-8"
+          >
+            <div className="inline-flex items-center p-1.5 rounded-2xl bg-zinc-950/90 border border-white/10 backdrop-blur-xl shadow-2xl">
+              <button
+                type="button"
+                onClick={() => setCurrency('USD')}
+                className={cn(
+                  "px-4 sm:px-5 py-2 rounded-xl text-xs font-semibold font-mono transition-all flex items-center gap-2 cursor-pointer",
+                  currency === 'USD'
+                    ? "bg-copper-500 text-black font-bold shadow-lg shadow-copper-500/25"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
+                )}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>$ USD (International · Cards & Global)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrency('INR')}
+                className={cn(
+                  "px-4 sm:px-5 py-2 rounded-xl text-xs font-semibold font-mono transition-all flex items-center gap-2 cursor-pointer",
+                  currency === 'INR'
+                    ? "bg-copper-500 text-black font-bold shadow-lg shadow-copper-500/25"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
+                )}
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>₹ INR (India · UPI / RuPay)</span>
+              </button>
+            </div>
+          </motion.div>
         </div>
 
         {/* Payment status banner: stays visible after the Razorpay window closes */}
@@ -280,7 +331,7 @@ export default function Pricing() {
 
         {/* Tier Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-          {TIERS.map((tier) => {
+          {tiers.map((tier) => {
             const isCurrent = 
               (tier.slug === 'free' && currentTier === 'free') ||
               ((tier.slug === 'pro' || tier.slug === 'advanced') && currentTier === 'pro') ||
@@ -312,19 +363,25 @@ export default function Pricing() {
                   </p>
                 </div>
 
-                <div className="mb-6 flex items-baseline gap-1 font-mono">
-                  <span className="text-4xl font-bold text-white tracking-tight">₹{tier.price}</span>
+                <div className="mb-2 flex items-baseline gap-1 font-mono">
+                  <span className="text-4xl font-bold text-white tracking-tight">{tier.symbol}{tier.price}</span>
                   <span className={cn("text-xs uppercase tracking-wider", tier.isPopular ? "text-gray-400" : "text-gray-500")}>
                     / month
                   </span>
                 </div>
+
+                {tier.subtext && (
+                  <p className="text-[11px] font-mono text-zinc-400 mb-6">
+                    {tier.subtext}
+                  </p>
+                )}
 
                 <button
                   type="button"
                   disabled={isCurrent}
                   onClick={() => handleOpenCheckout(tier)}
                   className={cn(
-                    "w-full py-3 px-4 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all mb-8 shadow-sm flex items-center justify-center gap-2",
+                    "w-full py-3 px-4 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all mb-8 shadow-sm flex items-center justify-center gap-2 cursor-pointer",
                     isCurrent
                       ? "bg-white/5 border border-white/10 text-zinc-500 cursor-default"
                       : tier.isPopular
@@ -464,16 +521,27 @@ export default function Pricing() {
                   <div className="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2.5 font-mono text-xs">
                     <div className="flex justify-between text-zinc-400">
                       <span>{checkoutTier.name} Subscription (Monthly)</span>
-                      <span className="text-white font-semibold">₹{checkoutTier.price}.00</span>
+                      <span className="text-white font-semibold">
+                        {checkoutTier.symbol}{checkoutTier.price}{currency === 'INR' ? '.00' : ''}
+                      </span>
                     </div>
-                    <div className="flex justify-between text-zinc-400">
-                      <span>GST (18% SGST/CGST)</span>
-                      <span className="text-white font-semibold">₹{checkoutTier.gstPrice}</span>
-                    </div>
+                    {currency === 'INR' ? (
+                      <div className="flex justify-between text-zinc-400">
+                        <span>GST (18% SGST/CGST)</span>
+                        <span className="text-white font-semibold">₹{checkoutTier.gstPrice}</span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between text-zinc-400">
+                        <span>Taxes & Gateway Processing</span>
+                        <span className="text-emerald-400 font-semibold">Included</span>
+                      </div>
+                    )}
                     <div className="h-px bg-white/10 pt-1" />
                     <div className="flex justify-between items-baseline text-sm pt-1">
                       <span className="font-semibold text-white">Total Amount Due:</span>
-                      <span className="text-xl font-bold text-copper-300">₹{checkoutTier.totalPrice}</span>
+                      <span className="text-xl font-bold text-copper-300">
+                        {checkoutTier.symbol}{checkoutTier.totalPrice} <span className="text-xs text-zinc-400 font-normal">{currency}</span>
+                      </span>
                     </div>
                   </div>
 
@@ -498,13 +566,15 @@ export default function Pricing() {
                     ) : (
                       <>
                         <Zap className="w-4 h-4" />
-                        <span>Pay ₹{checkoutTier.totalPrice} with Razorpay</span>
+                        <span>Pay {checkoutTier.symbol}{checkoutTier.totalPrice} {currency} with Razorpay</span>
                       </>
                     )}
                   </button>
 
                   <p className="text-[10px] text-zinc-500 text-center font-mono">
-                    Activated as soon as the payment is confirmed · Secure checkout by Razorpay
+                    {currency === 'USD' 
+                      ? 'Accepts all International Visa, Mastercard, Amex & Global Cards · Instant Activation'
+                      : 'Supports all Indian UPI Apps (GPay, PhonePe, Paytm), RuPay & Cards · Instant Activation'}
                   </p>
                 </div>
               ) : null}

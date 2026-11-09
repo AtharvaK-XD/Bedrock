@@ -1,50 +1,79 @@
 /**
- * The one place the plan prices are written down (in rupees). Pricing, Billing, Profile, the upgrade window and the
- * Dashboard all read from here, so a price can never differ between screens.
+ * The single source of truth for Bedrock subscription plan pricing across USD and INR.
  *
- * The server keeps its own copy (api/billing/create-order.ts, in paise). Keep the two in step: base price × 100 = paise.
- * GST is 18% and is added on top of the base price.
+ * USD Pricing (For International & Global card payments):
+ * - Pro: $20 / month (2000 cents in Razorpay)
+ * - Ultimate: $50 / month (5000 cents in Razorpay)
+ *
+ * INR Pricing (For Indian domestic payments: UPI, RuPay, NetBanking):
+ * - Pro: ₹399 / month + ₹71.82 GST = ₹470.82 (47,082 paise)
+ * - Ultimate: ₹999 / month + ₹179.82 GST = ₹1,178.82 (117,882 paise)
  */
 
 export type PaidPlan = 'pro' | 'ultimate';
-
-const BASE_PRICE_INR: Record<PaidPlan, number> = {
-  pro: 399,
-  ultimate: 999,
-};
-
-const GST_RATE = 0.18;
+export type BillingCurrency = 'USD' | 'INR';
 
 export interface PlanPrice {
-  /** Price before GST, whole rupees (e.g. "399") */
+  /** Base display price (e.g. "20" or "399") */
   base: string;
-  /** GST amount (e.g. "71.82") */
+  /** Applicable tax / GST amount (e.g. "0.00" or "71.82") */
   gst: string;
-  /** What the customer pays, with GST (e.g. "470.82") */
+  /** What the customer pays (e.g. "20" or "470.82") */
   total: string;
-  /** Total in paise, the unit the payment gateway uses (e.g. 47082) */
+  /** Subunits for gateway processing: cents for USD (2000 / 5000), paise for INR (47082 / 117882) */
+  totalSubunits: number;
+  /** Backward-compatible alias for totalSubunits */
   totalPaise: number;
+  /** Currency code */
+  currency: BillingCurrency;
+  /** Currency symbol ("$" or "₹") */
+  symbol: string;
 }
 
-function format(amount: number): string {
+const USD_PRICES: Record<PaidPlan, { base: number; cents: number }> = {
+  pro: { base: 20, cents: 2000 },
+  ultimate: { base: 50, cents: 5000 },
+};
+
+const INR_PRICES: Record<PaidPlan, { base: number; gst: number; total: number; paise: number }> = {
+  pro: { base: 399, gst: 71.82, total: 470.82, paise: 47_082 },
+  ultimate: { base: 999, gst: 179.82, total: 1178.82, paise: 117_882 },
+};
+
+function formatInr(amount: number): string {
   return amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function getPlanPrice(plan: PaidPlan): PlanPrice {
-  const base = BASE_PRICE_INR[plan];
-  // Work in paise so there is no floating-point drift (399 × 18% = 7182 paise)
-  const basePaise = base * 100;
-  const gstPaise = Math.round(basePaise * GST_RATE);
-  const totalPaise = basePaise + gstPaise;
+export function getPlanPrice(plan: PaidPlan, currency: BillingCurrency = 'INR'): PlanPrice {
+  if (currency === 'USD') {
+    const info = USD_PRICES[plan];
+    return {
+      base: String(info.base),
+      gst: '0.00',
+      total: String(info.base),
+      totalSubunits: info.cents,
+      totalPaise: info.cents,
+      currency: 'USD',
+      symbol: '$',
+    };
+  }
+
+  const info = INR_PRICES[plan];
   return {
-    base: String(base),
-    gst: format(gstPaise / 100),
-    total: format(totalPaise / 100),
-    totalPaise,
+    base: String(info.base),
+    gst: formatInr(info.gst),
+    total: formatInr(info.total),
+    totalSubunits: info.paise,
+    totalPaise: info.paise,
+    currency: 'INR',
+    symbol: '₹',
   };
 }
 
-/** "₹399" style label for a plan's base price. */
-export function planPriceLabel(plan: PaidPlan): string {
-  return `₹${BASE_PRICE_INR[plan]}`;
+/** Formatted price label (e.g. "$20" or "₹399") */
+export function planPriceLabel(plan: PaidPlan, currency: BillingCurrency = 'INR'): string {
+  if (currency === 'USD') {
+    return `$${USD_PRICES[plan].base}`;
+  }
+  return `₹${INR_PRICES[plan].base}`;
 }

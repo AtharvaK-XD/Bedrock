@@ -123,9 +123,27 @@ describe('POST /api/billing/create-order', () => {
   });
 
   it('refuses another currency', async () => {
-    const r = await call(createOrder, 'POST', { tier: 'pro', currency: 'USD' });
+    const r = await call(createOrder, 'POST', { tier: 'pro', currency: 'EUR' });
     expect(r.statusCode).toBe(400);
     expect(r.body.code).toBe('INVALID_CURRENCY');
+  });
+
+  it('accepts USD for international payments', async () => {
+    const r = await call(createOrder, 'POST', { tier: 'pro', currency: 'USD' });
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toMatchObject({ tier: 'pro', amount: 2000, currency: 'USD' });
+  });
+
+  it('creates a USD order for Ultimate ($50 = 5000 cents)', async () => {
+    const r = await call(createOrder, 'POST', { tier: 'ultimate', currency: 'USD', amount: 5000 });
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toMatchObject({ tier: 'ultimate', amount: 5000, currency: 'USD' });
+  });
+
+  it('refuses a USD order when amount does not match plan cents', async () => {
+    const r = await call(createOrder, 'POST', { tier: 'ultimate', currency: 'USD', amount: 2000 });
+    expect(r.statusCode).toBe(409);
+    expect(r.body.code).toBe('PRICE_MISMATCH');
   });
 
   it('creates the order at the SERVER price, with server-set notes and receipt only', async () => {
