@@ -91,7 +91,7 @@ export default function Pricing() {
       symbol: getPlanPrice('pro', currency).symbol,
       subtext: currency === 'USD' 
         ? 'Flat $20 USD / mo · Global cards & PayPal' 
-        : '₹399 / mo + 18% GST (₹470.82) · UPI & RuPay',
+        : '₹1,700 / mo (same as $20 USD) · UPI & RuPay',
       gstPrice: getPlanPrice('pro', currency).gst,
       totalPrice: getPlanPrice('pro', currency).total,
       isPopular: true,
@@ -115,7 +115,7 @@ export default function Pricing() {
       symbol: getPlanPrice('ultimate', currency).symbol,
       subtext: currency === 'USD' 
         ? 'Flat $50 USD / mo · All international cards' 
-        : '₹999 / mo + 18% GST (₹1,178.82) · UPI & RuPay',
+        : '₹4,250 / mo (same as $50 USD) · UPI & RuPay',
       gstPrice: getPlanPrice('ultimate', currency).gst,
       totalPrice: getPlanPrice('ultimate', currency).total,
       features: [
@@ -522,20 +522,13 @@ export default function Pricing() {
                     <div className="flex justify-between text-zinc-400">
                       <span>{checkoutTier.name} Subscription (Monthly)</span>
                       <span className="text-white font-semibold">
-                        {checkoutTier.symbol}{checkoutTier.price}{currency === 'INR' ? '.00' : ''}
+                        {checkoutTier.symbol}{checkoutTier.price}.00
                       </span>
                     </div>
-                    {currency === 'INR' ? (
-                      <div className="flex justify-between text-zinc-400">
-                        <span>GST (18% SGST/CGST)</span>
-                        <span className="text-white font-semibold">₹{checkoutTier.gstPrice}</span>
-                      </div>
-                    ) : (
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Taxes & Gateway Processing</span>
-                        <span className="text-emerald-400 font-semibold">Included</span>
-                      </div>
-                    )}
+                    <div className="flex justify-between text-zinc-400">
+                      <span>Taxes & Gateway Processing</span>
+                      <span className="text-emerald-400 font-semibold">Included (All-Inclusive)</span>
+                    </div>
                     <div className="h-px bg-white/10 pt-1" />
                     <div className="flex justify-between items-baseline text-sm pt-1">
                       <span className="font-semibold text-white">Total Amount Due:</span>

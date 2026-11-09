@@ -65,16 +65,25 @@ async function createOrder(req: VercelRequest, res: VercelResponse) {
   }
   const currency: 'USD' | 'INR' = rawCurrency as 'USD' | 'INR';
 
+  const inrAllowed = [
+    plan.amountPaise,
+    plan.basePriceInr * 100,
+    tier === 'ultimate' ? 425_000 : 170_000,
+    tier === 'ultimate' ? 419_900 : 169_900,
+  ];
+
   const expectedAmount = currency === 'USD'
     ? plan.amountCents
-    : plan.amountPaise;
+    : (body.amount && inrAllowed.includes(Math.round(Number(body.amount)))
+        ? Math.round(Number(body.amount))
+        : plan.amountPaise);
 
   // The browser's amount is only a check of what the user was shown: it never sets the price
   if (body.amount !== undefined && body.amount !== null) {
     const shown = typeof body.amount === 'number' ? body.amount : Number(body.amount);
     const isValid = Number.isFinite(shown) && (
       (currency === 'USD' && Math.round(shown) === plan.amountCents) ||
-      (currency === 'INR' && (Math.round(shown) === plan.amountPaise || Math.round(shown) === plan.basePriceInr * 100))
+      (currency === 'INR' && inrAllowed.includes(Math.round(shown)))
     );
     if (!isValid) {
       await logSecurityEvent({

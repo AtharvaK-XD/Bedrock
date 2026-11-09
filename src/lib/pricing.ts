@@ -6,21 +6,21 @@
  * - Ultimate: $50 / month (5000 cents in Razorpay)
  *
  * INR Pricing (For Indian domestic payments: UPI, RuPay, NetBanking):
- * - Pro: ₹399 / month + ₹71.82 GST = ₹470.82 (47,082 paise)
- * - Ultimate: ₹999 / month + ₹179.82 GST = ₹1,178.82 (117,882 paise)
+ * - Pro: ₹1,700 / month (170,000 paise in Razorpay) — identical equivalent of $20 USD
+ * - Ultimate: ₹4,250 / month (425,000 paise in Razorpay) — identical equivalent of $50 USD
  */
 
 export type PaidPlan = 'pro' | 'ultimate';
 export type BillingCurrency = 'USD' | 'INR';
 
 export interface PlanPrice {
-  /** Base display price (e.g. "20" or "399") */
+  /** Base display price (e.g. "20" or "1,700") */
   base: string;
-  /** Applicable tax / GST amount (e.g. "0.00" or "71.82") */
+  /** Applicable tax / GST amount (e.g. "0.00") */
   gst: string;
-  /** What the customer pays (e.g. "20" or "470.82") */
+  /** What the customer pays (e.g. "20" or "1,700") */
   total: string;
-  /** Subunits for gateway processing: cents for USD (2000 / 5000), paise for INR (47082 / 117882) */
+  /** Subunits for gateway processing: cents for USD (2000 / 5000), paise for INR (170000 / 425000) */
   totalSubunits: number;
   /** Backward-compatible alias for totalSubunits */
   totalPaise: number;
@@ -35,13 +35,13 @@ const USD_PRICES: Record<PaidPlan, { base: number; cents: number }> = {
   ultimate: { base: 50, cents: 5000 },
 };
 
-const INR_PRICES: Record<PaidPlan, { base: number; gst: number; total: number; paise: number }> = {
-  pro: { base: 399, gst: 71.82, total: 470.82, paise: 47_082 },
-  ultimate: { base: 999, gst: 179.82, total: 1178.82, paise: 117_882 },
+const INR_PRICES: Record<PaidPlan, { base: number; paise: number }> = {
+  pro: { base: 1700, paise: 170_000 },
+  ultimate: { base: 4250, paise: 425_000 },
 };
 
 function formatInr(amount: number): string {
-  return amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return amount.toLocaleString('en-IN');
 }
 
 export function getPlanPrice(plan: PaidPlan, currency: BillingCurrency = 'INR'): PlanPrice {
@@ -60,9 +60,9 @@ export function getPlanPrice(plan: PaidPlan, currency: BillingCurrency = 'INR'):
 
   const info = INR_PRICES[plan];
   return {
-    base: String(info.base),
-    gst: formatInr(info.gst),
-    total: formatInr(info.total),
+    base: formatInr(info.base),
+    gst: '0.00',
+    total: formatInr(info.base),
     totalSubunits: info.paise,
     totalPaise: info.paise,
     currency: 'INR',
@@ -70,10 +70,10 @@ export function getPlanPrice(plan: PaidPlan, currency: BillingCurrency = 'INR'):
   };
 }
 
-/** Formatted price label (e.g. "$20" or "₹399") */
+/** Formatted price label (e.g. "$20" or "₹1,700") */
 export function planPriceLabel(plan: PaidPlan, currency: BillingCurrency = 'INR'): string {
   if (currency === 'USD') {
     return `$${USD_PRICES[plan].base}`;
   }
-  return `₹${INR_PRICES[plan].base}`;
+  return `₹${formatInr(INR_PRICES[plan].base)}`;
 }

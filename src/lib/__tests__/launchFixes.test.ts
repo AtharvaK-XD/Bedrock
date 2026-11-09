@@ -68,17 +68,21 @@ describe('retired Groq models', () => {
 });
 
 describe('plan prices', () => {
-  it('adds 18% GST to the base price, to the paisa', () => {
-    expect(getPlanPrice('pro')).toMatchObject({ base: '399', gst: '71.82', total: '470.82', totalPaise: 47082 });
-    expect(getPlanPrice('ultimate')).toMatchObject({ base: '999', gst: '179.82', total: '1,178.82', totalPaise: 117882 });
+  it('formats USD and equivalent INR plan prices accurately', () => {
+    expect(getPlanPrice('pro', 'USD')).toMatchObject({ base: '20', total: '20', totalSubunits: 2000, currency: 'USD', symbol: '$' });
+    expect(getPlanPrice('ultimate', 'USD')).toMatchObject({ base: '50', total: '50', totalSubunits: 5000, currency: 'USD', symbol: '$' });
+    expect(getPlanPrice('pro', 'INR')).toMatchObject({ base: '1,700', total: '1,700', totalSubunits: 170000, currency: 'INR', symbol: '₹' });
+    expect(getPlanPrice('ultimate', 'INR')).toMatchObject({ base: '4,250', total: '4,250', totalSubunits: 425000, currency: 'INR', symbol: '₹' });
   });
 
   it('never produces the 100-paise Ultimate order that parsing "1,178.82" with parseFloat gave', () => {
-    expect(getPlanPrice('ultimate').totalPaise).toBeGreaterThan(100000);
+    expect(getPlanPrice('ultimate', 'INR').totalPaise).toBeGreaterThan(100000);
   });
 
-  it('has one label for the base price', () => {
-    expect(planPriceLabel('pro')).toBe('₹399');
-    expect(planPriceLabel('ultimate')).toBe('₹999');
+  it('has formatted labels for plan base prices in both currencies', () => {
+    expect(planPriceLabel('pro', 'USD')).toBe('$20');
+    expect(planPriceLabel('ultimate', 'USD')).toBe('$50');
+    expect(planPriceLabel('pro', 'INR')).toBe('₹1,700');
+    expect(planPriceLabel('ultimate', 'INR')).toBe('₹4,250');
   });
 });
