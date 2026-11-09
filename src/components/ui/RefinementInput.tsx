@@ -310,12 +310,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                                   <AgentIcon agent={agent} model={m.id} className="w-3.5 h-3.5 shrink-0" badgeClassName="w-4 h-4" />
                                   <span className="truncate">{m.name}</span>
                                 </div>
-                                <span className={cn(
-                                  "px-1.5 py-0.2 rounded text-[8px] font-mono uppercase shrink-0",
-                                  reqTier === 'ultimate' ? "bg-purple-500/15 text-purple-300 border border-purple-500/25" :
-                                  reqTier === 'pro' ? "bg-amber-500/15 text-amber-300 border border-amber-500/25" :
-                                  "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
-                                )}>
+                                <span className="text-[10px] font-mono text-teal-400 uppercase shrink-0">
                                   {reqTier}
                                 </span>
                               </button>

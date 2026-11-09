@@ -282,8 +282,9 @@ export default function PromptTester() {
                         });
                       }
                       setAgentId(a.id);
-                      setModelId(a.models[0].id);
-                      setActiveDropdown(null);
+                      const firstAllowed = a.models.find((m) => isModelAllowedForTier(m.id, profile?.plan)) || a.models[0];
+                      setModelId(firstAllowed.id);
+                      setActiveDropdown(dropdownId === 'agent1' ? 'model1' : 'model2');
                     }}
                     className={cn(
                       "w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors",
@@ -370,23 +371,18 @@ export default function PromptTester() {
                         <AgentIcon agent={currentAgent} model={m.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                         <span className="truncate">{m.name}</span>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0 ml-1">
+                      <div className="flex items-center gap-1.5 shrink-0 ml-1">
                         {!isAllowed ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase">
-                            <Lock className="w-2.5 h-2.5 text-copper-400" />
-                            <span>{required}</span>
+                          <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5 text-zinc-400" />
+                            <span className="uppercase">{required}</span>
                           </span>
                         ) : (
-                          <span className={cn(
-                            "px-1.5 py-0.2 rounded text-[9px] font-mono uppercase",
-                            tier === 'ultimate' ? "bg-purple-500/15 text-purple-300 border border-purple-500/25" :
-                            tier === 'pro' ? "bg-amber-500/15 text-amber-300 border border-amber-500/25" :
-                            "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
-                          )}>
+                          <span className="text-[10px] font-mono font-medium text-teal-400 uppercase tracking-wide">
                             {tier}
                           </span>
                         )}
-                        {currentModel.id === m.id && isAllowed && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
+                        {currentModel.id === m.id && isAllowed && <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
                       </div>
                     </button>
                   );
@@ -396,7 +392,7 @@ export default function PromptTester() {
                   <div className="flex flex-col gap-1.5">
                     {ultimateModels.length > 0 && (
                       <div className="flex flex-col gap-0.5">
-                        <div className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded">
+                        <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-400">
                           Ultimate Tier ($50/mo)
                         </div>
                         {ultimateModels.map((m: any) => renderItem(m, 'ultimate'))}
@@ -404,7 +400,7 @@ export default function PromptTester() {
                     )}
                     {proModels.length > 0 && (
                       <div className="flex flex-col gap-0.5">
-                        <div className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded">
+                        <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-400">
                           Pro Tier ($20/mo)
                         </div>
                         {proModels.map((m: any) => renderItem(m, 'pro'))}
@@ -412,7 +408,7 @@ export default function PromptTester() {
                     )}
                     {freeModels.length > 0 && (
                       <div className="flex flex-col gap-0.5">
-                        <div className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded">
+                        <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-400">
                           Free Tier ($0/mo)
                         </div>
                         {freeModels.map((m: any) => renderItem(m, 'free'))}

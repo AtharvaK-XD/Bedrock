@@ -1,7 +1,7 @@
 import { ANTHROPIC_MODELS_EVENT } from '../../lib/anthropicModels';
 import { getCachedProviderModels, DYNAMIC_MODELS_UPDATED_EVENT } from '../../lib/dynamicModelDiscovery';
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Check, Lock, Crown, Zap, Sparkles } from 'lucide-react';
+import { Plus, Check, Lock } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { IdeaPayload } from '../../lib/mockApi';
 import { usePromptQuota } from '../../lib/usePromptQuota';
@@ -527,98 +527,43 @@ export function RichInput({
             
             {activeDropdown === 'agent' && (
               <div 
-                className="absolute top-full left-0 mt-2 w-88 max-w-[calc(100vw-2rem)] bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
+                className="absolute top-full left-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
                 data-lenis-prevent="true"
               >
-                <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1 flex items-center justify-between">
-                  <span>AI Model Providers</span>
-                  <span className="text-[9px] text-zinc-500 font-mono font-normal">All Providers</span>
+                <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1">
+                  AI Model Providers
                 </div>
                 <div 
-                  className="max-h-[min(380px,50vh)] overflow-y-auto custom-scrollbar overscroll-contain flex flex-col gap-1 p-1" 
+                  className="max-h-[min(380px,50vh)] overflow-y-auto custom-scrollbar overscroll-contain flex flex-col gap-0.5 p-1" 
                   data-lenis-prevent="true"
                   onWheel={(e) => e.stopPropagation()}
                 >
-                  {activeAiAgents.map((agent) => {
-                    const hasAccessibleModel = agent.models.some((m) => isModelAllowedForTier(m.id, profile?.plan));
-                    const agentRequiredTier = agent.models.some((m) => (m.tier || getModelRequiredTier(m.id)) === 'ultimate')
-                      ? 'ultimate'
-                      : 'pro';
-
-                    const hasFreeTier = agent.models.some((m) => (m.tier || getModelRequiredTier(m.id)) === 'free');
-                    const hasProTier = agent.models.some((m) => (m.tier || getModelRequiredTier(m.id)) === 'pro');
-                    const hasUltimateTier = agent.models.some((m) => (m.tier || getModelRequiredTier(m.id)) === 'ultimate');
-
-                    return (
-                      <button
-                        key={agent.id}
-                        type="button"
-                        onClick={() => {
-                          if (!hasAccessibleModel) {
-                            setUpgradeModal({
-                              isOpen: true,
-                              featureName: `${agent.name} Models`,
-                              requiredTier: agentRequiredTier,
-                              reason: `${agent.name} models require an active ${agentRequiredTier.toUpperCase()} Plan ($${agentRequiredTier === 'ultimate' ? '50' : '20'} / month). Upgrade to unlock immediate access.`,
-                            });
-                            setActiveDropdown(null);
-                            return;
-                          }
-                          const firstAllowed = agent.models.find((m) => isModelAllowedForTier(m.id, profile?.plan)) || agent.models[0];
-                          if (isDesktopApp() && !isModelKeyConfigured(firstAllowed.id, agent.id)) {
-                            setApiKeyModal({
-                              isOpen: true,
-                              modelId: firstAllowed.id,
-                              modelName: firstAllowed.name,
-                              agentId: agent.id,
-                            });
-                            setActiveDropdown(null);
-                            return;
-                          }
-                          setSelectedAgentId(agent.id);
-                          setSelectedModelId(firstAllowed.id);
-                          setActiveDropdown(null);
-                        }}
-                        className={cn(
-                          "w-full flex items-start justify-between gap-3 px-3 py-2 text-left rounded-xl transition-all duration-150",
-                          selectedAgentId === agent.id ? "bg-white/10 border border-white/10" : "hover:bg-white/5 border border-transparent"
-                        )}
-                      >
-                        <div className="flex items-start gap-3 min-w-0">
-                          <AgentIcon agent={agent} className="w-5 h-5 shrink-0" badgeClassName="w-5 h-5 mt-0.5" />
-                          <div className="min-w-0">
-                            <div className={cn("text-xs sm:text-sm font-medium flex items-center gap-1.5 flex-wrap", selectedAgentId === agent.id ? "text-white" : "text-zinc-300")}>
-                              <span className="truncate">{agent.name}</span>
-                              <div className="flex items-center gap-1 shrink-0">
-                                {hasUltimateTier && (
-                                  <span className="px-1 py-0.2 rounded text-[8px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/25 uppercase">
-                                    Ultimate
-                                  </span>
-                                )}
-                                {hasProTier && (
-                                  <span className="px-1 py-0.2 rounded text-[8px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/25 uppercase">
-                                    Pro
-                                  </span>
-                                )}
-                                {hasFreeTier && (
-                                  <span className="px-1 py-0.2 rounded text-[8px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 uppercase">
-                                    Free
-                                  </span>
-                                )}
-                              </div>
-                              {!hasAccessibleModel && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-copper-500/20 text-copper-300 border border-copper-500/40 shrink-0 uppercase font-semibold">
-                                  <Lock className="w-2.5 h-2.5 text-copper-400" />
-                                  <span>{agentRequiredTier}</span>
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-zinc-400 mt-0.5 truncate">{agent.description}</div>
-                          </div>
+                  {activeAiAgents.map((agent) => (
+                    <button
+                      key={agent.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAgentId(agent.id);
+                        const firstAllowed = agent.models.find((m) => isModelAllowedForTier(m.id, profile?.plan)) || agent.models[0];
+                        setSelectedModelId(firstAllowed.id);
+                        // Once user selects the provider, immediately open model chooser!
+                        setActiveDropdown('model');
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between gap-3 px-3 py-2 text-left rounded-xl transition-all duration-150",
+                        selectedAgentId === agent.id ? "bg-white/10 text-white" : "hover:bg-white/5 text-zinc-300 hover:text-white"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <AgentIcon agent={agent} className="w-5 h-5 shrink-0" badgeClassName="w-5 h-5" />
+                        <div className="min-w-0">
+                          <div className="text-xs sm:text-sm font-medium truncate">{agent.name}</div>
+                          <div className="text-[11px] text-zinc-500 mt-0.5 truncate">{agent.description}</div>
                         </div>
-                      </button>
-                    );
-                  })}
+                      </div>
+                      {selectedAgentId === agent.id && <Check className="w-4 h-4 text-teal-400 shrink-0" />}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -636,19 +581,9 @@ export function RichInput({
               <AgentIcon agent={selectedAgent} model={selectedModel.id} className="w-4 h-4" badgeClassName="w-4 h-4" />
               <span className="text-zinc-500 text-xs">Model:</span>
               <span className="font-mono text-xs">{selectedModel.name}</span>
-              {((selectedModel as AgentModel).tier || getModelRequiredTier(selectedModel.id)) === 'ultimate' ? (
-                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
-                  Ultimate
-                </span>
-              ) : ((selectedModel as AgentModel).tier || getModelRequiredTier(selectedModel.id)) === 'pro' ? (
-                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
-                  Pro
-                </span>
-              ) : (
-                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
-                  Free
-                </span>
-              )}
+              <span className="text-[10px] font-mono text-teal-400 uppercase">
+                {((selectedModel as AgentModel).tier || getModelRequiredTier(selectedModel.id))}
+              </span>
               <span className="text-[10px] text-zinc-500">▾</span>
             </button>
 
@@ -699,8 +634,8 @@ export function RichInput({
                     className={cn(
                       "w-full flex items-center justify-between px-3 py-2 text-xs text-left rounded-xl transition-all duration-150 font-mono",
                       isSelected
-                        ? "bg-white/10 text-white font-medium border border-white/10 shadow-sm"
-                        : "text-zinc-300 hover:bg-white/5 hover:text-white border border-transparent"
+                        ? "bg-white/10 text-white font-medium"
+                        : "text-zinc-300 hover:bg-white/5 hover:text-white"
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -712,28 +647,18 @@ export function RichInput({
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
                       {!isAllowed ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 uppercase font-semibold">
-                          <Lock className="w-2.5 h-2.5 text-copper-400" />
-                          <span>{required}</span>
+                        <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5 text-zinc-400" />
+                          <span className="uppercase">{required}</span>
                         </span>
                       ) : (
-                        tierType === 'ultimate' ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/30 uppercase font-medium">
-                            Ultimate
-                          </span>
-                        ) : tierType === 'pro' ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase font-medium">
-                            Pro
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase font-medium">
-                            Free
-                          </span>
-                        )
+                        <span className="text-[10px] font-mono font-medium text-teal-400 uppercase tracking-wide">
+                          {tierType}
+                        </span>
                       )}
-                      {isSelected && isAllowed && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
+                      {isSelected && isAllowed && <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
                     </div>
                   </button>
                 );
@@ -744,12 +669,12 @@ export function RichInput({
                   className="absolute top-full left-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
                   data-lenis-prevent="true"
                 >
-                  <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1.5 flex items-center justify-between">
+                  <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1 flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <AgentIcon agent={selectedAgent} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                       <span>{selectedAgent.name} Models</span>
                     </div>
-                    <span className="text-[9px] text-zinc-500 font-mono font-normal">Divided by Tier</span>
+                    <span className="text-[9px] text-zinc-500 font-mono font-normal">Choose Model</span>
                   </div>
 
                   <div 
@@ -759,13 +684,10 @@ export function RichInput({
                   >
                     {/* Ultimate Tier Models */}
                     {ultimateModels.length > 0 && (
-                      <div className="flex flex-col gap-0.5 mb-2">
-                        <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                          <div className="flex items-center gap-1.5">
-                            <Crown className="w-3 h-3 text-purple-400" />
-                            <span>Ultimate Tier Models</span>
-                          </div>
-                          <span className="text-[9px] font-mono text-purple-400/80 font-normal">$50 / mo</span>
+                      <div className="flex flex-col gap-0.5 mb-1.5">
+                        <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-teal-400">
+                          <span>Ultimate Tier</span>
+                          <span className="text-[9px] font-mono text-zinc-500 font-normal">$50/mo</span>
                         </div>
                         {ultimateModels.map((m) => renderModelButton(m as AgentModel, 'ultimate'))}
                       </div>
@@ -773,13 +695,10 @@ export function RichInput({
 
                     {/* Pro Tier Models */}
                     {proModels.length > 0 && (
-                      <div className="flex flex-col gap-0.5 mb-2">
-                        <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                          <div className="flex items-center gap-1.5">
-                            <Zap className="w-3 h-3 text-amber-400" />
-                            <span>Pro Tier Models</span>
-                          </div>
-                          <span className="text-[9px] font-mono text-amber-400/80 font-normal">$20 / mo</span>
+                      <div className="flex flex-col gap-0.5 mb-1.5">
+                        <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-teal-400">
+                          <span>Pro Tier</span>
+                          <span className="text-[9px] font-mono text-zinc-500 font-normal">$20/mo</span>
                         </div>
                         {proModels.map((m) => renderModelButton(m as AgentModel, 'pro'))}
                       </div>
@@ -788,12 +707,9 @@ export function RichInput({
                     {/* Free Tier Models */}
                     {freeModels.length > 0 && (
                       <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                          <div className="flex items-center gap-1.5">
-                            <Sparkles className="w-3 h-3 text-emerald-400" />
-                            <span>Free Tier Models</span>
-                          </div>
-                          <span className="text-[9px] font-mono text-emerald-400/80 font-normal">$0 / mo</span>
+                        <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-teal-400">
+                          <span>Free Tier</span>
+                          <span className="text-[9px] font-mono text-zinc-500 font-normal">$0/mo</span>
                         </div>
                         {freeModels.map((m) => renderModelButton(m as AgentModel, 'free'))}
                       </div>

@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Check, X, ArrowRight, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { planPriceLabel } from '../../lib/pricing';
 
 export interface UpgradeModalProps {
   isOpen: boolean;
@@ -35,24 +34,25 @@ export function UpgradeModal({
 
   const isUltimate = requiredTier === 'ultimate';
   const planTitle = isUltimate ? 'Ultimate Plan' : 'Pro Plan';
-  const planPrice = planPriceLabel(isUltimate ? 'ultimate' : 'pro');
-  const planUsd = isUltimate ? '~$12' : '~$5';
+  const planUsd = isUltimate ? '$50' : '$20';
+  const planInr = isUltimate ? '₹4,250' : '₹1,700';
 
   const proFeatures = [
-    'Unlock GPT-4o Mini, Claude 3.5 Haiku & Llama 3.3 70B',
-    'Unlimited daily prompt generations (No quota limits)',
+    'Unlock Claude Sonnet 5.5 & GPT-6.1 Sol / Luna',
+    'Unlock DeepSeek R1, Grok 4.7 & o3-mini reasoning',
+    'Unlimited daily prompt generations ($0 marginal cost)',
     'Up to 15 nodes in Branching DAG visual editor',
-    'One-click export to .cursorrules & .windsurfrules',
+    'One-click export to .cursorrules & system prompts',
     'Save up to 100 prompts in private Library with search',
   ];
 
   const ultimateFeatures = [
-    'Unlock Claude 3.5 Sonnet & OpenAI GPT-4o Flagship',
-    'Unlock o3-mini & Perplexity Sonar Pro live web grounding',
+    'Unlock Claude Opus 5.5, GPT-6 Astra & OpenAI o1',
+    'Unlock Gemini 4 Argon (1M+ Context) & Llama 3.1 405B',
+    'Unlock Perplexity Sonar Reasoning Pro search grounding',
     'Unlimited nodes in Branching DAG visual pipelines',
-    'Automated Eval Assertions & Prompt benchmarking reports',
-    'Priority high-throughput LPU execution queue',
-    'Lifetime execution trace retention in Neon Postgres',
+    'Automated Eval Assertions & quality rubric judge',
+    'VIP low-latency queue & lifetime execution traces',
   ];
 
   const features = isUltimate ? ultimateFeatures : proFeatures;
@@ -118,8 +118,8 @@ export function UpgradeModal({
                 <span className="text-[11px] text-gray-400 block">Flat monthly subscription</span>
               </div>
               <div className="text-right">
-                <span className="text-xl font-bold font-mono text-white">{planPrice}</span>
-                <span className="text-xs text-gray-400">/mo ({planUsd})</span>
+                <span className="text-xl font-bold font-mono text-white">{planUsd}</span>
+                <span className="text-xs text-gray-400">/mo ({planInr})</span>
               </div>
             </div>
 
