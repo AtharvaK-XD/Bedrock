@@ -18,77 +18,84 @@ export const MODEL_GROUPS: ModelGroup[] = [
   {
     group: 'Google DeepMind (Recommended)',
     models: [
-      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', tag: 'Ultra Fast', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-      { id: 'gemini-flash-latest', name: 'Gemini Flash Latest', tag: 'Fast', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', tag: 'Balanced', tagColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', tag: 'Standard', tagColor: 'text-gray-300 bg-white/5 border-white/10' },
-    ],
-  },
-  {
-    group: 'Perplexity AI (Live Grounding)',
-    models: [
-      { id: 'sonar-pro', name: 'Sonar Pro', tag: 'Web Search & Reasoning', tagColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-      { id: 'sonar-reasoning-pro', name: 'Sonar Reasoning Pro', tag: 'Chain-of-Thought', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
-      { id: 'sonar', name: 'Sonar', tag: 'Fast Search', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-      { id: 'sonar-huge', name: 'Sonar Huge', tag: 'Deep Synthesis', tagColor: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
-    ],
-  },
-  {
-    group: 'Groq (Lightning Fast Open Source)',
-    models: [
-      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', tag: 'Flagship', tagColor: 'text-copper-400 bg-copper-500/10 border-copper-500/20' },
-      { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', tag: 'Ultra-Fast', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-      { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B (Groq)', tag: '32k Context MoE', tagColor: 'text-copper-400 bg-copper-500/10 border-copper-500/20' },
-    ],
-  },
-  {
-    group: 'Anthropic',
-    models: [
-      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', tag: 'Hybrid Reasoning', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
-      { id: 'claude-opus-5-5', name: 'Claude Opus 5.5', tag: 'Frontier Flagship', tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
-      { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5', tag: 'Deep Reasoning', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
-      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', tag: 'Pro Coding', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
-      { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5', tag: 'Ultra-Fast', tagColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-      { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', tag: 'Fast', tagColor: 'text-orange-300 bg-orange-500/10 border-orange-500/20' },
+      { id: 'google/gemini-4-argon', name: 'Gemini 4 Argon', tag: 'Autonomous Reasoning Flagship', tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', tag: 'Deep Multimodal 1M+ Context', tagColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { id: 'google/gemini-3.6-flash', name: 'Gemini 3.6 Flash', tag: 'High-Speed Rapid Coding', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', tag: 'Workhorse Multimodal', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', tag: 'Zero-Cost Free Tier', tagColor: 'text-gray-300 bg-white/5 border-white/10' },
     ],
   },
   {
     group: 'OpenAI',
     models: [
-      { id: 'gpt-4o', name: 'GPT-4o', tag: 'Omni Flagship', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', tag: 'Fast & Lightweight', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
-      { id: 'o1', name: 'OpenAI o1', tag: 'Reasoning Specialist', tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
-      { id: 'o3-mini', name: 'OpenAI o3-mini', tag: 'High-Speed Math & Code', tagColor: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
+      { id: 'openai/gpt-6-astra', name: 'GPT-6 Astra', tag: 'Frontier Flagship', tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { id: 'openai/gpt-6.1-sol', name: 'GPT-6.1 Sol', tag: 'Agentic Coding & Reasoning', tagColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { id: 'openai/gpt-6-luna', name: 'GPT-6 Luna', tag: 'Fast 1.05M Context', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'openai/gpt-5.6-luna', name: 'GPT-5.6 Luna', tag: 'Balanced Reasoning', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+      { id: 'openai/o1', name: 'OpenAI o1', tag: 'Reasoning Specialist', tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { id: 'openai/o3-mini', name: 'OpenAI o3-mini', tag: 'High-Speed Math & STEM', tagColor: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
+      { id: 'openai/gpt-4o', name: 'GPT-4o', tag: 'Omni Industry Benchmark', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', tag: 'Fast & Lightweight', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
     ],
   },
   {
-    group: 'OpenRouter & Hugging Face',
+    group: 'Anthropic',
     models: [
-      { id: 'openrouter/auto', name: 'OpenRouter Auto', tag: 'Free Tier', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
-      { id: 'hf/Qwen/Qwen2.5-72B-Instruct', name: 'Qwen 2.5 72B (HuggingFace)', tag: '72B Weights', tagColor: 'text-copper-300 bg-copper-500/10 border-copper-500/20' },
+      { id: 'anthropic/claude-opus-5.5', name: 'Claude Opus 5.5', tag: 'Frontier Flagship', tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { id: 'anthropic/claude-sonnet-5.5', name: 'Claude Sonnet 5.5', tag: 'Deep Reasoning & Coding', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+      { id: 'anthropic/claude-haiku-5.5', name: 'Claude Haiku 5.5', tag: 'Ultra-Fast 1M Context', tagColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', tag: 'Hybrid Reasoning', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', tag: 'Pro Coding', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+      { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', tag: 'Fast', tagColor: 'text-orange-300 bg-orange-500/10 border-orange-500/20' },
     ],
   },
   {
     group: 'DeepSeek',
     models: [
-      { id: 'deepseek-r1', name: 'DeepSeek R1', tag: 'Reasoning', tagColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+      { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', tag: '671B Reasoning Flagship', tagColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+      { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3 Chat', tag: '671B MoE General Benchmark', tagColor: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
       { id: 'deepseek-coder-v2', name: 'DeepSeek Coder V2', tag: 'Code Pro', tagColor: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
-      { id: 'deepseek-chat', name: 'DeepSeek V3 Chat', tag: 'Fast', tagColor: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
     ],
   },
   {
-    group: 'Nvidia NIM',
+    group: 'Meta (Llama)',
     models: [
-      { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Nemotron 70B (Free)', tag: 'Flagship', tagColor: 'text-green-400 bg-green-500/10 border-green-500/20' },
-      { id: 'nvidia/nemotron-4-340b-instruct', name: 'Nemotron-4 340B', tag: '340B Frontier', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'meta-llama/llama-3.1-405b-instruct', name: 'Llama 3.1 405B Instruct', tag: '405B Parameter Giant', tagColor: 'text-rose-400 bg-rose-500/10 border-rose-500/20' },
+      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct', tag: 'State of the Art Open Weights', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+    ],
+  },
+  {
+    group: 'Perplexity AI (Live Grounding)',
+    models: [
+      { id: 'perplexity/sonar-reasoning-pro', name: 'Sonar Reasoning Pro', tag: 'Chain-of-Thought Web Search', tagColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+      { id: 'perplexity/sonar-pro', name: 'Sonar Pro', tag: 'Web Search & Reasoning', tagColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { id: 'sonar', name: 'Sonar', tag: 'Fast Search', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'sonar-huge', name: 'Sonar Huge', tag: 'Deep Synthesis', tagColor: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
+    ],
+  },
+  {
+    group: 'xAI (Grok)',
+    models: [
+      { id: 'x-ai/grok-4.7', name: 'Grok 4.7 (xAI)', tag: 'Flagship Real-Time Intelligence', tagColor: 'text-neutral-200 bg-white/10 border-white/20' },
+      { id: 'x-ai/grok-latest', name: 'Grok Latest', tag: 'Auto-Redirect Flagship', tagColor: 'text-neutral-300 bg-white/5 border-white/10' },
+      { id: 'grok-3', name: 'Grok 3 (xAI)', tag: 'Flagship Reasoning', tagColor: 'text-neutral-200 bg-white/10 border-white/20' },
+      { id: 'grok-2-1212', name: 'Grok 2 (xAI)', tag: 'Real-Time X', tagColor: 'text-neutral-300 bg-white/5 border-white/10' },
     ],
   },
   {
     group: 'Mistral AI',
     models: [
+      { id: 'mistralai/mistral-large-2411', name: 'Mistral Large 2411', tag: 'European Frontier Flagship', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
       { id: 'mistral-large', name: 'Mistral Large 2', tag: 'Flagship', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
       { id: 'codestral-latest', name: 'Codestral', tag: 'Code Spec', tagColor: 'text-copper-400 bg-copper-500/10 border-copper-500/20' },
-      { id: 'mixtral-8x22b', name: 'Mixtral 8x22B', tag: 'MoE', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+    ],
+  },
+  {
+    group: 'Groq (Lightning Fast Open Source)',
+    models: [
+      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', tag: 'Flagship Zero-Cost', tagColor: 'text-copper-400 bg-copper-500/10 border-copper-500/20' },
+      { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', tag: 'Ultra-Fast Zero-Cost', tagColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B (Groq)', tag: '32k Context MoE', tagColor: 'text-copper-400 bg-copper-500/10 border-copper-500/20' },
     ],
   },
   {
@@ -96,14 +103,6 @@ export const MODEL_GROUPS: ModelGroup[] = [
     models: [
       { id: 'command-r-plus', name: 'Cohere Command R+', tag: 'RAG & Search', tagColor: 'text-rose-400 bg-rose-500/10 border-rose-500/20' },
       { id: 'copilot-pro', name: 'Microsoft Copilot Pro', tag: 'Ecosystem', tagColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
-    ],
-  },
-  {
-    group: 'xAI (Grok)',
-    models: [
-      { id: 'grok-3', name: 'Grok 3 (xAI)', tag: 'Flagship Reasoning', tagColor: 'text-neutral-200 bg-white/10 border-white/20' },
-      { id: 'grok-2-1212', name: 'Grok 2 (xAI)', tag: 'Real-Time X', tagColor: 'text-neutral-300 bg-white/5 border-white/10' },
-      { id: 'grok-beta', name: 'Grok Beta', tag: 'Fast', tagColor: 'text-neutral-400 bg-white/5 border-white/10' },
     ],
   },
   {
@@ -118,15 +117,16 @@ export const MODEL_GROUPS: ModelGroup[] = [
 
 const GROUP_PROVIDER_MAP: Record<string, string> = {
   'Google DeepMind (Recommended)': 'gemini',
-  'Perplexity AI (Live Grounding)': 'perplexity',
-  'Groq (Lightning Fast Open Source)': 'groq',
-  'Anthropic': 'anthropic',
   'OpenAI': 'openai',
-  'OpenRouter & Hugging Face': 'openrouter',
+  'Anthropic': 'anthropic',
   'DeepSeek': 'deepseek',
-  'Mistral AI': 'mistral',
-  'Cohere & Microsoft': 'cohere',
+  'Meta (Llama)': 'openrouter',
+  'Perplexity AI (Live Grounding)': 'perplexity',
   'xAI (Grok)': 'xai',
+  'Mistral AI': 'mistral',
+  'Groq (Lightning Fast Open Source)': 'groq',
+  'Cohere & Microsoft': 'cohere',
+  'OpenRouter & Hugging Face': 'openrouter',
   'Ollama (Local Models)': 'ollama',
 };
 

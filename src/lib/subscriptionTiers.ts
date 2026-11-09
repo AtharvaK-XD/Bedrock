@@ -36,7 +36,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
     hasAutomatedEvals: false,
     hasPriorityQueue: false,
     features: [
-      'Gemini 3.5 Flash Lite & Groq Qwen 27B models ($0)',
+      'Gemini 3.5 Flash Lite & Groq GPT-OSS 120B/20B models ($0)',
       '10 prompt generations per day',
       '3 DAG canvas pipeline nodes',
       'Up to 5 custom prompt library slots',
@@ -54,7 +54,8 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
     hasPriorityQueue: true,
     features: [
       'Unlimited daily prompt generations ($0 marginal cost)',
-      'GPT-4o Mini, Claude 3.5 Haiku & Llama 3.3 70B',
+      'Claude Sonnet 5.5, GPT-6.1 Sol, GPT-6 Luna & o3-mini',
+      'DeepSeek R1, Grok 4.7, Llama 3.3 70B & Gemini 3.6 Flash',
       '15 DAG canvas pipeline nodes with branching logic',
       'Up to 100 library prompt templates with tags',
       'Export to .cursorrules and system prompts',
@@ -72,7 +73,8 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
     hasPriorityQueue: true,
     features: [
       'Unlimited daily prompt generations ($0 marginal cost)',
-      'GPT-4o Mini, Claude 3.5 Haiku & Llama 3.3 70B',
+      'Claude Sonnet 5.5, GPT-6.1 Sol, GPT-6 Luna & o3-mini',
+      'DeepSeek R1, Grok 4.7, Llama 3.3 70B & Gemini 3.6 Flash',
       '15 DAG canvas pipeline nodes with branching logic',
       'Up to 100 library prompt templates with tags',
       'Export to .cursorrules and system prompts',
@@ -89,8 +91,8 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
     hasAutomatedEvals: true,
     hasPriorityQueue: true,
     features: [
-      'Claude 3.5 Sonnet Flagship & GPT-4o Flagship',
-      'o3-mini & OpenAI reasoning models',
+      'Claude Opus 5.5, GPT-6 Astra & OpenAI o1',
+      'Gemini 4 Argon, Llama 3.1 405B & Sonar Reasoning Pro',
       'Unlimited DAG nodes & infinite canvas branches',
       'Automated quality evals & rubric judge',
       'VIP low-latency queue & lifetime traces',
@@ -139,45 +141,55 @@ export function getModelRequiredTier(modelId: string): 'free' | 'pro' | 'ultimat
   if (!modelId) return 'free';
   const m = modelId.toLowerCase().trim();
 
-  // 1. Ultimate Tier Models (Frontier reasoning and flagship frontier intelligence)
+  // 1. Ultimate Tier Models (Flagship frontier reasoning, 405B giants, and apex models)
   if (
-    m.includes('claude-3-7-sonnet') ||
-    m.includes('claude-3.7-sonnet') ||
-    m.includes('claude-3-5-sonnet') ||
-    m.includes('claude-sonnet') ||
-    m.includes('claude-opus') ||
-    (m.includes('gpt-4o') && !m.includes('mini')) ||
-    m.includes('gpt-4-turbo') ||
-    m.includes('o3-mini') ||
-    m.includes('o1-mini') ||
-    m.includes('o1') ||
-    m.includes('sonar-pro') ||
+    m.includes('opus') ||
+    m.includes('gpt-6-astra') ||
+    m.includes('gemini-4-argon') ||
+    m.includes('405b') ||
+    (m.includes('o1') && !m.includes('mini')) ||
     m.includes('sonar-reasoning-pro') ||
-    m.includes('grok-3') ||
     m.includes('command-r-plus') ||
     m.includes('copilot-pro')
   ) {
     return 'ultimate';
   }
 
-  // 2. Pro Tier Models (Fast frontier compact models & large open weights)
+  // 2. Pro Tier Models (Fast frontier, coding specialists, reasoning workhorses)
   if (
-    m.includes('gpt-4o-mini') ||
-    m.includes('claude-3-5-haiku') ||
+    m.includes('claude-sonnet') ||
+    m.includes('claude-3-7-sonnet') ||
+    m.includes('claude-3.7-sonnet') ||
+    m.includes('claude-3-5-sonnet') ||
     m.includes('claude-haiku') ||
+    m.includes('gpt-6.1-sol') ||
+    m.includes('gpt-6-sol') ||
+    m.includes('gpt-6-luna') ||
+    m.includes('gpt-5.6-luna') ||
+    m.includes('gpt-4o') ||
+    m.includes('gpt-4-turbo') ||
+    m.includes('o3-mini') ||
+    m.includes('o1-mini') ||
+    m.includes('gemini-2.5-pro') ||
+    m.includes('gemini-3.6-flash') ||
+    m.includes('gemini-2.5-flash') ||
+    m.includes('deepseek-r1') ||
+    m.includes('deepseek-chat') ||
+    m.includes('deepseek-coder') ||
+    m.includes('grok') ||
     m.includes('llama-3.3') ||
     m.includes('llama-3.1-8b') ||
     m.includes('mistral-large') ||
     m.includes('mixtral-8x22b') ||
-    m.includes('sonar') ||
-    m.includes('grok-2') ||
-    m.includes('deepseek-coder-v2')
+    m.includes('codestral') ||
+    m.includes('sonar-pro') ||
+    m.includes('sonar')
   ) {
     return 'pro';
   }
 
   // 3. Free Tier Models ($0.00 zero-cost models)
-  // Gemini 3.5 Flash Lite, Groq Qwen 3.8 27B, GPT-OSS 120B/20B, OpenRouter Free, Nemotron Ultra, Poolside, Ollama
+  // Gemini 3.5 Flash Lite, Groq GPT-OSS 120B/20B, OpenRouter Free, Ollama
   return 'free';
 }
 

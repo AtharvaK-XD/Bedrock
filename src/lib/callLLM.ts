@@ -502,6 +502,177 @@ Do not converse. Output strictly the requested technical artifact. Adhere to neg
 - Structure documentation with immaculate typography and clear section hierarchies.
 - Ensure all business objectives and technical requirements align seamlessly.`,
   },
+
+  'openai/gpt-6-astra': {
+    modelId: 'openai/gpt-6-astra',
+    name: 'GPT-6 Astra',
+    tier: 'frontier',
+    temperature: 0.7,
+    numExamples: 1,
+    provider: 'openrouter',
+    maxTokens: 8192,
+    aliases: ['gpt-6-astra', 'gpt-6'],
+    notes: 'OpenAI frontier apex model; deep multi-modal reasoning and master software architecture.',
+    extraWording: `[APEX ARCHITECT DIRECTIVE]
+- Deliver definitive, high-signal engineering specifications with mathematical rigor and zero boilerplate.
+- Architect complete systems with fault-tolerant distributed design and rigorous verification.`,
+  },
+
+  'openai/gpt-6.1-sol': {
+    modelId: 'openai/gpt-6.1-sol',
+    name: 'GPT-6.1 Sol',
+    tier: 'frontier',
+    temperature: 0.65,
+    numExamples: 1,
+    provider: 'openrouter',
+    maxTokens: 8192,
+    aliases: ['gpt-6.1-sol', 'gpt-6-sol'],
+    notes: 'Agentic coding and complex business workflow automation with near-flagship performance.',
+    extraWording: `[AGENTIC CODING DIRECTIVE]
+- Produce modular, fully-typed code and prompt contracts with executable tests.
+- Address asynchronous edge cases, telemetry hooks, and boundary guarantees.`,
+  },
+
+  'openai/gpt-6-luna': {
+    modelId: 'openai/gpt-6-luna',
+    name: 'GPT-6 Luna',
+    tier: 'frontier',
+    temperature: 0.5,
+    numExamples: 2,
+    provider: 'openrouter',
+    maxTokens: 4096,
+    aliases: ['gpt-6-luna'],
+    notes: 'Fast, high-efficiency model with 1.05M context for high-volume agentic workflows.',
+    extraWording: `[FAST REASONING DIRECTIVE]
+- Deliver swift, high-density specifications with concise, direct language.`,
+  },
+
+  'openai/gpt-5.6-luna': {
+    modelId: 'openai/gpt-5.6-luna',
+    name: 'GPT-5.6 Luna',
+    tier: 'mid',
+    temperature: 0.5,
+    numExamples: 2,
+    provider: 'openrouter',
+    maxTokens: 4096,
+    aliases: ['gpt-5.6-luna'],
+    notes: 'Cost-efficient 1.05M context model suited for high-volume classification and lightweight tasks.',
+    extraWording: `[STRUCTURED TASK DIRECTIVE]
+- Maintain strict schema compliance and actionable directives.`,
+  },
+
+  'google/gemini-4-argon': {
+    modelId: 'google/gemini-4-argon',
+    name: 'Gemini 4 Argon',
+    tier: 'frontier',
+    temperature: 0.65,
+    numExamples: 1,
+    provider: 'openrouter',
+    maxTokens: 8192,
+    aliases: ['gemini-4-argon'],
+    notes: 'Google flagship reasoning model for autonomous multi-step agents and scientific problem solving.',
+    extraWording: `[AUTONOMOUS SYSTEMS DIRECTIVE]
+- Solve complex engineering challenges with step-by-step verification and self-correcting logic.
+- Deliver comprehensive, production-ready system designs.`,
+  },
+
+  'google/gemini-2.5-pro': {
+    modelId: 'google/gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    tier: 'frontier',
+    temperature: 0.6,
+    numExamples: 1,
+    provider: 'openrouter',
+    maxTokens: 8192,
+    aliases: ['gemini-2.5-pro'],
+    notes: 'Deep multimodal 1M+ context model for dense technical analysis.',
+    extraWording: `[MULTIMODAL SYNTHESIS DIRECTIVE]
+- Synthesize vast context cleanly into focused, highly structured directives.`,
+  },
+
+  'google/gemini-3.6-flash': {
+    modelId: 'google/gemini-3.6-flash',
+    name: 'Gemini 3.6 Flash',
+    tier: 'mid',
+    temperature: 0.5,
+    numExamples: 2,
+    provider: 'openrouter',
+    maxTokens: 4096,
+    aliases: ['gemini-3.6-flash'],
+    notes: 'High-efficiency rapid coding model with instant response time.',
+    extraWording: `[RAPID SPECIFICATION DIRECTIVE]
+- Output clean, immediate technical solutions with complete syntax and zero delay.`,
+  },
+
+  'meta-llama/llama-3.1-405b-instruct': {
+    modelId: 'meta-llama/llama-3.1-405b-instruct',
+    name: 'Llama 3.1 405B Instruct',
+    tier: 'frontier',
+    temperature: 0.65,
+    numExamples: 1,
+    provider: 'openrouter',
+    maxTokens: 8192,
+    aliases: ['llama-3.1-405b', 'llama-405b', '405b'],
+    notes: 'Largest open weights model in history; 405 billion parameters of unconstrained reasoning.',
+    extraWording: `[DEEP KNOWLEDGE DIRECTIVE]
+- Exercise exhaustive domain mastery with precise, nuanced architectural directives.`,
+  },
+
+  'meta-llama/llama-3.3-70b-instruct': {
+    modelId: 'meta-llama/llama-3.3-70b-instruct',
+    name: 'Llama 3.3 70B Instruct',
+    tier: 'mid',
+    temperature: 0.55,
+    numExamples: 2,
+    provider: 'openrouter',
+    maxTokens: 4096,
+    aliases: ['llama-3.3-70b', 'llama-3.3'],
+    notes: 'State of the art 70B open weights model delivering frontier benchmark performance.',
+    extraWording: `[OPEN WEIGHTS RIGOR DIRECTIVE]
+- Write clean, modular, and test-backed specifications.`,
+  },
+
+  'perplexity/sonar-reasoning-pro': {
+    modelId: 'perplexity/sonar-reasoning-pro',
+    name: 'Sonar Reasoning Pro',
+    tier: 'frontier',
+    temperature: 0.6,
+    numExamples: 1,
+    provider: 'openrouter',
+    maxTokens: 8192,
+    aliases: ['sonar-reasoning-pro'],
+    notes: 'Perplexity flagship live web reasoning model with chain-of-thought verification.',
+    extraWording: `[LIVE GROUNDED DIRECTIVE]
+- Verify modern conventions and external dependencies against real-world 2026 standards.`,
+  },
+
+  'x-ai/grok-4.7': {
+    modelId: 'x-ai/grok-4.7',
+    name: 'Grok 4.7 (xAI)',
+    tier: 'frontier',
+    temperature: 0.65,
+    numExamples: 1,
+    provider: 'openrouter',
+    maxTokens: 8192,
+    aliases: ['grok-4.7', 'x-ai/grok-latest'],
+    notes: 'xAI apex real-time flagship model with uncensored reasoning across 500k context.',
+    extraWording: `[REAL-TIME INTELLIGENCE DIRECTIVE]
+- Provide unfiltered, realistic engineering assessments and pragmatic production solutions.`,
+  },
+
+  'mistralai/mistral-large-2411': {
+    modelId: 'mistralai/mistral-large-2411',
+    name: 'Mistral Large 2411',
+    tier: 'frontier',
+    temperature: 0.55,
+    numExamples: 2,
+    provider: 'openrouter',
+    maxTokens: 4096,
+    aliases: ['mistral-large-2411'],
+    notes: 'European flagship with advanced multilingual reasoning and precise structured JSON output.',
+    extraWording: `[EUROPEAN FLAGSHIP DIRECTIVE]
+- Deliver structured, high-density specifications with impeccable schemas and contracts.`,
+  },
 };
 
 // ============================================================================
@@ -1009,16 +1180,34 @@ export async function callLLMWithMeta(
 function resolveOpenRouterModelId(modelId: string): string {
   if (modelId.includes('/')) return modelId;
   const lower = modelId.toLowerCase();
+  if (lower.includes('gpt-6-astra')) return 'openai/gpt-6-astra';
+  if (lower.includes('gpt-6.1-sol') || lower.includes('gpt-6-sol')) return 'openai/gpt-6.1-sol';
+  if (lower.includes('gpt-6-luna')) return 'openai/gpt-6-luna';
+  if (lower.includes('gpt-5.6-luna')) return 'openai/gpt-5.6-luna';
+  if (lower.includes('claude-opus-5-5') || lower.includes('opus')) return 'anthropic/claude-opus-5.5';
+  if (lower.includes('claude-sonnet-5-5')) return 'anthropic/claude-sonnet-5.5';
+  if (lower.includes('claude-haiku-5-5')) return 'anthropic/claude-haiku-5.5';
   if (lower.includes('claude-3-7-sonnet') || lower.includes('claude-3.7-sonnet')) return 'anthropic/claude-3.7-sonnet';
-  if (lower.includes('opus')) return 'anthropic/claude-opus-5.5';
   if (lower.includes('claude-3-5-haiku') || lower.includes('claude-haiku')) return 'anthropic/claude-haiku-5.5';
   if (lower.startsWith('claude')) return 'anthropic/claude-sonnet-5.5';
+  if (lower.includes('gemini-4-argon')) return 'google/gemini-4-argon';
+  if (lower.includes('gemini-2.5-pro')) return 'google/gemini-2.5-pro';
+  if (lower.includes('gemini-3.6-flash')) return 'google/gemini-3.6-flash';
+  if (lower.includes('gemini-2.5-flash')) return 'google/gemini-2.5-flash';
+  if (lower.includes('deepseek-r1')) return 'deepseek/deepseek-r1';
+  if (lower.includes('deepseek-chat')) return 'deepseek/deepseek-chat';
+  if (lower.includes('deepseek-coder')) return 'deepseek/deepseek-coder';
+  if (lower.includes('405b')) return 'meta-llama/llama-3.1-405b-instruct';
+  if (lower.includes('llama-3.3') || lower.includes('llama')) return 'meta-llama/llama-3.3-70b-instruct';
+  if (lower.includes('sonar-reasoning-pro')) return 'perplexity/sonar-reasoning-pro';
+  if (lower.includes('sonar')) return 'perplexity/sonar-pro';
+  if (lower.includes('grok-4.7')) return 'x-ai/grok-4.7';
+  if (lower.includes('grok')) return 'x-ai/grok-latest';
+  if (lower.includes('mistral-large-2411') || lower.includes('mistral')) return 'mistralai/mistral-large-2411';
+  if (lower.includes('o3-mini')) return 'openai/o3-mini';
+  if (lower.includes('o1')) return 'openai/o1';
   if (lower.includes('gpt-4o-mini') || lower.includes('gpt-3.5')) return 'openai/gpt-4o-mini';
   if (lower.includes('gpt-4o') || lower.includes('gpt-4')) return 'openai/gpt-4o';
-  if (lower.includes('mistral') || lower.includes('mixtral')) return 'mistralai/mistral-large';
-  if (lower.includes('llama')) return 'meta-llama/llama-3.3-70b-instruct';
-  if (lower.includes('sonar') || lower.includes('perplexity')) return 'perplexity/sonar';
-  if (lower.includes('grok')) return 'x-ai/grok-2';
   if (lower.includes('nemotron')) return 'nvidia/nemotron-3-ultra-550b-a55b:free';
   if (lower.includes('poolside')) return 'poolside/laguna-s-2.1:free';
   return `openai/${modelId}`;
