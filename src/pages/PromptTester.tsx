@@ -323,58 +323,104 @@ export default function PromptTester() {
               <AgentIcon agent={currentAgent} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
               <span>{currentAgent.name} Models</span>
             </div>
-            <div className="max-h-[300px] overflow-y-auto px-1.5 custom-scrollbar" data-lenis-prevent="true">
-              {currentAgent.models.map((m: any) => {
-                const isAllowed = isModelAllowedForTier(m.id, profile?.plan);
-                const required = getModelRequiredTier(m.id);
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => {
-                      if (isDesktop && !isModelKeyConfigured(m.id, currentAgent.id)) {
-                        openApiKeyModal({
-                          agentId: currentAgent.id,
-                          modelId: m.id,
-                          modelName: m.name,
-                          errorMessage: `Please configure your API key for ${m.name} before running Arena tests.`
-                        });
+            <div className="max-h-[340px] overflow-y-auto px-1.5 custom-scrollbar" data-lenis-prevent="true">
+              {(() => {
+                const ultimateModels = currentAgent.models.filter((m: any) => (m.tier || getModelRequiredTier(m.id)) === 'ultimate');
+                const proModels = currentAgent.models.filter((m: any) => (m.tier || getModelRequiredTier(m.id)) === 'pro');
+                const freeModels = currentAgent.models.filter((m: any) => (m.tier || getModelRequiredTier(m.id)) === 'free');
+
+                const renderItem = (m: any, tier: 'ultimate' | 'pro' | 'free') => {
+                  const isAllowed = isModelAllowedForTier(m.id, profile?.plan);
+                  const required = m.tier || getModelRequiredTier(m.id);
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        if (isDesktop && !isModelKeyConfigured(m.id, currentAgent.id)) {
+                          openApiKeyModal({
+                            agentId: currentAgent.id,
+                            modelId: m.id,
+                            modelName: m.name,
+                            errorMessage: `Please configure your API key for ${m.name} before running Arena tests.`
+                          });
+                          setModelId(m.id);
+                          setActiveDropdown(null);
+                          return;
+                        }
+                        if (!isAllowed) {
+                          setUpgradeModal({
+                            isOpen: true,
+                            featureName: m.name,
+                            requiredTier: required === 'ultimate' ? 'ultimate' : 'pro',
+                            reason: `${m.name} is reserved for ${required.toUpperCase()} Plan members ($${required === 'ultimate' ? '50' : '20'} / month). Upgrade to benchmark with this model.`,
+                          });
+                          setActiveDropdown(null);
+                          return;
+                        }
                         setModelId(m.id);
                         setActiveDropdown(null);
-                        return;
-                      }
-                      if (!isAllowed) {
-                        setUpgradeModal({
-                          isOpen: true,
-                          featureName: m.name,
-                          requiredTier: required === 'ultimate' ? 'ultimate' : 'pro',
-                          reason: `${m.name} is reserved for ${required.toUpperCase()} Plan members. Upgrade to benchmark with this model.`,
-                        });
-                        setActiveDropdown(null);
-                        return;
-                      }
-                      setModelId(m.id);
-                      setActiveDropdown(null);
-                    }}
-                    className={cn(
-                      "w-full flex items-center justify-between px-2 py-1.5 text-xs text-left rounded-lg transition-colors",
-                      currentModel.id === m.id ? "bg-white/10 text-white font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
-                    )}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <AgentIcon agent={currentAgent} model={m.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
-                      <span className="truncate">{m.name}</span>
-                      {!isAllowed && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase ml-1">
-                          <Lock className="w-2.5 h-2.5 text-copper-400" />
-                          <span>{required}</span>
-                        </span>
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-2 py-1.5 text-xs text-left rounded-lg transition-colors font-mono",
+                        currentModel.id === m.id ? "bg-white/10 text-white font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
                       )}
-                    </div>
-                    {currentModel.id === m.id && isAllowed && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
-                  </button>
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <AgentIcon agent={currentAgent} model={m.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
+                        <span className="truncate">{m.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 ml-1">
+                        {!isAllowed ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase">
+                            <Lock className="w-2.5 h-2.5 text-copper-400" />
+                            <span>{required}</span>
+                          </span>
+                        ) : (
+                          <span className={cn(
+                            "px-1.5 py-0.2 rounded text-[9px] font-mono uppercase",
+                            tier === 'ultimate' ? "bg-purple-500/15 text-purple-300 border border-purple-500/25" :
+                            tier === 'pro' ? "bg-amber-500/15 text-amber-300 border border-amber-500/25" :
+                            "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
+                          )}>
+                            {tier}
+                          </span>
+                        )}
+                        {currentModel.id === m.id && isAllowed && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
+                      </div>
+                    </button>
+                  );
+                };
+
+                return (
+                  <div className="flex flex-col gap-1.5">
+                    {ultimateModels.length > 0 && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded">
+                          Ultimate Tier ($50/mo)
+                        </div>
+                        {ultimateModels.map((m: any) => renderItem(m, 'ultimate'))}
+                      </div>
+                    )}
+                    {proModels.length > 0 && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded">
+                          Pro Tier ($20/mo)
+                        </div>
+                        {proModels.map((m: any) => renderItem(m, 'pro'))}
+                      </div>
+                    )}
+                    {freeModels.length > 0 && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded">
+                          Free Tier ($0/mo)
+                        </div>
+                        {freeModels.map((m: any) => renderItem(m, 'free'))}
+                      </div>
+                    )}
+                  </div>
                 );
-              })}
+              })()}
             </div>
           </div>
         )}

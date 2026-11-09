@@ -160,10 +160,18 @@ export function getRequiredProviderForModel(modelId?: string, agentId?: string):
   ) {
     return PROVIDER_REQUIREMENTS.groq;
   }
-  if (a === 'openai' || m.startsWith('gpt-') || m.startsWith('o1') || m.startsWith('o3')) {
+  if (
+    a === 'openai' ||
+    a === 'chatgpt' ||
+    a === 'copilot' ||
+    m.startsWith('gpt-') ||
+    m.startsWith('o1') ||
+    m.startsWith('o3') ||
+    m.includes('openai/')
+  ) {
     return PROVIDER_REQUIREMENTS.openai;
   }
-  if (a === 'anthropic' || m.includes('claude')) {
+  if (a === 'anthropic' || a === 'claude' || m.includes('claude') || m.includes('anthropic/')) {
     return PROVIDER_REQUIREMENTS.anthropic;
   }
   if (a === 'perplexity' || m.includes('sonar') || m.includes('perplexity')) {
@@ -178,7 +186,7 @@ export function getRequiredProviderForModel(modelId?: string, agentId?: string):
   if (a === 'xai' || a === 'grok' || m.includes('grok')) {
     return PROVIDER_REQUIREMENTS.xai;
   }
-  if (a === 'deepseek' || m.startsWith('deepseek-')) {
+  if (a === 'deepseek' || m.startsWith('deepseek-') || m.includes('deepseek/')) {
     return PROVIDER_REQUIREMENTS.deepseek;
   }
   if (a === 'nvidia' || m.includes('nemotron')) {

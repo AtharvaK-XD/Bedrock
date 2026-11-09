@@ -2332,10 +2332,19 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                                 <AgentIcon agent={currentAgent} model={model.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                                 <span className="font-mono text-xs truncate">{model.name}</span>
                               </div>
-                              {!isAllowed && (
+                              {!isAllowed ? (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase ml-1">
                                   <Lock className="w-2.5 h-2.5 text-copper-400" />
                                   <span>{reqTier}</span>
+                                </span>
+                              ) : (
+                                <span className={cn(
+                                  "px-1.5 py-0.2 rounded text-[9px] font-mono uppercase shrink-0 ml-1",
+                                  reqTier === 'ultimate' ? "bg-purple-500/15 text-purple-300 border border-purple-500/25" :
+                                  reqTier === 'pro' ? "bg-amber-500/15 text-amber-300 border border-amber-500/25" :
+                                  "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
+                                )}>
+                                  {reqTier}
                                 </span>
                               )}
                             </div>

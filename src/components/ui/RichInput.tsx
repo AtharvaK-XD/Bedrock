@@ -1,7 +1,7 @@
 import { ANTHROPIC_MODELS_EVENT } from '../../lib/anthropicModels';
 import { getCachedProviderModels, DYNAMIC_MODELS_UPDATED_EVENT } from '../../lib/dynamicModelDiscovery';
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Check, Lock } from 'lucide-react';
+import { Plus, Check, Lock, Crown, Zap, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { IdeaPayload } from '../../lib/mockApi';
 import { usePromptQuota } from '../../lib/usePromptQuota';
@@ -33,52 +33,79 @@ const targetOptions: { id: IdeaPayload['targetType']; label: string; tag: string
   { id: 'no_code', label: 'No-Code', tag: 'NOCODE' },
 ];
 
-export const AI_AGENTS = [
+export interface AgentModel {
+  id: string;
+  name: string;
+  tier: 'free' | 'pro' | 'ultimate';
+  tag?: string;
+}
+
+export interface AIAgent {
+  id: string;
+  name: string;
+  description: string;
+  models: AgentModel[];
+}
+
+export const AI_AGENTS: AIAgent[] = [
   {
     id: 'universal',
     name: 'Universal',
-    description: 'Works well across any model',
-    models: [{ id: 'auto', name: 'Auto-select best model' }]
-  },
-  {
-    id: 'openrouter',
-    name: 'OpenRouter (100% Free)',
-    description: 'Zero-cost frontier and open models via OpenRouter',
+    description: 'Works well across any model & provider',
     models: [
-      { id: 'openrouter/free', name: 'Free Models Auto-Router ($0)' },
-      { id: 'poolside/laguna-s-2.1:free', name: 'Poolside Laguna S 2.1 (Free)' },
-      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
-      { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B' },
-      { id: 'mistralai/mistral-large', name: 'Mistral Large' },
+      { id: 'auto', name: 'Auto-select Best Model', tier: 'free', tag: 'Smart Routing' }
     ]
   },
   {
-    id: 'huggingface',
-    name: 'Open Models / HF',
-    description: 'Open-weight foundation models ($0.00)',
+    id: 'chatgpt',
+    name: 'ChatGPT (OpenAI)',
+    description: 'Frontier reasoning & agentic coding by OpenAI',
     models: [
-      { id: 'openrouter/free', name: 'Open Foundation Models Router' },
-      { id: 'poolside/laguna-s-2.1:free', name: 'Laguna S 2.1 (Free)' },
-      { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra (Free)' },
+      { id: 'openai/gpt-6-astra', name: 'GPT-6 Astra', tier: 'ultimate', tag: 'Apex Flagship' },
+      { id: 'openai/o1', name: 'OpenAI o1', tier: 'ultimate', tag: 'Autonomous Reasoning' },
+      { id: 'openai/gpt-6.1-sol', name: 'GPT-6.1 Sol', tier: 'pro', tag: 'Agentic Coding' },
+      { id: 'openai/gpt-6-luna', name: 'GPT-6 Luna', tier: 'pro', tag: 'Fast 1.05M Context' },
+      { id: 'openai/gpt-5.6-luna', name: 'GPT-5.6 Luna', tier: 'pro', tag: 'Balanced Reasoning' },
+      { id: 'openai/o3-mini', name: 'OpenAI o3-mini', tier: 'pro', tag: 'High-Speed STEM' },
+      { id: 'openai/gpt-4o', name: 'GPT-4o', tier: 'pro', tag: 'Omni Benchmark' },
+      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', tier: 'pro', tag: 'Fast & Lightweight' },
     ]
   },
   {
-    id: 'nvidia',
-    name: 'Nvidia (100% Free)',
-    description: 'High-parameter frontier reasoning models ($0.00)',
+    id: 'claude',
+    name: 'Claude (Anthropic)',
+    description: 'Nuanced reasoning, coding & architecture by Anthropic',
     models: [
-      { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra 550B (Free)' },
-      { id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', name: 'Nemotron 3 Nano Omni (Free Reasoning)' },
+      { id: 'anthropic/claude-opus-5.5', name: 'Claude Opus 5.5', tier: 'ultimate', tag: 'Apex Architecture & Code' },
+      { id: 'anthropic/claude-sonnet-5.5', name: 'Claude Sonnet 5.5', tier: 'pro', tag: 'Deep Reasoning & Coding' },
+      { id: 'anthropic/claude-haiku-5.5', name: 'Claude Haiku 5.5', tier: 'pro', tag: 'Ultra-Fast 1M Context' },
+      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', tier: 'pro', tag: 'Hybrid Reasoning' },
+      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', tier: 'pro', tag: 'Pro Benchmark' },
+      { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', tier: 'pro', tag: 'Fast & Lightweight' },
     ]
   },
   {
     id: 'gemini',
-    name: 'Gemini (100% Free)',
-    description: 'Multimodal Google AI Studio models ($0.00)',
+    name: 'Gemini (Google DeepMind)',
+    description: 'Multimodal frontier intelligence & reasoning',
     models: [
-      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite (Free)' },
-      { id: 'gemini-flash-lite-latest', name: 'Gemini Flash-Lite Latest (Free)' },
-      { id: 'gemma-4-26b-a4b-it', name: 'Gemma 4 26B (Free)' },
+      { id: 'google/gemini-4-argon', name: 'Gemini 4 Argon', tier: 'ultimate', tag: 'Autonomous Reasoning 1M+' },
+      { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', tier: 'pro', tag: 'Deep Multimodal 1M+' },
+      { id: 'google/gemini-3.6-flash', name: 'Gemini 3.6 Flash', tier: 'pro', tag: 'High-Speed Coding' },
+      { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', tier: 'pro', tag: 'Workhorse Multimodal' },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', tier: 'free', tag: 'Zero-Cost Free' },
+      { id: 'gemini-flash-lite-latest', name: 'Gemini Flash-Lite Latest', tier: 'free', tag: 'Zero-Cost Free' },
+      { id: 'gemma-4-26b-a4b-it', name: 'Gemma 4 26B', tier: 'free', tag: 'Free Open Weights' },
+    ]
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    description: 'Deep reasoning & state-of-the-art coding',
+    models: [
+      { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', tier: 'pro', tag: '671B Reasoning Flagship' },
+      { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3 Chat', tier: 'pro', tag: '671B MoE General Benchmark' },
+      { id: 'deepseek-coder-v2', name: 'DeepSeek Coder V2', tier: 'pro', tag: 'Code Specialist' },
     ]
   },
   {
@@ -86,90 +113,101 @@ export const AI_AGENTS = [
     name: 'Groq / LLaMA & OSS',
     description: 'Ultra-low latency open models via Groq LPU',
     models: [
-      { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (Groq LPU)' },
-      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Groq LPU)' },
-      { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B (Groq LPU)' },
-      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct' },
-      { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B Instruct' },
-    ]
-  },
-  {
-    id: 'mistral',
-    name: 'Mistral',
-    description: 'Fast, lightweight, and efficient',
-    models: [
-      { id: 'mistral-large', name: 'Mistral Large' },
-      { id: 'mixtral-8x22b', name: 'Mixtral 8x22B' }
-    ]
-  },
-  {
-    id: 'deepseek',
-    name: 'DeepSeek',
-    description: 'Strong reasoning and coding',
-    models: [
-      { id: 'deepseek-coder-v2', name: 'DeepSeek Coder V2' },
-      { id: 'deepseek-chat', name: 'DeepSeek Chat' }
+      { id: 'meta-llama/llama-3.1-405b-instruct', name: 'Llama 3.1 405B Instruct', tier: 'ultimate', tag: '405B Parameter Giant' },
+      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct', tier: 'pro', tag: 'Groq LPU High Speed' },
+      { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B Instruct', tier: 'pro', tag: 'Ultra-Fast Low Latency' },
+      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', tier: 'free', tag: 'Zero-Cost Flagship' },
+      { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', tier: 'free', tag: 'Zero-Cost Ultra-Fast' },
+      { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B', tier: 'free', tag: 'Groq LPU Free' },
     ]
   },
   {
     id: 'perplexity',
-    name: 'Perplexity',
-    description: 'Web search with cited answers',
+    name: 'Perplexity AI',
+    description: 'Live web search with grounded citations',
     models: [
-      { id: 'sonar-pro', name: 'Sonar Pro' },
-      { id: 'sonar-reasoning-pro', name: 'Sonar Reasoning Pro' },
-      { id: 'sonar', name: 'Sonar' },
-      { id: 'sonar-huge', name: 'Sonar Huge' },
-      { id: 'sonar-large', name: 'Sonar Large' }
+      { id: 'perplexity/sonar-reasoning-pro', name: 'Sonar Reasoning Pro', tier: 'ultimate', tag: 'Chain-of-Thought Search' },
+      { id: 'perplexity/sonar-pro', name: 'Sonar Pro', tier: 'pro', tag: 'Live Web Grounding' },
+      { id: 'sonar', name: 'Sonar', tier: 'pro', tag: 'Fast Web Search' },
+      { id: 'sonar-huge', name: 'Sonar Huge', tier: 'pro', tag: 'Deep Synthesis' },
     ]
   },
   {
     id: 'grok',
     name: 'Grok (xAI)',
-    description: 'Real-time reasoning and frontier intelligence',
+    description: 'Real-time reasoning & frontier intelligence',
     models: [
-      { id: 'grok-3', name: 'Grok 3' },
-      { id: 'grok-2', name: 'Grok 2' },
-      { id: 'grok-1.5', name: 'Grok-1.5' }
+      { id: 'x-ai/grok-4.7', name: 'Grok 4.7', tier: 'pro', tag: 'Flagship Real-Time' },
+      { id: 'x-ai/grok-latest', name: 'Grok Latest', tier: 'pro', tag: 'Auto-Redirect Flagship' },
+      { id: 'grok-3', name: 'Grok 3', tier: 'pro', tag: 'Flagship Reasoning' },
+      { id: 'grok-2-1212', name: 'Grok 2', tier: 'pro', tag: 'Real-Time X Data' },
+    ]
+  },
+  {
+    id: 'mistral',
+    name: 'Mistral AI',
+    description: 'Fast, European frontier reasoning & coding',
+    models: [
+      { id: 'mistralai/mistral-large-2411', name: 'Mistral Large 2411', tier: 'pro', tag: 'European Flagship' },
+      { id: 'mistral-large', name: 'Mistral Large 2', tier: 'pro', tag: 'Flagship Benchmark' },
+      { id: 'codestral-latest', name: 'Codestral', tier: 'pro', tag: 'Code Specialist' },
+      { id: 'mixtral-8x22b', name: 'Mixtral 8x22B', tier: 'pro', tag: 'Sparse MoE' },
+    ]
+  },
+  {
+    id: 'nvidia',
+    name: 'Nvidia NIM',
+    description: 'High-parameter frontier reasoning & NIM models',
+    models: [
+      { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Llama 3.1 Nemotron 70B', tier: 'pro', tag: 'Pro Reasoning' },
+      { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra 550B', tier: 'free', tag: 'Free Frontier' },
+      { id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', name: 'Nemotron 3 Nano Omni', tier: 'free', tag: 'Free Reasoning' },
+    ]
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    description: 'Frontier, open-weight & unified multi-provider routing',
+    models: [
+      { id: 'anthropic/claude-opus-5.5', name: 'Claude Opus 5.5', tier: 'ultimate', tag: 'OpenRouter Flagship' },
+      { id: 'openai/gpt-6-astra', name: 'GPT-6 Astra', tier: 'ultimate', tag: 'OpenRouter Flagship' },
+      { id: 'anthropic/claude-sonnet-5.5', name: 'Claude Sonnet 5.5', tier: 'pro', tag: 'OpenRouter Pro' },
+      { id: 'openai/gpt-6.1-sol', name: 'GPT-6.1 Sol', tier: 'pro', tag: 'Agentic Coding' },
+      { id: 'openai/gpt-6-luna', name: 'GPT-6 Luna', tier: 'pro', tag: 'Fast 1.05M Context' },
+      { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', tier: 'pro', tag: '671B MoE' },
+      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct', tier: 'pro', tag: 'Open Weights' },
+      { id: 'openrouter/free', name: 'Free Models Auto-Router', tier: 'free', tag: 'Zero-Cost Router' },
+      { id: 'poolside/laguna-s-2.1:free', name: 'Poolside Laguna S 2.1', tier: 'free', tag: 'Zero-Cost Free' },
+    ]
+  },
+  {
+    id: 'huggingface',
+    name: 'Open Models / HF',
+    description: 'Open-weight foundation & open research models',
+    models: [
+      { id: 'meta-llama/llama-3.1-405b-instruct', name: 'Llama 3.1 405B Instruct', tier: 'ultimate', tag: 'HF Giant' },
+      { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', tier: 'pro', tag: 'HF Reasoning' },
+      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct', tier: 'pro', tag: 'HF Weights' },
+      { id: 'openrouter/free', name: 'Open Foundation Models Router', tier: 'free', tag: 'Zero-Cost Router' },
+      { id: 'poolside/laguna-s-2.1:free', name: 'Laguna S 2.1', tier: 'free', tag: 'Zero-Cost Free' },
     ]
   },
   {
     id: 'cohere',
     name: 'Cohere',
-    description: 'Retrieval and enterprise search',
+    description: 'Enterprise search, retrieval & RAG models',
     models: [
-      { id: 'command-r-plus', name: 'Command R+' },
-      { id: 'command-r', name: 'Command R' }
-    ]
-  },
-  {
-    id: 'chatgpt',
-    name: 'ChatGPT',
-    description: 'Versatile all-rounder by OpenAI',
-    models: [
-      { id: 'gpt-4o', name: 'GPT-4o' },
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' }
-    ]
-  },
-  {
-    id: 'claude',
-    name: 'Claude',
-    description: 'Nuanced writing and reasoning by Anthropic',
-    models: [
-      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet' },
-      { id: 'claude-opus-5-5', name: 'Claude Opus 5.5' },
-      { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5' },
-      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
-      { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5' },
-      { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku' }
+      { id: 'command-r-plus', name: 'Command R+', tier: 'ultimate', tag: 'Enterprise Search & RAG' },
+      { id: 'command-r', name: 'Command R', tier: 'pro', tag: 'Fast RAG Specialist' },
     ]
   },
   {
     id: 'copilot',
-    name: 'Copilot',
-    description: 'Microsoft ecosystem integration',
-    models: [{ id: 'copilot-pro', name: 'Copilot Pro' }]
+    name: 'Microsoft Copilot',
+    description: 'Microsoft ecosystem & enterprise intelligence',
+    models: [
+      { id: 'copilot-pro', name: 'Copilot Pro', tier: 'ultimate', tag: 'Ecosystem Flagship' },
+    ]
   }
 ];
 
@@ -193,6 +231,10 @@ const AGENT_PROVIDER_MAP: Record<string, string> = {
   grok: 'xai',
   openrouter: 'openrouter',
   cohere: 'cohere',
+  nvidia: 'nvidia',
+  huggingface: 'huggingface',
+  perplexity: 'perplexity',
+  copilot: 'openai',
 };
 
 export function RichInput({
@@ -228,12 +270,17 @@ export function RichInput({
       const dynamicModels = getCachedProviderModels(provider);
       if (!dynamicModels || dynamicModels.length === 0) return agent;
 
-      const map = new Map<string, { id: string; name: string }>();
+      const map = new Map<string, AgentModel>();
       for (const m of agent.models) map.set(m.id.toLowerCase(), m);
       for (const dm of dynamicModels) {
         const k = dm.id.toLowerCase();
         if (!map.has(k)) {
-          map.set(k, { id: dm.id, name: dm.name });
+          map.set(k, {
+            id: dm.id,
+            name: dm.name,
+            tier: getModelRequiredTier(dm.id),
+            tag: 'Discovered Model',
+          });
         }
       }
       return {
@@ -480,9 +527,13 @@ export function RichInput({
             
             {activeDropdown === 'agent' && (
               <div 
-                className="absolute top-full left-0 mt-2 w-84 max-w-[calc(100vw-2rem)] bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
+                className="absolute top-full left-0 mt-2 w-88 max-w-[calc(100vw-2rem)] bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
                 data-lenis-prevent="true"
               >
+                <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1 flex items-center justify-between">
+                  <span>AI Model Providers</span>
+                  <span className="text-[9px] text-zinc-500 font-mono font-normal">All Providers</span>
+                </div>
                 <div 
                   className="max-h-[min(380px,50vh)] overflow-y-auto custom-scrollbar overscroll-contain flex flex-col gap-1 p-1" 
                   data-lenis-prevent="true"
@@ -490,9 +541,13 @@ export function RichInput({
                 >
                   {activeAiAgents.map((agent) => {
                     const hasAccessibleModel = agent.models.some((m) => isModelAllowedForTier(m.id, profile?.plan));
-                    const agentRequiredTier = agent.models.some((m) => getModelRequiredTier(m.id) === 'ultimate')
+                    const agentRequiredTier = agent.models.some((m) => (m.tier || getModelRequiredTier(m.id)) === 'ultimate')
                       ? 'ultimate'
                       : 'pro';
+
+                    const hasFreeTier = agent.models.some((m) => (m.tier || getModelRequiredTier(m.id)) === 'free');
+                    const hasProTier = agent.models.some((m) => (m.tier || getModelRequiredTier(m.id)) === 'pro');
+                    const hasUltimateTier = agent.models.some((m) => (m.tier || getModelRequiredTier(m.id)) === 'ultimate');
 
                     return (
                       <button
@@ -504,7 +559,7 @@ export function RichInput({
                               isOpen: true,
                               featureName: `${agent.name} Models`,
                               requiredTier: agentRequiredTier,
-                              reason: `${agent.name} frontier models require an active ${agentRequiredTier.toUpperCase()} Plan. Upgrade your plan to get immediate access.`,
+                              reason: `${agent.name} models require an active ${agentRequiredTier.toUpperCase()} Plan ($${agentRequiredTier === 'ultimate' ? '50' : '20'} / month). Upgrade to unlock immediate access.`,
                             });
                             setActiveDropdown(null);
                             return;
@@ -525,17 +580,34 @@ export function RichInput({
                           setActiveDropdown(null);
                         }}
                         className={cn(
-                          "w-full flex items-start justify-between gap-3 px-3 py-2.5 text-left rounded-xl transition-colors",
-                          selectedAgentId === agent.id ? "bg-white/10" : "hover:bg-white/5"
+                          "w-full flex items-start justify-between gap-3 px-3 py-2 text-left rounded-xl transition-all duration-150",
+                          selectedAgentId === agent.id ? "bg-white/10 border border-white/10" : "hover:bg-white/5 border border-transparent"
                         )}
                       >
                         <div className="flex items-start gap-3 min-w-0">
-                          <AgentIcon agent={agent} className="w-5 h-5" badgeClassName="w-5 h-5 mt-0.5" />
+                          <AgentIcon agent={agent} className="w-5 h-5 shrink-0" badgeClassName="w-5 h-5 mt-0.5" />
                           <div className="min-w-0">
-                            <div className={cn("text-xs sm:text-sm font-medium flex items-center gap-1.5", selectedAgentId === agent.id ? "text-white" : "text-zinc-300")}>
+                            <div className={cn("text-xs sm:text-sm font-medium flex items-center gap-1.5 flex-wrap", selectedAgentId === agent.id ? "text-white" : "text-zinc-300")}>
                               <span className="truncate">{agent.name}</span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {hasUltimateTier && (
+                                  <span className="px-1 py-0.2 rounded text-[8px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/25 uppercase">
+                                    Ultimate
+                                  </span>
+                                )}
+                                {hasProTier && (
+                                  <span className="px-1 py-0.2 rounded text-[8px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/25 uppercase">
+                                    Pro
+                                  </span>
+                                )}
+                                {hasFreeTier && (
+                                  <span className="px-1 py-0.2 rounded text-[8px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 uppercase">
+                                    Free
+                                  </span>
+                                )}
+                              </div>
                               {!hasAccessibleModel && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-copper-500/20 text-copper-300 border border-copper-500/40 shrink-0 uppercase font-semibold">
                                   <Lock className="w-2.5 h-2.5 text-copper-400" />
                                   <span>{agentRequiredTier}</span>
                                 </span>
@@ -564,77 +636,172 @@ export function RichInput({
               <AgentIcon agent={selectedAgent} model={selectedModel.id} className="w-4 h-4" badgeClassName="w-4 h-4" />
               <span className="text-zinc-500 text-xs">Model:</span>
               <span className="font-mono text-xs">{selectedModel.name}</span>
+              {((selectedModel as AgentModel).tier || getModelRequiredTier(selectedModel.id)) === 'ultimate' ? (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
+                  Ultimate
+                </span>
+              ) : ((selectedModel as AgentModel).tier || getModelRequiredTier(selectedModel.id)) === 'pro' ? (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
+                  Pro
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
+                  Free
+                </span>
+              )}
               <span className="text-[10px] text-zinc-500">▾</span>
             </button>
 
-            {activeDropdown === 'model' && (
-              <div 
-                className="absolute top-full left-0 mt-2 w-84 max-w-[calc(100vw-2rem)] bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
-                data-lenis-prevent="true"
-              >
-                <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1 flex items-center gap-1.5">
-                  <AgentIcon agent={selectedAgent} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
-                  <span>{selectedAgent.name} Models</span>
-                </div>
-                <div 
-                  className="max-h-[min(340px,45vh)] overflow-y-auto px-1 custom-scrollbar overscroll-contain flex flex-col gap-0.5" 
-                  data-lenis-prevent="true"
-                  onWheel={(e) => e.stopPropagation()}
-                >
-                  {selectedAgent.models.map((model) => {
-                    const isAllowed = isModelAllowedForTier(model.id, profile?.plan);
-                    const required = getModelRequiredTier(model.id);
+            {activeDropdown === 'model' && (() => {
+              const ultimateModels = selectedAgent.models.filter(
+                (m) => ((m as AgentModel).tier || getModelRequiredTier(m.id)) === 'ultimate'
+              );
+              const proModels = selectedAgent.models.filter(
+                (m) => ((m as AgentModel).tier || getModelRequiredTier(m.id)) === 'pro'
+              );
+              const freeModels = selectedAgent.models.filter(
+                (m) => ((m as AgentModel).tier || getModelRequiredTier(m.id)) === 'free'
+              );
 
-                    return (
-                      <button
-                        key={model.id}
-                        type="button"
-                        onClick={() => {
-                          if (!isAllowed) {
-                            setUpgradeModal({
-                              isOpen: true,
-                              featureName: model.name,
-                              requiredTier: required === 'ultimate' ? 'ultimate' : 'pro',
-                              reason: `${model.name} is a high-capability model requiring an active ${required.toUpperCase()} Plan. Upgrade to unlock full access.`,
-                            });
-                            setActiveDropdown(null);
-                            return;
-                          }
-                          if (isDesktopApp() && !isModelKeyConfigured(model.id, selectedAgentId)) {
-                            setApiKeyModal({
-                              isOpen: true,
-                              modelId: model.id,
-                              modelName: model.name,
-                              agentId: selectedAgentId,
-                            });
-                            setActiveDropdown(null);
-                            return;
-                          }
-                          setSelectedModelId(model.id);
-                          setActiveDropdown(null);
-                        }}
-                        className={cn(
-                          "w-full flex items-center justify-between px-3 py-2 text-xs sm:text-sm text-left rounded-xl transition-colors font-mono",
-                          selectedModelId === model.id ? "bg-white/10 text-white font-medium" : "text-zinc-300 hover:bg-white/5 hover:text-white"
+              const renderModelButton = (model: AgentModel, tierType: 'ultimate' | 'pro' | 'free') => {
+                const isAllowed = isModelAllowedForTier(model.id, profile?.plan);
+                const required = model.tier || getModelRequiredTier(model.id);
+                const isSelected = selectedModelId === model.id;
+
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => {
+                      if (!isAllowed) {
+                        setUpgradeModal({
+                          isOpen: true,
+                          featureName: model.name,
+                          requiredTier: required === 'ultimate' ? 'ultimate' : 'pro',
+                          reason: `${model.name} requires an active ${required.toUpperCase()} Plan ($${required === 'ultimate' ? '50' : '20'} / month). Upgrade your plan to get full access.`,
+                        });
+                        setActiveDropdown(null);
+                        return;
+                      }
+                      if (isDesktopApp() && !isModelKeyConfigured(model.id, selectedAgentId)) {
+                        setApiKeyModal({
+                          isOpen: true,
+                          modelId: model.id,
+                          modelName: model.name,
+                          agentId: selectedAgentId,
+                        });
+                        setActiveDropdown(null);
+                        return;
+                      }
+                      setSelectedModelId(model.id);
+                      setActiveDropdown(null);
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 text-xs text-left rounded-xl transition-all duration-150 font-mono",
+                      isSelected
+                        ? "bg-white/10 text-white font-medium border border-white/10 shadow-sm"
+                        : "text-zinc-300 hover:bg-white/5 hover:text-white border border-transparent"
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <AgentIcon agent={selectedAgent} model={model.id} className="w-3.5 h-3.5 shrink-0" badgeClassName="w-4 h-4" />
+                      <div className="flex flex-col min-w-0 text-left">
+                        <span className="truncate">{model.name}</span>
+                        {model.tag && (
+                          <span className="text-[10px] text-zinc-500 font-sans truncate">{model.tag}</span>
                         )}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <AgentIcon agent={selectedAgent} model={model.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
-                          <span className="truncate">{model.name}</span>
-                          {!isAllowed && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 shrink-0 uppercase ml-1">
-                              <Lock className="w-2.5 h-2.5 text-copper-400" />
-                              <span>{required}</span>
-                            </span>
-                          )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {!isAllowed ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-copper-500/15 text-copper-300 border border-copper-500/30 uppercase font-semibold">
+                          <Lock className="w-2.5 h-2.5 text-copper-400" />
+                          <span>{required}</span>
+                        </span>
+                      ) : (
+                        tierType === 'ultimate' ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/30 uppercase font-medium">
+                            Ultimate
+                          </span>
+                        ) : tierType === 'pro' ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase font-medium">
+                            Pro
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase font-medium">
+                            Free
+                          </span>
+                        )
+                      )}
+                      {isSelected && isAllowed && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
+                    </div>
+                  </button>
+                );
+              };
+
+              return (
+                <div 
+                  className="absolute top-full left-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-black/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[100] p-2 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
+                  data-lenis-prevent="true"
+                >
+                  <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/[0.06] mb-1.5 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <AgentIcon agent={selectedAgent} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
+                      <span>{selectedAgent.name} Models</span>
+                    </div>
+                    <span className="text-[9px] text-zinc-500 font-mono font-normal">Divided by Tier</span>
+                  </div>
+
+                  <div 
+                    className="max-h-[min(380px,50vh)] overflow-y-auto px-1 custom-scrollbar overscroll-contain flex flex-col gap-1" 
+                    data-lenis-prevent="true"
+                    onWheel={(e) => e.stopPropagation()}
+                  >
+                    {/* Ultimate Tier Models */}
+                    {ultimateModels.length > 0 && (
+                      <div className="flex flex-col gap-0.5 mb-2">
+                        <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                          <div className="flex items-center gap-1.5">
+                            <Crown className="w-3 h-3 text-purple-400" />
+                            <span>Ultimate Tier Models</span>
+                          </div>
+                          <span className="text-[9px] font-mono text-purple-400/80 font-normal">$50 / mo</span>
                         </div>
-                        {selectedModelId === model.id && isAllowed && <Check className="w-3.5 h-3.5 text-copper-400 shrink-0" />}
-                      </button>
-                    );
-                  })}
+                        {ultimateModels.map((m) => renderModelButton(m as AgentModel, 'ultimate'))}
+                      </div>
+                    )}
+
+                    {/* Pro Tier Models */}
+                    {proModels.length > 0 && (
+                      <div className="flex flex-col gap-0.5 mb-2">
+                        <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                          <div className="flex items-center gap-1.5">
+                            <Zap className="w-3 h-3 text-amber-400" />
+                            <span>Pro Tier Models</span>
+                          </div>
+                          <span className="text-[9px] font-mono text-amber-400/80 font-normal">$20 / mo</span>
+                        </div>
+                        {proModels.map((m) => renderModelButton(m as AgentModel, 'pro'))}
+                      </div>
+                    )}
+
+                    {/* Free Tier Models */}
+                    {freeModels.length > 0 && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-emerald-400" />
+                            <span>Free Tier Models</span>
+                          </div>
+                          <span className="text-[9px] font-mono text-emerald-400/80 font-normal">$0 / mo</span>
+                        </div>
+                        {freeModels.map((m) => renderModelButton(m as AgentModel, 'free'))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
 

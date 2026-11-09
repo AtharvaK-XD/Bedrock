@@ -179,11 +179,13 @@ export function getModelRequiredTier(modelId: string): 'free' | 'pro' | 'ultimat
     m.includes('grok') ||
     m.includes('llama-3.3') ||
     m.includes('llama-3.1-8b') ||
+    m.includes('nemotron-70b') ||
     m.includes('mistral-large') ||
     m.includes('mixtral-8x22b') ||
     m.includes('codestral') ||
     m.includes('sonar-pro') ||
-    m.includes('sonar')
+    m.includes('sonar') ||
+    m.includes('command-r')
   ) {
     return 'pro';
   }

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AI_AGENTS, AgentIcon } from './RichInput';
+import { getModelRequiredTier } from '../../lib/subscriptionTiers';
 import { Button as StatefulButton } from './stateful-button';
 import { usePromptQuota } from '../../lib/usePromptQuota';
 import { QuotaLimitModal } from './QuotaLimitModal';
@@ -289,24 +290,37 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                             <AgentIcon agent={agent} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                             <span>{agent.name}</span>
                           </div>
-                          {agent.models.map((m) => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setModel(m.name);
-                                setIsModelDropdownOpen(false);
-                              }}
-                              className={cn(
-                                "w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left rounded-lg transition-colors font-mono cursor-pointer",
-                                model === m.name ? "bg-copper-500/20 text-copper-300 font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
-                              )}
-                            >
-                              <AgentIcon agent={agent} model={m.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
-                              <span className="truncate">{m.name}</span>
-                            </button>
-                          ))}
+                          {agent.models.map((m) => {
+                            const reqTier = m.tier || getModelRequiredTier(m.id);
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setModel(m.name);
+                                  setIsModelDropdownOpen(false);
+                                }}
+                                className={cn(
+                                  "w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left rounded-lg transition-colors font-mono cursor-pointer",
+                                  model === m.name ? "bg-copper-500/20 text-copper-300 font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
+                                )}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <AgentIcon agent={agent} model={m.id} className="w-3.5 h-3.5 shrink-0" badgeClassName="w-4 h-4" />
+                                  <span className="truncate">{m.name}</span>
+                                </div>
+                                <span className={cn(
+                                  "px-1.5 py-0.2 rounded text-[8px] font-mono uppercase shrink-0",
+                                  reqTier === 'ultimate' ? "bg-purple-500/15 text-purple-300 border border-purple-500/25" :
+                                  reqTier === 'pro' ? "bg-amber-500/15 text-amber-300 border border-amber-500/25" :
+                                  "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
+                                )}>
+                                  {reqTier}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       ))}
                     </div>
