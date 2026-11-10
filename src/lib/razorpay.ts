@@ -35,6 +35,9 @@ export interface RazorpayCheckoutConfig {
   currency?: string;
   userName: string;
   userEmail: string;
+  userPhone?: string;
+  userAddress?: string;
+  userDob?: string;
   onSuccess: (verifyResult: any) => void;
   onError: (error: string) => void;
   /**
@@ -219,6 +222,11 @@ export async function startRazorpayCheckout(config: RazorpayCheckoutConfig): Pro
     prefill: {
       name: config.userName,
       email: config.userEmail,
+      ...(config.userPhone ? { contact: config.userPhone } : {}),
+    },
+    notes: {
+      ...(config.userAddress ? { billing_address: config.userAddress } : {}),
+      ...(config.userDob ? { date_of_birth: config.userDob } : {}),
     },
     theme: {
       color: '#000000', // Pure black theme for Razorpay checkout
