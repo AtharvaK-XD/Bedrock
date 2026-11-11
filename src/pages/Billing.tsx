@@ -9,7 +9,11 @@ import {
   FileText,
   Check,
   Lock,
-  Zap
+  Zap,
+  AlertTriangle,
+  RotateCcw,
+  Loader2,
+  X
 } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
@@ -17,6 +21,21 @@ import { useUserProfile } from '../lib/useUserProfile';
 import { usePromptQuota } from '../lib/usePromptQuota';
 import { normalizeTier, TIER_LIMITS } from '../lib/subscriptionTiers';
 import { getPlanPrice, planPriceLabel } from '../lib/pricing';
+import { getAuthHeaders } from '../lib/api';
+
+export interface PaymentHistoryItem {
+  orderId: string;
+  paymentId: string | null;
+  tier: 'pro' | 'ultimate';
+  planName: string;
+  amountPaise: number;
+  basePaise: number;
+  gstPaise: number;
+  currency: string;
+  status: 'paid';
+  orderedAt: string;
+  paidAt: string;
+}
 
 export default function Billing() {
   const { profile } = useUserProfile();
@@ -32,7 +51,11 @@ export default function Billing() {
 
   const [downloading, setDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
-  const [currentDate, setCurrentDate] = useState('October 22, 2026');
+  const [currentDate, setCurrentDate] = useState('Today');
+  const [historyItems, setHistoryItems] = useState<PaymentHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<PaymentHistoryItem | null>(null);
 
   useEffect(() => {
     const d = new Date();
@@ -41,6 +64,41 @@ export default function Billing() {
       month: 'long',
       day: 'numeric'
     }));
+  }, []);
+
+  // Fetch real payment receipts from GET /api/billing/history
+  useEffect(() => {
+    let isMounted = true;
+    async function loadHistory() {
+      try {
+        setLoadingHistory(true);
+        setHistoryError(null);
+        const headers = await getAuthHeaders();
+        const res = await fetch('/api/billing/history', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.success && Array.isArray(data.items)) {
+            setHistoryItems(data.items);
+          }
+        } else if (res.status !== 401) {
+          const errData = await res.json().catch(() => ({}));
+          if (isMounted) {
+            setHistoryError(errData.message || 'Could not load payment history.');
+          }
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setHistoryError(err?.message || 'Failed to connect to billing service.');
+        }
+      } finally {
+        if (isMounted) setLoadingHistory(false);
+      }
+    }
+
+    loadHistory();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleDownload = () => {
@@ -54,27 +112,26 @@ export default function Billing() {
   };
 
   const planPrice = getPlanPrice(currentTier === 'ultimate' ? 'ultimate' : 'pro');
-  const invoiceAmount = `${planPrice.symbol}${planPrice.total}`;
-  const basePrice = `${planPrice.symbol}${planPrice.base}`;
-  const gstPrice = `${planPrice.symbol}${planPrice.gst}`;
   const planDisplayName = currentTier === 'ultimate' ? 'Ultimate Plan' : currentTier === 'pro' ? 'Pro Plan' : 'Free Tier';
 
-  const invoiceItems = isFree ? [] : [
-    {
-      id: 'INV-2026-948043',
-      date: currentDate,
-      amount: invoiceAmount,
-      status: 'Paid',
-      plan: `${planDisplayName} (Monthly)`
-    },
-    {
-      id: 'INV-2026-812904',
-      date: 'September 22, 2026',
-      amount: invoiceAmount,
-      status: 'Paid',
-      plan: `${planDisplayName} (Monthly)`
-    },
-  ];
+  // Format currency helpers
+  const formatAmount = (subunits: number, currency = 'INR') => {
+    if (currency === 'USD') {
+      return `$${(subunits / 100).toFixed(2)}`;
+    }
+    return `₹${(subunits / 100).toLocaleString('en-IN')}`;
+  };
+
+  // Expiry formatting
+  const planExpiresAtFormatted = profile?.planExpiresAt
+    ? new Date(profile.planExpiresAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    : null;
+
+  const isExpired = Boolean(profile?.planExpired);
 
   return (
     <PageTransition>
@@ -100,8 +157,41 @@ export default function Billing() {
             </Link>
           </div>
 
-          {/* Hero Confirmation Banner */}
-          {isFree ? (
+          {/* Hero Confirmation / Expiry Banner */}
+          {isExpired ? (
+            <div className="relative rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-sf-121417 to-black p-6 sm:p-8 overflow-hidden shadow-2xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-start sm:items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h1 className="text-2xl sm:text-3xl font-bold font-editorial text-white tracking-tight">
+                        30-Day Access Period Expired
+                      </h1>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                        Expired {planExpiresAtFormatted || ''}
+                      </span>
+                    </div>
+                    <p className="text-sm text-neutral-400 mt-1 font-sans">
+                      Your access pass has concluded. Renew to instantly unlock unlimited generations and all frontier reasoning models.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Link
+                    to="/app/pricing"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs uppercase tracking-wider font-bold transition-all shadow-lg shadow-amber-500/25 active:scale-[0.98]"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Renew Plan Pass</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ) : isFree ? (
             <div className="relative rounded-3xl border border-copper-500/30 bg-gradient-to-r from-copper-500/10 via-sf-121417 to-black p-6 sm:p-8 overflow-hidden shadow-2xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-start sm:items-center gap-4">
@@ -118,7 +208,7 @@ export default function Billing() {
                       </span>
                     </div>
                     <p className="text-sm text-neutral-400 mt-1 font-sans">
-                      Daily limit: <span className="text-white font-mono">{sessionLimit} prompts/day</span> · 3 pipeline nodes · Core Gemini & Groq models.
+                      Daily quota: <span className="text-white font-mono">{sessionLimit} prompts/day</span> · Core Gemini & Groq models · 3 pipeline nodes.
                     </p>
                   </div>
                 </div>
@@ -129,7 +219,7 @@ export default function Billing() {
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-mono text-xs uppercase tracking-wider font-bold transition-all shadow-lg shadow-copper-500/25 active:scale-[0.98]"
                   >
                     <Zap className="w-4 h-4" />
-                    <span>Upgrade to Pro ({planPriceLabel('pro')})</span>
+                    <span>Upgrade ({planPriceLabel('pro')})</span>
                   </Link>
                 </div>
               </div>
@@ -151,7 +241,10 @@ export default function Billing() {
                       </span>
                     </div>
                     <p className="text-sm text-neutral-400 mt-1 font-sans">
-                      Your workspace is elevated to <span className="text-white font-medium">{planDisplayName}</span>. Unlimited prompts and frontier models are fully unlocked.
+                      Your workspace is elevated to <span className="text-white font-medium">{planDisplayName}</span>.
+                      {planExpiresAtFormatted 
+                        ? ` Active until ${planExpiresAtFormatted} (30 days per payment · no recurring charge).` 
+                        : ' Unlimited prompts and frontier models are fully unlocked.'}
                     </p>
                   </div>
                 </div>
@@ -164,7 +257,7 @@ export default function Billing() {
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-mono text-xs uppercase tracking-wider border border-white/15 transition-all shadow-sm cursor-pointer disabled:opacity-50"
                   >
                     <Download className="w-4 h-4" />
-                    <span>{downloading ? 'Preparing...' : downloadSuccess ? 'Downloaded' : 'Download Receipt'}</span>
+                    <span>{downloading ? 'Preparing...' : downloadSuccess ? 'Downloaded' : 'Print Invoice'}</span>
                   </button>
                 </div>
               </div>
@@ -183,7 +276,7 @@ export default function Billing() {
                   <div>
                     <h2 className="text-base font-bold text-white">Workspace Entitlements</h2>
                     <p className="text-xs text-neutral-400 font-mono mt-0.5">
-                      {isFree ? 'Free tier quota & active limits' : 'Recurring subscription billed monthly'}
+                      {isFree ? 'Free tier quota & active limits' : '30-day access pass · No auto-renew'}
                     </p>
                   </div>
                   <span className={cn(
@@ -198,14 +291,24 @@ export default function Billing() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                    <p className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">Billing Rate</p>
-                    <p className="text-xl font-bold font-mono text-white">{isFree ? '₹0.00' : basePrice}</p>
-                    <p className="text-[10px] text-neutral-500 font-mono">{isFree ? 'Always free ($0.00)' : 'Billed every 30 days'}</p>
+                    <p className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">Pass Rate</p>
+                    <p className="text-xl font-bold font-mono text-white">
+                      {isFree ? '₹0.00' : `${planPrice.symbol}${planPrice.base}`}
+                    </p>
+                    <p className="text-[10px] text-neutral-500 font-mono">
+                      {isFree ? 'Always free ($0.00)' : 'Per 30-day term'}
+                    </p>
                   </div>
                   <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                    <p className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">{isFree ? 'Session Resets In' : 'Next Renewal'}</p>
-                    <p className="text-xl font-bold font-mono text-white">{isFree ? timeUntilSession : 'Nov 22, 2026'}</p>
-                    <p className="text-[10px] text-neutral-500 font-mono">{isFree ? `${sessionPrompts}/${sessionLimit} used` : 'Auto-renews via Razorpay'}</p>
+                    <p className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
+                      {isFree ? 'Session Resets In' : 'Access Valid Until'}
+                    </p>
+                    <p className="text-xl font-bold font-mono text-white">
+                      {isFree ? timeUntilSession : planExpiresAtFormatted || 'Active'}
+                    </p>
+                    <p className="text-[10px] text-neutral-500 font-mono">
+                      {isFree ? `${sessionPrompts}/${sessionLimit} used` : 'No surprise auto-charges'}
+                    </p>
                   </div>
                   <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
                     <p className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">Account</p>
@@ -233,7 +336,7 @@ export default function Billing() {
                 </div>
               </div>
 
-              {/* Payment Method Card */}
+              {/* Verified Gateway Badging */}
               {!isFree && (
                 <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-white/5 pb-4">
@@ -247,65 +350,90 @@ export default function Billing() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                     <div className="flex items-center gap-3.5">
                       <div className="w-10 h-7 rounded-lg bg-neutral-900 border border-white/15 flex items-center justify-center font-mono font-bold text-xs text-white">
-                        UPI/CARD
+                        GATEWAY
                       </div>
                       <div>
-                        <p className="text-xs font-mono font-semibold text-white">Verified Razorpay / Card</p>
-                        <p className="text-[11px] font-mono text-neutral-500">Cryptographically confirmed payment method</p>
+                        <p className="text-xs font-mono font-semibold text-white">Razorpay Secure Checkout</p>
+                        <p className="text-[11px] font-mono text-neutral-500">Cryptographically signed order verification</p>
                       </div>
                     </div>
 
                     <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/5 text-neutral-300 border border-white/10 self-start sm:self-auto">
-                      Primary Method
+                      Active Channel
                     </span>
                   </div>
                 </div>
               )}
 
-              {/* Invoice History */}
+              {/* Real Invoices & Receipts History */}
               <div className="p-6 sm:p-7 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                  <h2 className="text-base font-bold text-white">Billing History</h2>
+                  <h2 className="text-base font-bold text-white">Billing History & Receipts</h2>
                   <span className="text-xs font-mono text-neutral-500">
-                    {invoiceItems.length} {invoiceItems.length === 1 ? 'Invoice' : 'Invoices'}
+                    {historyItems.length} {historyItems.length === 1 ? 'Receipt' : 'Receipts'}
                   </span>
                 </div>
 
-                {isFree ? (
+                {loadingHistory ? (
+                  <div className="py-8 flex items-center justify-center gap-2 text-zinc-500 font-mono text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin text-copper-400" />
+                    <span>Loading payment history...</span>
+                  </div>
+                ) : historyError ? (
+                  <div className="py-6 text-center text-red-400/80 font-mono text-xs space-y-1">
+                    <p>{historyError}</p>
+                    <p className="text-[11px] text-zinc-500">Refresh to try fetching records again.</p>
+                  </div>
+                ) : historyItems.length === 0 ? (
                   <div className="py-8 text-center text-zinc-500 font-mono text-xs space-y-2">
-                    <p>No paid invoices recorded.</p>
-                    <p className="text-[11px] text-zinc-600">You are currently operating on the Free tier.</p>
+                    <p>No payment records found.</p>
+                    <p className="text-[11px] text-zinc-600">
+                      {isFree ? 'You are currently on the Free tier.' : 'Your paid subscription receipts will display here once verified.'}
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2.5 font-mono text-xs">
-                    {invoiceItems.map((inv) => (
-                      <div 
-                        key={inv.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <FileText className="w-4 h-4 text-neutral-400 shrink-0" />
-                          <div>
-                            <p className="font-semibold text-white">{inv.id}</p>
-                            <p className="text-[11px] text-neutral-500">{inv.plan} · {inv.date}</p>
+                    {historyItems.map((inv) => {
+                      const dateStr = new Date(inv.paidAt || inv.orderedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      });
+                      const displayAmount = formatAmount(inv.amountPaise, inv.currency);
+
+                      return (
+                        <div 
+                          key={inv.orderId}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileText className="w-4 h-4 text-neutral-400 shrink-0" />
+                            <div>
+                              <p className="font-semibold text-white truncate max-w-[200px] sm:max-w-[260px]">
+                                {inv.orderId}
+                              </p>
+                              <p className="text-[11px] text-neutral-500">
+                                {inv.planName} · {dateStr}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4 justify-between sm:justify-end">
+                            <span className="font-bold text-white">{displayAmount}</span>
+                            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              {inv.status}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedReceipt(inv)}
+                              className="text-[11px] text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
+                            >
+                              View Receipt
+                            </button>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-4 justify-between sm:justify-end">
-                          <span className="font-bold text-white">{inv.amount}</span>
-                          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            {inv.status}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleDownload}
-                            className="text-[11px] text-copper-400 hover:text-copper-300 transition-colors cursor-pointer"
-                          >
-                            PDF
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -326,7 +454,7 @@ export default function Billing() {
                     <span className="text-white font-medium">{currentDate}</span>
                   </div>
                   <div className="flex justify-between text-neutral-400">
-                    <span>Billed To</span>
+                    <span>Account Holder</span>
                     <span className="text-white font-medium">{profile?.name || 'Prompt Architect'}</span>
                   </div>
                   <div className="flex justify-between text-neutral-400">
@@ -334,9 +462,12 @@ export default function Billing() {
                     <span className="text-white font-medium truncate max-w-[150px]">{profile?.email || 'user@example.com'}</span>
                   </div>
                   <div className="flex justify-between text-neutral-400">
-                    <span>Tier Status</span>
-                    <span className={cn("font-medium", isFree ? "text-copper-400" : "text-emerald-400")}>
-                      {isFree ? 'Free Tier' : 'Paid & Active'}
+                    <span>Status</span>
+                    <span className={cn(
+                      "font-medium", 
+                      isExpired ? "text-amber-400" : isFree ? "text-copper-400" : "text-emerald-400"
+                    )}>
+                      {isExpired ? 'Pass Expired' : isFree ? 'Free Tier' : 'Active Pass'}
                     </span>
                   </div>
                 </div>
@@ -345,30 +476,38 @@ export default function Billing() {
 
                 <div className="space-y-2.5 font-mono text-xs">
                   <div className="flex justify-between text-neutral-400">
-                    <span>{planDisplayName}</span>
-                    <span className="text-white font-medium">{isFree ? '₹0.00' : basePrice}</span>
+                    <span>{planDisplayName} (30 Days)</span>
+                    <span className="text-white font-medium">
+                      {isFree ? '₹0.00' : `${planPrice.symbol}${planPrice.base}`}
+                    </span>
                   </div>
                   <div className="flex justify-between text-neutral-400">
-                    <span>GST (18%)</span>
-                    <span className="text-white font-medium">{isFree ? '₹0.00' : gstPrice}</span>
+                    <span>Tax (GST)</span>
+                    <span className="text-white font-medium">
+                      {isFree ? '₹0.00' : `${planPrice.symbol}${planPrice.gst}`}
+                    </span>
                   </div>
                 </div>
 
                 <div className="h-px bg-white/10" />
 
                 <div className="flex justify-between items-baseline font-mono">
-                  <span className="text-sm font-semibold text-white">{isFree ? 'Amount Due' : 'Total Paid'}</span>
-                  <span className="text-2xl font-bold text-white">{isFree ? '₹0.00' : invoiceAmount}</span>
+                  <span className="text-sm font-semibold text-white">
+                    {isFree ? 'Current Rate' : 'Total'}
+                  </span>
+                  <span className="text-2xl font-bold text-white">
+                    {isFree ? '₹0.00' : `${planPrice.symbol}${planPrice.total}`}
+                  </span>
                 </div>
 
                 <div className="pt-2 space-y-3">
-                  {isFree ? (
+                  {isFree || isExpired ? (
                     <Link
                       to="/app/pricing"
                       className="w-full py-2.5 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-semibold text-xs font-mono uppercase tracking-wider transition-colors shadow-md shadow-copper-500/20 flex items-center justify-center gap-1.5 active:scale-[0.98]"
                     >
                       <Zap className="w-3.5 h-3.5" />
-                      <span>Upgrade Plan</span>
+                      <span>{isExpired ? 'Renew Access Pass' : 'Upgrade Plan'}</span>
                     </Link>
                   ) : (
                     <button
@@ -376,7 +515,7 @@ export default function Billing() {
                       onClick={handleDownload}
                       className="w-full py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-semibold text-xs font-mono uppercase tracking-wider transition-colors shadow-md cursor-pointer"
                     >
-                      Download Invoice PDF
+                      Print Summary
                     </button>
                   )}
 
@@ -390,11 +529,11 @@ export default function Billing() {
                 </div>
               </div>
 
-              {/* Support & Inquiries */}
+              {/* Corporate Receipts Note */}
               <div className="p-5 rounded-2xl border border-white/5 bg-white/[0.02] text-xs font-mono text-neutral-400 space-y-2">
-                <p className="text-white font-semibold">Corporate Tax Invoices</p>
+                <p className="text-white font-semibold">Payment Receipts & Invoicing</p>
                 <p className="text-[11px] leading-relaxed text-neutral-500">
-                  Every confirmed order automatically dispatches a GST tax invoice with HMAC SHA256 proof to your registered email address.
+                  Confirmed payments are verified with cryptographic HMAC-SHA256 signatures. Invoices reflect your chosen billing currency (INR or USD).
                 </p>
                 <Link to="/app/settings" className="inline-block text-[11px] text-copper-400 hover:text-copper-300 pt-1">
                   Manage Workspace Profile &rarr;
@@ -406,6 +545,96 @@ export default function Billing() {
 
         </div>
       </div>
+
+      {/* View Receipt Modal */}
+      {selectedReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-lg bg-sf-121417 border border-white/15 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl relative font-sans text-white">
+            <button
+              type="button"
+              onClick={() => setSelectedReceipt(null)}
+              className="absolute top-5 right-5 text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  Payment Confirmed
+                </span>
+              </div>
+              <h3 className="text-2xl font-bold font-editorial">Official Payment Receipt</h3>
+              <p className="text-xs text-neutral-400 font-mono mt-0.5">
+                Bedrock Prompt Architecture Engine
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3 font-mono text-xs">
+              <div className="flex justify-between text-neutral-400">
+                <span>Order Reference</span>
+                <span className="text-white font-semibold">{selectedReceipt.orderId}</span>
+              </div>
+              {selectedReceipt.paymentId && (
+                <div className="flex justify-between text-neutral-400">
+                  <span>Razorpay Payment ID</span>
+                  <span className="text-white">{selectedReceipt.paymentId}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-neutral-400">
+                <span>Date & Time</span>
+                <span className="text-white">
+                  {new Date(selectedReceipt.paidAt || selectedReceipt.orderedAt).toLocaleString('en-US')}
+                </span>
+              </div>
+              <div className="flex justify-between text-neutral-400">
+                <span>Subscription Plan</span>
+                <span className="text-white font-medium">{selectedReceipt.planName} · 30 Days</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 font-mono text-xs border-t border-b border-white/10 py-3">
+              <div className="flex justify-between text-neutral-400">
+                <span>Base Price</span>
+                <span className="text-white">
+                  {formatAmount(selectedReceipt.basePaise, selectedReceipt.currency)}
+                </span>
+              </div>
+              {selectedReceipt.currency === 'INR' && (
+                <div className="flex justify-between text-neutral-400">
+                  <span>GST (18%)</span>
+                  <span className="text-white">
+                    {formatAmount(selectedReceipt.gstPaise, selectedReceipt.currency)}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between text-base font-bold text-white pt-1">
+                <span>Total Charged</span>
+                <span className="text-emerald-400">
+                  {formatAmount(selectedReceipt.amountPaise, selectedReceipt.currency)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-xl bg-white text-black font-mono text-xs font-semibold hover:bg-neutral-200 transition-colors cursor-pointer"
+              >
+                Print Receipt
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedReceipt(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 text-white font-mono text-xs hover:bg-white/15 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageTransition>
   );
 }

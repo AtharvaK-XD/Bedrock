@@ -34,7 +34,7 @@ initSecureKeyStore().finally(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <PostHogProvider
-        apiKey={import.meta.env.VITE_POSTHOG_KEY || 'phc_placeholder'}
+        apiKey={import.meta.env.VITE_POSTHOG_KEY || import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || 'phc_placeholder'}
         options={posthogOptions}
       >
         <App />

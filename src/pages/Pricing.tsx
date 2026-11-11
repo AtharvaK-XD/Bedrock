@@ -13,7 +13,6 @@ import {
   AlertTriangle,
   Info,
   Globe,
-  Calendar,
   MapPin,
   Phone
 } from 'lucide-react';
@@ -50,7 +49,6 @@ export default function Pricing() {
   const [billingName, setBillingName] = useState(profile?.name || 'Prompt Architect');
   const [billingEmail, setBillingEmail] = useState(profile?.email || 'user@example.com');
   const [billingAddress, setBillingAddress] = useState(profile?.location || '');
-  const [billingDob, setBillingDob] = useState('');
   const [billingPhone, setBillingPhone] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -96,8 +94,8 @@ export default function Pricing() {
       price: getPlanPrice('pro', currency).base,
       symbol: getPlanPrice('pro', currency).symbol,
       subtext: currency === 'USD' 
-        ? 'Flat $20 USD / mo · Global cards & PayPal' 
-        : '₹1,700 / mo (same as $20 USD) · UPI & RuPay',
+        ? '$20 USD · 30-day access pass · No auto-renew' 
+        : '₹1,700 · 30-day access pass · No auto-renew · UPI & Cards',
       gstPrice: getPlanPrice('pro', currency).gst,
       totalPrice: getPlanPrice('pro', currency).total,
       isPopular: true,
@@ -120,8 +118,8 @@ export default function Pricing() {
       price: getPlanPrice('ultimate', currency).base,
       symbol: getPlanPrice('ultimate', currency).symbol,
       subtext: currency === 'USD' 
-        ? 'Flat $50 USD / mo · All international cards' 
-        : '₹4,250 / mo (same as $50 USD) · UPI & RuPay',
+        ? '$50 USD · 30-day access pass · No auto-renew' 
+        : '₹4,250 · 30-day access pass · No auto-renew · UPI & Cards',
       gstPrice: getPlanPrice('ultimate', currency).gst,
       totalPrice: getPlanPrice('ultimate', currency).total,
       features: [
@@ -144,7 +142,6 @@ export default function Pricing() {
     const cleanEmail = rawEmail.endsWith('@clerk.user') || rawEmail.startsWith('user_') ? '' : rawEmail;
     setBillingEmail(cleanEmail);
     setBillingAddress(profile?.location || '');
-    setBillingDob('');
     setBillingPhone('');
     setErrorMessage(null);
     setPaymentNotice(null);
@@ -160,10 +157,6 @@ export default function Pricing() {
     }
     if (!billingEmail || !billingEmail.includes('@') || billingEmail.endsWith('@clerk.user')) {
       setErrorMessage('Please provide a valid email address to receive your payment confirmation and tax invoice.');
-      return;
-    }
-    if (!billingDob || !billingDob.trim()) {
-      setErrorMessage('Please provide your date of birth.');
       return;
     }
     if (!billingAddress || !billingAddress.trim()) {
@@ -192,7 +185,6 @@ export default function Pricing() {
         userEmail: billingEmail,
         userPhone: billingPhone || undefined,
         userAddress: billingAddress || undefined,
-        userDob: billingDob || undefined,
         onOpen: () => {
           razorpayOpenRef.current = true;
           // Dismiss the intermediate Bedrock confirmation modal so Razorpay floats cleanly above Bedrock
@@ -393,7 +385,7 @@ export default function Pricing() {
                 <div className="mb-2 flex items-baseline gap-1 font-mono">
                   <span className="text-4xl font-bold text-white tracking-tight">{tier.symbol}{tier.price}</span>
                   <span className={cn("text-xs uppercase tracking-wider", tier.isPopular ? "text-gray-400" : "text-gray-500")}>
-                    / month
+                    / 30 days
                   </span>
                 </div>
 
@@ -558,34 +550,19 @@ export default function Pricing() {
                       </div>
                     </div>
 
-                    {/* Date of Birth & Contact Phone (2-Column Grid) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div>
-                        <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 flex items-center gap-1.5 mb-1">
-                          <Calendar className="w-3 h-3 text-copper-400" />
-                          <span>Date of Birth</span>
-                        </label>
-                        <input
-                          type="date"
-                          value={billingDob}
-                          onChange={(e) => setBillingDob(e.target.value)}
-                          className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-copper-500/60 font-sans [color-scheme:dark]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 flex items-center gap-1.5 mb-1">
-                          <Phone className="w-3 h-3 text-copper-400" />
-                          <span>Phone <span className="text-zinc-500 normal-case">(optional)</span></span>
-                        </label>
-                        <input
-                          type="tel"
-                          value={billingPhone}
-                          onChange={(e) => setBillingPhone(e.target.value)}
-                          placeholder="+1... / +91..."
-                          className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-copper-500/60 font-sans"
-                        />
-                      </div>
+                    {/* Contact Phone (Optional) */}
+                    <div>
+                      <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 flex items-center gap-1.5 mb-1">
+                        <Phone className="w-3 h-3 text-copper-400" />
+                        <span>Phone <span className="text-zinc-500 normal-case">(optional, for SMS receipt)</span></span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={billingPhone}
+                        onChange={(e) => setBillingPhone(e.target.value)}
+                        placeholder="+1... / +91..."
+                        className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-copper-500/60 font-sans"
+                      />
                     </div>
 
                     {/* Billing Address */}
@@ -607,7 +584,7 @@ export default function Pricing() {
                   {/* Order Line Items */}
                   <div className="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2.5 font-mono text-xs">
                     <div className="flex justify-between text-zinc-400">
-                      <span>{checkoutTier.name} Subscription (Monthly)</span>
+                      <span>{checkoutTier.name} Plan · 30-Day Access Pass</span>
                       <span className="text-white font-semibold">
                         {checkoutTier.symbol}{checkoutTier.price}.00
                       </span>

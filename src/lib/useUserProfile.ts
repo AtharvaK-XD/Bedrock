@@ -8,6 +8,8 @@ export interface UserProfile {
   role: string;
   bio: string;
   plan: string;
+  planExpiresAt?: string | null;
+  planExpired?: boolean;
   location: string;
   organization: string;
   avatarInitials: string;

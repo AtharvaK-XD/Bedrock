@@ -705,13 +705,17 @@ function getFallbackQuestions(targetType: IdeaPayload['targetType']): Question[]
   return (profile.fallbackQuestions as Question[]) || [];
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+export async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   try {
     const clerk = (window as any).Clerk;
     if (clerk?.session) {
       const token = await clerk.session.getToken();
       if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (!headers['Authorization'] && typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('bedrock_token') || localStorage.getItem('bedrock_auth_token');
+      if (stored) headers['Authorization'] = `Bearer ${stored}`;
     }
   } catch {
     // ignore
