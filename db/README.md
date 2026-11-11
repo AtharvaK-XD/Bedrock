@@ -14,6 +14,7 @@ node db/migrate.mjs roles --yes --host <host>              # run db/roles.sql (r
 node db/check-app-role.mjs                                 # proves bedrock_app's rights; every check rolled back
 node db/stats.mjs                                          # read only: sizes, growth, "is the cleanup behind?", busiest accounts
 node db/anonymize-dev.mjs --yes --host <host>              # dev only: fake data for real data (needs --mark-dev once)
+node db/readiness.mjs                                      # read-only, one screen: which features are ON/OFF here, roles, cleanup health; exit 1 = not ready
 node db/check-schema.mjs                                   # read-only: live schema vs migrations, roles, counts only
 node db/explain.mjs                                        # read-only: query plans for the SQL the API runs
 node db/flood-test.mjs --yes --host <host>                 # dev only: 1,000,000-row log flood, timed purge

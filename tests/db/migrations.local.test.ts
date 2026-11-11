@@ -112,6 +112,23 @@ describe.skipIf(!PGlite)('migrations on in-memory Postgres', () => {
       await reserve(db, a, null, '1.1.1.1', 100, `b_${a}`);
       expect(await reserve(db, a, null, '9.9.9.9', 100, `b_${a}`)).toBe(false);
     });
+    it('40 requests fired at once at a limit of 10 grant exactly 10, for a signed-in account and for an anonymous IP, and store exactly 10 rows', async () => {
+      // NOTE: this engine has ONE connection, so the 40 calls are queued, not truly parallel. This test guards the logic
+      // and the row count (no leakage past the limit, retries, separate keys). Real parallel locking was proven on Neon
+      // (20 parallel, 2026-11-02) and is checked by agent-sync/quota-race-proof.mjs (40 parallel, OPEN-0071).
+      for (const [user, ip] of [['ua', '7.7.7.7'], [null, '8.8.8.8']] as const) {
+        const bucket = `b_par_${user ?? 'anon'}`;
+        const results = await Promise.all(Array.from({ length: 40 }, (_, i) => reserve(db, `par_${user ?? 'anon'}_${i}`, user, ip, 10, bucket)));
+        expect(results.filter(Boolean)).toHaveLength(10);
+        const [{ n }] = await rows(db, `SELECT count(*)::int n FROM "QuotaEvent" WHERE bucket = $1`, [bucket]);
+        expect(n).toBe(10);
+        // the same 40 ids again (retries after a network error): the 10 granted are still "yes", the other 30 still "no", no new rows
+        const again = await Promise.all(Array.from({ length: 40 }, (_, i) => reserve(db, `par_${user ?? 'anon'}_${i}`, user, ip, 10, bucket)));
+        expect(again).toEqual(results);
+        expect((await rows(db, `SELECT count(*)::int n FROM "QuotaEvent" WHERE bucket = $1`, [bucket]))[0].n).toBe(10);
+      }
+    });
+
     it('refunds by DELETE and purge_old_logs() returns the 4 counts the cron reads', async () => {
       const b = id('refund');
       const got: boolean[] = [];
