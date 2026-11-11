@@ -54,6 +54,14 @@ node db/migrate.mjs status
 Check the first line `Target database host: ...`: it must be the **production** host, NOT
 `ep-soft-tooth-b86b7rci-pooler...` (that is the dev branch `dev-db-test` since CHG-0045). Write the host down; below it is `<prod-host>`.
 (`status` only reads; `--host` is not needed for it, adding it does nothing.)
+Then get the whole picture on one screen (read only, safe on production, changes nothing):
+```powershell
+node db/readiness.mjs
+```
+It lists every feature as ON or OFF (ON = its migration is applied here), which database role this connection is, whether
+the limited role `bedrock_app` exists, and whether the daily cleanup keeps up. `NOT READY` with a list is expected on a
+production that has not been migrated yet: it is your to-do list. Run it again after every step below; the goal is `READY`.
+(It shows this connection only. Which role Vercel really uses is visible in Vercel, not here.)
 
 ## Step 2: read-only check
 ```powershell
