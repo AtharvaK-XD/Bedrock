@@ -21,7 +21,7 @@ function stubBrowser(desktop: boolean) {
 const config = (extra: Record<string, unknown> = {}) => ({
   tier: 'pro',
   planName: 'Pro Plan',
-  amount: 47082,
+  amount: 170000,
   userName: 'A',
   userEmail: 'a@x.test',
   onSuccess: vi.fn(),
