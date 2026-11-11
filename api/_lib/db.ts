@@ -45,6 +45,8 @@ export interface UserRow {
   /** Onboarding answers (migration 0018). Optional: absent while that migration is not applied yet. */
   birth_date?: string | null;
   referral_source?: string | null;
+  /** When the paid plan stops (migration 0020). NULL = no end date. Optional: absent before 0020 is applied. */
+  plan_expires_at?: Date | string | null;
   created_at: Date;
   updated_at: Date;
 }

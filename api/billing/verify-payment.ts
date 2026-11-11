@@ -10,7 +10,8 @@ import {
   billingTestModeBlocked,
   completePaidOrder,
   normalizePaidTier,
-  splitGst,
+  receiptSplit,
+  billingAlert,
   RAZORPAY_ORDER_ID_RE,
   RAZORPAY_PAYMENT_ID_RE,
   RAZORPAY_SIGNATURE_RE,
@@ -116,6 +117,8 @@ async function handleVerify(req: VercelRequest, res: VercelResponse) {
       return billingError(res, 409, 'PAYMENT_ALREADY_USED', 'Payment already used');
     }
     console.error('[Billing] Verify payment error:', err?.code || err?.message || err);
+    // The customer was charged (signature checked) but has no plan yet: someone must look now
+    billingAlert('PLAN_UPGRADE_FAILED', { source: 'verify', orderId, paymentId, userId: user.id, dbCode: String(err?.code || 'unknown') });
     return billingError(
       res,
       500,
@@ -134,6 +137,7 @@ async function handleVerify(req: VercelRequest, res: VercelResponse) {
         ipAddress: getClientIp(req),
         message: `Verified payment ${paymentId} names order ${orderId}, which is not an order of this account`,
       });
+      billingAlert('PAYMENT_NOT_APPLIED', { source: 'verify', reason: 'not_found', orderId, paymentId, userId: user.id });
       return billingError(res, 404, 'ORDER_NOT_FOUND', 'Order not found', 'This payment does not belong to an order of your account. If you were charged, please contact support.');
     case 'amount_mismatch':
       await logSecurityEvent({
@@ -143,6 +147,7 @@ async function handleVerify(req: VercelRequest, res: VercelResponse) {
         ipAddress: getClientIp(req),
         message: `Order ${orderId} (${outcome.amount} ${outcome.currency}, ${outcome.tier}) does not cover the plan price; not upgraded`,
       });
+      billingAlert('PAYMENT_NOT_APPLIED', { source: 'verify', reason: 'amount_mismatch', orderId, paymentId, userId: user.id });
       return billingError(res, 409, 'ORDER_AMOUNT_MISMATCH', 'Order does not match the plan price', 'This order was created for a different price, so it cannot unlock a plan. If you were charged, please contact support.');
     case 'paid_by_other_payment':
       return billingError(res, 409, 'ORDER_ALREADY_PAID', 'Order already paid', 'This order was already paid with another payment. If you were charged twice, please contact support.');
@@ -154,21 +159,24 @@ async function handleVerify(req: VercelRequest, res: VercelResponse) {
         message: `Order ${orderId} (${outcome.orderTier}) paid with ${paymentId}; account plan: ${outcome.accountTier}`,
       });
 
-      // Dispatch official tax invoice & payment receipt email via Resend
+      // Dispatch official tax invoice & payment receipt email via Resend. The amounts are the ORDER's (what was
+      // charged, in its own currency), not a list price: before 2026-11-11 every receipt showed the INR list price.
       if (user.email && user.email.includes('@')) {
         try {
           const planInfo = BILLING_PLANS[outcome.orderTier] || BILLING_PLANS.pro;
-          const { basePaise, gstPaise } = splitGst(planInfo.amountPaise);
+          const { basePaise, gstPaise } = receiptSplit(outcome.amount, outcome.currency);
           const { subject, html } = renderInvoiceEmail({
             name: user.name,
             email: user.email,
             planName: planInfo.planName,
             tier: outcome.orderTier,
-            amountPaise: planInfo.amountPaise,
+            amountPaise: outcome.amount,
             basePaise,
             gstPaise,
             orderId,
             paymentId,
+            currency: outcome.currency,
+            planExpiresAt: outcome.planExpiresAt,
           });
 
           sendBedrockEmail({
@@ -195,6 +203,8 @@ async function handleVerify(req: VercelRequest, res: VercelResponse) {
     message: outcome.accountTier === outcome.orderTier ? `Subscription successfully upgraded to ${plan.planName}` : `Payment received. Your account keeps the ${plan.planName}.`,
     plan: plan.planName,
     tier: outcome.accountTier,
+    // ISO date the paid plan stops (each payment adds 30 days); null = no end date
+    planExpiresAt: outcome.planExpiresAt,
     order_id: orderId,
     payment_id: paymentId,
   });
@@ -217,6 +227,7 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
   const secret = (process.env.RAZORPAY_WEBHOOK_SECRET || '').trim();
   if (!secret) {
     console.error('[RazorpayWebhook] RAZORPAY_WEBHOOK_SECRET is not configured');
+    billingAlert('WEBHOOK_NOT_CONFIGURED', { action: 'set RAZORPAY_WEBHOOK_SECRET in Vercel (OPEN-0094)' });
     return billingError(res, 503, 'WEBHOOK_NOT_CONFIGURED', 'Webhook not configured');
   }
   const header = req.headers['x-razorpay-signature'];
@@ -274,9 +285,12 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
     } catch (err: any) {
       if (err?.code === PG_UNIQUE_VIOLATION) {
         await logSecurityEvent({ eventType: 'PAYMENT_WEBHOOK_REVIEW', severity: 'CRITICAL', message: `Webhook: payment ${paymentId} is already stored on another order (order ${orderId})` });
+        billingAlert('PAYMENT_NOT_APPLIED', { source: 'webhook', reason: 'payment_on_other_order', event: eventName, orderId, paymentId });
         return res.status(200).json({ success: true, review: true });
       }
       console.error('[RazorpayWebhook] Database error:', err?.code || err?.message || err);
+      // Razorpay retries for about a day; if this keeps appearing, the plan is not being applied
+      billingAlert('PLAN_UPGRADE_FAILED', { source: 'webhook', event: eventName, orderId, paymentId, dbCode: String(err?.code || 'unknown') });
       return billingError(res, 500, 'BILLING_UPDATE_FAILED', 'Could not record the payment'); // Razorpay retries
     }
     if (outcome.kind === 'paid') {
@@ -293,6 +307,7 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
         severity: 'CRITICAL',
         message: `Webhook ${eventName}: payment ${paymentId} for order ${orderId} not applied (${outcome.kind})`,
       });
+      billingAlert('PAYMENT_NOT_APPLIED', { source: 'webhook', reason: outcome.kind, event: eventName, orderId, paymentId });
     }
     return res.status(200).json({ success: true, result: outcome.kind });
   }
@@ -304,6 +319,7 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
       severity: 'CRITICAL',
       message: `Webhook ${eventName} for payment ${paymentId ?? 'unknown'} (order ${typeof orderId === 'string' ? orderId : 'unknown'}): plan unchanged, review by hand`,
     });
+    billingAlert('REFUND_OR_DISPUTE', { event: eventName, paymentId: paymentId ?? 'unknown', orderId: typeof orderId === 'string' ? orderId : 'unknown' });
     return res.status(200).json({ success: true, review: true });
   }
 
@@ -345,8 +361,8 @@ async function handleHistory(req: VercelRequest, res: VercelResponse) {
           paymentId: r.payment_id,
           tier,
           planName: BILLING_PLANS[tier].planName,
-          amountPaise,
-          ...splitGst(amountPaise),
+          amountPaise, // smallest unit of `currency` (cents for USD); name kept for the Billing page
+          ...receiptSplit(amountPaise, r.currency),
           currency: r.currency,
           status: 'paid',
           orderedAt: r.created_at,

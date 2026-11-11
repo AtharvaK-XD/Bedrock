@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, UserRow } from '../_lib/db.js';
+import { effectivePlan } from '../_lib/billing.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
 import { handleDesktopTicket } from '../_lib/desktopTicket.js';
 import { handleDeleteAccount, handleClerkWebhook } from '../_lib/accountDeletion.js';
@@ -48,24 +49,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       // Only the columns this response uses: never read password_hash or billing ids here
       type ProfileRow = Omit<UserRow, 'password_hash' | 'email_verified' | 'mfa_enabled' | 'updated_at'>;
-      let rows: ProfileRow[];
-      try {
-        rows = await sql`
-          SELECT id, name, username, email, avatar_url, avatar_initials, plan, role, bio, location,
-            organization, github, huggingface, website, joined_date, created_at, subscription_tier,
-            birth_date, referral_source
-          FROM "User" WHERE id = ${user.id} LIMIT 1
-        ` as ProfileRow[];
-      } catch (err: unknown) {
-        // A deploy can be ahead of the database: migration 0018 (the two onboarding columns) or db/roles.sql not
-        // applied yet. Serve the profile without them instead of failing every profile request.
-        if (!isMissingColumnError(err)) throw err;
-        console.warn('[Profile] onboarding columns not available yet (migration 0018 / db/roles.sql); serving the profile without them');
-        rows = await sql`
-          SELECT id, name, username, email, avatar_url, avatar_initials, plan, role, bio, location,
-            organization, github, huggingface, website, joined_date, created_at, subscription_tier
-          FROM "User" WHERE id = ${user.id} LIMIT 1
-        ` as ProfileRow[];
+      // A deploy can be ahead of the database: migration 0020 (plan end date), 0018 (the two onboarding columns) or
+      // db/roles.sql not applied yet. Each step leaves out the newest columns instead of failing every profile request.
+      const attempts: Array<{ missing: string; run: () => Promise<unknown> }> = [
+        {
+          missing: '',
+          run: () => sql`
+            SELECT id, name, username, email, avatar_url, avatar_initials, plan, role, bio, location,
+              organization, github, huggingface, website, joined_date, created_at, subscription_tier,
+              birth_date, referral_source, plan_expires_at
+            FROM "User" WHERE id = ${user.id} LIMIT 1
+          `,
+        },
+        {
+          missing: 'plan_expires_at (migration 0020)',
+          run: () => sql`
+            SELECT id, name, username, email, avatar_url, avatar_initials, plan, role, bio, location,
+              organization, github, huggingface, website, joined_date, created_at, subscription_tier,
+              birth_date, referral_source
+            FROM "User" WHERE id = ${user.id} LIMIT 1
+          `,
+        },
+        {
+          missing: 'onboarding columns (migration 0018)',
+          run: () => sql`
+            SELECT id, name, username, email, avatar_url, avatar_initials, plan, role, bio, location,
+              organization, github, huggingface, website, joined_date, created_at, subscription_tier
+            FROM "User" WHERE id = ${user.id} LIMIT 1
+          `,
+        },
+      ];
+      let rows: ProfileRow[] = [];
+      for (let i = 0; i < attempts.length; i++) {
+        try {
+          rows = (await attempts[i]!.run()) as ProfileRow[];
+          if (i > 0) console.warn(`[Profile] ${attempts[i]!.missing} not available yet (or db/roles.sql not re-run); serving the profile without it`);
+          break;
+        } catch (err: unknown) {
+          if (!isMissingColumnError(err) || i === attempts.length - 1) throw err;
+        }
       }
       if (rows.length === 0 || !rows[0]) {
         return res.status(200).json({
@@ -79,6 +101,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const u = rows[0];
+      // A paid plan whose end date has passed is shown as the free plan (same rule as sign-in, api/_lib/auth.ts)
+      const current = effectivePlan(u.subscription_tier, u.plan, u.plan_expires_at);
       const cleanName = u.name && !u.name.startsWith('user_') && !u.name.includes('@')
         ? u.name
         : user.name;
@@ -94,7 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         email: cleanEmail,
         avatarUrl: u.avatar_url || '',
         avatarInitials: cleanInitials,
-        plan: u.plan || 'Free Plan',
+        plan: current.plan,
         role: u.role || 'Lead Prompt Architect',
         bio: u.bio || '',
         location: u.location || '',
@@ -105,7 +129,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         birthDate: u.birth_date || '',
         referralSource: u.referral_source || '',
         joinedDate,
-        subscriptionTier: u.subscription_tier || 'free',
+        subscriptionTier: current.subscriptionTier,
+        // ISO date the paid plan stops (null = no end date), and whether it already has (shown as free then)
+        planExpiresAt: current.planExpiresAt,
+        planExpired: current.planExpired,
       });
     } catch (err: any) {
       return sendDbFailure(res, '[Profile] GET error:', 'Failed to fetch user profile', err);

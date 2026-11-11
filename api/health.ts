@@ -9,12 +9,43 @@ interface HealthBody {
   status: 'ok' | 'degraded';
   timestamp: string;
   database: { status: 'connected' | 'error' };
+  /**
+   * Whether the database has every column the billing and plan code needs (latest migration + db/roles.sql grants).
+   * 'outdated' makes the check answer 503, so a monitor alerts on a deploy that ran ahead of its migration.
+   */
+  schema: { status: 'ok' | 'outdated' | 'unknown' };
   redis: { status: 'connected' | 'error' | 'unconfigured' };
   /** First 7 characters of the deployed commit (Vercel sets it): tells you which version is live. Absent locally. */
   version?: string;
 }
 
 let cached: { at: number; body: HealthBody } | null = null;
+
+/** Missing column (42703), missing table (42P01) or no right to read it (42501): the database is behind the code. */
+const OUTDATED_SCHEMA_CODES = new Set(['42703', '42P01', '42501']);
+
+/**
+ * Reads ZERO rows from the newest columns the code depends on. Postgres still checks that each column exists and that
+ * the app role may read it, so this fails exactly when a migration (here up to 0020) or db/roles.sql was not applied
+ * where this code runs. Update the column list when a migration adds a column the API needs.
+ */
+async function checkSchema(sql: ReturnType<typeof getDb>): Promise<HealthBody['schema']['status']> {
+  try {
+    await sql`
+      SELECT u.plan_expires_at, u.subscription_tier, u.birth_date, u.referral_source,
+             p.order_id, p.payment_id, p.status, p.amount, p.currency, p.tier, p.user_id
+      FROM "User" u, "PaymentRecord" p LIMIT 0
+    `;
+    return 'ok';
+  } catch (err: any) {
+    if (OUTDATED_SCHEMA_CODES.has(String(err?.code))) {
+      console.error(`[BILLING_ALERT] ${JSON.stringify({ event: 'SCHEMA_OUTDATED', dbCode: String(err?.code), action: 'run node db/migrate.mjs up, then roles' })}`);
+      return 'outdated';
+    }
+    console.error('[Health] Schema check failed:', err?.code || err?.message || err);
+    return 'unknown';
+  }
+}
 
 /**
  * 503 when degraded: uptime monitors (UptimeRobot, Vercel checks) look at the HTTP status, not the body, so a 200
@@ -118,11 +149,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const commit = (process.env.VERCEL_GIT_COMMIT_SHA || '').replace(/[^0-9a-f]/gi, '').slice(0, 7);
 
   let dbStatus: HealthBody['database']['status'] = 'error';
+  let schemaStatus: HealthBody['schema']['status'] = 'unknown';
   try {
     const sql = getDb();
     const result = (await sql`SELECT 1 as alive`) as any[];
     if (Array.isArray(result) && result.length > 0) {
       dbStatus = 'connected';
+      schemaStatus = await checkSchema(sql);
     }
   } catch (err: any) {
     console.error('[Health] Database check failed:', err);
@@ -145,9 +178,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body: HealthBody = {
     // A configured Redis that fails stops every API route (rateLimiter.ts refuses instead of guessing), so it counts
     // as degraded too. Redis left out on purpose (local development) does not.
-    status: dbStatus === 'connected' && redisStatus !== 'error' ? 'ok' : 'degraded',
+    status: dbStatus === 'connected' && schemaStatus === 'ok' && redisStatus !== 'error' ? 'ok' : 'degraded',
     timestamp: new Date().toISOString(),
     database: { status: dbStatus },
+    schema: { status: schemaStatus },
     redis: { status: redisStatus },
     ...(commit ? { version: commit } : {}),
   };

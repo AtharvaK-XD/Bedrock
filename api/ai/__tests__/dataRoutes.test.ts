@@ -615,15 +615,46 @@ describe('profile onboarding fields (birthDate, referralSource)', () => {
   it('GET still works when the database is behind (migration 0018 or roles.sql not applied): empty answers, no 500', async () => {
     let n = 0;
     h.state.responder = () => {
-      if (n++ === 0) throw missingColumn();
+      // 1st: with plan_expires_at (0020), 2nd: with the onboarding columns (0018), 3rd: neither
+      if (n++ < 2) throw missingColumn();
       return [{ id: 'user_A', name: 'Alice', email: 'a@example.com', username: 'alice' }];
     };
     const res = mockRes();
     await profile(mockReq('GET'), res);
     expect(res.statusCode).toBe(200);
-    expect(res.body).toMatchObject({ username: 'alice', birthDate: '', referralSource: '' });
+    expect(res.body).toMatchObject({ username: 'alice', birthDate: '', referralSource: '', planExpiresAt: null, planExpired: false });
+    expect(h.state.calls).toHaveLength(3);
+    expect(h.state.calls[0].text).toContain('plan_expires_at');
+    expect(h.state.calls[1].text).not.toContain('plan_expires_at');
+    expect(h.state.calls[1].text).toContain('birth_date');
+    expect(h.state.calls[2].text).not.toContain('birth_date');
+  });
+
+  it('GET keeps the onboarding answers when only migration 0020 (plan end date) is missing', async () => {
+    let n = 0;
+    h.state.responder = () => {
+      if (n++ === 0) throw missingColumn();
+      return [{ id: 'user_A', name: 'Alice', email: 'a@example.com', username: 'alice', birth_date: '2000-01-31', subscription_tier: 'pro', plan: 'Pro Plan' }];
+    };
+    const res = mockRes();
+    await profile(mockReq('GET'), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toMatchObject({ birthDate: '2000-01-31', subscriptionTier: 'pro', plan: 'Pro Plan', planExpiresAt: null });
     expect(h.state.calls).toHaveLength(2);
-    expect(h.state.calls[1].text).not.toContain('birth_date');
+  });
+
+  it('GET shows a paid plan whose end date has passed as the free plan, and a running one with its end date', async () => {
+    h.state.responder = () => [{ id: 'user_A', name: 'Alice', email: 'a@example.com', username: 'alice', subscription_tier: 'ultimate', plan: 'Ultimate Plan', plan_expires_at: new Date(Date.now() - 60_000) }];
+    const expired = mockRes();
+    await profile(mockReq('GET'), expired);
+    expect(expired.body).toMatchObject({ subscriptionTier: 'free', plan: 'Free Plan', planExpired: true });
+    expect(typeof expired.body.planExpiresAt).toBe('string');
+
+    const end = new Date(Date.now() + 5 * 86_400_000);
+    h.state.responder = () => [{ id: 'user_A', name: 'Alice', email: 'a@example.com', username: 'alice', subscription_tier: 'ultimate', plan: 'Ultimate Plan', plan_expires_at: end }];
+    const running = mockRes();
+    await profile(mockReq('GET'), running);
+    expect(running.body).toMatchObject({ subscriptionTier: 'ultimate', plan: 'Ultimate Plan', planExpired: false, planExpiresAt: end.toISOString() });
   });
 
   it('GET does not hide other database errors', async () => {
@@ -830,7 +861,7 @@ describe('GET /api/health', () => {
 
     // 503, so uptime monitors (they read the HTTP status) raise an alert; it was 200 with "degraded" in the body
     expect(res.statusCode).toBe(503);
-    expect(Object.keys(res.body).sort()).toEqual(['database', 'redis', 'status', 'timestamp']);
+    expect(Object.keys(res.body).sort()).toEqual(['database', 'redis', 'schema', 'status', 'timestamp']);
     expect(res.body).toMatchObject({ status: 'degraded', database: { status: 'error' }, redis: { status: 'connected' } });
     expect(JSON.stringify(res.body)).not.toContain('neondb_owner');
   });
@@ -894,18 +925,44 @@ describe('GET /api/health', () => {
     expect(res.body.database?.status).toBe('connected');
   });
 
+  it('a database behind the code (migration or db/roles.sql not applied) is degraded (503) with schema "outdated"', async () => {
+    const health = await loadHealth();
+    h.state.redis = null;
+    for (const code of ['42703', '42501', '42P01']) {
+      const fresh = await loadHealth();
+      h.state.responder = (text: string) => {
+        if (text.includes('plan_expires_at')) throw Object.assign(new Error('column "plan_expires_at" does not exist'), { code });
+        return [{ alive: 1 }];
+      };
+      const res = mockRes();
+      await fresh(mockReq('GET'), res);
+      expect(res.statusCode).toBe(503);
+      expect(res.body).toMatchObject({ status: 'degraded', database: { status: 'connected' }, schema: { status: 'outdated' } });
+      expect(JSON.stringify(res.body)).not.toContain('does not exist');
+    }
+    // the check reads zero rows: it never loads user data
+    const ok = await loadHealth();
+    h.state.responder = () => [{ alive: 1 }];
+    const res = mockRes();
+    await ok(mockReq('GET'), res);
+    expect(res.body.schema).toEqual({ status: 'ok' });
+    expect(h.state.calls.at(-1)?.text).toMatch(/LIMIT 0/);
+    void health;
+  });
+
   it('reuses one result for 10 seconds', async () => {
     const health = await loadHealth();
     h.state.responder = () => [{ alive: 1 }];
     vi.useFakeTimers();
     await health(mockReq('GET'), mockRes());
     await health(mockReq('GET'), mockRes());
-    expect(h.state.calls).toHaveLength(1);
+    // one probe = "SELECT 1" + the schema check (2 queries)
+    expect(h.state.calls).toHaveLength(2);
 
     vi.advanceTimersByTime(10_001);
     const res = mockRes();
     await health(mockReq('GET'), res);
-    expect(h.state.calls).toHaveLength(2);
+    expect(h.state.calls).toHaveLength(4);
     expect(res.body).toMatchObject({ status: 'ok', database: { status: 'connected' }, redis: { status: 'unconfigured' } });
   });
 });

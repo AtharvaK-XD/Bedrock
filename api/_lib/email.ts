@@ -292,13 +292,24 @@ export function renderInvoiceEmail(params: {
   orderId: string;
   paymentId: string;
   paidAt?: string;
+  /** Currency of the amounts above (they are in its smallest unit: paise or cents). Default INR. */
+  currency?: 'INR' | 'USD';
+  /** ISO date the paid plan stops; omitted or null = no end date shown */
+  planExpiresAt?: string | null;
 }): { subject: string; html: string } {
+  const usd = params.currency === 'USD';
+  const symbol = usd ? '$' : '&#8377;';
   const subject = `Your Bedrock ${params.planName} Tax Invoice & Receipt (${params.orderId})`;
-  const previewText = `Thank you for upgrading to Bedrock ${params.planName}. Your payment of \u20B9${(params.amountPaise / 100).toFixed(2)} was successful.`;
+  const previewText = `Thank you for upgrading to Bedrock ${params.planName}. Your payment of ${usd ? '$' : '\u20B9'}${(params.amountPaise / 100).toFixed(2)} was successful.`;
 
   const totalRupees = (params.amountPaise / 100).toFixed(2);
   const baseRupees = (params.basePaise / 100).toFixed(2);
   const gstRupees = (params.gstPaise / 100).toFixed(2);
+  const gstLabel = usd ? 'GST:' : 'Applicable GST (18%):';
+  const expiry = params.planExpiresAt ? new Date(params.planExpiresAt) : null;
+  const activeLine = expiry && !Number.isNaN(expiry.getTime())
+    ? `Your plan is active until ${expiry.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })}.`
+    : 'Your Bedrock account has been upgraded.';
   const dateFormatted = params.paidAt || new Date().toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
@@ -314,7 +325,7 @@ export function renderInvoiceEmail(params: {
         Payment Receipt &amp; Tax Invoice
       </h1>
       <p style="margin: 0; font-size: 14px; color: #94A3B8;">
-        Thank you for your purchase! Your Bedrock account has been permanently upgraded.
+        Thank you for your purchase! ${activeLine}
       </p>
     </div>
 
@@ -357,15 +368,15 @@ export function renderInvoiceEmail(params: {
           Base Price:
         </td>
         <td align="right" style="padding: 14px 20px; border-bottom: 1px solid #1E2330; font-size: 13px; font-weight: 500; color: #CBD5E1;">
-          &#8377;${baseRupees}
+          ${symbol}${baseRupees}
         </td>
       </tr>
       <tr>
         <td style="padding: 14px 20px; border-bottom: 1px solid #1E2330; font-size: 13px; color: #94A3B8;">
-          Applicable GST (18%):
+          ${gstLabel}
         </td>
         <td align="right" style="padding: 14px 20px; border-bottom: 1px solid #1E2330; font-size: 13px; font-weight: 500; color: #CBD5E1;">
-          &#8377;${gstRupees}
+          ${symbol}${gstRupees}
         </td>
       </tr>
       <tr style="background-color: #161B26;">
@@ -373,7 +384,7 @@ export function renderInvoiceEmail(params: {
           Total Amount Paid:
         </td>
         <td align="right" style="padding: 16px 20px; font-size: 17px; font-weight: 800; color: #22C55E;">
-          &#8377;${totalRupees}
+          ${symbol}${totalRupees}
         </td>
       </tr>
     </table>

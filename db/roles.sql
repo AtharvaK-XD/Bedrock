@@ -36,17 +36,18 @@ GRANT USAGE ON SCHEMA public TO bedrock_app;
 -- since CHG-0023). `SELECT *` or `SELECT password_hash` as bedrock_app now fails with 42501.
 GRANT SELECT (id, email, name, username, avatar_url, avatar_initials, plan, role, bio, location, organization,
   github, huggingface, website, joined_date, email_verified, mfa_enabled, razorpay_customer_id, razorpay_subscription_id,
-  subscription_tier, created_at, updated_at, birth_date, referral_source) ON "User" TO bedrock_app;
+  subscription_tier, created_at, updated_at, birth_date, referral_source, plan_expires_at) ON "User" TO bedrock_app;
 -- migrate:break
 -- Add: the first-login insert in auth.ts (these 12 columns; the rest take their defaults).
 GRANT INSERT (id, email, password_hash, name, username, plan, role, email_verified, mfa_enabled, subscription_tier,
   created_at, updated_at) ON "User" TO bedrock_app;
 -- migrate:break
--- Change: profile PUT (name ... website, birth_date, referral_source), plan/tier change (plan, subscription_tier),
+-- Change: profile PUT (name ... website, birth_date, referral_source), plan/tier change (plan, subscription_tier,
+-- plan_expires_at: migration 0020, set by a payment),
 -- sign-in upsert (updated_at).
 -- email, password_hash, email_verified, mfa_enabled, role, id and created_at cannot be changed by the app.
 GRANT UPDATE (name, username, bio, location, organization, github, huggingface, website, birth_date, referral_source,
-  plan, subscription_tier, updated_at) ON "User" TO bedrock_app;
+  plan, subscription_tier, plan_expires_at, updated_at) ON "User" TO bedrock_app;
 -- migrate:break
 -- prompts / workflows: list, count, owner-checked update, insert, delete
 GRANT SELECT, INSERT, UPDATE, DELETE ON "Prompt", "BranchingTree" TO bedrock_app;

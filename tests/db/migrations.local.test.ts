@@ -252,7 +252,8 @@ describe.skipIf(!PGlite)('migrations on in-memory Postgres', () => {
       expect(await errorOf(d, `SELECT birth_date FROM "User"`)).toMatch(/birth_date/);
       const before = await rows(d, `SELECT * FROM "User" ORDER BY id`);
 
-      await migrateUp(d, a);
+      // up to 0018 only: later migrations add other columns (0020 plan_expires_at)
+      await migrateUp(d, a, '0018');
       expect(await rows(d, NEW_COLUMNS)).toEqual([
         { column_name: 'birth_date', data_type: 'text', is_nullable: 'YES' },
         { column_name: 'referral_source', data_type: 'text', is_nullable: 'YES' },
@@ -314,6 +315,32 @@ describe.skipIf(!PGlite)('migrations on in-memory Postgres', () => {
       await d.query(`UPDATE "User" SET birth_date = '1999-12-31', referral_source = 'friend' WHERE id = 'ub'`);
       await d.query(`SELECT delete_user_data('ub')`);
       expect(await rows(d, `SELECT count(*)::int c FROM "User" WHERE id = 'ub'`)).toEqual([{ c: 0 }]);
+      await d.close();
+    }, 120_000);
+  });
+
+  describe('0020 plan end date (plan_expires_at)', () => {
+    it('adds one nullable timestamptz, changes no existing account, and down removes only that column', async () => {
+      const d = new PGlite();
+      const a = new Set<string>();
+      await migrateUp(d, a, '0019');
+      await seedUsers(d);
+      await d.query(`UPDATE "User" SET subscription_tier = 'pro', plan = 'Pro Plan' WHERE id = 'ua'`);
+      expect(await errorOf(d, `SELECT plan_expires_at FROM "User"`)).toMatch(/plan_expires_at/);
+      const before = await rows(d, `SELECT * FROM "User" ORDER BY id`);
+
+      await migrateUp(d, a, '0020');
+      expect(await rows(d, `SELECT data_type, is_nullable FROM information_schema.columns WHERE table_name = 'User' AND column_name = 'plan_expires_at'`))
+        .toEqual([{ data_type: 'timestamp with time zone', is_nullable: 'YES' }]);
+      const after = await rows(d, `SELECT * FROM "User" ORDER BY id`);
+      // existing paid accounts keep their plan with no end date
+      expect(after.map(({ plan_expires_at, ...u }: any) => (expect(plan_expires_at).toBeNull(), u))).toEqual(before);
+
+      await runSql(d, readMigration('0020_plan_expiry.up.sql')); // a retry changes nothing
+      await d.query(`UPDATE "User" SET plan_expires_at = now() WHERE id = 'ua'`);
+      await migrateDown(d, a, '0019');
+      expect(a.has('0020')).toBe(false);
+      expect(await rows(d, `SELECT * FROM "User" ORDER BY id`)).toEqual(before);
       await d.close();
     }, 120_000);
   });

@@ -1,6 +1,8 @@
 import type { VercelRequest } from '@vercel/node';
 import crypto from 'node:crypto';
 import { getDb, UserRow, logSecurityEvent } from './db.js';
+import { effectivePlan } from './billing.js';
+import { isMissingColumnError } from './dataHttp.js';
 
 export interface AuthenticatedUser {
   id: string;
@@ -9,6 +11,8 @@ export interface AuthenticatedUser {
   role: string;
   subscriptionTier: string;
   plan: string;
+  /** When the paid plan stops (ISO), null = no end date. Absent when unknown (guest, database fallback). */
+  planExpiresAt?: string | null;
   isGuest: boolean;
 }
 
@@ -438,11 +442,24 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
         const linkEmail = emailVerified && !email.endsWith('@clerk.user') ? email : null;
         // Exact id match always wins over an email match. Only the columns used below: never password_hash.
         // Email compare ignores case (same rule as the "User_email_lower_key" index, migration 0007).
-        const existing = await sql`
-          SELECT id, email, name, role, subscription_tier, plan FROM "User"
-          WHERE id = ${userId} OR (${linkEmail}::text IS NOT NULL AND lower(email) = lower(${linkEmail}))
-          ORDER BY (id = ${userId}) DESC LIMIT 1
-        ` as Array<Pick<UserRow, 'id' | 'email' | 'name' | 'role' | 'subscription_tier' | 'plan'>>;
+        type SignInRow = Pick<UserRow, 'id' | 'email' | 'name' | 'role' | 'subscription_tier' | 'plan' | 'plan_expires_at'>;
+        let existing: SignInRow[];
+        try {
+          existing = await sql`
+            SELECT id, email, name, role, subscription_tier, plan, plan_expires_at FROM "User"
+            WHERE id = ${userId} OR (${linkEmail}::text IS NOT NULL AND lower(email) = lower(${linkEmail}))
+            ORDER BY (id = ${userId}) DESC LIMIT 1
+          ` as SignInRow[];
+        } catch (colErr: unknown) {
+          // Deploy ahead of migration 0020 / db/roles.sql: sign in without the plan end date (plans then never end)
+          if (!isMissingColumnError(colErr)) throw colErr;
+          console.warn('[Auth] plan_expires_at not available yet (migration 0020 / db/roles.sql); plans are read without an end date');
+          existing = await sql`
+            SELECT id, email, name, role, subscription_tier, plan FROM "User"
+            WHERE id = ${userId} OR (${linkEmail}::text IS NOT NULL AND lower(email) = lower(${linkEmail}))
+            ORDER BY (id = ${userId}) DESC LIMIT 1
+          ` as SignInRow[];
+        }
 
         if (existing.length > 0 && existing[0]) {
           const user = existing[0];
@@ -450,13 +467,16 @@ export async function authenticateRequest(req: VercelRequest): Promise<Authentic
           if (!cleanName || cleanName.startsWith('user_') || cleanName.includes('@')) {
             cleanName = name;
           }
+          // A paid plan whose end date has passed counts as free everywhere (quota, rate limits, models)
+          const current = effectivePlan(user.subscription_tier, user.plan, user.plan_expires_at);
           return {
             id: user.id,
             email: user.email,
             name: cleanName,
             role: user.role || 'Lead Prompt Architect',
-            subscriptionTier: user.subscription_tier || 'free',
-            plan: user.plan || 'Free Plan',
+            subscriptionTier: current.subscriptionTier,
+            plan: current.plan,
+            planExpiresAt: current.planExpiresAt,
             isGuest: false,
           };
         }

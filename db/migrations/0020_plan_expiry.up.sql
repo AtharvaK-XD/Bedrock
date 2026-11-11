@@ -1,0 +1,15 @@
+-- 0020_plan_expiry (OPEN-0086): a paid plan now lasts 30 days per payment instead of forever.
+--   plan_expires_at  timestamptz, nullable. The moment the paid plan stops. NULL = no end date.
+-- How the API uses it (api/_lib/billing.ts completePaidOrder, api/_lib/auth.ts, api/user/profile.ts):
+--   * each payment sets it to 30 days after the LATER of now and the current end date (paying early adds 30 days,
+--     nothing is lost);
+--   * when it has passed, the account is read as the free plan. Nothing is written at that moment: no cron job.
+-- Existing data: nothing is changed. Every existing account gets NULL, so plans granted before this migration (by
+-- hand, or paid before 2026-11-11) keep working with no end date. Set an end date for them by hand if wanted.
+-- Adding a nullable column without a default only changes the table definition (no rewrite, no long lock).
+-- Rights: bedrock_app needs SELECT and UPDATE on the column. That is in db/roles.sql; run
+-- `node db/migrate.mjs roles --yes --host <host>` again after this migration when the app role is in use (OPEN-0037).
+-- ORDER: apply this migration BEFORE deploying the code that reads the column. Without it, sign-in falls back to the
+-- free plan and a payment cannot be applied (the webhook answers 500 and Razorpay retries it once the column exists).
+-- migrate:break
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS plan_expires_at timestamptz;
