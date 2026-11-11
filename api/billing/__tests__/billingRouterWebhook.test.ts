@@ -37,6 +37,9 @@ vi.mock('../../_lib/auth.js', () => ({
 vi.mock('../../_lib/db.js', () => ({ getDb: () => h.sql, logSecurityEvent: vi.fn(async (e: any) => void h.state.events.push(e)) }));
 vi.mock('../../_lib/rateLimiter.js', () => ({ enforceRateLimit: vi.fn(async () => true), getClientIp: () => '203.0.113.9' }));
 vi.mock('razorpay', () => ({ default: class { orders = { create: h.state.ordersCreate }; } }));
+const mail = vi.hoisted(() => ({ send: vi.fn(async (_m: any) => ({ id: 'email_1' })), waitUntil: vi.fn((_p: Promise<unknown>) => {}) }));
+vi.mock('../../_lib/email.js', async (orig) => ({ ...(await orig<any>()), sendBedrockEmail: mail.send }));
+vi.mock('@vercel/functions', () => ({ waitUntil: mail.waitUntil }));
 
 import createOrder from '../create-order.js';
 import billingRouter from '../verify-payment.js';
@@ -97,6 +100,8 @@ beforeEach(() => {
   h.state.authThrows = false;
   h.state.responder = () => [];
   h.state.ordersCreate.mockReset().mockResolvedValue({ id: 'order_Abc123Def456' });
+  mail.send.mockClear();
+  mail.waitUntil.mockClear();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
@@ -180,8 +185,49 @@ describe('verify-payment: unexpected throws and envelopes', () => {
 });
 
 describe('POST /api/billing/webhook (Razorpay calls it)', () => {
-  const PAID = (upgraded = 1) => (text: string) =>
-    text.startsWith('WITH paid AS') ? [{ user_id: 'user_B', tier: 'pro', upgraded }] : [];
+  const PAID = (upgraded = 1, owner: Record<string, unknown> = { email: 'b@x.test', name: 'Bea' }) => (text: string) =>
+    text.startsWith('WITH paid AS')
+      ? [{ user_id: 'user_B', tier: 'pro', amount: 170_000, currency: 'INR', upgraded, plan_expires_at: '2026-12-11T12:00:00.000Z' }]
+      : text.startsWith('SELECT email, name FROM "User"')
+        ? [owner]
+        : [];
+  const alerts = () => (console.error as any).mock.calls.map((c: unknown[]) => String(c[0])).filter((l: string) => l.startsWith('[BILLING_ALERT]'));
+
+  it('a payment completed by the webhook (tab closed) still sends the receipt, with the charged amount and end date', async () => {
+    h.state.responder = PAID();
+    await hook(captured({ amount: 170_000 }));
+    expect(mail.waitUntil).toHaveBeenCalledTimes(1); // kept alive after the response on Vercel
+    expect(mail.send).toHaveBeenCalledTimes(1);
+    const m = mail.send.mock.calls[0]![0];
+    expect(m.to).toBe('b@x.test');
+    expect(m.html).toContain('&#8377;1700.00');
+    expect(m.html).toContain('active until 11 Dec 2026');
+  });
+
+  it('no receipt for a replay, or for an account with only a placeholder address', async () => {
+    h.state.responder = PAID(1, { email: 'user_B@clerk.user', name: 'B' });
+    await hook(captured());
+    h.state.responder = (text) =>
+      text.startsWith('SELECT o.user_id') ? [{ user_id: 'user_B', tier: 'pro', status: 'captured', payment_id: 'pay_Hook000000001', subscription_tier: 'pro' }] : [];
+    await hook(captured());
+    expect(mail.send).not.toHaveBeenCalled();
+  });
+
+  it('raises [BILLING_ALERT] lines for a failed upgrade, an unapplied payment, a refund and a missing secret', async () => {
+    h.state.responder = () => {
+      throw Object.assign(new Error('db down'), { code: '08006' });
+    };
+    await hook(captured());
+    h.state.responder = () => [];
+    await hook(captured());
+    await hook(JSON.stringify({ event: 'refund.processed', payload: { payment: { entity: { id: 'pay_Hook000000001', order_id: 'order_Hook00000001' } } } }));
+    delete process.env.RAZORPAY_WEBHOOK_SECRET;
+    await hook(captured());
+    const parsed = alerts().map((l: string) => JSON.parse(l.slice('[BILLING_ALERT] '.length)));
+    expect(parsed.map((a: any) => a.alert)).toEqual(['PLAN_UPGRADE_FAILED', 'PAYMENT_NOT_APPLIED', 'REFUND_OR_DISPUTE', 'WEBHOOK_NOT_CONFIGURED']);
+    expect(parsed[0]).toMatchObject({ source: 'webhook', event: 'payment.captured', orderId: 'order_Hook00000001', dbCode: '08006' });
+    expect(alerts().join(' ')).not.toContain(WEBHOOK_SECRET);
+  });
 
   it('503 when the webhook secret is not configured (Razorpay retries later)', async () => {
     delete process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -294,6 +340,15 @@ describe('GET /api/billing/history', () => {
       throw new Error('db down');
     };
     expectEnvelope(await call(billingRouter, 'GET', undefined, { action: 'history' }), 500, 'BILLING_HISTORY_FAILED');
+  });
+
+  it('a USD order is listed in cents with no Indian GST split out', async () => {
+    h.state.responder = (text) =>
+      text.startsWith('SELECT order_id')
+        ? [{ order_id: 'order_U1', payment_id: 'pay_U1', amount: 2000, currency: 'USD', tier: 'pro', created_at: '2026-11-08T10:00:00Z', updated_at: '2026-11-08T10:01:00Z' }]
+        : [];
+    const r = await call(billingRouter, 'GET', undefined, { action: 'history' });
+    expect(r.body.items[0]).toMatchObject({ amountPaise: 2000, basePaise: 2000, gstPaise: 0, currency: 'USD' });
   });
 
   it('GST split matches the plan prices exactly', () => {

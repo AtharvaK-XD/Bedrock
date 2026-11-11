@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'node:crypto';
+import { waitUntil } from '@vercel/functions';
 import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, logSecurityEvent } from '../_lib/db.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
@@ -9,6 +10,7 @@ import {
   billingError,
   billingTestModeBlocked,
   completePaidOrder,
+  type OrderCompletion,
   normalizePaidTier,
   receiptSplit,
   billingAlert,
@@ -23,6 +25,49 @@ import {
 } from '../_lib/email.js';
 
 const PG_UNIQUE_VIOLATION = '23505';
+
+/**
+ * Sends the receipt email for a payment that was just applied (only on the 'paid' outcome, so the browser and the
+ * webhook never both send one). The amounts are the ORDER's (what was charged, in its own currency), not a list
+ * price: before 2026-11-11 every receipt showed the INR list price. Registered with waitUntil: on Vercel a promise
+ * left running after the response can be frozen, and the email silently never sent.
+ */
+function sendReceipt(
+  outcome: Extract<OrderCompletion, { kind: 'paid' }>,
+  to: { email: string | null | undefined; name?: string | null },
+  orderId: string,
+  paymentId: string
+): void {
+  const email = typeof to.email === 'string' ? to.email.trim() : '';
+  // No address, or the placeholder given to accounts whose email belongs to another account (auth.ts)
+  if (!email.includes('@') || email.endsWith('@clerk.user')) return;
+  try {
+    const planInfo = BILLING_PLANS[outcome.orderTier] || BILLING_PLANS.pro;
+    const { basePaise, gstPaise } = receiptSplit(outcome.amount, outcome.currency);
+    const { subject, html } = renderInvoiceEmail({
+      name: to.name || undefined,
+      email,
+      planName: planInfo.planName,
+      tier: outcome.orderTier,
+      amountPaise: outcome.amount,
+      basePaise,
+      gstPaise,
+      orderId,
+      paymentId,
+      currency: outcome.currency,
+      planExpiresAt: outcome.planExpiresAt,
+    });
+    waitUntil(
+      sendBedrockEmail({ to: email, from: DEFAULT_FROM_BILLING, subject, html })
+        .then(() => undefined)
+        .catch((err) => {
+          console.error('[Billing] Invoice email dispatch error:', err?.message || err);
+        })
+    );
+  } catch (mailErr: any) {
+    console.error('[Billing] Invoice email preparation error:', mailErr?.message || mailErr);
+  }
+}
 
 const firstString = (...values: unknown[]): string | null => {
   for (const v of values) if (typeof v === 'string' && v) return v;
@@ -159,38 +204,7 @@ async function handleVerify(req: VercelRequest, res: VercelResponse) {
         message: `Order ${orderId} (${outcome.orderTier}) paid with ${paymentId}; account plan: ${outcome.accountTier}`,
       });
 
-      // Dispatch official tax invoice & payment receipt email via Resend. The amounts are the ORDER's (what was
-      // charged, in its own currency), not a list price: before 2026-11-11 every receipt showed the INR list price.
-      if (user.email && user.email.includes('@')) {
-        try {
-          const planInfo = BILLING_PLANS[outcome.orderTier] || BILLING_PLANS.pro;
-          const { basePaise, gstPaise } = receiptSplit(outcome.amount, outcome.currency);
-          const { subject, html } = renderInvoiceEmail({
-            name: user.name,
-            email: user.email,
-            planName: planInfo.planName,
-            tier: outcome.orderTier,
-            amountPaise: outcome.amount,
-            basePaise,
-            gstPaise,
-            orderId,
-            paymentId,
-            currency: outcome.currency,
-            planExpiresAt: outcome.planExpiresAt,
-          });
-
-          sendBedrockEmail({
-            to: user.email,
-            from: DEFAULT_FROM_BILLING,
-            subject,
-            html,
-          }).catch((err) => {
-            console.error('[Billing] Invoice email dispatch error:', err?.message || err);
-          });
-        } catch (mailErr) {
-          console.error('[Billing] Invoice email preparation error:', mailErr);
-        }
-      }
+      sendReceipt(outcome, { email: user.email, name: user.name }, orderId, paymentId);
       break;
     }
     case 'already_paid':
@@ -300,6 +314,13 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
         severity: 'INFO',
         message: `Webhook ${eventName}: order ${orderId} (${outcome.orderTier}) paid with ${paymentId}; account plan: ${outcome.accountTier}`,
       });
+      // The customer closed the tab before the browser confirmed: they still get their receipt
+      try {
+        const [owner] = (await getDb()`SELECT email, name FROM "User" WHERE id = ${outcome.userId} LIMIT 1`) as Array<{ email: string; name: string }>;
+        if (owner) sendReceipt(outcome, owner, orderId, paymentId);
+      } catch (err: any) {
+        console.error('[RazorpayWebhook] Receipt lookup failed:', err?.code || err?.message || err);
+      }
     } else if (outcome.kind !== 'already_paid') {
       // Money arrived for an order we cannot complete: a human must look (refund or upgrade by hand)
       await logSecurityEvent({

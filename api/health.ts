@@ -39,7 +39,7 @@ async function checkSchema(sql: ReturnType<typeof getDb>): Promise<HealthBody['s
     return 'ok';
   } catch (err: any) {
     if (OUTDATED_SCHEMA_CODES.has(String(err?.code))) {
-      console.error(`[BILLING_ALERT] ${JSON.stringify({ event: 'SCHEMA_OUTDATED', dbCode: String(err?.code), action: 'run node db/migrate.mjs up, then roles' })}`);
+      console.error(`[BILLING_ALERT] ${JSON.stringify({ alert: 'SCHEMA_OUTDATED', dbCode: String(err?.code), action: 'run node db/migrate.mjs up, then roles' })}`);
       return 'outdated';
     }
     console.error('[Health] Schema check failed:', err?.code || err?.message || err);

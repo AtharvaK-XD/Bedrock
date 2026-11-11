@@ -93,7 +93,8 @@ export function effectivePlan(
 
 /** One structured line per event an operator must look at, easy to search for and to alert on in Vercel > Logs. */
 export function billingAlert(event: string, details: Record<string, string | number | boolean | null | undefined>): void {
-  console.error(`[BILLING_ALERT] ${JSON.stringify({ event, at: new Date().toISOString(), ...details })}`);
+  // `alert` and `at` last, so a detail can never overwrite them
+  console.error(`[BILLING_ALERT] ${JSON.stringify({ ...details, alert: event, at: new Date().toISOString() })}`);
 }
 
 /** "pro", "Pro", "advanced" (older name of Pro) -> 'pro'; "ultimate" -> 'ultimate'; anything else -> null. */
