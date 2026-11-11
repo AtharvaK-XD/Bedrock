@@ -5,8 +5,8 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { getDb, logSecurityEvent } from '../_lib/db.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import {
-  BILLING_PLANS,
   normalizePaidTier,
+  planAmount,
   billingError,
   billingTestModeBlocked,
   withTimeout,
@@ -53,7 +53,6 @@ async function createOrder(req: VercelRequest, res: VercelResponse) {
   if (!tier) {
     return billingError(res, 400, 'INVALID_TIER', 'tier must be "pro" or "ultimate"');
   }
-  const plan = BILLING_PLANS[tier];
 
   // Infer currency: explicit currency, or USD if amount is in USD cents (2000/5000), or INR if amount is paise / default
   const rawCurrency = body.currency !== undefined && body.currency !== null
@@ -65,26 +64,13 @@ async function createOrder(req: VercelRequest, res: VercelResponse) {
   }
   const currency: 'USD' | 'INR' = rawCurrency as 'USD' | 'INR';
 
-  const inrAllowed = [
-    plan.amountPaise,
-    plan.basePriceInr * 100,
-    tier === 'ultimate' ? 425_000 : 170_000,
-    tier === 'ultimate' ? 419_900 : 169_900,
-  ];
-
-  const expectedAmount = currency === 'USD'
-    ? plan.amountCents
-    : (body.amount && inrAllowed.includes(Math.round(Number(body.amount)))
-        ? Math.round(Number(body.amount))
-        : plan.amountPaise);
-
-  // The browser's amount is only a check of what the user was shown: it never sets the price
+  // One server price per plan and currency. The browser's amount never chooses it (it used to pick from a list that
+  // still held older, lower prices, e.g. Ultimate for ₹1,178.82 instead of ₹4,250): it is only a check of what the
+  // user was shown, and anything else is refused.
+  const expectedAmount = planAmount(tier, currency);
   if (body.amount !== undefined && body.amount !== null) {
     const shown = typeof body.amount === 'number' ? body.amount : Number(body.amount);
-    const isValid = Number.isFinite(shown) && (
-      (currency === 'USD' && Math.round(shown) === plan.amountCents) ||
-      (currency === 'INR' && inrAllowed.includes(Math.round(shown)))
-    );
+    const isValid = Number.isFinite(shown) && Math.round(shown) === expectedAmount;
     if (!isValid) {
       await logSecurityEvent({
         userId: user.id,

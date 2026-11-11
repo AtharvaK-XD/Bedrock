@@ -82,10 +82,10 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
   it('a Pro order cannot be verified as Ultimate; the stored plan is applied atomically', async () => {
     as('u_alice');
     h.state.nextOrder = 'order_AlicePro0001';
-    const order = await call(createOrder, { tier: 'pro', amount: 47_082 });
+    const order = await call(createOrder, { tier: 'pro', amount: 170_000 });
     expect(order.statusCode).toBe(200);
     expect((await q(`SELECT amount, status, tier FROM "PaymentRecord" WHERE order_id = $1`, [order.body.order_id]))[0]).toEqual({
-      amount: 47_082,
+      amount: 170_000,
       status: 'created',
       tier: 'pro',
     });
@@ -125,7 +125,7 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
   it('Ultimate at the Ultimate price works end to end', async () => {
     as('u_bob');
     h.state.nextOrder = 'order_BobUltimate01';
-    expect((await call(createOrder, { tier: 'ultimate', amount: '117882' })).statusCode).toBe(200);
+    expect((await call(createOrder, { tier: 'ultimate', amount: '425000' })).statusCode).toBe(200);
     expect((await verify('order_BobUltimate01', 'pay_BobPay0000001')).statusCode).toBe(200);
     expect(await userRow('u_bob')).toEqual({ subscription_tier: 'ultimate', plan: 'Ultimate Plan' });
   });
@@ -134,10 +134,20 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
     // Rows the old create-order wrote with the browser's amount (before 2026-11-07)
     await q(`INSERT INTO "PaymentRecord"(id,user_id,order_id,amount,currency,status,tier,updated_at)
              VALUES ('pr_old1','u_bob','order_OldCheapUlt1',100,'INR','created','ultimate',now()),
-                    ('pr_old2','u_bob','order_OldUsdPro001',47082,'USD','created','pro',now())`);
+                    ('pr_old2','u_bob','order_OldUsdPro001',47082,'USD','created','pro',now()),
+                    -- retired INR prices that create-order accepted until 2026-11-11 (₹1,178.82 / ₹999 Ultimate, ₹470.82 Pro)
+                    ('pr_old3','u_bob','order_RetiredUlt01',117882,'INR','created','ultimate',now()),
+                    ('pr_old4','u_bob','order_RetiredUlt02',99900,'INR','created','ultimate',now()),
+                    ('pr_old5','u_bob','order_RetiredPro01',47082,'INR','created','pro',now())`);
     await q(`UPDATE "User" SET subscription_tier = 'free', plan = 'Free Plan' WHERE id = 'u_bob'`);
     as('u_bob');
-    for (const [orderId, paymentId] of [['order_OldCheapUlt1', 'pay_OldCheap00001'], ['order_OldUsdPro001', 'pay_OldUsd000001']]) {
+    for (const [orderId, paymentId] of [
+      ['order_OldCheapUlt1', 'pay_OldCheap00001'],
+      ['order_OldUsdPro001', 'pay_OldUsd000001'],
+      ['order_RetiredUlt01', 'pay_RetiredUlt001'],
+      ['order_RetiredUlt02', 'pay_RetiredUlt002'],
+      ['order_RetiredPro01', 'pay_RetiredPro001'],
+    ]) {
       const r = await verify(orderId, paymentId);
       expect(r.statusCode).toBe(409);
       expect(r.body.code).toBe('ORDER_AMOUNT_MISMATCH');
@@ -210,10 +220,10 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
     expect((await call(createOrder, { tier: 'pro' })).statusCode).toBe(200);
     // the browser never calls verify-payment (tab closed); Razorpay's webhook arrives instead
     h.state.user = null;
-    const first = await webhook(captured('order_CarolPro0001', 'pay_CarolPay00001', 47_082));
+    const first = await webhook(captured('order_CarolPro0001', 'pay_CarolPay00001', 170_000));
     expect(first.body).toMatchObject({ success: true, result: 'paid' });
     expect(await userRow('u_carol')).toEqual({ subscription_tier: 'pro', plan: 'Pro Plan' });
-    const again = await webhook(captured('order_CarolPro0001', 'pay_CarolPay00001', 47_082));
+    const again = await webhook(captured('order_CarolPro0001', 'pay_CarolPay00001', 170_000));
     expect(again.body).toMatchObject({ success: true, result: 'already_paid' });
     // and the browser arriving late is a harmless success
     as('u_carol');
@@ -243,7 +253,7 @@ describe.skipIf(!PGlite)('billing on a real Postgres engine', () => {
     expect(r.statusCode).toBe(200);
     // the unpaid Ultimate order is not listed; Alice's and Bob's orders are not either
     expect(r.body.items).toHaveLength(1);
-    expect(r.body.items[0]).toMatchObject({ orderId: 'order_CarolPro0001', paymentId: 'pay_CarolPay00001', tier: 'pro', amountPaise: 47_082, basePaise: 39_900, gstPaise: 7_182, status: 'paid' });
+    expect(r.body.items[0]).toMatchObject({ orderId: 'order_CarolPro0001', paymentId: 'pay_CarolPay00001', tier: 'pro', amountPaise: 170_000, basePaise: 144_068, gstPaise: 25_932, status: 'paid' });
     expect(JSON.stringify(r.body)).not.toContain('signature');
   });
 });
