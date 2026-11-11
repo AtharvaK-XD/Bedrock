@@ -16,31 +16,41 @@ export interface BillingPlan {
   basePriceUsd: number;
   /** Amount in cents for USD payments (2000 / 5000) */
   amountCents: number;
-  /** Price shown on the pricing page before tax, in rupees */
+  /** Price shown on the pricing page in rupees (all-inclusive, as src/lib/pricing.ts shows it) */
   basePriceInr: number;
-  /** What the customer pays: base price + 18% GST, in paise (the unit Razorpay uses) */
+  /** What the customer pays in INR, in paise (the unit Razorpay uses) */
   amountPaise: number;
 }
 
-/** Matches $20 Pro / $50 Ultimate international pricing, with INR ₹1,699 / ₹4,199 options. */
+/**
+ * Exactly ONE price per plan and currency, the one src/lib/pricing.ts shows: $20 / $50, and ₹1,700 / ₹4,250
+ * (CHG-0120). The browser never chooses among several amounts: create-order charges this value and
+ * completePaidOrder refuses an order below it, so an order made at an older, lower price can never unlock a plan.
+ * Change a price here and in src/lib/pricing.ts together (tests/security/billing-single-price.test.ts checks both).
+ */
 export const BILLING_PLANS: Record<PaidTier, BillingPlan> = {
   pro: {
     tier: 'pro',
     planName: 'Pro Plan',
     basePriceUsd: 20,
     amountCents: 2000,
-    basePriceInr: 399,
-    amountPaise: 47_082,
+    basePriceInr: 1700,
+    amountPaise: 170_000,
   },
   ultimate: {
     tier: 'ultimate',
     planName: 'Ultimate Plan',
     basePriceUsd: 50,
     amountCents: 5000,
-    basePriceInr: 999,
-    amountPaise: 117_882,
+    basePriceInr: 4250,
+    amountPaise: 425_000,
   },
 };
+
+/** The one amount (cents for USD, paise for INR) a plan costs in a currency. */
+export function planAmount(tier: PaidTier, currency: BillingCurrency): number {
+  return currency === 'USD' ? BILLING_PLANS[tier].amountCents : BILLING_PLANS[tier].amountPaise;
+}
 
 export const BILLING_CURRENCY = 'INR';
 export const SUPPORTED_CURRENCIES: readonly BillingCurrency[] = ['USD', 'INR'];
@@ -150,7 +160,7 @@ export async function completePaidOrder(
         AND status = 'created'
         AND (${paidAmount}::int IS NULL OR ${paidAmount}::int >= amount)
         AND (
-          (currency = 'USD' AND (${paidCurrency}::text IS NULL OR ${paidCurrency}::text = 'USD') AND amount = CASE WHEN tier = 'ultimate' THEN 5000 ELSE 2000 END)
+          (currency = 'USD' AND (${paidCurrency}::text IS NULL OR ${paidCurrency}::text = 'USD') AND amount = CASE WHEN tier = 'ultimate' THEN ${BILLING_PLANS.ultimate.amountCents}::int ELSE ${BILLING_PLANS.pro.amountCents}::int END)
           OR
           (currency = ${BILLING_CURRENCY} AND (${paidCurrency}::text IS NULL OR ${paidCurrency}::text = ${BILLING_CURRENCY}) AND amount >= CASE WHEN tier = 'ultimate' THEN ${BILLING_PLANS.ultimate.amountPaise}::int ELSE ${BILLING_PLANS.pro.amountPaise}::int END)
         )

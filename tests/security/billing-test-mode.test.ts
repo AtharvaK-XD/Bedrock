@@ -41,7 +41,7 @@ async function call(handler: any, body: unknown, query: Record<string, string> =
   return r;
 }
 const WEBHOOK_SECRET = crypto.randomBytes(18).toString('base64url');
-const capturedEvent = { event: 'payment.captured', payload: { payment: { entity: { id: 'pay_TestMode00001', order_id: 'order_TestMode0001', amount: 47082, currency: 'INR' } } } };
+const capturedEvent = { event: 'payment.captured', payload: { payment: { entity: { id: 'pay_TestMode00001', order_id: 'order_TestMode0001', amount: 170000, currency: 'INR' } } } };
 const webhook = () =>
   call(verifyPayment, capturedEvent, { action: 'webhook' }, { 'x-razorpay-signature': crypto.createHmac('sha256', WEBHOOK_SECRET).update(JSON.stringify(capturedEvent)).digest('hex') });
 const ORDER = 'order_TestMode0001';
