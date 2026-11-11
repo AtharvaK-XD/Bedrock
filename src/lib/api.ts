@@ -767,8 +767,63 @@ export function serverUnavailableError(): ApiError {
   return err;
 }
 
+/** Converts a JSON server failure payload (HTTP error or SSE error event) into an ApiError preserving message/code. */
+export function buildServerErrorFromPayload(
+  body: Record<string, any> | null | undefined,
+  status = 500,
+  retryAfterHeader?: number
+): ApiError {
+  const code = typeof body?.code === 'string' && body.code ? body.code : undefined;
+  const retryRaw = Number(body?.retryAfterSeconds) || Number(retryAfterHeader) || 0;
+  const retrySeconds = retryRaw > 0 ? Math.min(Math.round(retryRaw), 300) : undefined;
+
+  if (status === 503 || code === 'RATE_LIMITER_UNAVAILABLE' || code === 'AI_ALL_PROVIDERS_FAILED' || code === 'AI_DEADLINE_EXCEEDED') {
+    const seconds = retrySeconds ?? 15;
+    if (code === 'RATE_LIMITER_UNAVAILABLE') {
+      const err = new ApiError(
+        `Bedrock is briefly unavailable. Please try again in ${seconds} seconds.`,
+        false,
+        'Bedrock Cloud',
+        503
+      );
+      (err as any).code = 'RATE_LIMITER_UNAVAILABLE';
+      (err as any).retryAfterSeconds = seconds;
+      return err;
+    }
+    return serverBusyError(seconds);
+  }
+
+  const rawMessage =
+    typeof body?.message === 'string' && body.message.trim()
+      ? body.message.trim()
+      : typeof body?.error === 'string' && body.error.trim()
+        ? body.error.trim()
+        : '';
+
+  const fallbackMessage =
+    status === 401
+      ? 'Please sign in to run prompts on Bedrock.'
+      : "Bedrock couldn't complete that request right now. Please try again in a moment.";
+
+  const err = new ApiError(rawMessage || fallbackMessage, false, 'Bedrock Cloud', status);
+  (err as any).code = code || (status >= 500 ? 'SERVER_ERROR' : 'REQUEST_FAILED');
+  if (retrySeconds !== undefined) (err as any).retryAfterSeconds = retrySeconds;
+  return err;
+}
+
+/** Parses an HTTP error response from a Bedrock `/api/*` endpoint without consuming the original body stream. */
+export async function readStructuredServerError(response: Response): Promise<ApiError> {
+  if (response.status === 429) {
+    return await quotaApiError(response);
+  }
+  const readable = typeof (response as any)?.clone === 'function' ? response.clone() : response;
+  const body = await readable.json().catch(() => null);
+  const headerRetry = Number(response.headers?.get?.('Retry-After')) || undefined;
+  return buildServerErrorFromPayload(body, response.status, headerRetry);
+}
+
 export const generateQuestions = async (payload: IdeaPayload): Promise<Question[]> => {
-  let serverBusySeconds: number | null = null;
+  let serverBusyErrorResult: ApiError | null = null;
 
   // 1. Try secure server-side generation first
   try {
@@ -787,8 +842,8 @@ export const generateQuestions = async (payload: IdeaPayload): Promise<Question[
       }
     } else if (response.status === 429) {
       throw await quotaApiError(response);
-    } else {
-      serverBusySeconds = await readServerBusySeconds(response);
+    } else if (response.status === 503) {
+      serverBusyErrorResult = await readStructuredServerError(response);
     }
   } catch (backendErr: any) {
     if (backendErr?.code === 'FREE_TIER_QUOTA_EXCEEDED' || backendErr?.statusCode === 429) {
@@ -855,7 +910,7 @@ Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored 
       }
     }
 
-    if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
+    if (serverBusyErrorResult) throw serverBusyErrorResult;
     throw new ApiError(
       'Please enter your Google Gemini or Groq API key in the app to start generating prompts.',
       true,
@@ -865,7 +920,7 @@ Generate exactly 3 to 4 essential clarifying questions as a JSON array tailored 
   }
 
   // On the website, fallback to curated questions if backend had a temporary parse error
-  if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
+  if (serverBusyErrorResult) throw serverBusyErrorResult;
   return getFallbackQuestions(payload.targetType);
 };
 
@@ -974,19 +1029,25 @@ ${selectedFormatDirective}
 
 Produce the bespoke, publication-grade prompt document adhering strictly to this target purpose.`;
 
-  let serverBusySeconds: number | null = null;
+  let serverError: ApiError | null = null;
 
   // 1. Try secure backend synthesis first
   try {
     const authHeaders = await getAuthHeaders();
     const isStreaming = typeof onToken === 'function';
+    const rawTextValue = (idea as { rawText?: string }).rawText || idea.ideaText;
     const response = await fetch('/api/ai/synthesize', {
       method: 'POST',
       headers: {
         ...authHeaders,
         ...(isStreaming ? { Accept: 'text/event-stream' } : {}),
       },
-      body: JSON.stringify({ idea, answers, questions, stream: isStreaming }),
+      body: JSON.stringify({
+        idea: { ...idea, rawText: rawTextValue },
+        answers,
+        questions,
+        stream: isStreaming,
+      }),
     });
 
     if (response.ok) {
@@ -996,6 +1057,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
         const decoder = new TextDecoder();
         let accumulated = '';
         let finalPromptText = '';
+        let streamFailure: ApiError | null = null;
         let buffer = '';
 
         while (true) {
@@ -1010,51 +1072,57 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
             if (!trimmed || !trimmed.startsWith('data: ')) continue;
             const dataStr = trimmed.slice(6);
             if (dataStr === '[DONE]') continue;
+            let json: any;
             try {
-              const json = JSON.parse(dataStr);
-              if (json.token) {
-                accumulated += json.token;
-                onToken(json.token);
-              }
-              if (json.done && typeof json.promptText === 'string' && json.promptText.trim()) {
-                finalPromptText = json.promptText;
-                if (json.truncated) {
-                  console.warn('[Bedrock Validation] Server indicated streamed response was truncated');
-                }
-                if (json.validation) {
-                  console.warn('[Bedrock Validation] Server validation summary:', json.validation);
-                }
-              }
+              json = JSON.parse(dataStr);
             } catch {
-              // ignore parse errors on interim chunks
+              continue; // ignore parse errors on incomplete chunks
+            }
+            if (json.token) {
+              accumulated += json.token;
+              onToken(json.token);
+            }
+            if (json.done && typeof json.promptText === 'string' && json.promptText.trim()) {
+              finalPromptText = json.promptText;
+              if (json.truncated) {
+                console.warn('[Bedrock Validation] Server indicated streamed response was truncated');
+              }
+              if (json.validation) {
+                console.warn('[Bedrock Validation] Server validation summary:', json.validation);
+              }
+            }
+            if (json.error || (json.code && !json.done)) {
+              streamFailure = buildServerErrorFromPayload(json, json.retryAfterSeconds ? 503 : 500);
             }
           }
         }
         const resultText = finalPromptText || accumulated;
-        if (resultText) {
+        if (resultText && !streamFailure) {
           const sVal = validateSynthesisOutput(resultText, idea.targetType, idea.ideaText);
           if (!sVal.isValid) {
             console.warn(`[Bedrock Validation] Server streaming output validation issues:`, sVal.issues.map((i: ValidationIssue) => i.message));
           }
           return sanitizePromptOutput(resultText);
         }
-      }
-
-      const data = await response.json();
-      const text = data.promptText || data.content || '';
-      if (text) {
-        const sVal = validateSynthesisOutput(text, idea.targetType, idea.ideaText);
-        if (!sVal.isValid) {
-          console.warn(`[Bedrock Validation] Server response validation issues:`, sVal.issues.map((i: ValidationIssue) => i.message));
+        if (streamFailure) {
+          serverError = streamFailure;
         }
-        return sanitizePromptOutput(text);
+      } else {
+        const data = await response.json();
+        const text = data.promptText || data.content || '';
+        if (text) {
+          const sVal = validateSynthesisOutput(text, idea.targetType, idea.ideaText);
+          if (!sVal.isValid) {
+            console.warn(`[Bedrock Validation] Server response validation issues:`, sVal.issues.map((i: ValidationIssue) => i.message));
+          }
+          return sanitizePromptOutput(text);
+        }
       }
-    }
-
-    if (response.status === 429) {
+    } else if (response.status === 429) {
       throw await quotaApiError(response);
+    } else {
+      serverError = await readStructuredServerError(response);
     }
-    serverBusySeconds = await readServerBusySeconds(response);
   } catch (err: any) {
     if (err?.code === 'FREE_TIER_QUOTA_EXCEEDED' || err?.statusCode === 429) {
       throw err;
@@ -1080,7 +1148,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
       return sanitizePromptOutput(raw);
     }
 
-    if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
+    if (serverError) throw serverError;
     throw new ApiError(
       'No API key configured. Please set your Google Gemini or Groq key in Settings or connect to Bedrock Cloud.',
       true,
@@ -1089,7 +1157,7 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
     );
   }
 
-  if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
+  if (serverError) throw serverError;
   throw serverUnavailableError();
 };
 
@@ -1144,7 +1212,7 @@ export const refinePrompt = async (
     }
   }
 
-  let serverBusySeconds: number | null = null;
+  let serverError: ApiError | null = null;
 
   // 1. Try secure backend refine first
   try {
@@ -1166,8 +1234,9 @@ export const refinePrompt = async (
       }
     } else if (response.status === 429) {
       throw await quotaApiError(response);
+    } else {
+      serverError = await readStructuredServerError(response);
     }
-    serverBusySeconds = await readServerBusySeconds(response);
   } catch (err: any) {
     if (err?.code === 'FREE_TIER_QUOTA_EXCEEDED' || err?.statusCode === 429) {
       throw err;
@@ -1175,7 +1244,7 @@ export const refinePrompt = async (
     console.warn('[Bedrock] Server refine not available, falling back:', err);
   }
 
-  if (serverBusySeconds) throw serverBusyError(serverBusySeconds);
+  if (serverError) throw serverError;
 
   if (isDesktop) {
     throw new ApiError(

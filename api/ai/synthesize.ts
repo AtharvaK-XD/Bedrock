@@ -39,9 +39,9 @@ function readSynthesisInput(body: Record<string, unknown>):
   | { error: string }
   | { rawIdea: string; targetType: string; answers: SynthesisAnswer[]; questions: SynthesisQuestion[] } {
   const idea = body.idea && typeof body.idea === 'object' && !Array.isArray(body.idea) ? body.idea : {};
-  let ideaField = readTextField(idea, ['rawText']);
+  let ideaField = readTextField(idea, ['rawText', 'ideaText']);
   if ('error' in ideaField) return ideaField;
-  if (!ideaField.value) ideaField = readTextField(body, ['rawText']);
+  if (!ideaField.value) ideaField = readTextField(body, ['rawText', 'ideaText']);
   if ('error' in ideaField) return ideaField;
   let typeField = readTextField(idea, ['targetType']);
   if ('error' in typeField) return typeField;

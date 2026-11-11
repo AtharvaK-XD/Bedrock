@@ -104,6 +104,18 @@ describe('request shapes that used to crash the AI routes answer 400, before any
     expect(userContent).toContain('- How many users?: 42');
     expect(userContent).toContain('- q2: React, Vite');
   });
+
+  it('synthesize accepts the frontend ideaText field inside idea (regression check)', async () => {
+    reserveQuota.mockResolvedValue({ allowed: true, unavailable: false, bucket: 'generation', limit: 10, resetMs: 1, reservationId: 'q2' });
+    const r = await call(synthesize, {
+      idea: { ideaText: 'a runner in snow with coffee', targetType: 'image_generation' },
+      answers: [],
+      questions: [],
+    });
+    expect(r.statusCode).toBe(200);
+    const userContent = executeAiCompletion.mock.calls[0][0] as string;
+    expect(userContent).toContain('a runner in snow with coffee');
+  });
 });
 
 describe('quota refund: only when no provider answered', () => {

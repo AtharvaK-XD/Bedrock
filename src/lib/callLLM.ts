@@ -9,7 +9,14 @@
  */
 
 import { resolveDomainGuardrails } from './aiPrompts';
-import { getActiveApiKeys, parseApiErrorResponse, ApiError } from './api';
+import {
+  getActiveApiKeys,
+  parseApiErrorResponse,
+  ApiError,
+  readStructuredServerError,
+  buildServerErrorFromPayload,
+  serverUnavailableError,
+} from './api';
 import {
   validateSynthesisOutput,
   validateQuestionsOutput,
@@ -2650,6 +2657,7 @@ async function callBackendProxy(
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let accumulated = '';
+      let streamFailure: ApiError | null = null;
       let buffer = '';
 
       while (true) {
@@ -2664,29 +2672,52 @@ async function callBackendProxy(
           if (!trimmed || !trimmed.startsWith('data: ')) continue;
           const dataStr = trimmed.slice(6);
           if (dataStr === '[DONE]') continue;
+          let json: any;
           try {
-            const json = JSON.parse(dataStr);
-            if (json.token) {
-              accumulated += json.token;
-              if (onToken) await onToken(json.token);
-            }
+            json = JSON.parse(dataStr);
           } catch {
-            // Ignore
+            continue;
+          }
+          if (json.token) {
+            accumulated += json.token;
+            if (onToken) await onToken(json.token);
+          }
+          if (json.error || (json.code && !json.done)) {
+            streamFailure = buildServerErrorFromPayload(json, json.retryAfterSeconds ? 503 : 500);
           }
         }
       }
+      if (streamFailure && !accumulated) {
+        throw streamFailure;
+      }
       if (accumulated) return accumulated;
+      if (isDesktopApp()) {
+        throw new ApiError(
+          'Please enter your Google Gemini, Groq, or OpenAI API key in Settings to call models directly.',
+          true,
+          'Bedrock Workspace',
+          401
+        );
+      }
+      throw serverUnavailableError();
     }
 
     const data = await response.json();
     return data.text || data.content || data.promptText || data.choices?.[0]?.message?.content || '';
   }
 
+  const structuredErr = await readStructuredServerError(response).catch(() => null);
+  if (structuredErr && (!isDesktopApp() || (response.status !== 401 && response.status !== 403))) {
+    throw structuredErr;
+  }
+
   throw new ApiError(
-    'Please enter your Google Gemini, Groq, or OpenAI API key in Settings to call models directly.',
-    true,
+    isDesktopApp()
+      ? 'Please enter your Google Gemini, Groq, or OpenAI API key in Settings to call models directly.'
+      : structuredErr?.message || 'Please sign in to run prompts on Bedrock.',
+    isDesktopApp(),
     'Bedrock Workspace',
-    401
+    response.status || 401
   );
 }
 
