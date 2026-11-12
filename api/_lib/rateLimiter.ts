@@ -164,7 +164,10 @@ export type LimiterPreset =
   | 'email'
   | 'emailRecipient'
   | 'billing'
-  | 'desktopTicket';
+  | 'desktopTicket'
+  | 'workflowAi'
+  | 'workflowShare'
+  | 'workflowPublic';
 
 interface PresetConfig {
   requests: number;
@@ -191,6 +194,12 @@ const PRESET_CONFIGS: Record<LimiterPreset, PresetConfig> = {
   billing: { requests: 10, windowSeconds: 60, prefix: 'ratelimit:billing' },
   // Desktop sign-in tickets are login credentials: per account, shared between all server copies
   desktopTicket: { requests: 10, windowSeconds: 60, prefix: 'ratelimit:desktop-ticket' },
+  // Branching v2: "Build it for me" and "Explain this workflow" (each is one AI call, per account)
+  workflowAi: { requests: 6, windowSeconds: 60, prefix: 'ratelimit:workflows:ai' },
+  // Creating or turning off share links (per account)
+  workflowShare: { requests: 20, windowSeconds: 60, prefix: 'ratelimit:workflows:share' },
+  // Opening a shared workflow link: no sign-in, so per visitor IP; also slows token guessing
+  workflowPublic: { requests: 30, windowSeconds: 60, prefix: 'ratelimit:workflows:public' },
 };
 
 // Cache Upstash Ratelimit instances (keyed by preset + tier)

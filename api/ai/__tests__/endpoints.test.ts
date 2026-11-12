@@ -775,3 +775,37 @@ describe('AI endpoints', () => {
     });
   });
 });
+
+describe('POST /api/ai/test responseFormat json (Branching v2, additive)', () => {
+  afterEach(() => vi.restoreAllMocks());
+  const ready = () => {
+    reserveQuota.mockReset().mockResolvedValue({ allowed: true, unavailable: false, bucket: 'assist', limit: 100, resetMs: 1, reservationId: 'q1' });
+    authenticateRequest.mockReset().mockResolvedValue(signedInUser);
+    enforceRateLimit.mockReset().mockResolvedValue(true);
+    executeAiCompletion.mockReset();
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  };
+
+  it('asks for JSON only and returns the parsed value', async () => {
+    ready();
+    executeAiCompletion.mockResolvedValue({ text: '```json\n{"ok": true}\n```', model: 'm' });
+    const res = mockRes();
+    await testEndpoint(mockReq({ prompt: 'give json', responseFormat: 'json' }), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.json).toEqual({ ok: true });
+    expect(executeAiCompletion.mock.calls[0][1]).toMatch(/Answer with valid JSON only/);
+  });
+
+  it('reports jsonError for a non-JSON answer, and adds nothing when not asked', async () => {
+    ready();
+    executeAiCompletion.mockResolvedValue({ text: 'plain words', model: 'm' });
+    const asked = mockRes();
+    await testEndpoint(mockReq({ prompt: 'x', responseFormat: 'json' }), asked);
+    expect(asked.body.jsonError).toBeTruthy();
+    const plain = mockRes();
+    await testEndpoint(mockReq({ prompt: 'x' }), plain);
+    expect(plain.body).not.toHaveProperty('json');
+    expect(plain.body).not.toHaveProperty('jsonError');
+    expect(executeAiCompletion.mock.calls[1][1]).not.toMatch(/Answer with valid JSON only/);
+  });
+});

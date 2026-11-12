@@ -36,6 +36,10 @@
       "destination": "/api/health?action=csp-report"
     },
     {
+      "source": "/api/workflows/:action(validate|generate|explain|versions|restore|share|shared|runs|stats)",
+      "destination": "/api/workflows?action=:action"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
