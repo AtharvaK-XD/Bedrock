@@ -943,7 +943,7 @@ function cspForResponse(url) {
 	if (parsed.pathname.startsWith("/sandbox/")) {
 		// Explicit origin instead of 'self': the sandboxed frame has an opaque origin
 		const own = `http://127.0.0.1:${localServerPort} http://localhost:${localServerPort}`;
-		return `default-src 'none'; script-src ${own} 'unsafe-eval'; frame-ancestors ${own}`;
+		return `default-src 'none'; script-src ${own} 'unsafe-eval'; worker-src blob:; frame-ancestors ${own}`;
 	}
 	return APP_CSP;
 }
