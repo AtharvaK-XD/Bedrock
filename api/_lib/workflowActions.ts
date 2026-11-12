@@ -41,6 +41,24 @@ function sendFeatureNotReady(res: VercelResponse) {
   });
 }
 
+/**
+ * Database refusals from migration 0021 (db/PAGING.md): the workflow belongs to another account (23503
+ * WORKFLOW_NOT_OWNED) -> 404; more than 2,000 run records in 24 hours (23514 DAILY_RUN_LIMIT) -> 429; another
+ * broken rule (23514) -> 400; table or grants missing -> 503. Returns null for anything else.
+ */
+function sendMappedDbError(res: VercelResponse, err: unknown): VercelResponse | null {
+  const e = err as { code?: unknown; message?: unknown } | null;
+  const code = String(e?.code ?? '');
+  const message = String(e?.message ?? '');
+  if (isFeatureMissing(err)) return sendFeatureNotReady(res);
+  if (code === '23503' && message.includes('WORKFLOW_NOT_OWNED')) return sendWorkflowNotFound(res);
+  if (code === '23514' && message.includes('DAILY_RUN_LIMIT')) {
+    return res.status(429).json({ error: 'Daily run limit reached', code: 'DAILY_RUN_LIMIT', message: 'You have recorded a lot of runs today. Your runs still work; they are just not counted until tomorrow.' });
+  }
+  if (code === '23514') return res.status(400).json({ error: 'Invalid value', code: 'INVALID_VALUE', message: 'One of the values is out of range.' });
+  return null;
+}
+
 function sendWorkflowNotFound(res: VercelResponse) {
   return res.status(404).json({ error: 'Workflow not found', code: 'WORKFLOW_NOT_FOUND', message: 'That workflow was not found in your account.' });
 }
@@ -87,7 +105,7 @@ export async function snapshotVersion(sql: Sql, userId: string, workflowId: stri
         SELECT 1 FROM "WorkflowVersion" w
         WHERE w.workflow_id = ${workflowId} AND w.version = latest.v AND w.title = ${title} AND w.nodes = ${nodesJson} AND w.edges = ${edgesJson}
       )
-      ON CONFLICT (workflow_id, version) DO NOTHING
+      ON CONFLICT DO NOTHING
     `;
     await sql`
       DELETE FROM "WorkflowVersion"
@@ -112,18 +130,23 @@ export async function handleShared(req: VercelRequest, res: VercelResponse, sql:
   const token = asText(req.query?.token);
   if (!SHARE_TOKEN_RE.test(token)) return notFound();
   try {
+    // db/PAGING.md shared_open: counts one view and reads the workflow (owner must match) in one statement
     const rows = (await sql`
-      UPDATE "WorkflowShare" s SET view_count = s.view_count + 1
-      FROM "BranchingTree" b
-      WHERE s.token = ${token} AND s.revoked_at IS NULL AND b.id = s.workflow_id
-      RETURNING b.title, b.nodes, b.edges, s.created_at
-    `) as Array<{ title: string; nodes: unknown; edges: unknown; created_at: unknown }>;
+      WITH opened AS (
+        UPDATE "WorkflowShare" SET view_count = view_count + 1
+        WHERE token = ${token} AND revoked_at IS NULL
+        RETURNING workflow_id, user_id, created_at
+      )
+      SELECT b.title, b.nodes, b.edges, opened.created_at AS shared_at
+      FROM opened
+      JOIN "BranchingTree" b ON b.id = opened.workflow_id AND b.user_id = opened.user_id
+    `) as Array<{ title: string; nodes: unknown; edges: unknown; shared_at: unknown }>;
     const row = rows[0];
     if (!row) return notFound();
     const copy = stripForShare(readJsonArray(row.nodes), readJsonArray(row.edges));
-    return res.status(200).json({ title: row.title, nodes: copy.nodes, edges: copy.edges, hasCode: copy.hasCode, sharedAt: row.created_at });
+    return res.status(200).json({ title: row.title, nodes: copy.nodes, edges: copy.edges, hasCode: copy.hasCode, sharedAt: row.shared_at });
   } catch (err) {
-    if (isFeatureMissing(err)) return sendFeatureNotReady(res);
+    { const mapped = sendMappedDbError(res, err); if (mapped) return mapped; }
     return sendDbFailure(res, '[Workflows] shared error:', 'Failed to open shared workflow', err);
   }
 }
@@ -167,7 +190,7 @@ export async function handleWorkflowAction(action: string, req: VercelRequest, r
           versions: rows.map((r) => ({ version: Number(r.version), title: r.title, nodeCount: Number(r.node_count) || 0, createdAt: r.created_at })),
         });
       } catch (err) {
-        if (isFeatureMissing(err)) return sendFeatureNotReady(res);
+        { const mapped = sendMappedDbError(res, err); if (mapped) return mapped; }
         return sendDbFailure(res, '[Workflows] versions error:', 'Failed to list versions', err);
       }
     }
@@ -193,7 +216,7 @@ export async function handleWorkflowAction(action: string, req: VercelRequest, r
         await snapshotVersion(sql, user.id, id, target.title, target.nodes, target.edges);
         return res.status(200).json({ id, title: target.title, nodes: readJsonArray(target.nodes), edges: readJsonArray(target.edges), restoredVersion: version });
       } catch (err) {
-        if (isFeatureMissing(err)) return sendFeatureNotReady(res);
+        { const mapped = sendMappedDbError(res, err); if (mapped) return mapped; }
         return sendDbFailure(res, '[Workflows] restore error:', 'Failed to restore version', err);
       }
     }
@@ -212,30 +235,27 @@ export async function handleWorkflowAction(action: string, req: VercelRequest, r
           `) as Array<{ token: string }>;
           return res.status(200).json({ id, revoked: rows.length > 0, success: true });
         }
-        const existing = (await sql`
-          SELECT token FROM "WorkflowShare" WHERE workflow_id = ${id} AND user_id = ${user.id} AND revoked_at IS NULL LIMIT 1
-        `) as Array<{ token: string }>;
-        let token = existing[0]?.token;
-        if (!token) {
-          const created = (await sql`
-            INSERT INTO "WorkflowShare" (token, workflow_id, user_id, created_at, view_count)
-            VALUES (${newShareToken()}, ${id}, ${user.id}, NOW(), 0)
-            ON CONFLICT DO NOTHING
-            RETURNING token
-          `) as Array<{ token: string }>;
-          token = created[0]?.token;
-          if (!token) {
-            // Another request shared it at the same moment: use that link
-            const again = (await sql`
-              SELECT token FROM "WorkflowShare" WHERE workflow_id = ${id} AND user_id = ${user.id} AND revoked_at IS NULL LIMIT 1
-            `) as Array<{ token: string }>;
-            token = again[0]?.token;
-          }
-        }
+        // db/PAGING.md share_create: the new link, or the one already active (one per workflow). No row only when
+        // two clicks land at the very same instant: run it once more.
+        const createOrGet = async () =>
+          ((await sql`
+            WITH created AS (
+              INSERT INTO "WorkflowShare"(token, workflow_id, user_id)
+              VALUES (${newShareToken()}, ${id}, ${user.id})
+              ON CONFLICT (workflow_id) WHERE revoked_at IS NULL DO NOTHING
+              RETURNING token, created_at
+            )
+            SELECT token, created_at FROM created
+            UNION ALL
+            SELECT token, created_at FROM "WorkflowShare"
+            WHERE workflow_id = ${id} AND user_id = ${user.id} AND revoked_at IS NULL
+            LIMIT 1
+          `) as Array<{ token: string }>)[0]?.token;
+        const token = (await createOrGet()) ?? (await createOrGet());
         if (!token) return res.status(409).json({ error: 'Could not create a share link', code: 'SHARE_CONFLICT', message: 'Please try again.' });
         return res.status(200).json({ id, token, url: `/branching/shared/${token}` });
       } catch (err) {
-        if (isFeatureMissing(err)) return sendFeatureNotReady(res);
+        { const mapped = sendMappedDbError(res, err); if (mapped) return mapped; }
         return sendDbFailure(res, '[Workflows] share error:', 'Failed to share workflow', err);
       }
     }
@@ -260,13 +280,13 @@ export async function handleWorkflowAction(action: string, req: VercelRequest, r
         await sql`
           INSERT INTO "WorkflowRun" (id, user_id, workflow_id, status, node_count, ai_calls, duration_ms, error_count, node_types, created_at)
           VALUES (${id}, ${user.id}, ${workflowId}, ${status}, ${count(body.nodeCount, 10_000)}, ${count(body.aiCalls, 10_000)},
-                  ${count(body.durationMs, 3_600_000)}, ${count(body.errorCount, 10_000)}, ${nodeTypes}, NOW())
+                  ${count(body.durationMs, 3_600_000)}, ${count(body.errorCount, 10_000)}, ${nodeTypes}::text[], NOW())
         `;
         // Run history is kept 90 days; trimmed here so the daily cleanup job does not need to change
         await sql`DELETE FROM "WorkflowRun" WHERE user_id = ${user.id} AND created_at < NOW() - make_interval(days => ${RUN_HISTORY_DAYS}::int)`;
         return res.status(200).json({ id, success: true });
       } catch (err) {
-        if (isFeatureMissing(err)) return sendFeatureNotReady(res);
+        { const mapped = sendMappedDbError(res, err); if (mapped) return mapped; }
         return sendDbFailure(res, '[Workflows] runs error:', 'Failed to save run', err);
       }
     }
@@ -274,31 +294,45 @@ export async function handleWorkflowAction(action: string, req: VercelRequest, r
     case 'stats': {
       if (method !== 'GET') return wrongMethod();
       try {
-        const [totals] = (await sql`
-          SELECT COUNT(*)::int AS total_runs,
-                 COUNT(*) FILTER (WHERE status = 'success')::int AS success_runs,
-                 COUNT(*) FILTER (WHERE (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date)::int AS runs_today,
-                 MIN(created_at) AS first_run_at
-          FROM "WorkflowRun" WHERE user_id = ${user.id}
-        `) as Array<{ total_runs: number; success_runs: number; runs_today: number; first_run_at: unknown }>;
-        const types = (await sql`
-          SELECT DISTINCT unnest(node_types) AS t FROM "WorkflowRun" WHERE user_id = ${user.id}
-        `) as Array<{ t: string }>;
-        const days = (await sql`
-          SELECT DISTINCT (created_at AT TIME ZONE 'Asia/Kolkata')::date::text AS d
-          FROM "WorkflowRun" WHERE user_id = ${user.id} AND created_at > NOW() - INTERVAL '400 days'
-          ORDER BY d DESC LIMIT 400
-        `) as Array<{ d: string }>;
+        // db/PAGING.md run_stats (tested there): one statement; days and streak in India time; last 90 days
+        const [row] = (await sql`
+          WITH runs AS (
+            SELECT status, created_at, node_types, (created_at AT TIME ZONE 'Asia/Kolkata')::date AS day
+            FROM "WorkflowRun"
+            WHERE user_id = ${user.id}
+          ),
+          today AS (
+            SELECT (COALESCE(${null}::timestamptz, now()) AT TIME ZONE 'Asia/Kolkata')::date AS d
+          ),
+          islands AS (
+            SELECT day, day - (row_number() OVER (ORDER BY day))::int AS grp
+            FROM (SELECT DISTINCT day FROM runs) d
+          ),
+          last_island AS (
+            SELECT max(day) AS last_day, count(*)::int AS len
+            FROM islands
+            GROUP BY grp
+            ORDER BY max(day) DESC
+            LIMIT 1
+          )
+          SELECT
+            (SELECT count(*)::int FROM runs) AS total_runs,
+            (SELECT count(*)::int FROM runs WHERE status = 'success') AS success_runs,
+            (SELECT count(*)::int FROM runs, today WHERE runs.day = today.d) AS runs_today,
+            COALESCE((SELECT len FROM last_island, today WHERE last_island.last_day >= today.d - 1), 0) AS streak_days,
+            (SELECT COALESCE(array_agg(DISTINCT t ORDER BY t), '{}'::text[]) FROM runs, unnest(node_types) AS t) AS node_types_used,
+            (SELECT min(created_at) FROM runs) AS first_run_at
+        `) as Array<{ total_runs: number; success_runs: number; runs_today: number; streak_days: number; node_types_used: string[] | null; first_run_at: unknown }>;
         return res.status(200).json({
-          totalRuns: Number(totals?.total_runs) || 0,
-          successRuns: Number(totals?.success_runs) || 0,
-          runsToday: Number(totals?.runs_today) || 0,
-          streakDays: streakFromDays(days.map((r) => String(r.d).slice(0, 10))),
-          nodeTypesUsed: types.map((r) => r.t).filter(Boolean).sort(),
-          firstRunAt: totals?.first_run_at ?? null,
+          totalRuns: Number(row?.total_runs) || 0,
+          successRuns: Number(row?.success_runs) || 0,
+          runsToday: Number(row?.runs_today) || 0,
+          streakDays: Number(row?.streak_days) || 0,
+          nodeTypesUsed: Array.isArray(row?.node_types_used) ? row!.node_types_used.filter(Boolean) : [],
+          firstRunAt: row?.first_run_at ?? null,
         });
       } catch (err) {
-        if (isFeatureMissing(err)) return sendFeatureNotReady(res);
+        { const mapped = sendMappedDbError(res, err); if (mapped) return mapped; }
         return sendDbFailure(res, '[Workflows] stats error:', 'Failed to load stats', err);
       }
     }
@@ -306,31 +340,6 @@ export async function handleWorkflowAction(action: string, req: VercelRequest, r
     default:
       return res.status(400).json({ error: 'Unknown action', code: 'UNKNOWN_ACTION' });
   }
-}
-
-/** India date (YYYY-MM-DD) of a moment. */
-export function istDate(ms: number): string {
-  return new Date(ms + 330 * 60_000).toISOString().slice(0, 10);
-}
-
-/**
- * Days in a row with at least one run, counting back from today (India time). A streak survives until the end of
- * the next day: run yesterday but not yet today still counts.
- */
-export function streakFromDays(daysDesc: string[], nowMs = Date.now()): number {
-  const set = new Set(daysDesc);
-  const day = 86_400_000;
-  let cursor = nowMs;
-  if (!set.has(istDate(cursor))) {
-    cursor -= day;
-    if (!set.has(istDate(cursor))) return 0;
-  }
-  let streak = 0;
-  while (set.has(istDate(cursor)) && streak < 400) {
-    streak++;
-    cursor -= day;
-  }
-  return streak;
 }
 
 // ---- AI actions ----------------------------------------------------------------------------------------------

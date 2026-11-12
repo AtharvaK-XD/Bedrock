@@ -45,7 +45,7 @@ vi.mock('../security.js', async (orig) => ({
 
 import workflows from '../../workflows/index.js';
 import { serverRowId } from '../dataHttp.js';
-import { streakFromDays, istDate, VERSIONS_KEPT } from '../workflowActions.js';
+import { VERSIONS_KEPT } from '../workflowActions.js';
 import { buildGeneratedWorkflow, parseAiJson } from '../workflowAi.js';
 import { checkGraph, stripForShare, tierOf } from '../workflowGraph.js';
 
@@ -87,7 +87,7 @@ describe('GET /api/workflows/shared (public)', () => {
       { id: 'a', type: 'genericNode', position: { x: 1, y: 2 }, data: { title: 'Data', description: 'd', nodeType: 'data', dataPayload: '{"secret":1}', output: 'secret output', status: 'success', user_id: 'user_A' } },
       { id: 'b', type: 'genericNode', position: { x: 3, y: 4 }, data: { title: 'Code', description: '', nodeType: 'code', codeScript: 'return input;', result: { text: 'x' }, evalScore: 9 } },
     ];
-    h.state.responder = (t) => (t.startsWith('UPDATE "WorkflowShare"') ? [{ title: 'Shared!', nodes: JSON.stringify(nodes), edges: JSON.stringify([{ id: 'e', source: 'a', target: 'b', style: { x: 1 }, extra: 'drop' }]), created_at: '2026-11-12' }] : []);
+    h.state.responder = (t) => (t.startsWith('WITH opened AS') ? [{ title: 'Shared!', nodes: JSON.stringify(nodes), edges: JSON.stringify([{ id: 'e', source: 'a', target: 'b', style: { x: 1 }, extra: 'drop' }]), shared_at: '2026-11-12' }] : []);
     const res = mockRes();
     await workflows(mockReq('GET', { action: 'shared', token: TOKEN }), res);
     expect(res.statusCode).toBe(200);
@@ -102,6 +102,8 @@ describe('GET /api/workflows/shared (public)', () => {
     expect(res.body.nodes[0].data.status).toBe('idle');
     expect(res.body.edges[0]).toEqual({ id: 'e', source: 'a', target: 'b' });
     expect(res.headers['Cache-Control']).toBe('no-store');
+    expect(res.body.sharedAt).toBe('2026-11-12');
+    expect(h.state.calls[0].text).toContain('b.user_id = opened.user_id');
   });
 
   it('answers the same 404 for malformed, unknown and revoked tokens', async () => {
@@ -113,7 +115,7 @@ describe('GET /api/workflows/shared (public)', () => {
     await workflows(mockReq('GET', { action: 'shared', token: TOKEN }), unknown);
     expect(unknown.statusCode).toBe(404);
     expect(unknown.body.code).toBe('SHARE_NOT_FOUND');
-    expect(h.state.calls[0].text).toContain('s.revoked_at IS NULL');
+    expect(h.state.calls[0].text).toContain('revoked_at IS NULL');
   });
 
   it('503 FEATURE_NOT_READY before migration 0021', async () => {
@@ -196,9 +198,8 @@ describe('signed-in actions', () => {
     let stored: string | null = null;
     h.state.responder = (t, v) => {
       if (t.startsWith('SELECT id FROM "BranchingTree"')) return [{ id: 'wf1' }];
-      if (t.startsWith('SELECT token FROM "WorkflowShare"')) return stored ? [{ token: stored }] : [];
-      if (t.startsWith('INSERT INTO "WorkflowShare"')) {
-        stored = v[0] as string;
+      if (t.startsWith('WITH created AS')) {
+        if (!stored) stored = v[0] as string; // first click creates; later ones get the active link back
         return [{ token: stored }];
       }
       if (t.startsWith('UPDATE "WorkflowShare" SET revoked_at')) return stored ? [{ token: stored }] : [];
@@ -212,7 +213,7 @@ describe('signed-in actions', () => {
     const second = mockRes();
     await workflows(mockReq('POST', { action: 'share' }, { id: 'wf1' }), second);
     expect(second.body.token).toBe(first.body.token);
-    expect(texts().filter((t) => t.startsWith('INSERT INTO "WorkflowShare"'))).toHaveLength(1);
+    expect(texts().filter((t) => t.startsWith('WITH created AS'))).toHaveLength(2);
     const off = mockRes();
     await workflows(mockReq('POST', { action: 'share' }, { id: 'wf1', revoke: true }), off);
     expect(off.body).toMatchObject({ revoked: true, success: true });
@@ -235,18 +236,42 @@ describe('signed-in actions', () => {
     expect(texts().some((t) => t.startsWith('DELETE FROM "WorkflowRun" WHERE user_id'))).toBe(true);
   });
 
-  it('stats: totals, step types and streak', async () => {
-    const today = istDate(Date.now());
-    const yesterday = istDate(Date.now() - 86_400_000);
-    h.state.responder = (t) => {
-      if (t.includes('COUNT(*)::int AS total_runs')) return [{ total_runs: 7, success_runs: 5, runs_today: 2, first_run_at: '2026-11-01' }];
-      if (t.includes('unnest(node_types)')) return [{ t: 'prompt' }, { t: 'condition' }];
-      if (t.includes('::date::text AS d')) return [{ d: today }, { d: yesterday }];
-      return [];
-    };
+  it('stats: one statement (db/PAGING.md run_stats) mapped to the answer', async () => {
+    h.state.responder = (t) => (t.startsWith('WITH runs AS') ? [{ total_runs: 7, success_runs: 5, runs_today: 2, streak_days: 3, node_types_used: ['condition', 'prompt'], first_run_at: '2026-11-01' }] : []);
     const res = mockRes();
     await workflows(mockReq('GET', { action: 'stats' }), res);
-    expect(res.body).toEqual({ totalRuns: 7, successRuns: 5, runsToday: 2, streakDays: 2, nodeTypesUsed: ['condition', 'prompt'], firstRunAt: '2026-11-01' });
+    expect(res.body).toEqual({ totalRuns: 7, successRuns: 5, runsToday: 2, streakDays: 3, nodeTypesUsed: ['condition', 'prompt'], firstRunAt: '2026-11-01' });
+    expect(h.state.calls).toHaveLength(1);
+    expect(h.state.calls[0].values).toEqual(['user_A', null]);
+    expect(h.state.calls[0].text).toContain("AT TIME ZONE 'Asia/Kolkata'");
+  });
+
+  it('maps the database refusals from migration 0021', async () => {
+    h.state.responder = (t) => {
+      if (t.startsWith('INSERT INTO "WorkflowRun"')) throw Object.assign(new Error('DAILY_RUN_LIMIT: at most 2000 run records in 24 hours'), { code: '23514' });
+      return [];
+    };
+    const busy = mockRes();
+    await workflows(mockReq('POST', { action: 'runs' }, { status: 'success' }), busy);
+    expect(busy.statusCode).toBe(429);
+    expect(busy.body.code).toBe('DAILY_RUN_LIMIT');
+
+    h.state.responder = (t) => {
+      if (t.startsWith('INSERT INTO "WorkflowRun"')) throw Object.assign(new Error('new row violates check constraint "WorkflowRun_counts_chk"'), { code: '23514' });
+      return [];
+    };
+    const bad = mockRes();
+    await workflows(mockReq('POST', { action: 'runs' }, { status: 'success' }), bad);
+    expect(bad.statusCode).toBe(400);
+
+    h.state.responder = (t) => {
+      if (t.startsWith('SELECT id FROM "BranchingTree"')) return [{ id: 'wf1' }];
+      if (t.startsWith('WITH created AS')) throw Object.assign(new Error('WORKFLOW_NOT_OWNED'), { code: '23503' });
+      return [];
+    };
+    const notMine = mockRes();
+    await workflows(mockReq('POST', { action: 'share' }, { id: 'wf1' }), notMine);
+    expect(notMine.statusCode).toBe(404);
   });
 
   it('every table action answers 503 FEATURE_NOT_READY before migration 0021', async () => {
@@ -389,15 +414,6 @@ describe('Explain this workflow', () => {
 });
 
 describe('helpers', () => {
-  it('streak counts back from today, or from yesterday, in India time', () => {
-    const now = Date.UTC(2026, 10, 12, 20, 0); // 01:30 on 13 Nov in India
-    expect(istDate(now)).toBe('2026-11-13');
-    expect(streakFromDays(['2026-11-13', '2026-11-12', '2026-11-11', '2026-11-09'], now)).toBe(3);
-    expect(streakFromDays(['2026-11-12', '2026-11-11'], now)).toBe(2);
-    expect(streakFromDays(['2026-11-10'], now)).toBe(0);
-    expect(streakFromDays([], now)).toBe(0);
-  });
-
   it('tierOf, checkGraph, stripForShare, parseAiJson', () => {
     expect(tierOf({ subscriptionTier: 'ultimate' })).toBe('ultimate');
     expect(tierOf({ subscriptionTier: 'advanced' })).toBe('pro');
