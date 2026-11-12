@@ -81,3 +81,16 @@ RLS would make Postgres itself refuse rows that belong to another user, as a sec
   that guard.
 - **Recommendation:** roles first (above). Revisit RLS after launch, starting with "Prompt" and "BranchingTree"
   behind one shared helper that always sends the `set_config` pair.
+
+## Branching v2 tables (migration 0021, CHG-0137)
+`db/roles.sql` gives `bedrock_app`:
+| Table | Rights | Why not more |
+|---|---|---|
+| `"WorkflowVersion"` | SELECT, INSERT, DELETE | a saved version is never edited; DELETE only keeps the newest 20 |
+| `"WorkflowRun"` | SELECT, INSERT, DELETE | a run record is never edited; DELETE is the 90-day cleanup |
+| `"WorkflowShare"` | SELECT, INSERT, UPDATE of `revoked_at` and `view_count` only | a link cannot be moved to another workflow or account, its token cannot change, and the app never deletes a link (it goes with the workflow or the account) |
+
+These grants are inside a block that runs only when the tables exist, so `roles.sql` still runs cleanly on a
+database without 0021 (a half-applied rights run would leave the app without rights, because every run first revokes
+everything). Run `node db/migrate.mjs roles --yes --host <host>` again right after applying 0021.
+The final check now has 20 lines; the last three are these tables (they show `ok` when the table does not exist yet).

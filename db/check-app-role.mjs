@@ -87,6 +87,21 @@ const works = {
     `SELECT reserve_quota('${P}_q', '${P}'::text, '203.0.113.9', 'generation', '/x', 10::int)`,
     `DELETE FROM "QuotaEvent" WHERE id = '${P}_q'`,
     `SELECT * FROM purge_old_logs()`],
+  // 0021 Branching v2 (needs migration 0021 and roles.sql from CHG-0137 or later)
+  'workflow versions: save, list, keep last 20': [newUser,
+    `INSERT INTO "BranchingTree"(id,user_id,title,nodes,edges,created_at,updated_at) VALUES ('${P}_vw','${P}','t','[]','[]',now(),now())`,
+    `INSERT INTO "WorkflowVersion"(id,workflow_id,user_id,version,title,nodes,edges,node_count) SELECT '${P}_v','${P}_vw','${P}',COALESCE(MAX(version),0)+1,'t','[]','[]',0 FROM "WorkflowVersion" WHERE workflow_id = '${P}_vw'`,
+    `SELECT version, title, created_at, node_count FROM "WorkflowVersion" WHERE workflow_id = '${P}_vw' AND user_id = '${P}' ORDER BY version DESC LIMIT 20`,
+    `DELETE FROM "WorkflowVersion" WHERE workflow_id = '${P}_vw' AND user_id = '${P}' AND version <= (SELECT MAX(version) - 20 FROM "WorkflowVersion" WHERE workflow_id = '${P}_vw')`],
+  'workflow runs: save, stats, 90-day cleanup': [newUser,
+    `INSERT INTO "WorkflowRun"(id,user_id,workflow_id,status,node_count,ai_calls,duration_ms,error_count,node_types) VALUES ('${P}_r','${P}',NULL,'success',2,1,100,0,'{prompt,output}')`,
+    `SELECT count(*) FROM "WorkflowRun" WHERE user_id = '${P}'`,
+    `DELETE FROM "WorkflowRun" WHERE id IN (SELECT id FROM "WorkflowRun" WHERE created_at < now() - interval '90 days' LIMIT 5000)`],
+  'workflow share: create, open (+1 view), revoke': [newUser,
+    `INSERT INTO "BranchingTree"(id,user_id,title,nodes,edges,created_at,updated_at) VALUES ('${P}_sw','${P}','t','[]','[]',now(),now())`,
+    `INSERT INTO "WorkflowShare"(token,workflow_id,user_id) VALUES ('${P}_share_token_0123456789abcdef','${P}_sw','${P}') ON CONFLICT (workflow_id) WHERE revoked_at IS NULL DO NOTHING`,
+    `UPDATE "WorkflowShare" SET view_count = view_count + 1 WHERE token = '${P}_share_token_0123456789abcdef' AND revoked_at IS NULL RETURNING workflow_id`,
+    `UPDATE "WorkflowShare" SET revoked_at = now() WHERE workflow_id = '${P}_sw' AND user_id = '${P}' AND revoked_at IS NULL`],
 };
 const refused = {
   'read password_hash': `SELECT password_hash FROM "User" LIMIT 1`,
@@ -107,6 +122,11 @@ const refused = {
   'replace reserve_quota()': `CREATE OR REPLACE FUNCTION reserve_quota(text,text,text,text,text,integer,interval) RETURNS boolean LANGUAGE sql AS 'SELECT true'`,
   'read schema_migrations': `SELECT * FROM schema_migrations`,
   'insert an IdempotencyKey': `INSERT INTO "IdempotencyKey"(id,key,endpoint,status,expires_at) VALUES ('${P}','${P}','/x','s',now())`,
+  // 0021
+  'edit a saved workflow version': `UPDATE "WorkflowVersion" SET nodes = '[]' WHERE id = '${P}'`,
+  'edit a run record': `UPDATE "WorkflowRun" SET status = 'success' WHERE id = '${P}'`,
+  'move a share link to another workflow': `UPDATE "WorkflowShare" SET workflow_id = '${P}' WHERE token = '${P}'`,
+  'delete a share link': `DELETE FROM "WorkflowShare" WHERE token = '${P}'`,
 };
 
 async function attempt(statements) {

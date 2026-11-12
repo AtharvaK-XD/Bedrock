@@ -67,6 +67,10 @@ The API refuses AI calls when `reserve_quota()` errors (it fails closed, on purp
 | `DAILY_TRACE_LIMIT` (23514) | an account wrote 5,000 usage records in 24 hours (0015) | expected for abuse; the API should answer 429 |
 | `OTHER_RECORDS` (23001) | `delete_user_data` found records in a table it does not know that depend on the account; nothing deleted | human decision (section 6) |
 | `PAYMENT_RECORDS_UNLINKED` | `down` of 0019 refused: paid orders that no longer belong to an account exist (kept on purpose) | do not delete them; leave 0019 applied |
+| `WORKFLOW_NOT_OWNED` (23503) | a version, run or share link was written for a workflow that does not exist or belongs to another account (0021) | a bug or an attack: the API should have checked first (Backend); answer 404 |
+| `DAILY_RUN_LIMIT` (23514) | an account wrote 2,000 run records in 24 hours (0021) | expected for abuse; the API should answer 429 |
+| `WorkflowVersion_size_chk`, `WorkflowRun_sanity_chk` (23514) | a version or run record breaks a size / number rule (0021) | API should have refused first: Backend |
+| `BRANCHING_V2_HAS_DATA` | `down` of 0021 refused: saved versions, run records or share links exist | roll back the code instead (section 8) |
 | `Another migration run holds the lock` | a `migrate.mjs` run is active or crashed less than 30 minutes ago | wait, or `DELETE FROM schema_migrations_lock;` if sure no run is active |
 | `was edited after it was applied` | a migration file changed after it ran (checksum) | restore the file; put the change in a NEW migration |
 
@@ -86,3 +90,34 @@ The API refuses AI calls when `reserve_quota()` errors (it fails closed, on purp
 - Once a month: create a branch from production as of yesterday and run `node db/check-schema.mjs` on it. That proves
   the restore works and shows the table counts. Delete the branch afterwards.
 - After any change to Vercel env vars: `node db/check-schema.mjs` with the app's string shows `connected as role: bedrock_app`.
+
+## 8. Branching v2 (migration 0021): apply to production, check, roll back
+What it adds: three new tables (versions, run records, share links). Nothing existing changes. Takes seconds.
+**Order: the database first, then the Backend deploy.** Without the tables the new routes answer 503
+`FEATURE_NOT_READY` and every old route keeps working, so the database step is safe to do early.
+Only Atharva runs this on production (agents never do). Use a NEW PowerShell window with the production owner string
+in `DATABASE_URL_DEV` for this window only (the tools read only that name); close the window afterwards.
+
+1. Look first (read only): `node db/migrate.mjs status`. Expected: everything `applied` except `0021_branching_v2   PENDING`.
+2. Apply: `node db/migrate.mjs up --yes --host <production host>`. Expected: `applying 0021_branching_v2 ...` then done.
+   If it prints `IMPORTANT: role bedrock_app exists`, step 3 is required (else it is still recommended).
+3. Rights for the app role: `node db/migrate.mjs roles --yes --host <production host>`. Every line must end `ok`
+   (20 lines; the last three are the new tables). Without this, an app using `bedrock_app` gets
+   `permission denied` on the new tables (503 `FEATURE_NOT_READY`; nothing else breaks).
+4. Check: `node db/check-schema.mjs`. Expected last line: `0 difference(s) found.` Before step 2 it lists the 23 missing
+   0021 items (3 tables, 6 foreign keys, 3 primary keys, 7 indexes, 4 triggers): that list is the to-do, not an error.
+5. Optional: `node db/readiness.mjs` (one screen, read only).
+6. Tell the Backend session / Gemini "0021 applied, roles re-run, 0 differences" and only then deploy the Backend.
+7. Daily cleanup: the Backend cron must also run the `runs_purge` statement (`db/PAGING.md`) so run records older
+   than 90 days are removed. Check the cron log the next day.
+
+**Roll back.** First choice: roll back the CODE in Vercel (Deployments -> previous one -> Promote). The tables are
+harmless when nothing uses them; leave them.
+Only if the tables themselves must go:
+1. Deploy code that does not use them first.
+2. `node db/migrate.mjs down --yes --host <host>` undoes ONLY the newest migration (0021 if it is the newest). It
+   REFUSES with `BRANCHING_V2_HAS_DATA` while any version, run record or share link exists: those are people's saved
+   versions and history, and deleting them switches off every share link. Emptying the tables is a destructive step
+   that needs Atharva's explicit approval and a Neon branch/snapshot taken just before.
+3. After `down`, run `node db/migrate.mjs roles --yes --host <host>` again (the tool reminds you). Then
+   `node db/check-schema.mjs` lists the 0021 items as missing: expected after a rollback, not a new problem.

@@ -26,6 +26,12 @@ export async function anonymize(sql) {
     "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'User' AND column_name IN ('birth_date', 'referral_source')",
   );
   const scrubOnboarding = onboardingCols.map((r) => `${r.column_name} = NULL, `).join('');
+  // Branching v2 (migration 0021). A copy without 0021 has none of these tables.
+  //   versions: full copies of workflows (may hold prompt text) -> emptied like "BranchingTree", count kept;
+  //   share links: their tokens open the PRODUCTION copy of a workflow -> deleted;
+  //   run records: counts, node types and times only (no text) -> kept as they are.
+  const [v2] = await sql.query(`SELECT to_regclass('public."WorkflowVersion"') IS NOT NULL AS versions,
+    to_regclass('public."WorkflowShare"') IS NOT NULL AS shares`);
   const results = await sql.transaction((tx) => [
     // accounts: fake but unique, stable per id
     tx.query(`UPDATE "User" SET
@@ -38,6 +44,8 @@ export async function anonymize(sql) {
     tx.query(`UPDATE "Prompt" SET title = 'Test prompt ' || substr(md5(id), 1, 6), snippet = ${filler('snippet')},
         full_content = ${filler('full_content')}, tags = '["Test"]'`),
     tx.query(`UPDATE "BranchingTree" SET title = 'Test workflow ' || substr(md5(id), 1, 6), nodes = '[]', edges = '[]'`),
+    ...(v2.versions ? [tx.query(`UPDATE "WorkflowVersion" SET title = 'Test workflow ' || substr(md5(workflow_id), 1, 6), nodes = '[]', edges = '[]'`)] : []),
+    ...(v2.shares ? [tx.query(`DELETE FROM "WorkflowShare"`)] : []),
     // logs hold IP addresses and free text and cannot be edited (0011 guard): delete them
     tx.query(`DELETE FROM "SecurityLog"`),
     tx.query(`DELETE FROM "QuotaEvent"`),
@@ -49,7 +57,8 @@ export async function anonymize(sql) {
         FOR r IN
           SELECT c.conrelid::regclass::text AS tbl FROM pg_constraint c
           WHERE c.contype = 'f' AND c.confrelid = '"User"'::regclass
-            AND c.conrelid::regclass::text NOT IN ('"Prompt"', '"BranchingTree"', '"Trace"', '"SecurityLog"')
+            AND c.conrelid::regclass::text NOT IN ('"Prompt"', '"BranchingTree"', '"Trace"', '"SecurityLog"',
+                                                   '"WorkflowVersion"', '"WorkflowRun"', '"WorkflowShare"')
         LOOP
           EXECUTE format('DELETE FROM %s', r.tbl);
         END LOOP;

@@ -38,6 +38,27 @@ const QUERIES = [
   ['purge: IdempotencyKey batch', `SELECT id FROM "IdempotencyKey" WHERE expires_at < (now() AT TIME ZONE 'UTC') LIMIT 5000`],
 ];
 
+// 0021 Branching v2 (db/PAGING.md, second half). Shown only when the tables exist. Writes are explained as the
+// SELECT that finds their rows, so nothing is changed.
+const W = 'explain_probe_workflow';
+const [v2] = await sql`SELECT to_regclass('public."WorkflowVersion"') IS NOT NULL AS ok`;
+if (v2.ok) {
+  QUERIES.push(
+    ['v2: next version number (version_insert)', `SELECT COALESCE(MAX(version), 0) + 1 FROM "WorkflowVersion" WHERE workflow_id = '${W}'`],
+    ['v2: versions to prune (versions_prune)',
+      `SELECT id FROM "WorkflowVersion" WHERE workflow_id = '${W}' AND user_id = '${U}' AND version <= (SELECT MAX(version) - 20 FROM "WorkflowVersion" WHERE workflow_id = '${W}')`],
+    ['v2: versions list', `SELECT version, title, created_at, node_count FROM "WorkflowVersion" WHERE workflow_id = '${W}' AND user_id = '${U}' ORDER BY version DESC LIMIT 20`],
+    ['v2: runs of one account (run_stats input)', `SELECT status, created_at, node_types FROM "WorkflowRun" WHERE user_id = '${U}'`],
+    ['v2: daily run cap count (trigger)', `SELECT 1 FROM "WorkflowRun" WHERE user_id = '${U}' AND created_at > now() - interval '24 hours' LIMIT 2000`],
+    ['v2: run purge batch (runs_purge)', `SELECT id FROM "WorkflowRun" WHERE created_at < now() - interval '90 days' LIMIT 5000`],
+    ['v2: active share of a workflow (share_create / share_revoke)', `SELECT token FROM "WorkflowShare" WHERE workflow_id = '${W}' AND user_id = '${U}' AND revoked_at IS NULL`],
+    ['v2: open a share link (shared_open)', `SELECT workflow_id FROM "WorkflowShare" WHERE token = 'explain_probe_token_0123456789abcdef' AND revoked_at IS NULL`],
+    ['v2: runs of a deleted workflow (ON DELETE SET NULL)', `SELECT id FROM "WorkflowRun" WHERE workflow_id = '${W}'`],
+  );
+} else {
+  console.log('Branching v2 tables (0021) not on this database: their plans are skipped.\n');
+}
+
 const sizes = await sql`
   SELECT relname, reltuples::bigint AS est_rows FROM pg_class
   WHERE relkind = 'r' AND relnamespace = 'public'::regnamespace AND relname <> 'PaymentRecord' ORDER BY 1
