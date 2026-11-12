@@ -50,7 +50,34 @@ const EXPECTED = {
     id: ['text', 'NO'], user_id: ['text', 'YES'], ip_address: ['text', 'YES'], bucket: ['text', 'NO'],
     endpoint: ['text', 'YES'], created_at: ['timestamp with time zone', 'NO'],
   },
+  // 0021 Branching v2
+  WorkflowVersion: {
+    id: ['text', 'NO'], workflow_id: ['text', 'NO'], user_id: ['text', 'NO'], version: ['integer', 'NO'], title: ['text', 'NO'],
+    nodes: ['text', 'NO'], edges: ['text', 'NO'], node_count: ['integer', 'NO'], created_at: ['timestamp with time zone', 'NO'],
+  },
+  WorkflowRun: {
+    id: ['text', 'NO'], user_id: ['text', 'NO'], workflow_id: ['text', 'YES'], status: ['text', 'NO'], node_count: ['integer', 'NO'],
+    ai_calls: ['integer', 'NO'], duration_ms: ['integer', 'NO'], error_count: ['integer', 'NO'], node_types: ['ARRAY', 'NO'],
+    created_at: ['timestamp with time zone', 'NO'],
+  },
+  WorkflowShare: {
+    token: ['text', 'NO'], workflow_id: ['text', 'NO'], user_id: ['text', 'NO'], created_at: ['timestamp with time zone', 'NO'],
+    revoked_at: ['timestamp with time zone', 'YES'], view_count: ['integer', 'NO'],
+  },
 };
+// 0021: indexes the Branching v2 queries and the cascades rely on (name -> table)
+const EXPECTED_INDEXES = {
+  WorkflowVersion_workflow_id_version_key: 'WorkflowVersion', WorkflowVersion_user_id_idx: 'WorkflowVersion',
+  WorkflowRun_user_id_created_at_idx: 'WorkflowRun', WorkflowRun_workflow_id_idx: 'WorkflowRun',
+  WorkflowShare_one_active_idx: 'WorkflowShare', WorkflowShare_workflow_id_idx: 'WorkflowShare', WorkflowShare_user_id_idx: 'WorkflowShare',
+};
+// 0021: [table, column, referenced table, ON DELETE]
+const EXPECTED_FKS = [
+  ['"WorkflowVersion"', 'workflow_id', '"BranchingTree"', 'CASCADE'], ['"WorkflowVersion"', 'user_id', '"User"', 'CASCADE'],
+  ['"WorkflowRun"', 'workflow_id', '"BranchingTree"', 'SET NULL'], ['"WorkflowRun"', 'user_id', '"User"', 'CASCADE'],
+  ['"WorkflowShare"', 'workflow_id', '"BranchingTree"', 'CASCADE'], ['"WorkflowShare"', 'user_id', '"User"', 'CASCADE'],
+];
+const EXPECTED_TRIGGERS = ['WorkflowVersion_owner_check', 'WorkflowRun_owner_check', 'WorkflowShare_owner_check', 'WorkflowRun_daily_cap'];
 // Columns the API reads from "User" in GET /api/user/profile (api/user/profile.ts, CHG-0013)
 const PROFILE_COLUMNS = ['id', 'name', 'username', 'email', 'avatar_url', 'avatar_initials', 'plan', 'role', 'bio', 'location',
   'organization', 'github', 'huggingface', 'website', 'joined_date', 'created_at', 'subscription_tier', 'birth_date', 'referral_source', 'plan_expires_at'];
@@ -98,12 +125,23 @@ for (const t of ['"Prompt"', '"BranchingTree"', '"Trace"', '"User"', '"QuotaEven
 for (const t of ['"Prompt"', '"BranchingTree"', '"Trace"']) {
   if (!cons.some((c) => c.tbl === t && c.contype === 'f' && c.on_delete === 'CASCADE')) diff(`${t}.user_id has no FOREIGN KEY to "User" with ON DELETE CASCADE`);
 }
+for (const [t, col, ref, del] of EXPECTED_FKS) {
+  const re = new RegExp(`FOREIGN KEY \\(${col}\\) REFERENCES ${ref.replace(/"/g, '"?')}\\(id\\)`);
+  if (!cons.some((c) => c.tbl === t && c.contype === 'f' && re.test(c.def) && c.on_delete === del)) diff(`${t}.${col} has no FOREIGN KEY to ${ref} with ON DELETE ${del} (0021)`);
+}
+for (const t of ['"WorkflowVersion"', '"WorkflowRun"']) {
+  if (!cons.some((c) => c.tbl === t && c.contype === 'p')) diff(`${t} has no PRIMARY KEY (0021)`);
+}
+if (!cons.some((c) => c.tbl === '"WorkflowShare"' && c.contype === 'p' && /\(token\)/.test(c.def))) diff('"WorkflowShare" has no PRIMARY KEY (token) (0021)');
 
 console.log('\n== Indexes');
 const idx = await sql`SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename <> 'PaymentRecord' ORDER BY 1, 2`;
 for (const i of idx) console.log(`      ${i.indexdef}`);
 const invalid = await sql`SELECT c.relname FROM pg_index x JOIN pg_class c ON c.oid = x.indexrelid WHERE NOT x.indisvalid`;
 for (const i of invalid) diff(`index ${i.relname} is INVALID (an interrupted CONCURRENTLY build): run that migration's down, then up`);
+for (const [name, table] of Object.entries(EXPECTED_INDEXES)) {
+  if (!idx.some((i) => i.indexname === name && i.tablename === table)) diff(`index "${name}" on "${table}" is missing (0021)`);
+}
 const userIdx = idx.filter((i) => i.tablename === 'User').map((i) => i.indexdef);
 console.log(`INFO  unique index on User.username: ${userIdx.some((d) => /UNIQUE/.test(d) && /username/.test(d)) ? 'yes' : 'NO'}`);
 console.log(`INFO  unique index on lower(email): ${userIdx.some((d) => /UNIQUE/.test(d) && /lower\(email\)/.test(d)) ? 'yes' : 'NO'}`);
@@ -121,6 +159,7 @@ for (const f of fns) console.log(`      ${f.proname}(${f.args}) owner=${f.owner}
 const guards = trg.filter((t) => /_(guard_update|no_truncate)$/.test(t.tgname)).length;
 console.log(`INFO  row guards / TRUNCATE blocks (0011): ${guards} of 12 present`);
 console.log(`INFO  daily usage-record cap (0015): ${trg.some((t) => t.tgname === 'Trace_daily_cap') ? 'present' : 'NOT present'}`);
+for (const name of EXPECTED_TRIGGERS) if (!trg.some((t) => t.tgname === name)) diff(`trigger ${name} is missing (0021)`);
 
 console.log('\n== Roles and table grants');
 const [{ me }] = await sql`SELECT current_user AS me`;

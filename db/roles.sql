@@ -90,7 +90,27 @@ ALTER ROLE bedrock_app SET idle_in_transaction_session_timeout = '30s';
 -- migrate:break
 -- Tables not listed above (and any table a future migration adds) give bedrock_app NO access until a line is added
 -- here. Add the rights for a new feature's table in the same change that adds the table, BEFORE Vercel uses bedrock_app.
---
+-- migrate:break
+-- Branching v2 (migration 0021): version history, run records, share links. Given only when the tables exist, so
+-- this file still runs cleanly on a database that does not have 0021 yet (run it again after applying 0021).
+--   "WorkflowVersion": save a version, list / open / restore, keep the last 20 (delete). Never edited.
+--   "WorkflowRun":     save a run record, stats, 90-day cleanup (delete). Never edited.
+--   "WorkflowShare":   create a link, open it, revoke it (revoked_at) and count views (view_count). Nothing else in a
+--                      link can change, and links are never deleted by the app (they go with the workflow/account).
+DO $$
+BEGIN
+  IF to_regclass('public."WorkflowVersion"') IS NOT NULL THEN
+    EXECUTE 'GRANT SELECT, INSERT, DELETE ON "WorkflowVersion" TO bedrock_app';
+  END IF;
+  IF to_regclass('public."WorkflowRun"') IS NOT NULL THEN
+    EXECUTE 'GRANT SELECT, INSERT, DELETE ON "WorkflowRun" TO bedrock_app';
+  END IF;
+  IF to_regclass('public."WorkflowShare"') IS NOT NULL THEN
+    EXECUTE 'GRANT SELECT, INSERT ON "WorkflowShare" TO bedrock_app';
+    EXECUTE 'GRANT UPDATE (revoked_at, view_count) ON "WorkflowShare" TO bedrock_app';
+  END IF;
+END $$;
+-- migrate:break
 --
 -- Final check: one row per expected right. The runner prints them and fails if any is wrong.
 SELECT c.item, c.ok FROM (VALUES
@@ -118,5 +138,20 @@ SELECT c.item, c.ok FROM (VALUES
      NOT has_function_privilege('public', 'reserve_quota(text,text,text,text,text,integer,interval)', 'EXECUTE')
      AND NOT has_function_privilege('public', 'purge_old_logs(integer)', 'EXECUTE')
      AND NOT has_function_privilege('public', 'trace_totals(text)', 'EXECUTE')
-     AND NOT has_function_privilege('public', 'delete_user_data(text)', 'EXECUTE'))
+     AND NOT has_function_privilege('public', 'delete_user_data(text)', 'EXECUTE')),
+  -- 0021 (true when the table does not exist yet: nothing to grant)
+  ('WorkflowVersion: read / add / delete, never edit',
+     CASE WHEN to_regclass('public."WorkflowVersion"') IS NULL THEN true ELSE
+       has_table_privilege('bedrock_app', '"WorkflowVersion"', 'SELECT') AND has_table_privilege('bedrock_app', '"WorkflowVersion"', 'INSERT')
+       AND has_table_privilege('bedrock_app', '"WorkflowVersion"', 'DELETE') AND NOT has_any_column_privilege('bedrock_app', '"WorkflowVersion"', 'UPDATE') END),
+  ('WorkflowRun: read / add / delete, never edit',
+     CASE WHEN to_regclass('public."WorkflowRun"') IS NULL THEN true ELSE
+       has_table_privilege('bedrock_app', '"WorkflowRun"', 'SELECT') AND has_table_privilege('bedrock_app', '"WorkflowRun"', 'INSERT')
+       AND has_table_privilege('bedrock_app', '"WorkflowRun"', 'DELETE') AND NOT has_any_column_privilege('bedrock_app', '"WorkflowRun"', 'UPDATE') END),
+  ('WorkflowShare: read / add / revoke + view count only, never delete',
+     CASE WHEN to_regclass('public."WorkflowShare"') IS NULL THEN true ELSE
+       has_table_privilege('bedrock_app', '"WorkflowShare"', 'SELECT') AND has_table_privilege('bedrock_app', '"WorkflowShare"', 'INSERT')
+       AND has_column_privilege('bedrock_app', '"WorkflowShare"', 'revoked_at', 'UPDATE') AND has_column_privilege('bedrock_app', '"WorkflowShare"', 'view_count', 'UPDATE')
+       AND NOT has_column_privilege('bedrock_app', '"WorkflowShare"', 'token', 'UPDATE') AND NOT has_column_privilege('bedrock_app', '"WorkflowShare"', 'workflow_id', 'UPDATE')
+       AND NOT has_column_privilege('bedrock_app', '"WorkflowShare"', 'user_id', 'UPDATE') AND NOT has_table_privilege('bedrock_app', '"WorkflowShare"', 'DELETE') END)
 ) AS c(item, ok);

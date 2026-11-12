@@ -44,7 +44,8 @@ describe.skipIf(!PGlite)('list paging', () => {
   });
 
   it('the document contains all six queries', () => {
-    expect(Object.keys(Q).sort()).toEqual(['prompt_one', 'prompts_first_page', 'prompts_next_page', 'workflow_one', 'workflows_first_page', 'workflows_next_page']);
+    // PAGING.md also holds the Branching v2 queries (0021); those are tested in branchingV2.local.test.ts
+    expect(Object.keys(Q).filter((k) => /^(prompt|workflow)/.test(k)).sort()).toEqual(['prompt_one', 'prompts_first_page', 'prompts_next_page', 'workflow_one', 'workflows_first_page', 'workflows_next_page']);
   });
 
   async function walk(first: string, next: string, pageSize: number) {

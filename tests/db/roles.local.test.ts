@@ -42,10 +42,10 @@ describe.skipIf(!PGlite)('db/roles.sql on in-memory Postgres', () => {
     await db.query('REVOKE fake_super FROM bedrock_app');
   });
 
-  it('gives exactly the planned rights: all 17 final checks are OK, also on a second run', async () => {
+  it('gives exactly the planned rights: all 20 final checks are OK, also on a second run', async () => {
     for (let i = 0; i < 2; i++) {
       const checks = await runSql(db, rolesSql);
-      expect(checks).toHaveLength(17);
+      expect(checks).toHaveLength(20); // 17 + 3 for the Branching v2 tables (0021)
       expect(checks.filter((c) => !c.ok).map((c) => c.item)).toEqual([]);
     }
     const [r] = await rows(db, `SELECT array_to_string(rolconfig,' ') c FROM pg_roles WHERE rolname = 'bedrock_app'`);
