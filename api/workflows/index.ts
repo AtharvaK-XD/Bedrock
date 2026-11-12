@@ -3,6 +3,7 @@ import { authenticateRequest } from '../_lib/auth.js';
 import { getDb } from '../_lib/db.js';
 import { enforceRateLimit } from '../_lib/rateLimiter.js';
 import { DATA_LIMITS, sendDbFailure, firstFieldError, clampText, dbLimitKind, parseListQuery, encodeCursor, newRowId, serverRowId } from '../_lib/dataHttp.js';
+import { handleShared, handleWorkflowAction, snapshotVersion } from '../_lib/workflowActions.js';
 
 /** Nodes and edges are stored as JSON text; a damaged value must not break the whole list. */
 function readJsonList(raw: unknown): unknown {
@@ -37,6 +38,12 @@ function sendWorkflowLimitReached(res: VercelResponse) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Branching v2: opening a shared link needs no sign-in (its own per-IP limit is inside)
+  const action = typeof req.query?.action === 'string' ? req.query.action : '';
+  if (action === 'shared') {
+    return handleShared(req, res, getDb());
+  }
+
   // Enforce distributed Upstash Redis rate limiting
   const allowed = await enforceRateLimit(req, res, 'workflows');
   if (!allowed) return;
@@ -47,6 +54,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const sql = getDb();
+
+  // Branching v2 actions (validate, generate, explain, versions, restore, share, runs, stats)
+  if (action) {
+    return handleWorkflowAction(action, req, res, user, sql);
+  }
 
   // GET /api/workflows
   //   (no parameters)          every workflow as a plain array, as before
@@ -147,6 +159,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           RETURNING id
         `) as Array<{ id: string }>;
         if (updated.length > 0) {
+          await snapshotVersion(sql, user.id, updated[0].id, title, nodes, edges); // version history; never fails the save
           return res.status(200).json({ id: updated[0].id, title, success: true });
         }
       }
@@ -159,6 +172,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         RETURNING id
       `) as Array<{ id: string }>;
       if (inserted.length > 0) {
+        await snapshotVersion(sql, user.id, id, title, nodes, edges); // version history; never fails the save
         return res.status(200).json({ id, title, success: true });
       }
 

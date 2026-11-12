@@ -17,6 +17,14 @@ import {
 } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { BEDROCK_UNIVERSAL_GUARDRAILS, resolveDomainGuardrails } from '../_lib/aiPrompts.js';
+import { JSON_ANSWER_INSTRUCTION, parseAiJson } from '../_lib/workflowAi.js';
+
+/** Optional `responseFormat: 'json'` (Branching v2): extra fields on the answer, nothing else changes. */
+function jsonFields(wantsJson: boolean, text: string): { json?: unknown; jsonError?: string } {
+  if (!wantsJson) return {};
+  const parsed = parseAiJson(text);
+  return parsed.ok ? { json: parsed.value } : { jsonError: parsed.error };
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -66,7 +74,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // rules - React 19, Next.js, tsc - were added to every call, including image, video and writing prompts; the
   // website's own system prompts already carry their role's rules.)
   const guardrails = targetType ? resolveDomainGuardrails(targetType) : BEDROCK_UNIVERSAL_GUARDRAILS;
-  const systemPrompt = rawSystemPrompt ? `${rawSystemPrompt}\n\n${guardrails}` : guardrails;
+  const wantsJson = body.responseFormat === 'json';
+  const baseSystemPrompt = rawSystemPrompt ? `${rawSystemPrompt}\n\n${guardrails}` : guardrails;
+  const systemPrompt = wantsJson ? `${baseSystemPrompt}\n\n${JSON_ANSWER_INSTRUCTION}` : baseSystemPrompt;
 
   if (!prompt) {
     return res.status(400).json({ error: 'prompt is required' });
@@ -127,7 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      res.write(`data: ${JSON.stringify({ done: true, text, modelTarget: model, latencyMs: latency, tokensUsed: tokens, status: 'success', ...(truncated ? { truncated: true } : {}) })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, text, modelTarget: model, latencyMs: latency, tokensUsed: tokens, status: 'success', ...(truncated ? { truncated: true } : {}), ...jsonFields(wantsJson, text) })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
       logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, stream: true, ...(truncated ? { truncated: true } : {}), ...usageFields(usage) });
@@ -159,6 +169,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       status: 'success',
       // Only present when the answer was cut off at the output limit
       ...(truncated ? { truncated: true } : {}),
+      // Only present when the caller asked for responseFormat 'json'
+      ...jsonFields(wantsJson, text),
     });
   } catch (err: any) {
     const outcome = failureOutcome(err);
