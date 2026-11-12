@@ -223,16 +223,21 @@ export function useUserProfile() {
             }
           }
 
-          // Dispatch email notification once per user session
+          // Dispatch email notification once per user session upon confirmed delivery
           if (clerkEmail) {
             const sessionNotifyKey = `bedrock_session_email_notified_${clerkUser.id}`;
             if (!sessionStorage.getItem(sessionNotifyKey)) {
-              sessionStorage.setItem(sessionNotifyKey, 'true');
               notifyAuthSuccess({
                 email: clerkEmail,
                 name: clerkName,
                 type: isNewSignup ? 'signup' : 'signin',
-              });
+              }).then((sent) => {
+                if (sent) {
+                  try {
+                    sessionStorage.setItem(sessionNotifyKey, 'true');
+                  } catch {}
+                }
+              }).catch(() => {});
             }
           }
           

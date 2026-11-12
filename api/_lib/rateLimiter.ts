@@ -186,7 +186,7 @@ const PRESET_CONFIGS: Record<LimiterPreset, PresetConfig> = {
   health: { requests: 300, windowSeconds: 60, prefix: 'ratelimit:health' },
   // Transactional email: per sender IP, and per recipient address
   email: { requests: 5, windowSeconds: 3600, prefix: 'ratelimit:email:ip' },
-  emailRecipient: { requests: 3, windowSeconds: 86400, prefix: 'ratelimit:email:rcpt' },
+  emailRecipient: { requests: 10, windowSeconds: 86400, prefix: 'ratelimit:email:rcpt' },
   // Checkout: a person opens checkout a few times at most; each order is a call to Razorpay and a database row
   billing: { requests: 10, windowSeconds: 60, prefix: 'ratelimit:billing' },
   // Desktop sign-in tickets are login credentials: per account, shared between all server copies
