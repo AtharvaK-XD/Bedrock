@@ -426,5 +426,43 @@ iframe.razorpay-checkout-frame {
   -webkit-backdrop-filter: blur(12px) !important;
 }
 
+/* Branching: guided tour, confetti and canvas helpers (src/components/branching) */
+.branch-tour-spot {
+  outline: 2px solid rgb(var(--copper-400));
+  outline-offset: 4px;
+  border-radius: 14px;
+  animation: branch-tour-pulse 1.6s ease-in-out infinite;
+  position: relative;
+  z-index: 5;
+}
 
+@keyframes branch-tour-pulse {
+  0%, 100% { outline-color: rgb(var(--copper-400) / 0.95); box-shadow: 0 0 0 0 rgb(var(--copper-400) / 0.35); }
+  50% { outline-color: rgb(var(--copper-400) / 0.45); box-shadow: 0 0 0 10px rgb(var(--copper-400) / 0); }
+}
 
+.branch-confetti-piece {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  animation-name: branch-confetti-fall;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes branch-confetti-fall {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate3d(var(--confetti-drift, 0px), 85vh, 0) rotate(calc(var(--confetti-rotate, 180deg) + 540deg)); }
+}
+
+.react-flow__minimap {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.reduce-motion .branch-tour-spot {
+  animation: none;
+}

@@ -22,6 +22,7 @@ import {
   useUpdateNodeInternals,
   type EdgeProps,
   SelectionMode,
+  MiniMap,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -63,11 +64,30 @@ import {
   Hand,
   Maximize2,
   HelpCircle,
+  StickyNote,
 } from 'lucide-react';
 import { useUserProfile } from '../lib/useUserProfile';
 import { TIER_LIMITS, normalizeTier, isModelAllowedForTier, getModelRequiredTier } from '../lib/subscriptionTiers';
 import { UpgradeModal } from '../components/ui/UpgradeModal';
 import { getActiveModelSettings } from '../lib/appSettings';
+import { NodePalette } from '../components/branching/NodePalette';
+import { NoteNode } from '../components/branching/NoteNode';
+import type { NoteColor } from '../components/branching/noteColors';
+import { StartHere } from '../components/branching/StartHere';
+import { GuidedTour } from '../components/branching/GuidedTour';
+import { hasSeenTour, markTourSeen } from '../components/branching/tourState';
+import { Confetti, MissionsPanel } from '../components/branching/Missions';
+import { useMissions } from '../components/branching/useMissions';
+import { largestConnectedGroup } from '../components/branching/missionList';
+import { BranchingTopBar } from '../components/branching/BranchingTopBar';
+import { ResultInspector } from '../components/branching/ResultInspector';
+import { INSPECT_EVENT, requestInspect } from '../components/branching/inspectEvents';
+import { ErrorHelp } from '../components/branching/ErrorHelp';
+import { BEGINNER_TEMPLATES, EXTRACT_LIST_CODE, STARTER_TEMPLATE_ID, type BranchingTemplate } from '../components/branching/beginnerTemplates';
+import { emptyHistory, recordStep, undoStep, redoStep, structureKey, carryRuntimeFields, type HistoryState, type GraphSnapshot } from '../components/branching/history';
+import { autoArrange } from '../components/branching/layout';
+import { getCatalogEntry } from '../components/branching/nodeCatalog';
+import { buildWorkflowFile, workflowFileName } from '../components/branching/workflowFile';
 
 const NODE_CONFIG = {
   system: { 
@@ -157,6 +177,17 @@ const NODE_CONFIG = {
     hoverBorder: 'hover:border-indigo-500/65',
     icon: ShieldCheck,
     paletteShape: 'rounded-t-xs rounded-b-xl'
+  },
+  note: {
+    title: 'Sticky Note',
+    desc: 'A comment on the canvas. Never runs, not counted in your node limit',
+    tag: 'NOTE',
+    color: 'text-yellow-300',
+    bg: 'bg-yellow-500/10',
+    border: 'border-yellow-400/35',
+    hoverBorder: 'hover:border-yellow-400/65',
+    icon: StickyNote,
+    paletteShape: 'rounded-md rotate-2'
   }
 };
 
@@ -194,7 +225,8 @@ const CODE_TEMPLATES = [
   { id: 'uppercase', name: 'To Uppercase', code: '// Convert upstream text to uppercase\nreturn input.trim().toUpperCase();' },
   { id: 'json_parse', name: 'Parse & Format JSON', code: '// Pretty-print valid JSON or return original\ntry {\n  const obj = JSON.parse(input);\n  return JSON.stringify(obj, null, 2);\n} catch (e) {\n  return input;\n}' },
   { id: 'word_count', name: 'Word Counter', code: '// Calculate input statistics\nconst count = input.trim().split(/\\s+/).filter(Boolean).length;\nreturn `[Metrics]\\nWord Count: ${count}\\nLength: ${input.length} chars\\n\\n${input}`;' },
-  { id: 'extract_code', name: 'Extract Code Blocks', code: '// Extract code from markdown fences\nconst match = input.match(/```(?:[a-z]*)\\n([\\s\\S]*?)```/i);\nreturn match ? match[1].trim() : input;' }
+  { id: 'extract_code', name: 'Extract Code Blocks', code: '// Extract code from markdown fences\nconst match = input.match(/```(?:[a-z]*)\\n([\\s\\S]*?)```/i);\nreturn match ? match[1].trim() : input;' },
+  { id: 'extract_list', name: 'Extract List (checklist)', code: EXTRACT_LIST_CODE }
 ];
 
 const EVAL_CRITERIA = [
@@ -231,6 +263,8 @@ export type PromptNodeData = {
   evalScore?: number;
   evalCritique?: string;
   outputFormat?: 'markdown' | 'text' | 'json';
+  noteText?: string;
+  noteColor?: NoteColor;
 };
 
 // Custom Edge with Delete Button
@@ -582,6 +616,16 @@ ${upstreamText || data.description}`;
     }
   };
 
+  if (data.nodeType === 'note') {
+    return (
+      <NoteNode
+        data={data}
+        selected={selected}
+        onChange={(patch) => setNodes(nodes => nodes.map(n => n.id === id ? { ...n, data: { ...n.data, ...patch } } : n))}
+      />
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -805,14 +849,18 @@ ${upstreamText || data.description}`;
 
         {data.nodeType === 'output' && (
           <div className="flex flex-col gap-1.5">
-            <div className="p-2.5 bg-black/70 rounded-lg border border-emerald-500/30 text-[11px] font-mono text-emerald-400/90 max-h-[110px] overflow-y-auto custom-scrollbar leading-relaxed">
+            {data.status === 'error' && data.output ? (
+              <div data-tour="result"><ErrorHelp message={data.output} nodeType={data.nodeType} /></div>
+            ) : (
+            <div data-tour="result" className="p-2.5 bg-black/70 rounded-lg border border-emerald-500/30 text-[11px] font-mono text-emerald-400/90 max-h-[110px] overflow-y-auto custom-scrollbar leading-relaxed">
               {data.output || (
                 <span className="italic opacity-50 text-gray-500">
                   Ready. Run connected upstream nodes to populate output stream.
                 </span>
               )}
             </div>
-            {data.output && (
+            )}
+            {data.output && data.status !== 'error' && (
               <div className="flex items-center justify-between text-[10px] font-mono text-emerald-500/70 pt-0.5">
                 <span>{data.output.split(/\s+/).filter(Boolean).length} words · {data.output.length} chars</span>
                 <button
@@ -880,9 +928,13 @@ ${upstreamText || data.description}`;
         )}
 
         {data.nodeType !== 'output' && data.output && (
-          <div className="mt-1 p-2 bg-black/60 rounded-lg border border-white/10 text-[11px] text-gray-300 max-h-[80px] overflow-y-auto custom-scrollbar font-mono">
+          data.status === 'error' ? (
+            <div data-tour="result" className="mt-1"><ErrorHelp message={data.output} nodeType={data.nodeType} /></div>
+          ) : (
+          <div data-tour="result" className="mt-1 p-2 bg-black/60 rounded-lg border border-white/10 text-[11px] text-gray-300 max-h-[80px] overflow-y-auto custom-scrollbar font-mono">
             {data.output}
           </div>
+          )
         )}
       </div>
 
@@ -907,9 +959,20 @@ ${upstreamText || data.description}`;
             data.status === 'running' && "text-copper-400 font-semibold",
             data.status === 'idle' && "text-gray-500"
           )}>{data.status}</span>
+          {data.output && data.status !== 'running' && (
+            <button
+              type="button"
+              onClick={() => requestInspect(id)}
+              className="text-[10px] font-mono text-gray-400 hover:text-white underline-offset-2 hover:underline nodrag"
+              title="Read, copy or download the full result"
+            >
+              View
+            </button>
+          )}
         </div>
         
-        <button 
+        <button
+          data-tour="run"
           onClick={handleRun}
           disabled={data.status === 'running'}
           className={cn(
@@ -1466,6 +1529,24 @@ const CURATED_TEMPLATES = [
   },
 ];
 
+// Beginner templates come first so a new user sees the easiest options at the top. The curated ones are unchanged.
+const ALL_TEMPLATES: BranchingTemplate[] = [...BEGINNER_TEMPLATES, ...CURATED_TEMPLATES];
+
+// Sticky notes are comments, so they never count toward a plan's node limit
+const countedNodes = (list: { data: { nodeType?: string } }[]) => list.filter(n => n.data.nodeType !== 'note').length;
+
+const MINIMAP_COLORS: Record<string, string> = {
+  system: '#60a5fa',
+  prompt: 'rgb(var(--copper-400))',
+  output: '#34d399',
+  data: '#c084fc',
+  condition: '#fbbf24',
+  code: '#fb7185',
+  merge: '#2dd4bf',
+  evaluation: '#818cf8',
+  note: '#facc15',
+};
+
 const initialNodes: Node<PromptNodeData>[] = [
   {
     id: 'node-1',
@@ -1536,6 +1617,99 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
   const { fitView } = useReactFlow();
 
   const { profile } = useUserProfile();
+
+  // ---- Beginner help: tour, missions, result viewer, start screen
+  const [tourOpen, setTourOpen] = useState(false);
+  const [missionsOpen, setMissionsOpen] = useState(false);
+  const [startDismissed, setStartDismissed] = useState(false);
+  const [inspectId, setInspectId] = useState<string | null>(null);
+  const { done: missionsDone, burst: confettiBurst, markDone: markMissionDone } = useMissions(nodes, edges);
+  const planTier = normalizeTier(profile?.plan);
+  const planLabel = planTier === 'ultimate' ? 'Ultimate' : planTier === 'free' ? 'Free' : 'Pro';
+  const nodeLimit = isDesktopApp() ? Infinity : TIER_LIMITS[planTier].dagNodeLimit;
+
+  // ---- Undo / redo (last 50 steps of nodes, settings, positions and wires; running a node is not a step)
+  const historyRef = useRef<HistoryState<Node<PromptNodeData>, Edge>>(emptyHistory());
+  const settledRef = useRef<GraphSnapshot<Node<PromptNodeData>, Edge>>({ nodes, edges });
+  const settledKeyRef = useRef(structureKey(nodes, edges));
+  const latestRef = useRef({ nodes, edges });
+  latestRef.current = { nodes, edges };
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipNextRef = useRef(false);
+  const [historyInfo, setHistoryInfo] = useState({ undo: 0, redo: 0 });
+
+  const settleNow = useCallback(() => {
+    if (settleTimerRef.current) {
+      clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = null;
+    }
+    const { nodes: n, edges: e } = latestRef.current;
+    const key = structureKey(n, e);
+    if (key !== settledKeyRef.current) {
+      historyRef.current = recordStep(historyRef.current, settledRef.current);
+      settledRef.current = { nodes: n, edges: e };
+      settledKeyRef.current = key;
+      setHistoryInfo({ undo: historyRef.current.past.length, redo: historyRef.current.future.length });
+    }
+  }, []);
+
+  useEffect(() => {
+    const key = structureKey(nodes, edges);
+    if (skipNextRef.current) {
+      // The graph was just replaced on purpose (undo, redo, loading a workflow): that is the new starting point
+      skipNextRef.current = false;
+      settledRef.current = { nodes, edges };
+      settledKeyRef.current = key;
+      return;
+    }
+    if (key === settledKeyRef.current) {
+      if (settleTimerRef.current) {
+        clearTimeout(settleTimerRef.current);
+        settleTimerRef.current = null;
+      }
+      return;
+    }
+    // Wait for the change to settle (a drag is many small changes) before it becomes one undo step
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = setTimeout(settleNow, 400);
+  }, [nodes, edges, settleNow]);
+
+  useEffect(() => () => {
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+  }, []);
+
+  const resetHistory = () => {
+    historyRef.current = emptyHistory();
+    skipNextRef.current = true;
+    setHistoryInfo({ undo: 0, redo: 0 });
+  };
+
+  const applySnapshot = (snap: GraphSnapshot<Node<PromptNodeData>, Edge>) => {
+    skipNextRef.current = true;
+    const restoredNodes = carryRuntimeFields(snap.nodes, latestRef.current.nodes).map(n => ({ ...n, selected: false }));
+    setNodes(restoredNodes);
+    setEdges(snap.edges);
+    setActiveSettingsNodeId(curr => (curr && restoredNodes.some(n => n.id === curr) ? curr : null));
+    setHistoryInfo({ undo: historyRef.current.past.length, redo: historyRef.current.future.length });
+  };
+
+  const handleUndo = useCallback(() => {
+    settleNow();
+    const { state, restored } = undoStep(historyRef.current, latestRef.current);
+    if (!restored) return;
+    historyRef.current = state;
+    applySnapshot(restored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settleNow]);
+
+  const handleRedo = useCallback(() => {
+    settleNow();
+    const { state, restored } = redoStep(historyRef.current, latestRef.current);
+    if (!restored) return;
+    historyRef.current = state;
+    applySnapshot(restored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settleNow]);
   const [upgradeModal, setUpgradeModal] = useState<{
     isOpen: boolean;
     featureName?: string;
@@ -1554,7 +1728,9 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
       setNodes(parseNodes(initialWorkflow.nodes));
       setEdges(parseEdges(initialWorkflow.edges));
       setActiveSettingsNodeId(null);
+      resetHistory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialWorkflow]);
 
   const handleSave = async (silent = false) => {
@@ -1570,6 +1746,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
       const updated = await loadWorkflows();
       setSavedWorkflows(updated);
       setSaveStatus('saved');
+      markMissionDone('save_workflow');
       setTimeout(() => setSaveStatus('idle'), 2500);
       return res;
     } catch (e) {
@@ -1588,6 +1765,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
     setNodes(parseNodes(tree.nodes));
     setEdges(parseEdges(tree.edges));
     setActiveSettingsNodeId(null);
+    resetHistory();
   };
 
 
@@ -1606,11 +1784,20 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
     []
   );
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, type: 'deletableEdge', animated: true, style: { stroke: '#ff9b71', strokeWidth: 2 } }, eds)),
-    []
+    (params: Connection) => {
+      setEdges((eds) => addEdge({ ...params, type: 'deletableEdge', animated: true, style: { stroke: '#ff9b71', strokeWidth: 2 } }, eds));
+      // Mission "Connect 3 nodes": counted when the person draws the wire, not when a template opens already wired
+      if (params.source && params.target) {
+        const wires = [...latestRef.current.edges, { source: params.source, target: params.target }];
+        if (largestConnectedGroup(latestRef.current.nodes, wires) >= 3) markMissionDone('connect_three');
+      }
+    },
+    [markMissionDone]
   );
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      // Sticky notes are edited in place, they have no settings panel
+      if ((node.data as { nodeType?: string } | undefined)?.nodeType === 'note') return;
       setActiveSettingsNodeId(node.id);
     },
     []
@@ -1643,11 +1830,12 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const addNode = (type: keyof typeof NODE_CONFIG = 'prompt') => {
+  const addNode = (type: keyof typeof NODE_CONFIG = 'prompt', opts?: { afterId?: string }) => {
     const isDesktop = isDesktopApp();
     const currentTier = normalizeTier(profile?.plan);
     const maxNodes = isDesktop ? Infinity : TIER_LIMITS[currentTier].dagNodeLimit;
-    if (!isDesktop && nodes.length >= maxNodes) {
+    // Sticky notes never count toward the node limit; every other node type is limited exactly as before
+    if (type !== 'note' && !isDesktop && countedNodes(nodes) >= maxNodes) {
       setUpgradeModal({
         isOpen: true,
         featureName: 'Workflow Node Limit',
@@ -1658,6 +1846,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
     }
 
     const config = NODE_CONFIG[type];
+    const afterNode = opts?.afterId ? nodes.find(n => n.id === opts.afterId) : undefined;
     
     let extraInitial: Partial<PromptNodeData> = {};
     if (type === 'system') {
@@ -1704,12 +1893,21 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
         description: 'Final execution terminal',
         outputFormat: 'markdown',
       };
+    } else if (type === 'note') {
+      extraInitial = {
+        title: 'Note',
+        description: '',
+        noteText: '',
+        noteColor: 'yellow',
+      };
     }
 
     const newNode: Node<PromptNodeData> = {
       id: `node-${Date.now()}`,
       type: 'genericNode',
-      position: { x: 300 + Math.random() * 50, y: 200 + Math.random() * 50 },
+      position: afterNode
+        ? { x: afterNode.position.x + 380, y: afterNode.position.y }
+        : { x: 300 + Math.random() * 50, y: 200 + Math.random() * 50 },
       data: { 
         title: `New ${config.title}`, 
         description: '',
@@ -1721,8 +1919,134 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
       },
     };
     setNodes((nds) => [...nds.map(n => ({...n, selected: false})), { ...newNode, selected: true }]);
-    setActiveSettingsNodeId(newNode.id);
+    if (afterNode) {
+      // "Next step" suggestion: the new node is wired to the one it follows
+      setEdges((eds) => addEdge({
+        source: afterNode.id,
+        target: newNode.id,
+        sourceHandle: afterNode.data.nodeType === 'condition' ? 'true' : null,
+        targetHandle: null,
+        type: 'deletableEdge',
+        animated: true,
+        style: { stroke: '#ff9b71', strokeWidth: 2 },
+      }, eds));
+    }
+    if (type !== 'note') setActiveSettingsNodeId(newNode.id);
   };
+
+  const openNodeLimitModal = () => {
+    setUpgradeModal({
+      isOpen: true,
+      featureName: 'Workflow Node Limit',
+      requiredTier: planTier === 'free' ? 'pro' : 'ultimate',
+      reason: `The ${planTier.toUpperCase()} plan is limited to ${nodeLimit} pipeline nodes. Upgrade to ${planTier === 'free' ? 'Pro (15 nodes)' : 'Ultimate (Unlimited nodes)'} to expand your neural workflow.`,
+    });
+  };
+
+  const duplicateNode = (id: string) => {
+    const source = nodes.find(n => n.id === id);
+    if (!source) return;
+    if (source.data.nodeType !== 'note' && !isDesktopApp() && countedNodes(nodes) >= nodeLimit) {
+      openNodeLimitModal();
+      return;
+    }
+    // The copy starts clean: no results, no scores, not running
+    const data: PromptNodeData = { ...source.data, title: `${source.data.title} (copy)`, status: 'idle' };
+    delete data.output;
+    delete data.conditionResult;
+    delete data.evalScore;
+    delete data.evalCritique;
+    const copy: Node<PromptNodeData> = {
+      ...source,
+      id: `node-${Date.now()}`,
+      position: { x: source.position.x + 40, y: source.position.y + 60 },
+      data,
+      selected: true,
+    };
+    setNodes(nds => [...nds.map(n => ({ ...n, selected: false })), copy]);
+    if (copy.data.nodeType !== 'note') setActiveSettingsNodeId(copy.id);
+    showToast('Node duplicated.', 'success');
+  };
+
+  const loadTemplateOntoCanvas = (tpl: BranchingTemplate) => {
+    setNodes(tpl.nodes as Node<PromptNodeData>[]);
+    setEdges(tpl.edges as Edge[]);
+    setWorkflowTitle(tpl.title);
+    setWorkflowId(undefined);
+    setActiveSettingsNodeId(null);
+    resetHistory();
+    setTimeout(() => fitView({ duration: 350, padding: 0.2 }), 60);
+  };
+
+  const handleAutoArrange = () => {
+    setNodes(nds => autoArrange(nds, edges));
+    setTimeout(() => fitView({ duration: 400, padding: 0.2 }), 60);
+  };
+
+  const handleExport = () => {
+    const file = buildWorkflowFile(workflowTitle, nodes as any, edges);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = workflowFileName(workflowTitle);
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Workflow saved as a file. Results are not included.', 'success');
+  };
+
+  const closeTour = () => {
+    markTourSeen();
+    setTourOpen(false);
+  };
+
+  // First visit: offer the tour once there is something on the canvas to point at
+  const hasNodes = nodes.length > 0;
+  useEffect(() => {
+    if (!hasNodes || hasSeenTour()) return;
+    const t = setTimeout(() => setTourOpen(true), 900);
+    return () => clearTimeout(t);
+  }, [hasNodes]);
+
+  // A cleared canvas shows the "Start here" cards again
+  useEffect(() => {
+    if (hasNodes) setStartDismissed(false);
+  }, [hasNodes]);
+
+  // A node's "View" button asks for the result viewer
+  useEffect(() => {
+    const onInspect = (e: Event) => {
+      const nodeId = (e as CustomEvent<{ nodeId?: string }>).detail?.nodeId;
+      if (nodeId) setInspectId(nodeId);
+    };
+    window.addEventListener(INSPECT_EVENT, onInspect);
+    return () => window.removeEventListener(INSPECT_EVENT, onInspect);
+  }, []);
+
+  // Ctrl+Z undo, Ctrl+Y / Ctrl+Shift+Z redo, Ctrl+D duplicate
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target?.isContentEditable) return;
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+        e.preventDefault();
+        handleRedo();
+      } else if (key === 'd') {
+        const selected = latestRef.current.nodes.find(n => n.selected);
+        if (selected) {
+          e.preventDefault();
+          duplicateNode(selected.id);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleUndo, handleRedo, nodes, profile?.plan]);
 
   const activeNode = nodes.find(n => n.id === activeSettingsNodeId) || null;
 
@@ -1737,7 +2061,8 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
 
   return (
     <div className={cn(
-      "w-full h-full relative flex flex-col rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] group/flow",
+      // overflow-clip (not hidden): sliding panels start off-screen, and "hidden" lets focus scroll the whole canvas sideways
+      "w-full h-full relative flex flex-col rounded-2xl overflow-clip border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] group/flow",
       toolMode === 'pan' && "is-pan-mode"
     )}>
       <div className="flex-1 w-full bg-transparent">
@@ -1773,6 +2098,16 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
           proOptions={{ hideAttribution: true }}
         >
           <Background variant={BackgroundVariant.Dots} color="rgba(255,255,255,0.08)" gap={20} size={2} />
+          <MiniMap
+            position="bottom-left"
+            pannable
+            zoomable
+            ariaLabel="Overview of the workflow"
+            nodeColor={(n) => MINIMAP_COLORS[(n.data as PromptNodeData | undefined)?.nodeType ?? ''] ?? '#9ca3af'}
+            nodeStrokeWidth={0}
+            maskColor="rgba(0, 0, 0, 0.55)"
+            style={{ backgroundColor: 'rgba(22, 24, 29, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }}
+          />
         </ReactFlow>
       </div>
 
@@ -1933,48 +2268,8 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
       </motion.div>
       </div>
 
-      {/* Floating Node Palette with Distinct Shapes for Each Archetype */}
-      <div
-        onWheel={(e) => e.stopPropagation()}
-        className="absolute top-6 right-6 flex flex-col items-end gap-2.5 z-20 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar p-2 -mr-2 nowheel nopan nodrag"
-      >
-        {Object.entries(NODE_CONFIG).map(([type, item]) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={type}
-              onClick={() => addNode(type as keyof typeof NODE_CONFIG)}
-              className={cn(
-                "group flex items-center p-2 rounded-xl border bg-sf-1a1a1a/90 backdrop-blur-xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap shrink-0",
-                "w-[52px] hover:w-[250px]",
-                item.bg, item.border, item.hoverBorder
-              )}
-              title={item.desc}
-            >
-              {/* Distinctive mini shape badge reflecting the node's geometry */}
-              <div className={cn(
-                "w-8 h-8 shrink-0 bg-black/60 border flex items-center justify-center font-mono text-[9px] font-bold transition-transform group-hover:scale-105",
-                item.border,
-                item.color,
-                item.paletteShape
-              )}>
-                <div className={type === 'condition' ? '-rotate-45' : ''}>
-                  <Icon className="w-3.5 h-3.5" />
-                </div>
-              </div>
-              <div className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100 text-left">
-                <div className={cn("text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5", item.color)}>
-                  <span>{item.title}</span>
-                  <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-black/50 border border-white/10 opacity-70">
-                    {item.tag}
-                  </span>
-                </div>
-                <div className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[170px]">{item.desc}</div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      {/* Node palette: names and one-line help on hover, grouped, with search (src/components/branching) */}
+      <NodePalette styles={NODE_CONFIG} onAdd={(type) => addNode(type as keyof typeof NODE_CONFIG)} />
 
       {/* Node Settings Editor Sidebar (Sliding from the LEFT, persists until cross button is clicked) */}
       <AnimatePresence>
@@ -2010,6 +2305,48 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
               </div>
               
               <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 custom-scrollbar">
+                {/* Node menu: duplicate, and good next steps from the node catalog */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => duplicateNode(activeNode.id)}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-mono border border-white/10 bg-white/5 text-gray-200 hover:bg-white/10 transition-colors active:scale-[0.97]"
+                      title="Make a copy of this node (Ctrl+D)"
+                    >
+                      Duplicate node
+                    </button>
+                    {activeNode.data.output && (
+                      <button
+                        type="button"
+                        onClick={() => requestInspect(activeNode.id)}
+                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-mono border border-white/10 bg-white/5 text-gray-200 hover:bg-white/10 transition-colors active:scale-[0.97]"
+                      >
+                        View result
+                      </button>
+                    )}
+                  </div>
+                  {(getCatalogEntry(activeNode.data.nodeType)?.nextNodes ?? []).filter(t => NODE_CONFIG[t as keyof typeof NODE_CONFIG]).length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Good next step</span>
+                      {(getCatalogEntry(activeNode.data.nodeType)?.nextNodes ?? [])
+                        .filter(t => NODE_CONFIG[t as keyof typeof NODE_CONFIG])
+                        .map(t => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => addNode(t as keyof typeof NODE_CONFIG, { afterId: activeNode.id })}
+                            className="px-2 py-1 rounded-md text-[10px] font-mono border border-copper-500/30 bg-copper-500/10 text-copper-300 hover:bg-copper-500/20 transition-colors"
+                            title={getCatalogEntry(t)?.does}
+                          >
+                            + {getCatalogEntry(t)?.name}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                  <p className="text-[11px] text-gray-500 leading-snug">{getCatalogEntry(activeNode.data.nodeType)?.does}</p>
+                </div>
+
                 {/* Title */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider">Node Title</label>
@@ -2416,6 +2753,42 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
         )}
       </AnimatePresence>
 
+      {nodes.length === 0 && !startDismissed && (
+        <StartHere
+          onStarter={() => {
+            const starter = BEGINNER_TEMPLATES.find(t => t.id === STARTER_TEMPLATE_ID);
+            if (starter) loadTemplateOntoCanvas(starter);
+          }}
+          onBlank={() => setStartDismissed(true)}
+        />
+      )}
+
+      <BranchingTopBar
+        nodeCount={countedNodes(nodes)}
+        nodeLimit={nodeLimit}
+        planLabel={planLabel}
+        onPlanClick={openNodeLimitModal}
+        canUndo={historyInfo.undo > 0}
+        canRedo={historyInfo.redo > 0}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onAutoArrange={handleAutoArrange}
+        onExport={handleExport}
+        onImport={() => showToast('Importing workflows is not available yet.', 'info')}
+        missionsDone={missionsDone.length}
+        onToggleMissions={() => setMissionsOpen(o => !o)}
+        onShowTour={() => setTourOpen(true)}
+      />
+      <GuidedTour open={tourOpen} onClose={closeTour} />
+      <MissionsPanel open={missionsOpen} done={missionsDone} onClose={() => setMissionsOpen(false)} />
+      <ResultInspector
+        open={Boolean(inspectId && nodes.some(n => n.id === inspectId))}
+        title={nodes.find(n => n.id === inspectId)?.data.title || 'Result'}
+        text={nodes.find(n => n.id === inspectId)?.data.output || ''}
+        onClose={() => setInspectId(null)}
+      />
+      <Confetti burst={confettiBurst} />
+
       <UpgradeModal
         isOpen={upgradeModal.isOpen}
         onClose={() => setUpgradeModal({ isOpen: false })}
@@ -2563,7 +2936,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
   });
 
   // Filter curated templates
-  const filteredTemplates = CURATED_TEMPLATES.filter(tpl => {
+  const filteredTemplates = ALL_TEMPLATES.filter(tpl => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -2668,7 +3041,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
                   activeTab === 'templates' ? "bg-white/10 text-white shadow-sm" : "text-neutral-400 hover:text-neutral-200"
                 )}
               >
-                Templates ({CURATED_TEMPLATES.length})
+                Templates ({ALL_TEMPLATES.length})
               </button>
             </div>
 
