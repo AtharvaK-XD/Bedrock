@@ -105,7 +105,7 @@ export function DoctorPanel({ open, issues, onClose, onFocus }: { open: boolean;
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.16 }}
-          className="absolute top-16 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,400px)] rounded-2xl border border-white/10 bg-sf-16181d/95 backdrop-blur-2xl shadow-2xl p-3 nowheel nopan nodrag"
+          className="absolute top-16 inset-x-0 mx-auto z-40 w-[min(92vw,400px)] rounded-2xl border border-white/10 bg-sf-16181d/95 backdrop-blur-2xl shadow-2xl p-3 nowheel nopan nodrag"
           role="dialog"
           aria-label="Pipeline doctor"
         >
@@ -166,7 +166,7 @@ export function StepCard({ step, running, nextTitle, onNext, onExit }: { step: S
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.18 }}
-          className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 w-[min(92vw,440px)] rounded-2xl border border-copper-500/30 bg-sf-16181d/95 backdrop-blur-2xl shadow-2xl p-3.5 space-y-2.5 nowheel nopan nodrag"
+          className="absolute bottom-24 inset-x-0 mx-auto z-30 w-[min(92vw,440px)] rounded-2xl border border-copper-500/30 bg-sf-16181d/95 backdrop-blur-2xl shadow-2xl p-3.5 space-y-2.5 nowheel nopan nodrag"
           role="region"
           aria-label="Step-by-step run"
         >

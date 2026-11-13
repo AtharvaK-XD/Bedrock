@@ -81,7 +81,7 @@ export function GuidedTour({ open, onClose }: GuidedTourProps) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
-          className="absolute left-1/2 -translate-x-1/2 bottom-24 z-40 w-[min(92vw,420px)] rounded-2xl border border-copper-500/40 bg-sf-16181d/95 backdrop-blur-2xl shadow-2xl p-4 nowheel nopan nodrag"
+          className="absolute inset-x-0 mx-auto bottom-24 z-40 w-[min(92vw,420px)] rounded-2xl border border-copper-500/40 bg-sf-16181d/95 backdrop-blur-2xl shadow-2xl p-4 nowheel nopan nodrag"
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] font-mono uppercase tracking-widest text-copper-400">

@@ -76,7 +76,7 @@ export function MissionsPanel({ open, done, onClose, extra }: MissionsPanelProps
           initial={{ opacity: 0, y: -8, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -8, scale: 0.98 }}
-          className="absolute top-16 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,360px)] rounded-2xl border border-white/10 bg-sf-16181d/95 backdrop-blur-2xl shadow-2xl p-4 nowheel nopan nodrag"
+          className="absolute top-16 inset-x-0 mx-auto z-40 w-[min(92vw,360px)] rounded-2xl border border-white/10 bg-sf-16181d/95 backdrop-blur-2xl shadow-2xl p-4 nowheel nopan nodrag"
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
