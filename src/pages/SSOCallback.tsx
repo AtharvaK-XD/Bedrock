@@ -75,7 +75,9 @@ export default function SSOCallback() {
           }
         }, 200);
       } else {
-        navigate('/app', { replace: true });
+        const searchParams = new URLSearchParams(window.location.search);
+        const returnUrl = searchParams.get('returnUrl') || '/app';
+        navigate(returnUrl, { replace: true });
       }
     };
 
@@ -117,6 +119,9 @@ export default function SSOCallback() {
     };
   }, [isSignedIn, user, clerk, navigate, isPopup]);
 
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const returnUrl = searchParams.get('returnUrl') || '/app';
+
   return (
     <PageTransition className="flex items-center justify-center min-h-screen bg-black">
       <div className="flex flex-col items-center justify-center gap-4">
@@ -125,10 +130,10 @@ export default function SSOCallback() {
           {isPopup ? 'Authentication complete! Closing window...' : 'Completing authentication...'}
         </p>
         <AuthenticateWithRedirectCallback
-          signInFallbackRedirectUrl={isPopup ? '/sso-callback?popup=1' : '/app'}
-          signUpFallbackRedirectUrl={isPopup ? '/sso-callback?popup=1' : '/app'}
-          signInForceRedirectUrl={isPopup ? undefined : '/app'}
-          signUpForceRedirectUrl={isPopup ? undefined : '/app'}
+          signInFallbackRedirectUrl={isPopup ? '/sso-callback?popup=1' : returnUrl}
+          signUpFallbackRedirectUrl={isPopup ? '/sso-callback?popup=1' : returnUrl}
+          signInForceRedirectUrl={isPopup ? undefined : returnUrl}
+          signUpForceRedirectUrl={isPopup ? undefined : returnUrl}
           continueSignUpUrl="/signup"
         />
       </div>

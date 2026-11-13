@@ -795,7 +795,6 @@ export default function Settings() {
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {[
                           { id: 'github', label: 'GitHub username', value: github, set: setGithub, placeholder: 'username', type: 'text' },
-                          { id: 'hf', label: 'Hugging Face username', value: huggingface, set: setHuggingface, placeholder: 'username', type: 'text' },
                           { id: 'twitter', label: 'X / Twitter', value: twitter, set: setTwitter, placeholder: '@handle', type: 'text' },
                           { id: 'website', label: 'Website', value: website, set: setWebsite, placeholder: 'https://...', type: 'url' },
                         ].map((field) => (

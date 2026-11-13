@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Camera, UploadCloud, Trash2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Camera, UploadCloud, Trash2, Check } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { useUserProfile, resolveCleanName, resolveInitials, getBlankProfile } from '../lib/useUserProfile';
@@ -82,6 +82,29 @@ export default function Profile() {
   const { profile, updateProfile, resetProfile } = useUserProfile();
   const quota = usePromptQuota();
   const { user: clerkUser } = useUser();
+  const navigate = useNavigate();
+
+  const [isLinkingGitHub, setIsLinkingGitHub] = useState(false);
+  const [isUnlinkingGitHub, setIsUnlinkingGitHub] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  const githubAccount = clerkUser?.externalAccounts?.find(
+    (acc: any) =>
+      acc.provider === 'github' ||
+      acc.provider === 'oauth_github' ||
+      acc.verification?.strategy === 'oauth_github' ||
+      (typeof acc.providerSlug === 'function' && acc.providerSlug() === 'github')
+  );
+
+  const effectiveGitHub = githubAccount?.username || profile.github;
+  const isGitHubLinked = Boolean(githubAccount || profile.github);
+
+  useEffect(() => {
+    if (githubAccount?.username && !profile.github) {
+      updateProfile({ github: githubAccount.username });
+    }
+  }, [githubAccount?.username, profile.github, updateProfile]);
+
   const effectiveName = 
     clerkUser?.fullName || 
     clerkUser?.firstName || 
@@ -141,8 +164,6 @@ export default function Profile() {
     };
   }, []);
 
-
-
   const [formData, setFormData] = useState({
     name: profile.name,
     username: profile.username,
@@ -152,7 +173,6 @@ export default function Profile() {
     location: profile.location,
     email: profile.email,
     github: profile.github,
-    huggingface: profile.huggingface,
   });
 
   useEffect(() => {
@@ -165,7 +185,6 @@ export default function Profile() {
       location: profile.location,
       email: profile.email,
       github: profile.github,
-      huggingface: profile.huggingface,
     });
   }, [profile]);
   const [isSaving, setIsSaving] = useState(false);
@@ -293,6 +312,80 @@ export default function Profile() {
     }, 600);
   };
 
+  const handleLinkGitHub = async () => {
+    setIsLinkingGitHub(true);
+    setLinkError(null);
+    try {
+      if (!clerkUser) {
+        if (isDesktop) {
+          const nonceBytes = new Uint8Array(16);
+          crypto.getRandomValues(nonceBytes);
+          const nonce = Array.from(nonceBytes, (b) => b.toString(16).padStart(2, '0')).join('');
+          const port = window.location.port || '0';
+          const authUrl = `http://127.0.0.1:${port}/#/browser-auth?strategy=oauth_github&mode=login&nonce=${encodeURIComponent(nonce)}&port=${port}`;
+          window.open(authUrl);
+        } else {
+          navigate('/app/auth?strategy=oauth_github');
+        }
+        return;
+      }
+
+      const callbackUrl = `${window.location.origin}/sso-callback?returnUrl=${encodeURIComponent('/app/profile')}`;
+
+      const externalAccount = await clerkUser.createExternalAccount({
+        strategy: 'oauth_github',
+        redirectUrl: callbackUrl,
+      });
+
+      const consentUrl =
+        externalAccount.verification?.externalVerificationRedirectURL?.href ||
+        (externalAccount.verification?.externalVerificationRedirectURL as any)?.toString?.();
+
+      if (consentUrl) {
+        if (isDesktop) {
+          window.open(consentUrl);
+        } else {
+          window.location.href = consentUrl;
+        }
+      } else {
+        await clerkUser.reload();
+      }
+    } catch (err: any) {
+      console.error('Failed to initiate GitHub account linking:', err);
+      const code = err?.errors?.[0]?.code;
+      if (code === 'external_account_exists') {
+        await clerkUser?.reload();
+        setLinkError('This GitHub account is already connected to your profile.');
+      } else if (code === 'identification_claimed') {
+        setLinkError('This GitHub account is already associated with another Bedrock account.');
+      } else {
+        setLinkError(err?.errors?.[0]?.message || err?.message || 'Failed to open GitHub consent screen.');
+      }
+    } finally {
+      setIsLinkingGitHub(false);
+    }
+  };
+
+  const handleUnlinkGitHub = async () => {
+    if (!window.confirm('Are you sure you want to unlink your GitHub account from Bedrock?')) return;
+    setIsUnlinkingGitHub(true);
+    setLinkError(null);
+    try {
+      if (githubAccount && typeof githubAccount.destroy === 'function') {
+        await githubAccount.destroy();
+      }
+      await updateProfile({ github: '' });
+      if (clerkUser) {
+        await clerkUser.reload();
+      }
+    } catch (err: any) {
+      console.error('Failed to unlink GitHub account:', err);
+      setLinkError(err?.message || 'Failed to unlink GitHub account.');
+    } finally {
+      setIsUnlinkingGitHub(false);
+    }
+  };
+
   const handleReset = () => {
     if (confirm('Reset profile to factory defaults?')) {
       const blank = getBlankProfile(clerkUser);
@@ -306,7 +399,6 @@ export default function Profile() {
         location: blank.location,
         email: blank.email,
         github: blank.github,
-        huggingface: blank.huggingface,
       });
     }
   };
@@ -543,16 +635,16 @@ export default function Profile() {
                     >
                       {clerkUser?.primaryEmailAddress?.emailAddress || profile.email} {copiedEmail && <span className="text-copper-400 font-bold">(copied)</span>}
                     </button>
-                    {profile.github && (
+                    {effectiveGitHub && (
                       <>
                         <span>•</span>
                         <a 
-                          href={`https://github.com/${profile.github}`}
+                          href={`https://github.com/${effectiveGitHub}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-gray-400 hover:text-white transition-colors hover:underline"
+                          className="text-gray-400 hover:text-white transition-colors hover:underline flex items-center gap-1"
                         >
-                          gh/{profile.github}
+                          gh/{effectiveGitHub}
                         </a>
                       </>
                     )}
@@ -855,52 +947,73 @@ export default function Profile() {
 
                   {/* Connected Accounts */}
                   <div className="p-6 rounded-3xl border border-white/10 bg-sf-121417/60 backdrop-blur-xl shadow-sm">
-                    <h2 className="text-base font-bold text-white mb-4">
-                      Connected Integrations
-                    </h2>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-base font-bold text-white">
+                        Connected Integrations
+                      </h2>
+                      <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">
+                        OAuth Providers
+                      </span>
+                    </div>
 
                     <div className="space-y-3 font-mono text-xs">
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                        <div>
-                          <p className="font-semibold text-white">GitHub</p>
-                          <p className="text-[10px] text-gray-400">
-                            {profile.github ? `@${profile.github}` : 'Not linked'}
-                          </p>
+                      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0">
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-white">GitHub</p>
+                            <p className="text-[10px] text-gray-400">
+                              {effectiveGitHub ? `@${effectiveGitHub}` : 'Not linked'}
+                            </p>
+                          </div>
                         </div>
-                        {profile.github ? (
-                          <span className="text-[10px] text-emerald-400 font-semibold px-2 py-0.5 bg-emerald-950/40 rounded border border-emerald-800/40">
-                            Connected
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => setActiveTab('edit')}
-                            className="text-[10px] text-gray-400 hover:text-white px-2 py-0.5 bg-white/5 rounded border border-white/10 hover:border-white/20 transition-colors"
-                          >
-                            Link Account
-                          </button>
-                        )}
+
+                        <div className="flex items-center gap-2">
+                          {isGitHubLinked ? (
+                            <>
+                              <span className="text-[10px] text-emerald-400 font-semibold px-2.5 py-1 bg-emerald-950/40 rounded-lg border border-emerald-800/40 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Connected
+                              </span>
+                              <button
+                                type="button"
+                                onClick={handleUnlinkGitHub}
+                                disabled={isUnlinkingGitHub}
+                                className="text-[10px] text-gray-400 hover:text-rose-400 px-2.5 py-1 bg-white/5 hover:bg-rose-500/10 rounded-lg border border-white/10 hover:border-rose-500/30 transition-colors disabled:opacity-50 cursor-pointer"
+                                title="Unlink GitHub account"
+                              >
+                                {isUnlinkingGitHub ? 'Unlinking...' : 'Unlink'}
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleLinkGitHub}
+                              disabled={isLinkingGitHub}
+                              className="text-[11px] text-white hover:text-white px-3.5 py-1.5 bg-copper-500 hover:bg-copper-600 rounded-xl border border-copper-400/40 font-semibold transition-all shadow-md shadow-copper-500/20 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                            >
+                              {isLinkingGitHub ? (
+                                <>
+                                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                  <span>Connecting...</span>
+                                </>
+                              ) : (
+                                <span>Link Account</span>
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                        <div>
-                          <p className="font-semibold text-white">HuggingFace</p>
-                          <p className="text-[10px] text-gray-400">
-                            {profile.huggingface ? `@${profile.huggingface}` : 'Not linked'}
-                          </p>
+                      {linkError && (
+                        <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px]">
+                          {linkError}
                         </div>
-                        {profile.huggingface ? (
-                          <span className="text-[10px] text-emerald-400 font-semibold px-2 py-0.5 bg-emerald-950/40 rounded border border-emerald-800/40">
-                            Connected
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => setActiveTab('edit')}
-                            className="text-[10px] text-gray-400 hover:text-white px-2 py-0.5 bg-white/5 rounded border border-white/10 hover:border-white/20 transition-colors"
-                          >
-                            Link Account
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1116,26 +1229,29 @@ export default function Profile() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
-                    <div className="space-y-2">
+                  <div className="space-y-2 pt-2">
+                    <div className="flex items-center justify-between">
                       <label className="text-xs uppercase tracking-wider text-gray-300">GitHub Username</label>
+                      {isGitHubLinked && (
+                        <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                          <Check className="w-3 h-3" /> OAuth Linked
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-mono text-sm">@</span>
                       <input
                         type="text"
-                        value={formData.github} maxLength={300}
-                        onChange={(e) => setFormData({ ...formData, github: e.target.value })}
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 font-mono"
+                        value={formData.github}
+                        maxLength={300}
+                        placeholder="your-github-username"
+                        onChange={(e) => setFormData({ ...formData, github: e.target.value.replace(/^@/, '') })}
+                        className="w-full pl-9 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 font-mono"
                       />
                     </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wider text-gray-300">HuggingFace Username</label>
-                      <input
-                        type="text"
-                        value={formData.huggingface} maxLength={300}
-                        onChange={(e) => setFormData({ ...formData, huggingface: e.target.value })}
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-copper-500 font-mono"
-                      />
-                    </div>
+                    <p className="text-[10px] text-gray-500 font-mono">
+                      Connect via OAuth under Overview & Activity for one-click GitHub consent screen linking.
+                    </p>
                   </div>
 
                   <div className="pt-6 border-t border-white/10 flex items-center justify-between gap-4">
