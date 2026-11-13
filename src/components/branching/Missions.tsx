@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Trophy, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -61,9 +61,11 @@ interface MissionsPanelProps {
   open: boolean;
   done: MissionId[];
   onClose: () => void;
+  /** Streak and badges from the server, when it has them */
+  extra?: ReactNode;
 }
 
-export function MissionsPanel({ open, done, onClose }: MissionsPanelProps) {
+export function MissionsPanel({ open, done, onClose, extra }: MissionsPanelProps) {
   const finished = new Set(done);
   return (
     <AnimatePresence>
@@ -107,6 +109,7 @@ export function MissionsPanel({ open, done, onClose }: MissionsPanelProps) {
               );
             })}
           </ul>
+          {extra}
         </motion.div>
       )}
     </AnimatePresence>

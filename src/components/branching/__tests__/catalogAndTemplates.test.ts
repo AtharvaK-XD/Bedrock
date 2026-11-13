@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { ALL_NODE_TYPES, NODE_CATALOG, PALETTE_GROUPS, getCatalogEntry, getPaletteGroups, searchCatalog } from '../nodeCatalog';
 import { BEGINNER_TEMPLATES, EXTRACT_LIST_CODE, STARTER_TEMPLATE_ID } from '../beginnerTemplates';
 
-const TYPES_TODAY = ['system', 'prompt', 'output', 'data', 'condition', 'code', 'merge', 'evaluation', 'note'];
+const TYPES_TODAY = ['system', 'prompt', 'output', 'data', 'condition', 'code', 'merge', 'evaluation', 'note', 'switch', 'forEach', 'arrayTools', 'jsonPick', 'variable', 'askInput'];
 
 describe('node catalog', () => {
   it('describes all 15 node types', () => {
@@ -56,10 +56,11 @@ describe('node catalog', () => {
     expect(searchCatalog('')).toHaveLength(TYPES_TODAY.length);
   });
 
-  it('keeps unfinished node types out of the palette until their UI exists, but still describes them', () => {
-    expect(searchCatalog('switch').map((e) => e.id)).not.toContain('switch');
-    expect(searchCatalog('switch', false).map((e) => e.id)).toContain('switch');
-    expect(getCatalogEntry('forEach')?.available).toBe(false);
+  it('offers every Branching v2 node type in the palette now that their settings exist', () => {
+    expect(searchCatalog('switch').map((e) => e.id)).toContain('switch');
+    expect(searchCatalog('loop').map((e) => e.id)).toContain('forEach');
+    expect(searchCatalog('ask').map((e) => e.id)).toContain('askInput');
+    expect(getCatalogEntry('forEach')?.available).toBe(true);
     expect(getCatalogEntry('nope')).toBeNull();
   });
 });

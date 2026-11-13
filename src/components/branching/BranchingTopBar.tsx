@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { BookOpen, Download, LayoutPanelLeft, Redo2, Trophy, Undo2, Upload, HelpCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ALL_NODE_TYPES, NODE_CATALOG } from './nodeCatalog';
@@ -22,6 +22,10 @@ interface BranchingTopBarProps {
   missionsDone: number;
   onToggleMissions: () => void;
   onShowTour: () => void;
+  /** Run controls, shown first (Branching v2) */
+  leading?: ReactNode;
+  /** Extra tools (doctor, explain, history, share), shown before missions */
+  trailing?: ReactNode;
 }
 
 const iconButton =
@@ -54,6 +58,12 @@ export function BranchingTopBar(props: BranchingTopBarProps) {
         data-tour="topbar"
         className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1.5 bg-sf-1a1a1a/90 backdrop-blur-2xl border border-white/10 rounded-xl shadow-xl shadow-black/40 text-xs nowheel nopan nodrag"
       >
+        {props.leading && (
+          <>
+            {props.leading}
+            <span className="w-px h-4 bg-white/15 mx-1" />
+          </>
+        )}
         <PlanMeter count={props.nodeCount} limit={props.nodeLimit} planLabel={props.planLabel} onClick={props.onPlanClick} />
         <span className="w-px h-4 bg-white/15 mx-1" />
         <button type="button" onClick={props.onUndo} disabled={!props.canUndo} className={iconButton} title="Undo (Ctrl+Z)" aria-label="Undo">
@@ -74,6 +84,7 @@ export function BranchingTopBar(props: BranchingTopBarProps) {
           </button>
         )}
         <span className="w-px h-4 bg-white/15 mx-1" />
+        {props.trailing}
         <button
           type="button"
           onClick={props.onToggleMissions}

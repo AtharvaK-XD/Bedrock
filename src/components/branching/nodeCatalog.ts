@@ -2,8 +2,8 @@
  * Plain-English description of every Branching node type. It powers the palette tooltips, the search box,
  * the guided tour, the help cards and the "How to fix" line under a failed node.
  *
- * All 15 node types are listed (the 8 original ones plus the 7 from the Branching v2 plan). A type is only
- * offered in the palette when `available` is true; the others switch on when their UI ships (Part B).
+ * All 15 node types are listed (the 8 original ones plus the 7 from the Branching v2 plan). All of them can be added
+ * from the palette (`available`).
  */
 
 export type CatalogNodeType =
@@ -97,7 +97,7 @@ export const NODE_CATALOG: Record<CatalogNodeType, NodeCatalogEntry> = {
     group: 'start',
     keywords: ['ask', 'question', 'input', 'prompt user', 'form'],
     howToFix: 'Type your answer in the box that appears, or press Skip to use the default.',
-    available: false,
+    available: true,
   },
   prompt: {
     id: 'prompt',
@@ -139,7 +139,7 @@ export const NODE_CATALOG: Record<CatalogNodeType, NodeCatalogEntry> = {
     group: 'lists',
     keywords: ['loop', 'each', 'repeat', 'every', 'list', 'for'],
     howToFix: 'The step before it must produce a list. Try a List Tools node set to "split into lines".',
-    available: false,
+    available: true,
   },
   condition: {
     id: 'condition',
@@ -167,7 +167,7 @@ export const NODE_CATALOG: Record<CatalogNodeType, NodeCatalogEntry> = {
     group: 'decide',
     keywords: ['switch', 'many', 'multiple', 'paths', 'route', 'case', 'if'],
     howToFix: 'Add at least one case, and connect the "default" dot for everything that does not match.',
-    available: false,
+    available: true,
   },
   code: {
     id: 'code',
@@ -209,7 +209,7 @@ export const NODE_CATALOG: Record<CatalogNodeType, NodeCatalogEntry> = {
     group: 'lists',
     keywords: ['list', 'array', 'sort', 'filter', 'split', 'first', 'unique', 'count', 'join'],
     howToFix: 'Check the step before it gives a list, or choose "split into lines" first.',
-    available: false,
+    available: true,
   },
   jsonPick: {
     id: 'jsonPick',
@@ -223,7 +223,7 @@ export const NODE_CATALOG: Record<CatalogNodeType, NodeCatalogEntry> = {
     group: 'lists',
     keywords: ['json', 'pick', 'path', 'field', 'value', 'extract'],
     howToFix: 'Check the input is valid JSON and the path matches its field names, for example items[0].title.',
-    available: false,
+    available: true,
   },
   variable: {
     id: 'variable',
@@ -237,7 +237,7 @@ export const NODE_CATALOG: Record<CatalogNodeType, NodeCatalogEntry> = {
     group: 'lists',
     keywords: ['variable', 'save', 'name', 'remember', 'store'],
     howToFix: 'Use a short name with letters, numbers and underscores only.',
-    available: false,
+    available: true,
   },
   output: {
     id: 'output',

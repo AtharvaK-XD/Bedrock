@@ -466,3 +466,83 @@ iframe.razorpay-checkout-frame {
 .reduce-motion .branch-tour-spot {
   animation: none;
 }
+
+/* Branching v2: run state on nodes and wires (src/components/branching/runState.ts) */
+.branch-run-waiting {
+  outline: 1px dashed rgb(255 255 255 / 0.22);
+  outline-offset: 5px;
+}
+
+.branch-run-running {
+  outline: 2px solid rgb(var(--copper-400) / 0.9);
+  outline-offset: 5px;
+  animation: branch-run-pulse 1.4s ease-in-out infinite;
+}
+
+.branch-run-done {
+  outline: 2px solid rgb(52 211 153 / 0.6);
+  outline-offset: 5px;
+  animation: branch-run-pop 0.32s ease-out;
+}
+
+.branch-run-error {
+  outline: 2px solid rgb(251 113 133 / 0.75);
+  outline-offset: 5px;
+}
+
+.branch-run-skipped {
+  opacity: 0.38;
+  filter: saturate(0.35);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.branch-run-next {
+  outline: 2px dashed rgb(var(--copper-400) / 0.85);
+  outline-offset: 6px;
+}
+
+@keyframes branch-run-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--copper-400) / 0.28); }
+  50% { box-shadow: 0 0 0 9px rgb(var(--copper-400) / 0); }
+}
+
+@keyframes branch-run-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.018); }
+  100% { transform: scale(1); }
+}
+
+.react-flow .react-flow__edge path.branch-edge-flowing {
+  stroke-dasharray: 6 6;
+  animation: branch-edge-flow 0.45s linear infinite;
+  filter: drop-shadow(0 0 3px rgb(var(--copper-400) / 0.65));
+}
+
+.react-flow .react-flow__edge path.branch-edge-done {
+  stroke-dasharray: none;
+  animation: none;
+}
+
+.react-flow .react-flow__edge path.branch-edge-skipped {
+  stroke-dasharray: 2 7;
+  animation: none;
+}
+
+@keyframes branch-edge-flow {
+  from { stroke-dashoffset: 12; }
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .branch-run-running,
+  .branch-run-done,
+  .react-flow .react-flow__edge path.branch-edge-flowing {
+    animation: none;
+  }
+}
+
+.reduce-motion .branch-run-running,
+.reduce-motion .branch-run-done,
+.reduce-motion .react-flow .react-flow__edge path.branch-edge-flowing {
+  animation: none;
+}

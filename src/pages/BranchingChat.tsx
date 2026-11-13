@@ -88,6 +88,23 @@ import { emptyHistory, recordStep, undoStep, redoStep, structureKey, carryRuntim
 import { autoArrange } from '../components/branching/layout';
 import { getCatalogEntry } from '../components/branching/nodeCatalog';
 import { buildWorkflowFile, workflowFileName } from '../components/branching/workflowFile';
+import { V2_NODE_CONFIG, v2Defaults, isV2NodeType, needsEngine, v2ShapeClasses, v2HeaderClasses, v2FooterClasses, engineTierFor, usesAI } from '../components/branching/nodeTypesV2';
+import { NodeBodyV2, SwitchHandles } from '../components/branching/NodeBodyV2';
+import { NodeSettingsV2, ConditionRulesV2, PromptJsonToggle } from '../components/branching/NodeSettingsV2';
+import { RunStateContext, useRunState, ENGINE_RUN_EVENT, requestEngineRun } from '../components/branching/runState';
+import { useWorkflowRunner, type RunMode } from '../components/branching/useWorkflowRunner';
+import { useAskDialog } from '../components/branching/AskDialog';
+import { RunButtons, DoctorChip, DoctorPanel, StepCard } from '../components/branching/RunControls';
+import { ResultBadges, ResultNotes } from '../components/branching/ResultBadges';
+import { describeRun } from '../components/branching/runMapping';
+import { validateGraph, estimateAiCalls, type GraphIssue, type NodeResult, type ConditionGroup, type SwitchCase, type ArrayOp, type EngineDeps, type RunSummary, type WorkflowGraph } from '../lib/workflowEngine';
+import { safeRegexTest } from '../lib/workflowEngine/safeRegex';
+import { workflowApi } from '../lib/workflowApi';
+import { BuildForMeDialog, CloudButtons, ExplainDialog, HistoryDialog, ShareDialog, SharedWorkflowDialog, StatsStrip, type CloudFeature } from '../components/branching/CloudPanels';
+import { useWorkflowStats, type CanvasWorkflow } from '../components/branching/cloudHelpers';
+import { useSearchParams } from 'react-router-dom';
+import { RECIPE_TEMPLATES, TEMPLATE_LEVELS, levelOf, planFit, stepCount, type TemplateLevel } from '../components/branching/recipeTemplates';
+import { TemplateThumb } from '../components/branching/TemplateThumb';
 
 const NODE_CONFIG = {
   system: { 
@@ -188,7 +205,9 @@ const NODE_CONFIG = {
     hoverBorder: 'hover:border-yellow-400/65',
     icon: StickyNote,
     paletteShape: 'rounded-md rotate-2'
-  }
+  },
+  // Branching v2: switch, forEach, arrayTools, jsonPick, variable, askInput (src/components/branching/nodeTypesV2.ts)
+  ...V2_NODE_CONFIG,
 };
 
 const SYSTEM_PERSONAS = [
@@ -265,7 +284,29 @@ export type PromptNodeData = {
   outputFormat?: 'markdown' | 'text' | 'json';
   noteText?: string;
   noteColor?: NoteColor;
+  // Branching v2 fields (src/lib/workflowEngine/types.ts)
+  conditionGroup?: ConditionGroup;
+  switchField?: string;
+  switchCases?: SwitchCase[];
+  forEachMode?: 'template' | 'ai';
+  forEachTemplate?: string;
+  forEachMaxItems?: number;
+  arrayOp?: ArrayOp;
+  arrayArg?: string;
+  jsonPath?: string;
+  jsonFallback?: string;
+  variableName?: string;
+  askQuestion?: string;
+  askDefault?: string;
+  responseFormat?: 'text' | 'json';
+  /** Last result from the workflow engine (Run all, step mode, new node types) */
+  result?: NodeResult;
 };
+
+const CODE_RUN_CONFIRM_TEXT =
+  'This workflow contains a Code node. It runs custom JavaScript in a locked sandbox with no access to your account or saved keys.\n\n' +
+  'Only continue if you wrote this code or trust where the workflow came from.\n\n' +
+  'Run it?';
 
 // Custom Edge with Delete Button
 const DeletableEdge = ({
@@ -279,8 +320,14 @@ const DeletableEdge = ({
   style = {},
   markerEnd,
   selected,
+  source,
+  target,
 }: EdgeProps) => {
   const { setEdges } = useReactFlow();
+  const run = useRunState();
+  const srcRun = run.nodes[source];
+  const tgtRun = run.nodes[target];
+  const flow = tgtRun === 'skipped' ? 'skipped' : srcRun === 'done' && tgtRun === 'running' ? 'flowing' : srcRun === 'done' && (tgtRun === 'done' || tgtRun === 'error') ? 'done' : null;
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -299,7 +346,13 @@ const DeletableEdge = ({
       <BaseEdge
         path={edgePath}
         markerEnd={markerEnd}
-        style={{ ...style, strokeWidth: selected ? 3 : 2, stroke: selected ? '#ff9b71' : '#fff' }}
+        className={flow ? `branch-edge-${flow}` : undefined}
+        style={{
+          ...style,
+          strokeWidth: selected || flow === 'flowing' ? 3 : 2,
+          stroke: selected ? '#ff9b71' : flow === 'flowing' || flow === 'done' ? 'rgb(var(--copper-400))' : '#fff',
+          ...(flow === 'skipped' ? { opacity: 0.18 } : {}),
+        }}
       />
       <EdgeLabelRenderer>
         <div
@@ -333,6 +386,9 @@ const GenericNode = memo(({ id, data, selected }: { id: string, data: PromptNode
   const model = agent.models.find(m => m.id === data.modelId) || agent.models[0];
   const config = NODE_CONFIG[data.nodeType] || NODE_CONFIG.prompt;
   const IconComponent = config.icon;
+  const runVisual = useRunState();
+  const runRing = runVisual.nodes[id];
+  const isNextStep = runVisual.nextStepId === id;
 
   useEffect(() => {
     updateNodeInternals(id);
@@ -345,6 +401,13 @@ const GenericNode = memo(({ id, data, selected }: { id: string, data: PromptNode
   };
 
   const handleRun = async () => {
+    // Branching v2: the new node types, smart rules, JSON answers, {{vars.x}} and anything after a Switch run
+    // through the workflow engine (the page's runner checks keys, plan models and code consent first)
+    const afterSwitch = getEdges().some(e => e.target === id && (getNodes().find(n => n.id === e.source)?.data as PromptNodeData | undefined)?.nodeType === 'switch');
+    if (needsEngine(data) || afterSwitch || /{{\s*(vars|node)\./.test(data.description || '')) {
+      requestEngineRun(id, 'only');
+      return;
+    }
     if (isDesktopApp() && (data.nodeType === 'prompt' || data.nodeType === 'evaluation' || (data.nodeType === 'merge' && data.mergeStrategy === 'synthesize'))) {
       if (!isModelKeyConfigured(data.modelId, data.agentId)) {
         openApiKeyModal({
@@ -357,7 +420,7 @@ const GenericNode = memo(({ id, data, selected }: { id: string, data: PromptNode
       }
     }
 
-    setNodes(nodes => nodes.map(n => n.id === id ? { ...n, data: { ...n.data, status: 'running', output: undefined } } : n));
+    setNodes(nodes => nodes.map(n => n.id === id ? { ...n, data: { ...n.data, status: 'running', output: undefined, result: undefined } } : n));
     
     try {
       const edges = getEdges();
@@ -612,7 +675,7 @@ ${upstreamText || data.description}`;
           selected ? "border-indigo-400 shadow-[0_0_40px_rgba(99,102,241,0.35)] ring-1 ring-indigo-400/50" : "border-indigo-500/35 hover:border-indigo-500/65 shadow-[0_4px_30px_rgba(99,102,241,0.2)]"
         );
       default:
-        return "w-[280px] rounded-xl border bg-sf-1a1a1a/95 border-white/10";
+        return v2ShapeClasses(data.nodeType, selected) ?? "w-[280px] rounded-xl border bg-sf-1a1a1a/95 border-white/10";
     }
   };
 
@@ -630,7 +693,9 @@ ${upstreamText || data.description}`;
     <div
       className={cn(
         "relative flex flex-col backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-150 shadow-2xl group select-none",
-        getShapeClasses()
+        getShapeClasses(),
+        runRing && `branch-run-${runRing}`,
+        isNextStep && 'branch-run-next'
       )}
     >
       {/* Handles */}
@@ -669,6 +734,8 @@ ${upstreamText || data.description}`;
             className="!w-3 !h-3 !bg-sf-121417 !border-2 !border-zinc-400 hover:!border-amber-400 hover:!bg-amber-500/20 transition-all cursor-crosshair z-30"
           />
         </>
+      ) : data.nodeType === 'switch' ? (
+        <SwitchHandles id={id} cases={data.switchCases ?? []} />
       ) : data.nodeType === 'merge' ? (
         <>
           <Handle
@@ -743,7 +810,8 @@ ${upstreamText || data.description}`;
         data.nodeType === 'condition' && "rounded-t-xl bg-amber-500/15 border-amber-500/20",
         data.nodeType === 'code' && "rounded-tr-xl bg-rose-500/10 border-rose-500/20",
         data.nodeType === 'merge' && "rounded-tl-3xl rounded-tr-lg bg-teal-500/15 border-teal-500/20",
-        data.nodeType === 'evaluation' && "rounded-t-xl bg-indigo-500/15 border-indigo-500/25"
+        data.nodeType === 'evaluation' && "rounded-t-xl bg-indigo-500/15 border-indigo-500/25",
+        v2HeaderClasses(data.nodeType)
       )}>
         <div className="flex items-center gap-2">
           <span className={cn("font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/50 border border-white/10 flex items-center gap-1", config.color)}>
@@ -770,6 +838,10 @@ ${upstreamText || data.description}`;
         ) : data.nodeType === 'condition' ? (
           <span className="text-[9px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30 uppercase">
             IF / ELSE
+          </span>
+        ) : isV2NodeType(data.nodeType) && !(data.nodeType === 'forEach' && data.forEachMode === 'ai') ? (
+          <span className={cn("text-[9px] font-mono px-2 py-0.5 rounded border uppercase", config.color, config.bg, config.border)}>
+            {config.tag}
           </span>
         ) : data.nodeType === 'merge' ? (
           <span className="text-[9px] font-mono text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/30 uppercase">
@@ -835,6 +907,9 @@ ${upstreamText || data.description}`;
             <div className="text-[13px] text-gray-300 line-clamp-3 leading-relaxed">
               {data.description || <span className="italic opacity-50">Enter user prompt context...</span>}
             </div>
+            {data.responseFormat === 'json' && (
+              <span className="self-start text-[9px] font-mono bg-fuchsia-500/15 text-fuchsia-200 border border-fuchsia-500/30 px-1.5 py-0.5 rounded">ANSWERS AS JSON</span>
+            )}
             {detectedVars.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {detectedVars.map(v => (
@@ -850,7 +925,7 @@ ${upstreamText || data.description}`;
         {data.nodeType === 'output' && (
           <div className="flex flex-col gap-1.5">
             {data.status === 'error' && data.output ? (
-              <div data-tour="result"><ErrorHelp message={data.output} nodeType={data.nodeType} /></div>
+              <div data-tour="result"><ErrorHelp message={data.output} nodeType={data.nodeType} hint={data.result?.error?.hint} /></div>
             ) : (
             <div data-tour="result" className="p-2.5 bg-black/70 rounded-lg border border-emerald-500/30 text-[11px] font-mono text-emerald-400/90 max-h-[110px] overflow-y-auto custom-scrollbar leading-relaxed">
               {data.output || (
@@ -889,6 +964,11 @@ ${upstreamText || data.description}`;
                 Target: "{data.conditionValue || 'keyword'}"
               </div>
             </div>
+            {(data.conditionGroup?.rules?.length ?? 0) > 0 && (
+              <div className="text-[10px] font-mono text-amber-200/90 px-1">
+                Smart rules: {data.conditionGroup!.rules.length} ({data.conditionGroup!.mode === 'any' ? 'any can match' : 'all must match'}), used instead
+              </div>
+            )}
             {data.conditionResult !== undefined && (
               <div className={cn(
                 "text-[10px] font-mono font-bold px-2 py-1 rounded flex items-center gap-1.5 border",
@@ -927,14 +1007,23 @@ ${upstreamText || data.description}`;
           </div>
         )}
 
+        {isV2NodeType(data.nodeType) && <NodeBodyV2 data={data} />}
+
         {data.nodeType !== 'output' && data.output && (
           data.status === 'error' ? (
-            <div data-tour="result" className="mt-1"><ErrorHelp message={data.output} nodeType={data.nodeType} /></div>
+            <div data-tour="result" className="mt-1"><ErrorHelp message={data.output} nodeType={data.nodeType} hint={data.result?.error?.hint} /></div>
           ) : (
           <div data-tour="result" className="mt-1 p-2 bg-black/60 rounded-lg border border-white/10 text-[11px] text-gray-300 max-h-[80px] overflow-y-auto custom-scrollbar font-mono">
             {data.output}
           </div>
           )
+        )}
+
+        {data.status === 'success' && data.result && (
+          <div className="flex flex-col gap-1">
+            <ResultBadges result={data.result} />
+            <ResultNotes result={data.result} />
+          </div>
         )}
       </div>
 
@@ -948,7 +1037,8 @@ ${upstreamText || data.description}`;
         data.nodeType === 'condition' && 'rounded-b-xl',
         data.nodeType === 'code' && 'rounded-b-xl',
         data.nodeType === 'merge' && 'rounded-br-lg rounded-bl-2xl',
-        data.nodeType === 'evaluation' && 'rounded-b-[34px] pb-3'
+        data.nodeType === 'evaluation' && 'rounded-b-[34px] pb-3',
+        v2FooterClasses(data.nodeType)
       )}>
         <div className="flex items-center gap-2">
           {data.status === 'running' && <div className="w-2 h-2 border-2 border-copper-500/30 border-t-copper-500 rounded-full animate-spin" />}
@@ -983,10 +1073,11 @@ ${upstreamText || data.description}`;
             data.nodeType === 'code' ? "bg-rose-500/20 text-rose-300 hover:bg-rose-500/30" :
             data.nodeType === 'merge' ? "bg-teal-500/20 text-teal-300 hover:bg-teal-500/30" :
             data.nodeType === 'evaluation' ? "bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30" :
+            isV2NodeType(data.nodeType) ? cn(config.bg, config.color, "hover:brightness-150") :
             "bg-copper-500/20 text-copper-300 hover:bg-copper-500/30"
           )}
         >
-          {data.nodeType === 'output' ? 'Fetch' : data.nodeType === 'condition' ? 'Test' : data.nodeType === 'code' ? 'Execute' : 'Run'}
+          {data.nodeType === 'output' ? 'Fetch' : data.nodeType === 'condition' ? 'Test' : data.nodeType === 'code' ? 'Execute' : data.nodeType === 'askInput' ? 'Ask' : 'Run'}
         </button>
       </div>
     </div>
@@ -1530,7 +1621,8 @@ const CURATED_TEMPLATES = [
 ];
 
 // Beginner templates come first so a new user sees the easiest options at the top. The curated ones are unchanged.
-const ALL_TEMPLATES: BranchingTemplate[] = [...BEGINNER_TEMPLATES, ...CURATED_TEMPLATES];
+// Recipes (src/components/branching/recipeTemplates.ts) sit between the starters and the original curated templates.
+const ALL_TEMPLATES: BranchingTemplate[] = [...BEGINNER_TEMPLATES, ...RECIPE_TEMPLATES, ...CURATED_TEMPLATES];
 
 // Sticky notes are comments, so they never count toward a plan's node limit
 const countedNodes = (list: { data: { nodeType?: string } }[]) => list.filter(n => n.data.nodeType !== 'note').length;
@@ -1545,7 +1637,18 @@ const MINIMAP_COLORS: Record<string, string> = {
   merge: '#2dd4bf',
   evaluation: '#818cf8',
   note: '#facc15',
+  switch: '#fb923c',
+  forEach: '#38bdf8',
+  arrayTools: '#a3e635',
+  jsonPick: '#e879f9',
+  variable: '#22d3ee',
+  askInput: '#f472b6',
 };
+
+/** "Pro (10 nodes)" / "Ultimate (20 nodes)": read from the plan table, so the text follows any change to the limits. */
+const nodeLimitText = (limit: number) => (Number.isFinite(limit) ? `${limit} nodes` : 'unlimited nodes');
+const upgradeTargetText = (tier: string) =>
+  tier === 'free' ? `Pro (${nodeLimitText(TIER_LIMITS.pro.dagNodeLimit)})` : `Ultimate (${nodeLimitText(TIER_LIMITS.ultimate.dagNodeLimit)})`;
 
 const initialNodes: Node<PromptNodeData>[] = [
   {
@@ -1584,6 +1687,8 @@ interface FlowEditorProps {
     title: string;
     nodes: any;
     edges: any;
+    /** "Open & run" from the template gallery */
+    autoRun?: boolean;
   } | null;
   onBackToDashboard: () => void;
 }
@@ -1627,6 +1732,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
   const planTier = normalizeTier(profile?.plan);
   const planLabel = planTier === 'ultimate' ? 'Ultimate' : planTier === 'free' ? 'Free' : 'Pro';
   const nodeLimit = isDesktopApp() ? Infinity : TIER_LIMITS[planTier].dagNodeLimit;
+  const engineTier = engineTierFor(planTier, isDesktopApp());
 
   // ---- Undo / redo (last 50 steps of nodes, settings, positions and wires; running a node is not a step)
   const historyRef = useRef<HistoryState<Node<PromptNodeData>, Edge>>(emptyHistory());
@@ -1840,7 +1946,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
         isOpen: true,
         featureName: 'Workflow Node Limit',
         requiredTier: currentTier === 'free' ? 'pro' : 'ultimate',
-        reason: `The ${currentTier.toUpperCase()} plan is limited to ${maxNodes} pipeline nodes. Upgrade to ${currentTier === 'free' ? 'Pro (15 nodes)' : 'Ultimate (Unlimited nodes)'} to expand your neural workflow.`,
+        reason: `The ${currentTier.toUpperCase()} plan is limited to ${maxNodes} pipeline nodes. Upgrade to ${upgradeTargetText(currentTier)} to expand your neural workflow.`,
       });
       return;
     }
@@ -1900,6 +2006,8 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
         noteText: '',
         noteColor: 'yellow',
       };
+    } else if (isV2NodeType(type)) {
+      extraInitial = v2Defaults(type) as Partial<PromptNodeData>;
     }
 
     const newNode: Node<PromptNodeData> = {
@@ -1924,7 +2032,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
       setEdges((eds) => addEdge({
         source: afterNode.id,
         target: newNode.id,
-        sourceHandle: afterNode.data.nodeType === 'condition' ? 'true' : null,
+        sourceHandle: afterNode.data.nodeType === 'condition' ? 'true' : afterNode.data.nodeType === 'switch' && afterNode.data.switchCases?.[0] ? `case:${afterNode.data.switchCases[0].id}` : null,
         targetHandle: null,
         type: 'deletableEdge',
         animated: true,
@@ -1939,7 +2047,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
       isOpen: true,
       featureName: 'Workflow Node Limit',
       requiredTier: planTier === 'free' ? 'pro' : 'ultimate',
-      reason: `The ${planTier.toUpperCase()} plan is limited to ${nodeLimit} pipeline nodes. Upgrade to ${planTier === 'free' ? 'Pro (15 nodes)' : 'Ultimate (Unlimited nodes)'} to expand your neural workflow.`,
+      reason: `The ${planTier.toUpperCase()} plan is limited to ${nodeLimit} pipeline nodes. Upgrade to ${upgradeTargetText(planTier)} to expand your neural workflow.`,
     });
   };
 
@@ -1956,6 +2064,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
     delete data.conditionResult;
     delete data.evalScore;
     delete data.evalCritique;
+    delete data.result;
     const copy: Node<PromptNodeData> = {
       ...source,
       id: `node-${Date.now()}`,
@@ -2050,6 +2159,161 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
 
   const activeNode = nodes.find(n => n.id === activeSettingsNodeId) || null;
 
+  // ---- Branching v2: run the whole workflow through the engine, step by step, and check it before running
+  const ask = useAskDialog();
+  const engineDeps: EngineDeps = {
+    callAI: (modelId, system, prompt, onToken) => testPrompt(modelId, system, prompt, onToken),
+    runCode: (script, input) => runSandboxedCode(script, input),
+    regexTest: safeRegexTest,
+    askInput: ask.ask,
+  };
+
+  /** Before a run: keys (desktop), plan models (website) and consent for custom code. */
+  const preflightRun = (ids: string[]): boolean => {
+    const idSet = new Set(ids);
+    const list = latestRef.current.nodes.filter(n => idSet.has(n.id));
+    const aiNodes = list.filter(n => usesAI(n.data));
+    if (isDesktopApp()) {
+      const missing = aiNodes.find(n => !isModelKeyConfigured(n.data.modelId, n.data.agentId));
+      if (missing) {
+        openApiKeyModal({
+          modelId: missing.data.modelId,
+          agentId: missing.data.agentId,
+          modelName: missing.data.modelId,
+          errorMessage: `Please configure your API key for ${missing.data.modelId} before running "${missing.data.title}".`,
+        });
+        return false;
+      }
+    } else {
+      const locked = aiNodes.find(n => !isModelAllowedForTier(n.data.modelId, profile?.plan));
+      if (locked) {
+        const req = getModelRequiredTier(locked.data.modelId);
+        setUpgradeModal({
+          isOpen: true,
+          featureName: `Model ${locked.data.modelId}`,
+          requiredTier: req === 'ultimate' ? 'ultimate' : 'pro',
+          reason: `"${locked.data.title}" uses ${locked.data.modelId}, which needs ${req.toUpperCase()}. Pick a free model in its settings, or upgrade.`,
+        });
+        return false;
+      }
+    }
+    if (list.some(n => n.data.nodeType === 'code') && !codeNodeRunApproved) {
+      if (!window.confirm(CODE_RUN_CONFIRM_TEXT)) {
+        showToast('Run cancelled: the Code step was not allowed to run.', 'info');
+        return false;
+      }
+      codeNodeRunApproved = true;
+    }
+    return true;
+  };
+
+  // Bumped after a run is recorded, so the badges in the Missions panel reload
+  const [statsVersion, setStatsVersion] = useState(0);
+  const onRunFinished = (summary: RunSummary, mode: RunMode) => {
+    if (mode !== 'all') return;
+    const told = describeRun(summary);
+    showToast(told.text, told.tone);
+    if (!isDesktopApp() && summary.order.length > 0) {
+      const ran = summary.order.map(id => summary.results[id]).filter(Boolean);
+      void workflowApi.saveRun({
+        ...(workflowId ? { workflowId } : {}),
+        status: summary.status,
+        nodeCount: summary.order.length,
+        aiCalls: summary.aiCalls,
+        durationMs: summary.durationMs,
+        errorCount: ran.filter(r => r.error).length,
+        nodeTypes: [...new Set(ran.map(r => r.meta.nodeType))],
+      }).then(() => setStatsVersion(v => v + 1));
+    }
+  };
+
+  const runner = useWorkflowRunner({
+    getGraph: () => latestRef.current,
+    setNodes: setNodes as (updater: (nodes: Node<any>[]) => Node<any>[]) => void,
+    tier: engineTier,
+    deps: engineDeps,
+    preflight: preflightRun,
+    onFinished: onRunFinished,
+    onStop: ask.cancel,
+  });
+
+  // Server features (Build it for me, Explain, History, Share, badges). Each hides itself for the rest of the visit
+  // when the server answers FEATURE_NOT_READY or NOT_AVAILABLE; the desktop app does not show them.
+  const [cloud, setCloud] = useState<Record<CloudFeature | 'stats', boolean>>(() => {
+    const on = !isDesktopApp();
+    return { build: on, explain: on, history: on, share: on, stats: on };
+  });
+  const hideCloud = (f: CloudFeature) => {
+    setCloud(c => ({ ...c, [f]: false }));
+    showToast('That feature is not switched on yet.', 'info');
+  };
+  const [cloudDialog, setCloudDialog] = useState<CloudFeature | null>(null);
+  const stats = useWorkflowStats(cloud.stats && missionsOpen, statsVersion);
+
+  /** Puts a whole workflow on the canvas (AI draft, restored version). Keeps the saved id only when asked. */
+  const loadWorkflowOntoCanvas = (wf: CanvasWorkflow, keepId = false) => {
+    setNodes(wf.nodes as Node<PromptNodeData>[]);
+    setEdges(wf.edges as Edge[]);
+    setWorkflowTitle(wf.title);
+    if (!keepId) setWorkflowId(undefined);
+    setActiveSettingsNodeId(null);
+    resetHistory();
+    setTimeout(() => fitView({ duration: 350, padding: 0.2 }), 60);
+  };
+
+  // A node's Run button (new node types) asks the editor to run it through the engine
+  const runnerRef = useRef(runner);
+  runnerRef.current = runner;
+  useEffect(() => {
+    const onEngineRun = (e: Event) => {
+      const detail = (e as CustomEvent<{ nodeId?: string; mode?: 'only' | 'from' }>).detail;
+      if (!detail?.nodeId) return;
+      if (runnerRef.current.running) {
+        showToast('A run is already going. Wait for it, or press Stop.', 'info');
+        return;
+      }
+      void (detail.mode === 'from' ? runnerRef.current.runFrom(detail.nodeId) : runnerRef.current.runOnly(detail.nodeId));
+    };
+    window.addEventListener(ENGINE_RUN_EVENT, onEngineRun);
+    return () => window.removeEventListener(ENGINE_RUN_EVENT, onEngineRun);
+  }, []);
+
+  // "Open & run" from the gallery: press Run all once the template is drawn
+  useEffect(() => {
+    if (!initialWorkflow?.autoRun) return;
+    const t = setTimeout(() => void runnerRef.current.runAll(), 700);
+    return () => clearTimeout(t);
+  }, [initialWorkflow]);
+
+  // Pipeline doctor: checks the workflow half a second after the last change
+  const [issues, setIssues] = useState<GraphIssue[]>([]);
+  const [aiEstimate, setAiEstimate] = useState(0);
+  const [doctorOpen, setDoctorOpen] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const graph = { nodes, edges } as unknown as WorkflowGraph;
+      // The desktop app has no step limit (it uses its own keys), so the plan-limit warning never applies there
+      setIssues(validateGraph(graph, { tier: engineTier }).filter(i => !(isDesktopApp() && i.code === 'PLAN_NODE_LIMIT')));
+      setAiEstimate(estimateAiCalls(graph, engineTier));
+    }, 500);
+    return () => clearTimeout(t);
+  }, [nodes, edges, engineTier]);
+
+  const focusNode = (nodeId: string) => {
+    const target = latestRef.current.nodes.find(n => n.id === nodeId);
+    if (!target) return;
+    setNodes(nds => nds.map(n => ({ ...n, selected: n.id === nodeId })));
+    if (target.data.nodeType !== 'note') setActiveSettingsNodeId(nodeId);
+    fitView({ nodes: [{ id: nodeId }], duration: 400, padding: 0.8, maxZoom: 1.1 });
+  };
+
+  /** What the connected steps gave last time, for hints and "Try it" in the settings. */
+  const upstreamTextFor = (nodeId: string): string | undefined => {
+    const parents = edges.filter(e => e.target === nodeId).map(e => nodes.find(n => n.id === e.source)).filter(Boolean) as Node<PromptNodeData>[];
+    const text = parents.filter(p => p.data.nodeType !== 'system').map(p => p.data.output || '').filter(Boolean).join('\n\n');
+    return text || undefined;
+  };
+
   const onNodeDataChange = (id: string, newData: Partial<PromptNodeData>) => {
     setNodes(nds => nds.map(n => {
       if (n.id === id) {
@@ -2060,6 +2324,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
   };
 
   return (
+    <RunStateContext.Provider value={runner.visual}>
     <div className={cn(
       // overflow-clip (not hidden): sliding panels start off-screen, and "hidden" lets focus scroll the whole canvas sideways
       "w-full h-full relative flex flex-col rounded-2xl overflow-clip border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] group/flow",
@@ -2325,6 +2590,15 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                         View result
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => void runner.runFrom(activeNode.id)}
+                      disabled={runner.running}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-mono border border-copper-500/30 bg-copper-500/10 text-copper-200 hover:bg-copper-500/20 transition-colors active:scale-[0.97] disabled:opacity-40"
+                      title="Run this node and everything after it"
+                    >
+                      Run from here
+                    </button>
                   </div>
                   {(getCatalogEntry(activeNode.data.nodeType)?.nextNodes ?? []).filter(t => NODE_CONFIG[t as keyof typeof NODE_CONFIG]).length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -2368,7 +2642,13 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                       return (
                         <button
                           key={type}
-                          onClick={() => onNodeDataChange(activeNode.id, { nodeType: type as keyof typeof NODE_CONFIG })}
+                          onClick={() => onNodeDataChange(activeNode.id, {
+                            nodeType: type as keyof typeof NODE_CONFIG,
+                            // A new type starts with its own working settings (title and text are kept)
+                            ...(isV2NodeType(type)
+                              ? Object.fromEntries(Object.entries(v2Defaults(type)).filter(([k]) => k !== 'title' && k !== 'description' && (activeNode.data as Record<string, unknown>)[k] === undefined))
+                              : {}),
+                          })}
                           className={cn(
                             "py-2 px-1 rounded-lg text-[10px] font-mono border transition-all flex flex-col items-center justify-center gap-1",
                             isSelected 
@@ -2590,8 +2870,29 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                   </div>
                 )}
 
-                {/* AI Model Selection (For Prompt, System, Evaluation, Merge) */}
-                {['prompt', 'system', 'evaluation', 'merge'].includes(activeNode.data.nodeType) && (
+                {/* Branching v2: smart rules for If/Else, JSON answers for prompts, settings of the new node types */}
+                {activeNode.data.nodeType === 'condition' && (
+                  <ConditionRulesV2
+                    data={activeNode.data}
+                    onChange={(patch) => onNodeDataChange(activeNode.id, patch as Partial<PromptNodeData>)}
+                    sample={upstreamTextFor(activeNode.id)}
+                  />
+                )}
+                {activeNode.data.nodeType === 'prompt' && (
+                  <PromptJsonToggle data={activeNode.data} onChange={(patch) => onNodeDataChange(activeNode.id, patch as Partial<PromptNodeData>)} />
+                )}
+                {isV2NodeType(activeNode.data.nodeType) && (
+                  <NodeSettingsV2
+                    data={activeNode.data}
+                    onChange={(patch) => onNodeDataChange(activeNode.id, patch as Partial<PromptNodeData>)}
+                    tier={engineTier}
+                    upstreamText={upstreamTextFor(activeNode.id)}
+                    onCaseRemoved={(caseId) => setEdges(eds => eds.filter(e => !(e.source === activeNode.id && e.sourceHandle === `case:${caseId}`)))}
+                  />
+                )}
+
+                {/* AI Model Selection (For Prompt, System, Evaluation, Merge, and For Each when it asks the AI) */}
+                {(['prompt', 'system', 'evaluation', 'merge'].includes(activeNode.data.nodeType) || (activeNode.data.nodeType === 'forEach' && activeNode.data.forEachMode === 'ai')) && (
                   <div className="space-y-2">
                     <label className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider">AI Model</label>
                     <div className="space-y-2">
@@ -2694,6 +2995,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                      activeNode.data.nodeType === 'output' ? 'Terminal Label / Note' :
                      activeNode.data.nodeType === 'code' ? 'Function Description' :
                      activeNode.data.nodeType === 'data' ? 'Dataset Note' :
+                     isV2NodeType(activeNode.data.nodeType) ? 'Fallback input (used when nothing is connected)' :
                      'Prompt Context / Template'}
                   </label>
                   <textarea 
@@ -2706,6 +3008,11 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                 
                 <button 
                   onClick={async () => {
+                    // New node types and smart rules only run through the workflow engine
+                    if (needsEngine(activeNode.data)) {
+                      requestEngineRun(activeNode.id, 'only');
+                      return;
+                    }
                     if (isDesktopApp() && !isModelKeyConfigured(activeNode.data.modelId, activeNode.data.agentId)) {
                       openApiKeyModal({
                         modelId: activeNode.data.modelId,
@@ -2760,6 +3067,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
             if (starter) loadTemplateOntoCanvas(starter);
           }}
           onBlank={() => setStartDismissed(true)}
+          onBuildForMe={cloud.build ? () => setCloudDialog('build') : undefined}
         />
       )}
 
@@ -2778,9 +3086,68 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
         missionsDone={missionsDone.length}
         onToggleMissions={() => setMissionsOpen(o => !o)}
         onShowTour={() => setTourOpen(true)}
+        leading={
+          <RunButtons
+            running={runner.running}
+            stopping={runner.stopping}
+            stepActive={Boolean(runner.step)}
+            canRun={countedNodes(nodes) > 0}
+            aiEstimate={aiEstimate}
+            onRunAll={() => { setDoctorOpen(false); void runner.runAll(); }}
+            onStop={runner.stop}
+            onStartSteps={() => { setDoctorOpen(false); runner.startSteps(); }}
+          />
+        }
+        trailing={
+          <>
+            <CloudButtons show={cloud} onOpen={(f) => { setDoctorOpen(false); setCloudDialog(f); }} />
+            <DoctorChip issues={issues} open={doctorOpen} onToggle={() => setDoctorOpen(o => !o)} />
+          </>
+        }
+      />
+      <DoctorPanel
+        open={doctorOpen}
+        issues={issues}
+        onClose={() => setDoctorOpen(false)}
+        onFocus={(issue) => { if (issue.nodeId) { setDoctorOpen(false); focusNode(issue.nodeId); } }}
+      />
+      <StepCard
+        step={runner.step}
+        running={runner.running}
+        nextTitle={runner.step ? nodes.find(n => n.id === runner.step!.order[runner.step!.index])?.data.title ?? null : null}
+        onNext={() => void runner.nextStep()}
+        onExit={runner.exitSteps}
+      />
+      {ask.element}
+      <BuildForMeDialog
+        open={cloudDialog === 'build'}
+        onClose={() => setCloudDialog(null)}
+        onUse={(wf) => loadWorkflowOntoCanvas(wf)}
+        onUnavailable={() => hideCloud('build')}
+      />
+      <ExplainDialog
+        open={cloudDialog === 'explain'}
+        onClose={() => setCloudDialog(null)}
+        workflow={{ title: workflowTitle, nodes, edges }}
+        onFocus={focusNode}
+        titleOf={(nodeId) => nodes.find(n => n.id === nodeId)?.data.title}
+        onUnavailable={() => hideCloud('explain')}
+      />
+      <HistoryDialog
+        open={cloudDialog === 'history'}
+        onClose={() => setCloudDialog(null)}
+        workflowId={workflowId}
+        onRestored={(wf) => { loadWorkflowOntoCanvas(wf, true); showToast('Version restored.', 'success'); }}
+        onUnavailable={() => hideCloud('history')}
+      />
+      <ShareDialog
+        open={cloudDialog === 'share'}
+        onClose={() => setCloudDialog(null)}
+        workflowId={workflowId}
+        onUnavailable={() => hideCloud('share')}
       />
       <GuidedTour open={tourOpen} onClose={closeTour} />
-      <MissionsPanel open={missionsOpen} done={missionsDone} onClose={() => setMissionsOpen(false)} />
+      <MissionsPanel open={missionsOpen} done={missionsDone} onClose={() => setMissionsOpen(false)} extra={stats ? <StatsStrip stats={stats} /> : null} />
       <ResultInspector
         open={Boolean(inspectId && nodes.some(n => n.id === inspectId))}
         title={nodes.find(n => n.id === inspectId)?.data.title || 'Result'}
@@ -2797,6 +3164,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
         reason={upgradeModal.reason}
       />
     </div>
+    </RunStateContext.Provider>
   );
 }
 
@@ -2850,7 +3218,7 @@ function getNodeCount(nodesRaw: any): number {
 }
 
 interface WorkflowDashboardProps {
-  onOpenWorkflow: (wf: { id?: string; title: string; nodes: any; edges: any }) => void;
+  onOpenWorkflow: (wf: { id?: string; title: string; nodes: any; edges: any; autoRun?: boolean }) => void;
   onCreateNew: () => void;
 }
 
@@ -2863,6 +3231,12 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [levelFilter, setLevelFilter] = useState<TemplateLevel | 'all'>('all');
+  const { profile: dashProfile } = useUserProfile();
+  const dashTier = normalizeTier(dashProfile?.plan);
+  const dashPlan: 'free' | 'pro' | 'ultimate' = dashTier === 'free' ? 'free' : dashTier === 'ultimate' ? 'ultimate' : 'pro';
+  const planLimits = { free: TIER_LIMITS.free.dagNodeLimit, pro: TIER_LIMITS.pro.dagNodeLimit, ultimate: TIER_LIMITS.ultimate.dagNodeLimit };
+  const showPlanFit = !isDesktopApp();
 
   const fetchWorkflows = async () => {
     try {
@@ -2937,6 +3311,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
 
   // Filter curated templates
   const filteredTemplates = ALL_TEMPLATES.filter(tpl => {
+    if (levelFilter !== 'all' && levelOf(tpl) !== levelFilter) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -3288,6 +3663,23 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
               <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
                 Templates ({filteredTemplates.length})
               </h2>
+              <div className="flex flex-wrap items-center gap-1" role="radiogroup" aria-label="Template level">
+                {(['all', ...TEMPLATE_LEVELS] as const).map(level => (
+                  <button
+                    key={level}
+                    type="button"
+                    role="radio"
+                    aria-checked={levelFilter === level}
+                    onClick={() => setLevelFilter(level)}
+                    className={cn(
+                      "px-2 py-0.5 rounded-md text-[11px] transition-colors",
+                      levelFilter === level ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-200"
+                    )}
+                  >
+                    {level === 'all' ? 'All' : level}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {viewMode === 'grid' ? (
@@ -3304,12 +3696,23 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
                     className="group relative bg-black/40 hover:bg-black/60 backdrop-blur-xl border border-white/[0.08] hover:border-white/20 rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-[0_8px_24px_rgba(0,0,0,0.5)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.7)]"
                   >
                     <div className="space-y-2.5">
+                      <TemplateThumb nodes={tpl.nodes} edges={tpl.edges} className="w-full h-16 rounded-lg bg-white/[0.02] border border-white/5 group-hover:border-white/10 transition-colors" />
                       <div className="flex items-center justify-between gap-2">
                         <span className="px-2 py-0.5 text-[11px] font-medium rounded-md bg-white/5 text-neutral-300">
                           {tpl.category}
                         </span>
-                        <span className="text-xs text-neutral-500 font-mono">
-                          {tpl.nodes.length} nodes
+                        <span className="flex items-center gap-1.5">
+                          {showPlanFit && (() => {
+                            const fit = planFit(stepCount(tpl), dashPlan, planLimits);
+                            return fit.fits ? (
+                              <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Fits your plan</span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-amber-500/10 text-amber-200 border border-amber-500/20">Needs {fit.needs}</span>
+                            );
+                          })()}
+                          <span className="text-xs text-neutral-500 font-mono">
+                            {stepCount(tpl)} steps
+                          </span>
                         </span>
                       </div>
 
@@ -3324,9 +3727,22 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
                     </div>
 
                     <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-xs text-neutral-400 group-hover:text-white transition-colors">
-                      <span className="text-neutral-500">{tpl.complexity}</span>
-                      <span className="flex items-center gap-1 font-medium">
-                        Use template <ChevronRight className="w-3.5 h-3.5" />
+                      <span className="text-neutral-500">{levelOf(tpl)}</span>
+                      <span className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenWorkflow({ id: undefined, title: tpl.title, nodes: tpl.nodes, edges: tpl.edges, autoRun: true });
+                          }}
+                          className="px-2 py-0.5 rounded-md text-[11px] font-medium text-copper-300 bg-copper-500/10 border border-copper-500/25 hover:bg-copper-500/20 transition-colors"
+                          title="Open this template and press Run all for you"
+                        >
+                          Open &amp; run
+                        </button>
+                        <span className="flex items-center gap-1 font-medium">
+                          Use template <ChevronRight className="w-3.5 h-3.5" />
+                        </span>
                       </span>
                     </div>
                   </div>
@@ -3361,7 +3777,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
 
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-[11px] text-neutral-500 font-mono hidden sm:inline">
-                        {tpl.nodes.length} nodes
+                        {stepCount(tpl)} steps · {levelOf(tpl)}
                       </span>
                       <button
                         onClick={() => onOpenWorkflow({
@@ -3394,9 +3810,10 @@ export default function BranchingChat() {
     title: string;
     nodes: any;
     edges: any;
+    autoRun?: boolean;
   } | null>(null);
 
-  const handleOpenWorkflow = (wf: { id?: string; title: string; nodes: any; edges: any }) => {
+  const handleOpenWorkflow = (wf: { id?: string; title: string; nodes: any; edges: any; autoRun?: boolean }) => {
     setCurrentWorkflow(wf);
     setView('editor');
   };
@@ -3412,6 +3829,19 @@ export default function BranchingChat() {
   };
 
   const isDesktop = isDesktopApp();
+
+  // A shared link (?shared=<token>) opens a preview with "Copy to my workspace"
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Closing remembers the token too, so the window closes even if the address bar cannot be changed
+  const [dismissedShared, setDismissedShared] = useState<string | null>(null);
+  const sharedParam = searchParams.get('shared');
+  const sharedToken = sharedParam && sharedParam !== dismissedShared ? sharedParam : null;
+  const closeShared = () => {
+    setDismissedShared(sharedParam);
+    const next = new URLSearchParams(searchParams);
+    next.delete('shared');
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <PageTransition className={cn(isDesktop ? "h-full" : "")}>
@@ -3432,6 +3862,13 @@ export default function BranchingChat() {
             />
           </ReactFlowProvider>
         )}
+      </div>
+      <div className="fixed inset-0 z-[70] pointer-events-none [&>*]:pointer-events-auto">
+        <SharedWorkflowDialog
+          token={sharedToken}
+          onClose={closeShared}
+          onCopy={(wf) => handleOpenWorkflow({ id: undefined, title: wf.title, nodes: wf.nodes, edges: wf.edges })}
+        />
       </div>
     </PageTransition>
   );

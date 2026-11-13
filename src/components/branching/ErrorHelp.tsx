@@ -5,8 +5,10 @@ import { explainNodeError } from './friendlyError';
  * What a failed node shows instead of the raw error text: what went wrong, and how to fix it.
  * Display only. The node still stores the original message exactly as before.
  */
-export function ErrorHelp({ message, nodeType }: { message?: string; nodeType?: string }) {
-  const friendly = explainNodeError(message, nodeType);
+export function ErrorHelp({ message, nodeType, hint }: { message?: string; nodeType?: string; hint?: string }) {
+  const base = explainNodeError(message, nodeType);
+  // The workflow engine already knows the exact fix for its own errors
+  const friendly = hint ? { ...base, fix: hint } : base;
   return (
     <div role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-left space-y-1.5">
       <p className="flex items-start gap-1.5 text-[11px] font-semibold text-rose-200">

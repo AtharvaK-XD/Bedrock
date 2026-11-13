@@ -208,7 +208,7 @@ export default function Billing() {
                       </span>
                     </div>
                     <p className="text-sm text-neutral-400 mt-1 font-sans">
-                      Daily quota: <span className="text-white font-mono">{sessionLimit} prompts/day</span> · Core Gemini & Groq models · 3 pipeline nodes.
+                      Daily quota: <span className="text-white font-mono">{sessionLimit} prompts/day</span> · Core Gemini & Groq models · 5 pipeline nodes.
                     </p>
                   </div>
                 </div>
