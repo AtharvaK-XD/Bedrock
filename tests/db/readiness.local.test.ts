@@ -68,6 +68,16 @@ describe.skipIf(!PGlite)('readiness report', () => {
       expect((await collectReadiness(neonLike(db), { dir: MIGRATIONS_DIR })).problems).toEqual([]);
     });
 
+    it('catches the launch-day mistake: 0020 / 0021 applied but roles.sql not re-run', async () => {
+      await db.query(`REVOKE ALL ON "WorkflowVersion", "WorkflowRun", "WorkflowShare" FROM bedrock_app`);
+      await db.query(`REVOKE UPDATE (plan_expires_at) ON "User" FROM bedrock_app`);
+      const text = (await collectReadiness(neonLike(db), { dir: MIGRATIONS_DIR })).problems.join(' | ');
+      expect(text).toMatch(/no rights on the Branching v2 tables/);
+      expect(text).toMatch(/cannot set plan_expires_at/);
+      await runSql(db, readDbFile('roles.sql'));
+      expect((await collectReadiness(neonLike(db), { dir: MIGRATIONS_DIR })).problems).toEqual([]);
+    });
+
     it('catches a too-powerful app role', async () => {
       await db.query('ALTER ROLE bedrock_app CREATEDB');
       expect((await collectReadiness(neonLike(db), { dir: MIGRATIONS_DIR })).problems.join(' ')).toMatch(/bedrock_app is too powerful/);
