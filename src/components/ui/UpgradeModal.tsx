@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, Check, X, ArrowRight, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isDesktopApp } from '../../lib/platform';
+import { useUserProfile } from '../../lib/useUserProfile';
+import { normalizeTier } from '../../lib/subscriptionTiers';
 
 export interface UpgradeModalProps {
   isOpen: boolean;
@@ -31,7 +33,11 @@ export function UpgradeModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || isDesktopApp()) return null;
+  const { profile } = useUserProfile();
+  const userTier = normalizeTier(profile?.plan);
+
+  if (!isOpen || isDesktopApp() || userTier === 'ultimate') return null;
+  if (userTier === 'pro' && requiredTier !== 'ultimate') return null;
 
   const isUltimate = requiredTier === 'ultimate';
   const planTitle = isUltimate ? 'Ultimate Plan' : 'Pro Plan';
@@ -152,7 +158,7 @@ export function UpgradeModal({
               onClick={onClose}
               className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-xs font-mono uppercase tracking-wider transition-colors border border-white/10"
             >
-              Keep Free
+              {userTier === 'pro' ? 'Keep Pro' : 'Keep Free'}
             </button>
           </div>
         </motion.div>

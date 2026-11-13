@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Menu, MenuItem, ProductItem, HoveredLink } from '../ui/navbar-menu';
 import { openApiKeyModal } from '../../lib/apiKeyEvents';
+import { normalizeTier } from '../../lib/subscriptionTiers';
 
 const websiteNavItems = [
   { label: 'Dashboard', path: '/app' },
@@ -250,10 +251,10 @@ export function Topbar() {
 
         {/* Right User Actions - Floating Air Island */}
         <div className="pointer-events-auto flex items-center gap-2.5 sm:gap-3 bg-black/45 p-1.5 px-3 rounded-2xl border border-white/10 shadow-lg shadow-black/30 backdrop-blur-xl">
-          {/* Website only: Upgrade to Pro button */}
-          {!isDesktop && (
+          {/* Website only: Upgrade button for free and pro tiers (suppressed for ultimate) */}
+          {!isDesktop && normalizeTier(profile?.plan) !== 'ultimate' && (
             <Link to="/app/pricing" className="hidden md:flex items-center justify-center px-3.5 py-1.5 bg-gradient-to-r from-copper-500 to-copper-600 hover:from-copper-400 hover:to-copper-500 text-white text-xs font-semibold uppercase tracking-wider rounded-full shadow-md shadow-copper-500/25 transition-all border border-copper-400/30">
-              Upgrade
+              {normalizeTier(profile?.plan) === 'pro' ? 'Upgrade to Ultimate' : 'Upgrade'}
             </Link>
           )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Camera, UploadCloud, Trash2, Check } from 'lucide-react';
+import { Camera, UploadCloud, Trash2, Check, Crown } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { cn } from '../lib/utils';
 import { useUserProfile, resolveCleanName, resolveInitials, getBlankProfile } from '../lib/useUserProfile';
@@ -12,7 +12,7 @@ import { AgentIcon } from '../components/ui/ModelLogos';
 import { getUserTelemetry, TELEMETRY_UPDATE_EVENT, type UserTelemetrySummary } from '../lib/telemetry';
 import { syncHistoryFromDb, HISTORY_UPDATE_EVENT, type HistoryPromptItem } from '../lib/generatorHistory';
 import { usePromptQuota } from '../lib/usePromptQuota';
-import { getPlanLimits } from '../lib/subscriptionTiers';
+import { getPlanLimits, normalizeTier } from '../lib/subscriptionTiers';
 import { planPriceLabel } from '../lib/pricing';
 import { isDesktopApp } from '../lib/platform';
 
@@ -666,12 +666,12 @@ export default function Profile() {
                   {activeTab === 'edit' ? 'Close Edit' : 'Edit Profile'}
                 </button>
 
-                {!isDesktop && (
+                {!isDesktop && normalizeTier(profile.plan) !== 'ultimate' && (
                   <Link
                     to="/app/pricing"
                     className="px-5 py-2.5 rounded-xl font-bold uppercase tracking-wider text-white bg-copper-500 hover:bg-copper-600 transition-all shadow-md shadow-copper-500/20"
                   >
-                    Upgrade Plan
+                    {normalizeTier(profile.plan) === 'pro' ? 'Upgrade to Ultimate' : 'Upgrade Plan'}
                   </Link>
                 )}
               </div>
@@ -929,17 +929,31 @@ export default function Profile() {
                     </div>
 
                     <div className="mt-6 pt-5 border-t border-white/5 flex flex-col gap-2 font-mono">
-                      <Link
-                        to="/app/pricing"
-                        className="w-full py-2.5 px-4 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-semibold text-xs text-center uppercase tracking-wider transition-all"
-                      >
-                        Unlock Unlimited with Pro
-                      </Link>
+                      {normalizeTier(profile.plan) === 'ultimate' ? (
+                        <div className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-semibold text-xs text-center uppercase tracking-wider flex items-center justify-center gap-1.5">
+                          <Crown className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Maximum Tier Active · All Features Unlocked</span>
+                        </div>
+                      ) : normalizeTier(profile.plan) === 'pro' ? (
+                        <Link
+                          to="/app/pricing"
+                          className="w-full py-2.5 px-4 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-semibold text-xs text-center uppercase tracking-wider transition-all"
+                        >
+                          Upgrade to Ultimate
+                        </Link>
+                      ) : (
+                        <Link
+                          to="/app/pricing"
+                          className="w-full py-2.5 px-4 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-semibold text-xs text-center uppercase tracking-wider transition-all"
+                        >
+                          Unlock Unlimited with Pro
+                        </Link>
+                      )}
                       <Link
                         to="/app/billing"
                         className="w-full py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-medium text-xs text-center border border-white/10 uppercase tracking-wider transition-colors"
                       >
-                        View Billing
+                        View Billing & Invoices
                       </Link>
                     </div>
                   </div>
@@ -1353,59 +1367,150 @@ export default function Profile() {
                       Payment History & Receipts &rarr;
                     </Link>
 
-                    <Link
-                      to="/app/pricing"
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-copper-500 hover:bg-copper-600 text-white shadow-lg shadow-copper-500/20 transition-all"
-                    >
-                      Upgrade to Pro
-                    </Link>
+                    {normalizeTier(profile.plan) !== 'ultimate' && (
+                      <Link
+                        to="/app/pricing"
+                        className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-copper-500 hover:bg-copper-600 text-white shadow-lg shadow-copper-500/20 transition-all"
+                      >
+                        {normalizeTier(profile.plan) === 'pro' ? 'Upgrade to Ultimate' : 'Upgrade to Pro'}
+                      </Link>
+                    )}
                   </div>
                 </div>
 
-                {/* Pro Tier Pitch */}
-                <div className="p-8 rounded-3xl border border-copper-500/30 bg-gradient-to-b from-copper-950/20 via-sf-121417/80 to-sf-121417 backdrop-blur-xl shadow-xl flex flex-col justify-between relative overflow-hidden font-mono">
-                  <div className="space-y-6 relative z-10">
-                    <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-copper-500/20 text-copper-300 border border-copper-500/30">
-                      RECOMMENDED
-                    </span>
+                {/* Dynamic Tier Status / Pitch Card */}
+                {normalizeTier(profile.plan) === 'ultimate' ? (
+                  <div className="p-8 rounded-3xl border border-emerald-500/30 bg-gradient-to-b from-emerald-950/20 via-sf-121417/80 to-sf-121417 backdrop-blur-xl shadow-xl flex flex-col justify-between relative overflow-hidden font-mono">
+                    <div className="space-y-6 relative z-10">
+                      <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        MAXIMUM TIER ACTIVE
+                      </span>
 
-                    <div>
-                      <h3 className="text-2xl font-bold font-display text-white">Bedrock Pro</h3>
-                      <p className="text-3xl font-bold text-white mt-2">
-                        {planPriceLabel('pro')} <span className="text-xs text-gray-400 font-normal">/ month</span>
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2 font-sans">Designed for high-throughput AI builders & production teams.</p>
+                      <div>
+                        <h3 className="text-2xl font-bold font-display text-white">Bedrock Ultimate</h3>
+                        <p className="text-xs text-emerald-400 mt-2 font-mono flex items-center gap-1.5">
+                          <Check className="w-3.5 h-3.5" />
+                          <span>All Features & Frontier Models Unlocked</span>
+                        </p>
+                        <p className="text-xs text-gray-400 mt-2 font-sans">Full unrestricted access to Claude Opus 5.5, GPT-6 Astra, OpenAI o1, Gemini 4 Argon, 20 DAG canvas nodes, and VIP priority execution.</p>
+                      </div>
+
+                      <div className="space-y-2.5 text-xs text-gray-300">
+                        <div className="flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>All Frontier Flagship Models Unlocked</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Automated Quality Evals & Rubric Judge</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>20 DAG Canvas Nodes per Pipeline</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>VIP Low-Latency Queue & Priority Concurrency</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="space-y-2.5 text-xs text-gray-300">
-                      <div className="flex items-center gap-2">
-                        <span className="text-copper-400 font-bold">—</span>
-                        <span>Unlimited Monthly Tokens</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-copper-400 font-bold">—</span>
-                        <span>Custom API Key Vault</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-copper-400 font-bold">—</span>
-                        <span>Unlimited Pipeline Depth</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-copper-400 font-bold">—</span>
-                        <span>Priority Execution Concurrency</span>
+                    <div className="pt-8 relative z-10">
+                      <div className="w-full py-3 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2">
+                        <Crown className="w-4 h-4 text-emerald-400" />
+                        <span>Ultimate Workspace Active</span>
                       </div>
                     </div>
                   </div>
+                ) : normalizeTier(profile.plan) === 'pro' ? (
+                  <div className="p-8 rounded-3xl border border-copper-500/30 bg-gradient-to-b from-copper-950/20 via-sf-121417/80 to-sf-121417 backdrop-blur-xl shadow-xl flex flex-col justify-between relative overflow-hidden font-mono">
+                    <div className="space-y-6 relative z-10">
+                      <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-copper-500/20 text-copper-300 border border-copper-500/30">
+                        NEXT TIER UPGRADE
+                      </span>
 
-                  <div className="pt-8 relative z-10">
-                    <Link
-                      to="/app/pricing"
-                      className="w-full py-3 px-4 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-bold text-xs uppercase tracking-wider text-center shadow-xl shadow-copper-500/25 transition-all block"
-                    >
-                      Upgrade Instantly
-                    </Link>
+                      <div>
+                        <h3 className="text-2xl font-bold font-display text-white">Bedrock Ultimate</h3>
+                        <p className="text-3xl font-bold text-white mt-2">
+                          {planPriceLabel('ultimate')} <span className="text-xs text-gray-400 font-normal">/ month</span>
+                        </p>
+                        <p className="text-xs text-gray-400 mt-2 font-sans">Unleash frontier flagship intelligence: Claude Opus 5.5, GPT-6 Astra, and OpenAI o1.</p>
+                      </div>
+
+                      <div className="space-y-2.5 text-xs text-gray-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-copper-400 font-bold">—</span>
+                          <span>Frontier Flagships: Opus 5.5, Astra & o1</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-copper-400 font-bold">—</span>
+                          <span>Gemini 4 Argon (1M+ Context Window)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-copper-400 font-bold">—</span>
+                          <span>Automated Evals & Quality Rubrics</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-copper-400 font-bold">—</span>
+                          <span>20 DAG Canvas Nodes</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-8 relative z-10">
+                      <Link
+                        to="/app/pricing"
+                        className="w-full py-3 px-4 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-bold text-xs uppercase tracking-wider text-center shadow-xl shadow-copper-500/25 transition-all block"
+                      >
+                        Upgrade to Ultimate
+                      </Link>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-8 rounded-3xl border border-copper-500/30 bg-gradient-to-b from-copper-950/20 via-sf-121417/80 to-sf-121417 backdrop-blur-xl shadow-xl flex flex-col justify-between relative overflow-hidden font-mono">
+                    <div className="space-y-6 relative z-10">
+                      <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-copper-500/20 text-copper-300 border border-copper-500/30">
+                        RECOMMENDED
+                      </span>
+
+                      <div>
+                        <h3 className="text-2xl font-bold font-display text-white">Bedrock Pro</h3>
+                        <p className="text-3xl font-bold text-white mt-2">
+                          {planPriceLabel('pro')} <span className="text-xs text-gray-400 font-normal">/ month</span>
+                        </p>
+                        <p className="text-xs text-gray-400 mt-2 font-sans">Designed for high-throughput AI builders & production teams.</p>
+                      </div>
+
+                      <div className="space-y-2.5 text-xs text-gray-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-copper-400 font-bold">—</span>
+                          <span>Unlimited Monthly Tokens</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-copper-400 font-bold">—</span>
+                          <span>Custom API Key Vault</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-copper-400 font-bold">—</span>
+                          <span>Unlimited Pipeline Depth</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-copper-400 font-bold">—</span>
+                          <span>Priority Execution Concurrency</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-8 relative z-10">
+                      <Link
+                        to="/app/pricing"
+                        className="w-full py-3 px-4 rounded-xl bg-copper-500 hover:bg-copper-600 text-white font-bold text-xs uppercase tracking-wider text-center shadow-xl shadow-copper-500/25 transition-all block"
+                      >
+                        Upgrade Instantly
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

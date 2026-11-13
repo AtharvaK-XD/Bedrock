@@ -14,7 +14,8 @@ import {
   Info,
   Globe,
   MapPin,
-  Phone
+  Phone,
+  Clock
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -207,7 +208,7 @@ export default function Pricing() {
             setIsProcessing(false);
             setPurchasedTier(null);
             navigate('/app/billing');
-          }, 2000);
+          }, 4500);
         },
         onError: (err) => {
           setIsProcessing(false);
@@ -348,13 +349,28 @@ export default function Pricing() {
           )}
         </AnimatePresence>
 
+        {/* 24-Hour Plan Provisioning & Activation Notification */}
+        <div className="max-w-4xl mx-auto mb-8 p-4 rounded-2xl bg-copper-500/10 border border-copper-500/25 text-copper-200 text-xs font-mono flex items-start sm:items-center gap-3.5 shadow-lg backdrop-blur-md">
+          <Clock className="w-5 h-5 text-copper-400 shrink-0 mt-0.5 sm:mt-0" />
+          <p className="leading-relaxed font-sans">
+            <strong className="text-white font-mono uppercase tracking-wider">24-Hour Activation Window:</strong> When upgrading to Pro or Ultimate, high-throughput dedicated model API keys and workspace quotas are provisioned and <strong>fully active within 24 hours</strong> of checkout.
+          </p>
+        </div>
+
         {/* Tier Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {tiers.map((tier) => {
-            const isCurrent = 
-              (tier.slug === 'free' && currentTier === 'free') ||
-              ((tier.slug === 'pro' || tier.slug === 'advanced') && currentTier === 'pro') ||
-              (tier.slug === 'ultimate' && currentTier === 'ultimate');
+            const tierOrder: Record<string, number> = {
+              free: 0,
+              pro: 1,
+              advanced: 1,
+              ultimate: 2,
+            };
+            const userRank = tierOrder[currentTier] ?? 0;
+            const tierRank = tierOrder[tier.slug] ?? 0;
+            const isCurrent = userRank === tierRank;
+            const isLower = tierRank < userRank;
+            const isButtonDisabled = isCurrent || isLower;
 
             return (
               <motion.div
@@ -397,11 +413,11 @@ export default function Pricing() {
 
                 <button
                   type="button"
-                  disabled={isCurrent}
+                  disabled={isButtonDisabled}
                   onClick={() => handleOpenCheckout(tier)}
                   className={cn(
                     "w-full py-3 px-4 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all mb-8 shadow-sm flex items-center justify-center gap-2 cursor-pointer",
-                    isCurrent
+                    isButtonDisabled
                       ? "bg-white/5 border border-white/10 text-zinc-500 cursor-default"
                       : tier.isPopular
                         ? "bg-copper-500 hover:bg-copper-400 text-black font-bold shadow-lg shadow-copper-500/25 active:scale-[0.98]"
@@ -412,6 +428,11 @@ export default function Pricing() {
                     <>
                       <Check className="w-3.5 h-3.5 text-copper-400" />
                       <span>Current Active Plan</span>
+                    </>
+                  ) : isLower ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-zinc-500" />
+                      <span>Included in {currentTier === 'ultimate' ? 'Ultimate' : 'Pro'}</span>
                     </>
                   ) : (
                     <>
@@ -502,8 +523,17 @@ export default function Pricing() {
                   </div>
                   <div>
                     <h4 className="text-xl font-bold text-white font-display">Payment Confirmed!</h4>
-                    <p className="text-xs text-zinc-400 mt-1 max-w-sm">
-                      Your workspace has been upgraded to the <span className="text-white font-semibold">{(purchasedTier || checkoutTier)?.name} Plan</span>.
+                    <p className="text-xs text-zinc-300 mt-1 max-w-sm">
+                      Your workspace upgrade to the <span className="text-white font-semibold">{(purchasedTier || checkoutTier)?.name} Plan</span> has been confirmed.
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-copper-500/15 border border-copper-500/30 text-copper-300 text-xs font-mono max-w-sm text-left space-y-1.5 shadow-md">
+                    <div className="flex items-center gap-2 font-bold text-white">
+                      <Clock className="w-4 h-4 text-copper-400 shrink-0" />
+                      <span>24-Hour Provisioning Window</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-300 leading-relaxed font-sans">
+                      Your payment receipt is recorded. High-throughput model API keys and dedicated workspace quotas are being allocated to your account and will be <strong>fully active within 24 hours</strong>.
                     </p>
                   </div>
                 </div>
@@ -628,10 +658,10 @@ export default function Pricing() {
                     )}
                   </button>
 
-                  <p className="text-[10px] text-zinc-500 text-center font-mono">
+                  <p className="text-[10px] text-zinc-400 text-center font-mono leading-relaxed">
                     {currency === 'USD' 
-                      ? 'Accepts all International Visa, Mastercard, Amex & Global Cards · Instant Activation'
-                      : 'Supports all Indian UPI Apps (GPay, PhonePe, Paytm), RuPay & Cards · Instant Activation'}
+                      ? 'Accepts all International Visa, Mastercard, Amex & Global Cards · Dedicated model access activates within 24 hours'
+                      : 'Supports all Indian UPI Apps (GPay, PhonePe, Paytm), RuPay & Cards · Dedicated model access activates within 24 hours'}
                   </p>
                 </div>
               ) : null}
