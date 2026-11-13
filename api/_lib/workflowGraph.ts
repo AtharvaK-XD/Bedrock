@@ -15,8 +15,11 @@ const AI_TYPES = new Set(['prompt', 'evaluation']);
 
 export type PlanTier = 'free' | 'pro' | 'ultimate';
 
-/** Same numbers as TIER_LIMITS.dagNodeLimit (src/lib/subscriptionTiers.ts) and ENGINE_LIMITS in the app engine. */
-export const PLAN_NODE_LIMIT: Record<PlanTier, number> = { free: 3, pro: 15, ultimate: Number.POSITIVE_INFINITY };
+/**
+ * Steps a plan may add (notes not counted). Same numbers as TIER_LIMITS.dagNodeLimit (src/lib/subscriptionTiers.ts)
+ * and ENGINE_LIMITS in the app engine: Free 5, Pro 10 (Advanced counts as Pro), Ultimate 20 (decided 2026-11-13).
+ */
+export const PLAN_NODE_LIMIT: Record<PlanTier, number> = { free: 5, pro: 10, ultimate: 20 };
 
 export function tierOf(user: { subscriptionTier?: string | null; isGuest?: boolean } | null | undefined): PlanTier {
   const t = String(user?.subscriptionTier || '').toLowerCase();
@@ -26,7 +29,7 @@ export function tierOf(user: { subscriptionTier?: string | null; isGuest?: boole
   return 'free';
 }
 
-/** JSON has no Infinity: an unlimited plan is reported as null. */
+/** The plan's step limit for an API answer (every plan has a number today; null would mean no limit). */
 export function nodeLimitForJson(tier: PlanTier): number | null {
   const n = PLAN_NODE_LIMIT[tier];
   return Number.isFinite(n) ? n : null;

@@ -46,8 +46,8 @@ vi.mock('../security.js', async (orig) => ({
 import workflows from '../../workflows/index.js';
 import { serverRowId } from '../dataHttp.js';
 import { VERSIONS_KEPT } from '../workflowActions.js';
-import { buildGeneratedWorkflow, parseAiJson } from '../workflowAi.js';
-import { checkGraph, stripForShare, tierOf } from '../workflowGraph.js';
+import { buildGeneratedWorkflow, buildGenerateSystemPrompt, parseAiJson } from '../workflowAi.js';
+import { checkGraph, nodeLimitForJson, PLAN_NODE_LIMIT, stripForShare, tierOf } from '../workflowGraph.js';
 
 function mockReq(method: string, query: Record<string, string> = {}, body: Record<string, unknown> = {}) {
   return { method, body, query, headers: {} } as any;
@@ -146,11 +146,11 @@ describe('signed-in actions', () => {
     const node = (id: string, nodeType = 'prompt') => ({ id, data: { nodeType, title: id, description: 'x' } });
     const res = mockRes();
     await workflows(mockReq('POST', { action: 'validate' }, {
-      nodes: [node('a'), node('b'), node('c', 'code'), node('d'), node('n', 'note')],
+      nodes: [node('a'), node('b'), node('c', 'code'), node('d'), node('e'), node('f'), node('n', 'note')],
       edges: [{ id: '1', source: 'a', target: 'b' }, { id: '2', source: 'b', target: 'a' }],
     }), res);
     expect(res.statusCode).toBe(200);
-    expect(res.body.stats).toMatchObject({ nodeCount: 4, aiNodeCount: 3, planNodeLimit: 3, overLimit: true, hasCode: true });
+    expect(res.body.stats).toMatchObject({ nodeCount: 6, aiNodeCount: 5, planNodeLimit: 5, overLimit: true, hasCode: true });
     const codes = res.body.issues.map((i: any) => i.code);
     expect(codes).toContain('CYCLE');
     expect(codes).toContain('PLAN_NODE_LIMIT');
@@ -208,7 +208,7 @@ describe('signed-in actions', () => {
     const first = mockRes();
     await workflows(mockReq('POST', { action: 'share' }, { id: 'wf1' }), first);
     expect(first.body.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(first.body.url).toBe(`/branching/shared/${first.body.token}`);
+    expect(first.body.url).toBe(`/app/branching?shared=${first.body.token}`);
     expect(h.enforceRateLimit).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'workflowShare', 'user_A');
     const second = mockRes();
     await workflows(mockReq('POST', { action: 'share' }, { id: 'wf1' }), second);
@@ -328,30 +328,34 @@ describe('Build it for me (generate)', () => {
       { key: 'hug', type: 'prompt', title: 'Comfort', description: 'Comfort them.' },
       { key: 'js', type: 'code', title: 'Script', codeScript: 'fetch("https://evil")' },
       { key: 'tip', type: 'note', title: 'Note', noteText: 'Try typing "happy"!' },
+      { key: 'out1', type: 'output', title: 'Show celebration' },
+      { key: 'out2', type: 'output', title: 'Show comfort' },
     ],
     edges: [
       { from: 'ask', to: 'check' },
       { from: 'check', to: 'yay', path: 'true' },
       { from: 'check', to: 'hug', path: 'false' },
       { from: 'hug', to: 'js' },
+      { from: 'yay', to: 'out1' },
+      { from: 'hug', to: 'out2' },
     ],
   };
 
-  it('builds real nodes, removes code, keeps the free 3-step limit, and lays them out', async () => {
+  it('builds real nodes, removes code, keeps the free 5-step limit, and lays them out', async () => {
     h.state.aiText = '```json\n' + JSON.stringify(proposal) + '\n```';
     const res = mockRes();
     await workflows(mockReq('POST', { action: 'generate' }, { description: 'route by mood' }), res);
     expect(res.statusCode).toBe(200);
     const types = res.body.nodes.map((n: any) => n.data.nodeType);
     expect(types).not.toContain('code');
-    expect(types.filter((t: string) => t !== 'note')).toHaveLength(3);
+    expect(types.filter((t: string) => t !== 'note')).toHaveLength(5);
     expect(types).toContain('note');
     expect(res.body.notes.join(' ')).toMatch(/Code step was left out/);
-    expect(res.body.notes.join(' ')).toMatch(/cut to its first 3/);
+    expect(res.body.notes.join(' ')).toMatch(/allows 5 steps, so the design was cut to its first 5/);
     const cond = res.body.nodes.find((n: any) => n.data.nodeType === 'condition');
     expect(cond.data.conditionGroup.rules).toEqual([{ op: 'contains', value: 'happy' }]);
     expect(res.body.edges.find((e: any) => e.source === cond.id).sourceHandle).toBe('true');
-    expect(res.body.planNodeLimit).toBe(3);
+    expect(res.body.planNodeLimit).toBe(5);
     expect(h.reserveQuota).toHaveBeenCalledWith(expect.objectContaining({ bucket: 'assist', endpoint: 'workflows/generate' }));
     expect(h.enforceRateLimit).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'workflowAi', 'user_A', false);
   });
@@ -424,5 +428,47 @@ describe('helpers', () => {
     expect(Object.prototype.hasOwnProperty.call((out.nodes[0] as any).data.conditionGroup, '__proto__')).toBe(false);
     expect(parseAiJson('Here: [1,2]')).toEqual({ ok: true, value: [1, 2] });
     expect(parseAiJson('no').ok).toBe(false);
+  });
+});
+
+describe('plan node limits: Free 5, Pro 10 (Advanced = Pro), Ultimate 20 (2026-11-13)', () => {
+  const chain = (n: number) => ({
+    nodes: Array.from({ length: n }, (_, i) => ({ key: `k${i}`, type: 'prompt', title: `Step ${i + 1}`, description: 'x' })),
+    edges: Array.from({ length: n - 1 }, (_, i) => ({ from: `k${i}`, to: `k${i + 1}` })),
+  });
+
+  it('PLAN_NODE_LIMIT and tierOf', () => {
+    expect(PLAN_NODE_LIMIT).toEqual({ free: 5, pro: 10, ultimate: 20 });
+    expect(tierOf({ subscriptionTier: 'free' })).toBe('free');
+    expect(tierOf({ subscriptionTier: 'advanced' })).toBe('pro');
+    expect(PLAN_NODE_LIMIT[tierOf({ subscriptionTier: 'advanced' })]).toBe(10);
+    expect(nodeLimitForJson('ultimate')).toBe(20);
+  });
+
+  it('Build it for me trims to each plan', () => {
+    for (const [tier, limit] of [['free', 5], ['pro', 10], ['ultimate', 20]] as const) {
+      const wf = buildGeneratedWorkflow(chain(25), tier)!;
+      expect(wf.nodes, tier).toHaveLength(limit);
+      expect(wf.notes.join(' ')).toContain(`allows ${limit} steps`);
+      const exact = buildGeneratedWorkflow(chain(limit), tier)!;
+      expect(exact.nodes).toHaveLength(limit);
+      expect(exact.notes).toEqual([]);
+    }
+  });
+
+  it('server check: over the limit only above 5 / 10 / 20, and the message names the number', () => {
+    const nodes = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `n${i}`, data: { nodeType: 'prompt' } }));
+    for (const [tier, limit] of [['free', 5], ['pro', 10], ['ultimate', 20]] as const) {
+      expect(checkGraph(nodes(limit), [], tier).stats.overLimit, `${tier} at ${limit}`).toBe(false);
+      const over = checkGraph(nodes(limit + 1), [], tier);
+      expect(over.stats.overLimit).toBe(true);
+      expect(over.issues.find((i) => i.code === 'PLAN_NODE_LIMIT')!.message).toContain(`up to ${limit}`);
+      expect(JSON.stringify(over)).not.toMatch(/unlimited/i);
+    }
+  });
+
+  it('the generate prompt tells the AI the plan limit', () => {
+    expect(buildGenerateSystemPrompt(PLAN_NODE_LIMIT.free)).toContain('at most 5 steps');
+    expect(buildGenerateSystemPrompt(PLAN_NODE_LIMIT.ultimate)).toContain('at most 20 steps');
   });
 });
