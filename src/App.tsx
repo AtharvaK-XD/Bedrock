@@ -288,6 +288,46 @@ function AnimatedRoutes() {
   );
 }
 
+function SmoothScroll() {
+  const isDesktop = isDesktopApp();
+  const location = useLocation();
+  const isAppRoute = location.pathname.startsWith('/app') || (typeof window !== 'undefined' && window.location.hash.startsWith('#/app'));
+
+  useEffect(() => {
+    // Only initialize smooth scroll on marketing/public pages; desktop app and /app/* workstation routes use 100% native scrolling
+    if (isDesktop || isAppRoute) return;
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 1,
+      touchMultiplier: 2,
+    });
+
+    // Synchronize Lenis scrolling with GSAP's ScrollTrigger
+    lenis.on('scroll', ScrollTrigger.update);
+
+    // Use GSAP's ticker to drive Lenis's requestAnimationFrame
+    const update = (time: number) => {
+      lenis.raf(time * 1000);
+    };
+
+    gsap.ticker.add(update);
+    gsap.ticker.lagSmoothing(0);
+
+    return () => {
+      gsap.ticker.remove(update);
+      lenis.destroy();
+    };
+  }, [isDesktop, isAppRoute]);
+
+  return null;
+}
+
 function App() {
   const isDesktop = isDesktopApp();
   const isHashRouted = isDesktop || (typeof window !== 'undefined' && Boolean(window.location.hash));
@@ -321,43 +361,11 @@ function App() {
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, []);
 
-  useEffect(() => {
-    // Only initialize smooth scroll on the web landing page; desktop app uses native scroll
-    if (isDesktop) return;
-    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      orientation: 'vertical',
-      gestureOrientation: 'vertical',
-      smoothWheel: true,
-      wheelMultiplier: 1,
-      touchMultiplier: 2,
-    });
-
-    // Synchronize Lenis scrolling with GSAP's ScrollTrigger
-    lenis.on('scroll', ScrollTrigger.update);
-
-    // Use GSAP's ticker to drive Lenis's requestAnimationFrame
-    const update = (time: number) => {
-      lenis.raf(time * 1000);
-    };
-    
-    gsap.ticker.add(update);
-    gsap.ticker.lagSmoothing(0);
-
-    return () => {
-      gsap.ticker.remove(update);
-      lenis.destroy();
-    };
-  }, [isDesktop]);
-
   return (
     <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
       <QueryClientProvider client={queryClient}>
         <RouterComponent>
+          <SmoothScroll />
           <ErrorBoundary>
             <AnimatedRoutes />
           </ErrorBoundary>

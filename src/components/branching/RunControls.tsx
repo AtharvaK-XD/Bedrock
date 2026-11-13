@@ -123,7 +123,7 @@ export function DoctorPanel({ open, issues, onClose, onFocus }: { open: boolean;
             </p>
           )}
           {sorted.length > 0 && (
-            <ul className="max-h-[46vh] overflow-y-auto custom-scrollbar space-y-1.5 pr-0.5">
+            <ul className="max-h-[46vh] overflow-y-auto custom-scrollbar space-y-1.5 pr-0.5" data-lenis-prevent="true">
               {sorted.map((issue, i) => {
                 const Icon = ICONS[issue.severity];
                 return (

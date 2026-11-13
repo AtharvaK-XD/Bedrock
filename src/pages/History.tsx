@@ -468,7 +468,7 @@ export default function HistoryPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
             {/* Left Column: Prompts List (5 cols on lg) */}
-            <div className="lg:col-span-5 space-y-2.5 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+            <div className="lg:col-span-5 space-y-2.5 max-h-[calc(100vh-280px)] overflow-y-auto pr-1" data-lenis-prevent="true">
               {filteredItems.map((item) => {
                 const isSelected = item.id === selectedId;
                 const targetConfig = TARGET_TYPE_MAP[item.targetType || 'coding_agent'] || TARGET_TYPE_MAP.coding_agent;
@@ -679,7 +679,7 @@ export default function HistoryPage() {
                         </div>
                       </div>
 
-                      <div className="max-h-72 overflow-y-auto p-4 rounded-xl bg-black/60 border border-white/[0.08] text-xs font-mono text-gray-300 leading-relaxed whitespace-pre-wrap select-text scrollbar-thin scrollbar-thumb-white/10">
+                      <div className="max-h-72 overflow-y-auto p-4 rounded-xl bg-black/60 border border-white/[0.08] text-xs font-mono text-gray-300 leading-relaxed whitespace-pre-wrap select-text scrollbar-thin scrollbar-thumb-white/10" data-lenis-prevent="true">
                         {activeItem.promptText}
                       </div>
                     </div>

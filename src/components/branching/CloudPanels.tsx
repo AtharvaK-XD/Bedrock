@@ -41,6 +41,7 @@ function Shell({ open, onClose, title, icon, children, wide }: { open: boolean; 
             exit={{ y: -8, opacity: 0 }}
             transition={{ duration: 0.16 }}
             className={cn(panel, 'w-full p-4 space-y-3 max-h-[78vh] overflow-y-auto custom-scrollbar', wide ? 'max-w-[560px]' : 'max-w-[440px]')}
+            data-lenis-prevent="true"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-white flex items-center gap-2">

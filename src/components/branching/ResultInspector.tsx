@@ -157,7 +157,7 @@ export function ResultInspector({ open, title, text, onClose }: ResultInspectorP
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto custom-scrollbar p-4">
+          <div className="flex-1 overflow-auto custom-scrollbar p-4" data-lenis-prevent="true">
             {parsed.kind === 'empty' && <p className="text-xs text-gray-500">This node has not produced anything yet. Run it first.</p>}
             {parsed.kind !== 'empty' && tab === 'text' && <pre className="whitespace-pre-wrap break-words text-[12px] leading-relaxed font-mono text-gray-200 select-text">{text}</pre>}
             {tab === 'json' && hasJson && (

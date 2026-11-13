@@ -140,7 +140,7 @@ export default function Dashboard() {
 
   return (
     <PageTransition>
-      <div className="relative w-full h-full min-h-screen overflow-y-auto bg-black text-white font-sans selection:bg-copper-500/30 selection:text-white custom-scrollbar pb-16">
+      <div className="relative w-full h-full min-h-screen overflow-y-auto bg-black text-white font-sans selection:bg-copper-500/30 selection:text-white custom-scrollbar pb-16" data-lenis-prevent="true">
         
         {/* Subtle geometric dot grid on pure black */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden -z-0">

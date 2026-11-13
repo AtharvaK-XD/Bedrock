@@ -127,7 +127,7 @@ export function NodePalette({ styles, onAdd }: NodePaletteProps) {
               aria-label="Search nodes"
               className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-copper-500/50"
             />
-            <div className="max-h-[52vh] overflow-y-auto custom-scrollbar space-y-1.5 pr-0.5">
+            <div className="max-h-[52vh] overflow-y-auto custom-scrollbar space-y-1.5 pr-0.5" data-lenis-prevent="true">
               {results.length === 0 && <p className="text-[11px] text-gray-500 px-1 py-2">No node matches. Try "if", "list" or "result".</p>}
               {results.map((entry) => {
                 const style = styles[entry.id];
@@ -158,7 +158,7 @@ export function NodePalette({ styles, onAdd }: NodePaletteProps) {
       </div>
 
       {/* The list scrolls on its own, so the search panel above is never clipped by it */}
-      <div className="flex flex-col items-end gap-2 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar p-2 -mr-2">
+      <div className="flex flex-col items-end gap-2 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar p-2 -mr-2" data-lenis-prevent="true">
       {groups.map(({ group, entries }) => (
         <div key={group.id} className="flex flex-col items-end gap-2.5">
           <span className="text-[8px] font-mono uppercase tracking-widest text-gray-500 pr-1" title={group.hint}>

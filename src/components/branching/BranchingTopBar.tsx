@@ -123,7 +123,7 @@ export function BranchingTopBar(props: BranchingTopBarProps) {
               </button>
               <div>
                 <p className="text-[10px] font-mono uppercase tracking-wider text-gray-500 mb-1.5">What each node does</p>
-                <ul className="max-h-[240px] overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
+                <ul className="max-h-[240px] overflow-y-auto custom-scrollbar space-y-1.5 pr-1" data-lenis-prevent="true">
                   {ALL_NODE_TYPES.map((type) => NODE_CATALOG[type])
                     .filter((entry) => entry.available)
                     .map((entry) => (

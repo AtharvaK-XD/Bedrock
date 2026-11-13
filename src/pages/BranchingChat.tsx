@@ -927,7 +927,7 @@ ${upstreamText || data.description}`;
             {data.status === 'error' && data.output ? (
               <div data-tour="result"><ErrorHelp message={data.output} nodeType={data.nodeType} hint={data.result?.error?.hint} /></div>
             ) : (
-            <div data-tour="result" className="p-2.5 bg-black/70 rounded-lg border border-emerald-500/30 text-[11px] font-mono text-emerald-400/90 max-h-[110px] overflow-y-auto custom-scrollbar leading-relaxed">
+            <div data-tour="result" className="p-2.5 bg-black/70 rounded-lg border border-emerald-500/30 text-[11px] font-mono text-emerald-400/90 max-h-[110px] overflow-y-auto custom-scrollbar leading-relaxed" data-lenis-prevent="true">
               {data.output || (
                 <span className="italic opacity-50 text-gray-500">
                   Ready. Run connected upstream nodes to populate output stream.
@@ -951,7 +951,7 @@ ${upstreamText || data.description}`;
         )}
 
         {data.nodeType === 'data' && (
-          <div className="p-2 bg-black/60 rounded-lg border border-purple-500/20 text-[11px] font-mono text-purple-300/90 max-h-[90px] overflow-y-auto custom-scrollbar">
+          <div className="p-2 bg-black/60 rounded-lg border border-purple-500/20 text-[11px] font-mono text-purple-300/90 max-h-[90px] overflow-y-auto custom-scrollbar" data-lenis-prevent="true">
             <pre className="whitespace-pre-wrap">{data.dataPayload || data.description || '{\n  "status": "ready"\n}'}</pre>
           </div>
         )}
@@ -982,7 +982,7 @@ ${upstreamText || data.description}`;
         )}
 
         {data.nodeType === 'code' && (
-          <div className="p-2 bg-black/70 rounded-lg border border-rose-500/20 text-[11px] font-mono text-rose-300/90 max-h-[80px] overflow-y-auto custom-scrollbar">
+          <div className="p-2 bg-black/70 rounded-lg border border-rose-500/20 text-[11px] font-mono text-rose-300/90 max-h-[80px] overflow-y-auto custom-scrollbar" data-lenis-prevent="true">
             <pre className="whitespace-pre-wrap">{data.codeScript || '// Transform input\nreturn input.toUpperCase();'}</pre>
           </div>
         )}
@@ -1000,7 +1000,7 @@ ${upstreamText || data.description}`;
               Criteria: <span className="font-semibold text-indigo-200">{EVAL_CRITERIA.find(c => c.id === data.evalCriteria)?.name || 'Accuracy'}</span>
             </div>
             {data.evalCritique && (
-              <div className="text-[11px] text-gray-300 italic bg-white/5 p-2 rounded-lg border border-white/10 max-h-[60px] overflow-y-auto custom-scrollbar">
+              <div className="text-[11px] text-gray-300 italic bg-white/5 p-2 rounded-lg border border-white/10 max-h-[60px] overflow-y-auto custom-scrollbar" data-lenis-prevent="true">
                 "{data.evalCritique}"
               </div>
             )}
@@ -1013,7 +1013,7 @@ ${upstreamText || data.description}`;
           data.status === 'error' ? (
             <div data-tour="result" className="mt-1"><ErrorHelp message={data.output} nodeType={data.nodeType} hint={data.result?.error?.hint} /></div>
           ) : (
-          <div data-tour="result" className="mt-1 p-2 bg-black/60 rounded-lg border border-white/10 text-[11px] text-gray-300 max-h-[80px] overflow-y-auto custom-scrollbar font-mono">
+          <div data-tour="result" className="mt-1 p-2 bg-black/60 rounded-lg border border-white/10 text-[11px] text-gray-300 max-h-[80px] overflow-y-auto custom-scrollbar font-mono" data-lenis-prevent="true">
             {data.output}
           </div>
           )
@@ -1136,6 +1136,7 @@ function CustomSelect({
             transition={{ duration: 0.15 }}
             onWheel={(e) => e.stopPropagation()}
             className="absolute z-50 w-full mt-1.5 bg-sf-1a1a1a/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-x-hidden max-h-[240px] overflow-y-auto custom-scrollbar flex flex-col p-1.5 nowheel nopan nodrag"
+            data-lenis-prevent="true"
           >
             {options.map((option) => (
               <button
@@ -2569,7 +2570,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                 </button>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 custom-scrollbar" data-lenis-prevent="true">
                 {/* Node menu: duplicate, and good next steps from the node catalog */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
@@ -3357,7 +3358,7 @@ function WorkflowDashboard({ onOpenWorkflow, onCreateNew }: WorkflowDashboardPro
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6 space-y-6">
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6 space-y-6" data-lenis-prevent="true">
         {/* Controls Toolbar: Search, Filters, View Mode */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Search */}
@@ -3844,7 +3845,7 @@ export default function BranchingChat() {
   };
 
   return (
-    <PageTransition className={cn(isDesktop ? "h-full" : "")}>
+    <PageTransition className={cn(isDesktop ? "h-full" : "h-full flex-1 flex flex-col min-h-0")}>
       <div className={cn(
         "w-full p-4 sm:p-6 flex flex-col min-h-0",
         isDesktop ? "h-full" : "h-[calc(100vh-80px)]"
