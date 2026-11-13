@@ -1935,7 +1935,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [fitView]);
 
   const addNode = (type: keyof typeof NODE_CONFIG = 'prompt', opts?: { afterId?: string }) => {
     const isDesktop = isDesktopApp();
