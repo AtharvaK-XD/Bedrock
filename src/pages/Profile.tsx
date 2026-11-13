@@ -453,37 +453,48 @@ export default function Profile() {
               <div className={cn("absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] transition-all duration-500", activeTheme.radial1)} />
               <div className={cn("absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_var(--tw-gradient-stops))] transition-all duration-500", activeTheme.radial2)} />
 
-              {/* Tech blueprint grid theme */}
-              <div 
-                className={cn("absolute inset-0 pointer-events-none transition-opacity duration-300", activeTheme.meshOpacity)} 
-                style={{
-                  backgroundImage: `linear-gradient(to right, ${activeTheme.gridColor} 1px, transparent 1px), linear-gradient(to bottom, ${activeTheme.gridColor} 1px, transparent 1px)`,
-                  backgroundSize: '32px 32px',
-                  maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 70%, rgba(0,0,0,0) 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 70%, rgba(0,0,0,0) 100%)',
-                }}
-              />
-
-              {/* Neural Prompt Graph decorative curves */}
-              <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+              {/* Architectural Blueprint Grid Pattern: Crisp, High-Contrast Engineering Grid for all users */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none select-none z-10" xmlns="http://www.w3.org/2000/svg">
                 <defs>
+                  {/* Minor 24px grid */}
+                  <pattern id="profileGridMinor" width="24" height="24" patternUnits="userSpaceOnUse">
+                    <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(79, 176, 161, 0.25)" strokeWidth="0.75" />
+                  </pattern>
+                  {/* Major 72px grid with intersection crosshairs */}
+                  <pattern id="profileGridMajor" width="72" height="72" patternUnits="userSpaceOnUse">
+                    <rect width="72" height="72" fill="url(#profileGridMinor)" />
+                    <path d="M 72 0 L 0 0 0 72" fill="none" stroke="rgba(79, 176, 161, 0.55)" strokeWidth="1.25" />
+                    {/* Crosshairs at major intersections */}
+                    <path d="M -4 0 L 4 0 M 0 -4 L 0 4" stroke="#4FB0A1" strokeWidth="1.5" />
+                    <circle cx="36" cy="36" r="1.2" fill="rgba(79, 176, 161, 0.5)" />
+                  </pattern>
+                  <linearGradient id="gridMaskGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                    <stop offset="65%" stopColor="#ffffff" stopOpacity="0.85" />
+                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0.5" />
+                  </linearGradient>
+                  <mask id="gridMask">
+                    <rect width="100%" height="100%" fill="url(#gridMaskGradient)" />
+                  </mask>
                   <linearGradient id="bannerLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor={activeTheme.gridColor} stopOpacity="0.2" />
-                    <stop offset="50%" stopColor={activeTheme.gridColor} stopOpacity="0.8" />
+                    <stop offset="0%" stopColor="#4FB0A1" stopOpacity="0.2" />
+                    <stop offset="50%" stopColor="#4FB0A1" stopOpacity="0.8" />
                     <stop offset="100%" stopColor="#ffffff" stopOpacity="0.4" />
                   </linearGradient>
                 </defs>
-                <path d="M -50 130 C 140 40, 280 160, 460 80 C 640 0, 820 140, 1000 60 C 1180 -20, 1340 100, 1520 40" fill="none" stroke="url(#bannerLineGrad)" strokeWidth="1.5" strokeDasharray="5 5" />
-                <path d="M 40 180 C 200 90, 400 200, 620 90 C 840 -20, 1040 150, 1260 70" fill="none" stroke={activeTheme.gridColor} strokeWidth="1" opacity="0.4" />
-                <circle cx="460" cy="80" r="3.5" fill={activeTheme.gridColor} />
+                <rect width="100%" height="100%" fill="url(#profileGridMajor)" mask="url(#gridMask)" />
+                {/* Neural Prompt Graph decorative curves */}
+                <path d="M -50 130 C 140 40, 280 160, 460 80 C 640 0, 820 140, 1000 60 C 1180 -20, 1340 100, 1520 40" fill="none" stroke="url(#bannerLineGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
+                <path d="M 40 180 C 200 90, 400 200, 620 90 C 840 -20, 1040 150, 1260 70" fill="none" stroke="#4FB0A1" strokeWidth="1" opacity="0.4" />
+                <circle cx="460" cy="80" r="3.5" fill="#4FB0A1" />
                 <circle cx="1000" cy="60" r="4" fill="#ffffff" opacity="0.9" />
-                <circle cx="620" cy="90" r="3" fill={activeTheme.gridColor} />
+                <circle cx="620" cy="90" r="3" fill="#4FB0A1" />
               </svg>
 
               {/* Telemetry watermark */}
-              <div className="absolute top-4 right-6 hidden md:flex items-center gap-2 text-[10px] font-mono text-copper-300/40 tracking-widest uppercase select-none pointer-events-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-copper-400/60 animate-pulse" />
-                <span>BEDROCK ARCHITECTURE // WORKSTATION NODE</span>
+              <div className="absolute top-4 right-6 hidden md:flex items-center gap-2 text-[10px] font-mono text-copper-300/70 tracking-widest uppercase select-none pointer-events-none z-20">
+                <span className="w-1.5 h-1.5 rounded-full bg-copper-400 animate-pulse" />
+                <span>GRID: 24/72PX · ARCHITECT_VIEWPORT // ACTIVE</span>
               </div>
 
               {/* Top specular edge highlight */}
