@@ -2,10 +2,12 @@ import type { EngineLimits, EngineTier } from './types';
 
 /** Per-run caps. Every AI call still counts against the normal server quota as well. */
 export const ENGINE_LIMITS: Record<EngineTier, EngineLimits> = {
-  // maxNodes mirrors TIER_LIMITS.dagNodeLimit in src/lib/subscriptionTiers.ts
-  free: { maxAiCalls: 15, maxForEachItems: 5, maxNodes: 3 },
-  pro: { maxAiCalls: 60, maxForEachItems: 20, maxNodes: 15 },
-  ultimate: { maxAiCalls: 200, maxForEachItems: 50, maxNodes: Infinity },
+  // maxNodes mirrors TIER_LIMITS.dagNodeLimit in src/lib/subscriptionTiers.ts and PLAN_NODE_LIMIT in
+  // api/_lib/workflowGraph.ts: Free 5, Pro 10 (Advanced counts as Pro), Ultimate 20 (decided 2026-11-13).
+  // The desktop app (own keys) passes `limits: { maxNodes: Infinity }` instead.
+  free: { maxAiCalls: 15, maxForEachItems: 5, maxNodes: 5 },
+  pro: { maxAiCalls: 60, maxForEachItems: 20, maxNodes: 10 },
+  ultimate: { maxAiCalls: 200, maxForEachItems: 50, maxNodes: 20 },
 };
 
 export function resolveLimits(tier: EngineTier, override?: Partial<EngineLimits>): EngineLimits {

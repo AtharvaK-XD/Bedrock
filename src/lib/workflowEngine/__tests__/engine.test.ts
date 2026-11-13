@@ -559,4 +559,23 @@ describe('planRun and validateGraph', () => {
     const issues = validateGraph({ nodes: [sys, p, o], edges: [e('s', 'p'), e('p', 'o')] }, { tier: 'free' });
     expect(issues.filter((i) => i.severity !== 'tip')).toEqual([]);
   });
+
+  it('plan step limits: Free 5, Pro 10, Ultimate 20; notes do not count; desktop can lift the limit', () => {
+    const chain = (count: number) => {
+      const nodes = Array.from({ length: count }, (_, i) => n('data', { dataPayload: 'x' }, `s${i}`));
+      const edges = nodes.slice(1).map((node, i) => e(`s${i}`, node.id));
+      return { nodes, edges };
+    };
+    const over = (g: WorkflowGraph, opts: Parameters<typeof validateGraph>[1]) => validateGraph(g, opts).find((i) => i.code === 'PLAN_NODE_LIMIT');
+    for (const [tier, limit] of [['free', 5], ['pro', 10], ['ultimate', 20]] as const) {
+      expect(over(chain(limit), { tier }), `${tier} at ${limit}`).toBeUndefined();
+      const issue = over(chain(limit + 1), { tier });
+      expect(issue?.message).toContain(`up to ${limit}`);
+      expect(issue?.message).not.toMatch(/unlimited/i);
+    }
+    const withNotes = chain(5);
+    withNotes.nodes.push(n('note', { noteText: 'a' }, 'note1'), n('note', { noteText: 'b' }, 'note2'));
+    expect(over(withNotes, { tier: 'free' })).toBeUndefined();
+    expect(over(chain(40), { tier: 'free', limits: { maxNodes: Infinity } })).toBeUndefined();
+  });
 });

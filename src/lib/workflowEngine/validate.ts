@@ -1,15 +1,15 @@
-import type { EngineTier, GraphIssue, WorkflowGraph, WorkflowNode } from './types';
+import type { EngineLimits, EngineTier, GraphIssue, WorkflowGraph, WorkflowNode } from './types';
 import { ALL_NODE_TYPES } from './types';
 import { isRunnable, liveEdges, planRun, upstreamOf } from './graph';
 import { findTemplateNames, VARIABLE_NAME_RE } from './template';
 import { parsePath } from './jsonPath';
-import { ENGINE_LIMITS } from './limits';
+import { resolveLimits } from './limits';
 
 const label = (n: WorkflowNode) => `"${n.data?.title || n.id}"`;
 
 /** How many AI calls a full run can make at most (For Each in AI mode counts once per allowed item). */
-export function estimateAiCalls(graph: WorkflowGraph, tier: EngineTier = 'free'): number {
-  const cap = ENGINE_LIMITS[tier]?.maxForEachItems ?? ENGINE_LIMITS.free.maxForEachItems;
+export function estimateAiCalls(graph: WorkflowGraph, tier: EngineTier = 'free', limits?: Partial<EngineLimits>): number {
+  const cap = resolveLimits(tier, limits).maxForEachItems;
   let total = 0;
   for (const n of graph.nodes || []) {
     const d = n.data;
@@ -27,9 +27,11 @@ export function estimateAiCalls(graph: WorkflowGraph, tier: EngineTier = 'free')
 /**
  * The "pipeline doctor": friendly problems and tips for a workflow. Nothing here blocks saving.
  * Severity: error = the run will fail at that step; warning = it will run but probably not as intended; tip = advice.
+ * limits overrides the plan caps, e.g. the desktop app (own keys) passes { maxNodes: Infinity }.
  */
-export function validateGraph(graph: WorkflowGraph, opts: { tier?: EngineTier } = {}): GraphIssue[] {
+export function validateGraph(graph: WorkflowGraph, opts: { tier?: EngineTier; limits?: Partial<EngineLimits> } = {}): GraphIssue[] {
   const tier = opts.tier ?? 'free';
+  const caps = resolveLimits(tier, opts.limits);
   const issues: GraphIssue[] = [];
   const nodes = graph.nodes || [];
   const runnable = nodes.filter(isRunnable);
@@ -59,8 +61,8 @@ export function validateGraph(graph: WorkflowGraph, opts: { tier?: EngineTier } 
     issues.push({ severity: 'error', code: 'CYCLE', nodeId: cycle[0], message: `These steps are wired in a loop: ${names}. A workflow needs a place to start.`, fix: 'Remove one wire in the loop.' });
   }
 
-  const limit = ENGINE_LIMITS[tier]?.maxNodes ?? ENGINE_LIMITS.free.maxNodes;
-  if (runnable.length > limit) {
+  const limit = caps.maxNodes;
+  if (Number.isFinite(limit) && runnable.length > limit) {
     issues.push({
       severity: 'warning',
       code: 'PLAN_NODE_LIMIT',
@@ -69,9 +71,9 @@ export function validateGraph(graph: WorkflowGraph, opts: { tier?: EngineTier } 
     });
   }
 
-  const aiCap = ENGINE_LIMITS[tier]?.maxAiCalls ?? ENGINE_LIMITS.free.maxAiCalls;
-  const aiEstimate = estimateAiCalls(graph, tier);
-  if (aiEstimate > aiCap) {
+  const aiCap = caps.maxAiCalls;
+  const aiEstimate = estimateAiCalls(graph, tier, opts.limits);
+  if (Number.isFinite(aiCap) && aiEstimate > aiCap) {
     issues.push({
       severity: 'warning',
       code: 'AI_CALLS_OVER_CAP',

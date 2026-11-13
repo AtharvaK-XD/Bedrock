@@ -253,7 +253,8 @@ export async function handleWorkflowAction(action: string, req: VercelRequest, r
           `) as Array<{ token: string }>)[0]?.token;
         const token = (await createOrGet()) ?? (await createOrGet());
         if (!token) return res.status(409).json({ error: 'Could not create a share link', code: 'SHARE_CONFLICT', message: 'Please try again.' });
-        return res.status(200).json({ id, token, url: `/branching/shared/${token}` });
+        // The page opens shared links at /app/branching?shared=<token> (CHG-0142); the token is URL-safe base64
+        return res.status(200).json({ id, token, url: `/app/branching?shared=${token}` });
       } catch (err) {
         { const mapped = sendMappedDbError(res, err); if (mapped) return mapped; }
         return sendDbFailure(res, '[Workflows] share error:', 'Failed to share workflow', err);

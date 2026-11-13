@@ -2,9 +2,9 @@
  * Bedrock Subscription Tiers and Feature Access Guard
  *
  * Tier Hierarchy:
- * 1. Free Plan ($0 / ₹0) - 100% Free models (Gemini Flash Lite, Groq Qwen, OpenRouter Free), max 10 prompts/day, 3 DAG nodes, 5 library items.
- * 2. Pro Plan (₹399 / ~$5/mo) - Free models + Fast Frontier (GPT-4o Mini, Claude Haiku, Llama 3.3 70B, Mistral Large), unlimited prompts, 15 DAG nodes, .cursorrules export.
- * 3. Ultimate Plan (₹999 / ~$12-$15/mo) - Everything in Pro + Frontier Flagships (Claude 3.5 Sonnet, GPT-4o, o3-mini, Sonar Pro), unlimited DAG nodes, automated evals, priority queue.
+ * 1. Free Plan ($0 / ₹0) - 100% Free models (Gemini Flash Lite, Groq Qwen, OpenRouter Free), max 10 prompts/day, 5 DAG nodes, 5 library items.
+ * 2. Pro Plan (₹399 / ~$5/mo) - Free models + Fast Frontier (GPT-4o Mini, Claude Haiku, Llama 3.3 70B, Mistral Large), unlimited prompts, 10 DAG nodes, .cursorrules export.
+ * 3. Ultimate Plan (₹999 / ~$12-$15/mo) - Everything in Pro + Frontier Flagships (Claude 3.5 Sonnet, GPT-4o, o3-mini, Sonar Pro), 20 DAG nodes, automated evals, priority queue.
  */
 
 import { isDesktopApp } from './platform';
@@ -29,7 +29,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
     name: 'Free Plan',
     tier: 'free',
     dailyGenerationsLimit: 10,
-    dagNodeLimit: 3,
+    dagNodeLimit: 5,
     libraryPromptLimit: 5,
     allowedExportFormats: ['txt'],
     hasLiveTelemetry: true,
@@ -38,7 +38,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
     features: [
       'Gemini 3.5 Flash Lite & Groq GPT-OSS 120B/20B models ($0)',
       '10 prompt generations per day',
-      '3 DAG canvas pipeline nodes',
+      '5 DAG canvas pipeline nodes',
       'Up to 5 custom prompt library slots',
     ],
   },
@@ -46,7 +46,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
     name: 'Pro Plan',
     tier: 'pro',
     dailyGenerationsLimit: Infinity,
-    dagNodeLimit: 15,
+    dagNodeLimit: 10,
     libraryPromptLimit: 100,
     allowedExportFormats: ['txt', 'md', 'cursor', 'windsurf'],
     hasLiveTelemetry: true,
@@ -56,7 +56,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
       'Unlimited daily prompt generations ($0 marginal cost)',
       'Claude Sonnet 5.5, GPT-6.1 Sol, GPT-6 Luna & o3-mini',
       'DeepSeek R1, Grok 4.7, Llama 3.3 70B & Gemini 3.6 Flash',
-      '15 DAG canvas pipeline nodes with branching logic',
+      '10 DAG canvas pipeline nodes with branching logic',
       'Up to 100 library prompt templates with tags',
       'Export to .cursorrules and system prompts',
     ],
@@ -65,7 +65,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
     name: 'Pro Plan',
     tier: 'pro',
     dailyGenerationsLimit: Infinity,
-    dagNodeLimit: 15,
+    dagNodeLimit: 10,
     libraryPromptLimit: 100,
     allowedExportFormats: ['txt', 'md', 'cursor', 'windsurf'],
     hasLiveTelemetry: true,
@@ -75,7 +75,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
       'Unlimited daily prompt generations ($0 marginal cost)',
       'Claude Sonnet 5.5, GPT-6.1 Sol, GPT-6 Luna & o3-mini',
       'DeepSeek R1, Grok 4.7, Llama 3.3 70B & Gemini 3.6 Flash',
-      '15 DAG canvas pipeline nodes with branching logic',
+      '10 DAG canvas pipeline nodes with branching logic',
       'Up to 100 library prompt templates with tags',
       'Export to .cursorrules and system prompts',
     ],
@@ -84,7 +84,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
     name: 'Ultimate Plan',
     tier: 'ultimate',
     dailyGenerationsLimit: Infinity,
-    dagNodeLimit: Infinity,
+    dagNodeLimit: 20,
     libraryPromptLimit: Infinity,
     allowedExportFormats: ['txt', 'md', 'cursor', 'windsurf', 'json'],
     hasLiveTelemetry: true,
@@ -93,7 +93,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, PlanLimits> = {
     features: [
       'Claude Opus 5.5, GPT-6 Astra & OpenAI o1',
       'Gemini 4 Argon, Llama 3.1 405B & Sonar Reasoning Pro',
-      'Unlimited DAG nodes & infinite canvas branches',
+      '20 DAG canvas pipeline nodes',
       'Automated quality evals & rubric judge',
       'VIP low-latency queue & lifetime traces',
     ],
