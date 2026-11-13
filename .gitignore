@@ -60,3 +60,8 @@ scratch/
 .vercel
 # Browser network dumps: they contain cookies and session tokens
 *.har
+# Backups and database dumps: they can hold user data or a copy of a secret file
+*.bak
+*.backup
+*.dump
+*.sql.gz

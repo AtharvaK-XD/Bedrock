@@ -79,13 +79,15 @@ describe('safeRegexTest', () => {
 
   it('accepted worst case: one open "almost anything" repeat on 50,000 characters is slow but finishes (about 1 s)', () => {
     // Known limit, documented in safeRegex.ts: a backtracking engine is quadratic here. It is a pause, not a freeze.
+    // About 0.5 s per pattern on an idle machine; the full suite runs ~39 files at once and was measured 10x slower
+    // (15.7 s), so the bound only catches a real freeze (cubic and worse would take minutes to hours), not CPU load.
     const long = 'word '.repeat(SAFE_REGEX_LIMITS.textChars / 5);
     for (const pattern of ['[^,]+,[^,]+', '.*x', 'a.*b.*c']) {
       const t0 = performance.now();
       expect(safeRegexTest(pattern, long).ok).toBe(true);
-      expect(performance.now() - t0, pattern).toBeLessThan(10000);
+      expect(performance.now() - t0, pattern).toBeLessThan(60_000);
     }
-  }, 20000);
+  }, 120_000);
 
   it('is always case-insensitive', () => {
     expect(safeRegexTest('HELLO', 'say hello')).toEqual({ ok: true, matched: true });

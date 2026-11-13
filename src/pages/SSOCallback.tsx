@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AuthenticateWithRedirectCallback, useAuth, useClerk, useUser } from '@clerk/react';
 import { useNavigate } from 'react-router-dom';
 import { PageTransition } from '../components/layout/PageTransition';
+import { safeReturnPath } from '../lib/safeRedirect';
 
 export default function SSOCallback() {
   const { isSignedIn } = useAuth();
@@ -76,7 +77,8 @@ export default function SSOCallback() {
         }, 200);
       } else {
         const searchParams = new URLSearchParams(window.location.search);
-        const returnUrl = searchParams.get('returnUrl') || '/app';
+        // Only a path on this site (a link could otherwise send the signed-in user elsewhere)
+        const returnUrl = safeReturnPath(searchParams.get('returnUrl'));
         navigate(returnUrl, { replace: true });
       }
     };
@@ -120,7 +122,7 @@ export default function SSOCallback() {
   }, [isSignedIn, user, clerk, navigate, isPopup]);
 
   const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  const returnUrl = searchParams.get('returnUrl') || '/app';
+  const returnUrl = safeReturnPath(searchParams.get('returnUrl'));
 
   return (
     <PageTransition className="flex items-center justify-center min-h-screen bg-black">
