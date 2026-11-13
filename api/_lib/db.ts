@@ -9,6 +9,35 @@ function getDatabaseUrl(): string {
   return url.trim();
 }
 
+/**
+ * Longest one database round trip may take (sending the query and reading the answer). Neon's HTTP driver has no time
+ * limit of its own: a stuck connection (for example a compute that does not wake up) held each request until Vercel
+ * stopped the function at 60 s, which answers with a non-JSON 504 and, on the AI routes, could lose an answer that was
+ * already paid for. The app role's own statement_timeout (20 s, db/roles.sql) only covers a query the database is
+ * actually running. 15 s is far above any query here (a purge round takes ~73 ms, CHG-0015) and leaves room inside the
+ * 60 s function limit. DB_QUERY_TIMEOUT_MS (milliseconds, 100 to 55,000) overrides it.
+ */
+export const DB_QUERY_TIMEOUT_MS = 15_000;
+
+export function dbQueryTimeoutMs(): number {
+  const raw = process.env.DB_QUERY_TIMEOUT_MS;
+  const n = raw === undefined || raw.trim() === '' ? NaN : Number(raw);
+  return Number.isFinite(n) && n >= 100 && n <= 55_000 ? Math.floor(n) : DB_QUERY_TIMEOUT_MS;
+}
+
+/**
+ * Options the driver merges into every request it sends. `signal` is a getter on purpose: @neondatabase/serverless
+ * spreads these options into each fetch (`{ ...fetchOptions }`), so every query and every transaction batch gets its
+ * own fresh time limit, instead of one shared signal that would run out once for all of them.
+ */
+export function dbFetchOptions(): Record<string, unknown> {
+  return {
+    get signal() {
+      return AbortSignal.timeout(dbQueryTimeoutMs());
+    },
+  };
+}
+
 let sqlInstance: ReturnType<typeof neon> | null = null;
 
 export function getDb() {
@@ -17,7 +46,7 @@ export function getDb() {
     throw new Error('DATABASE_URL is not configured in environment variables.');
   }
   if (!sqlInstance) {
-    sqlInstance = neon(url);
+    sqlInstance = neon(url, { fetchOptions: dbFetchOptions() });
   }
   return sqlInstance;
 }

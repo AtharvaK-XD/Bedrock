@@ -14,6 +14,8 @@ import {
   recordAiFailureTrace,
   usageFields,
   failureOutcome,
+  aiDeadlineFrom,
+  afterResponse,
 } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { buildRefineSystemPrompt, extractRefineResult } from '../_lib/aiPrompts.js';
@@ -77,6 +79,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let answered = false;
   try {
     const { text, model, truncated, usage } = await executeAiCompletion(safeContent, systemPrompt, user?.id, undefined, undefined, {
+      // One AI budget counted from the request's arrival, so sign-in and quota time cannot push it past Vercel's 60 s
+      deadlineAt: aiDeadlineFrom(startTime),
       maxOutputTokens: refineOutputBudget(currentPrompt.length),
       signal: clientAbortSignal(res),
     });
@@ -92,14 +96,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     extracted.updatedMarkdown = stripInternalChecklist(extracted.updatedMarkdown);
 
     if (user?.id) {
-      await recordExecutionTrace({
+      // Recorded after the answer: the response never waits on a database write
+      afterResponse(recordExecutionTrace({
         userId: user.id,
         nodeOrigin: 'RefineModal.refine',
         modelTarget: model,
         tokensUsed: tokensForTrace(usage, Math.max(400, Math.round(extracted.updatedMarkdown.length / 3.5))),
         latencyMs: Date.now() - startTime,
         status: 'success',
-      });
+      }));
     }
 
     logAiRequest({ route: 'ai/refine', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model, ...usageFields(usage) });
@@ -114,7 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Refund only when no provider answered. An answer that was paid for but unusable (cut off, rejected) keeps
       // its unit: otherwise repeating such a request would run paid model calls for free.
       if (!answered) await releaseQuota(quota);
-      await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'RefineModal.refine', err, latencyMs: Date.now() - startTime });
+      afterResponse(recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'RefineModal.refine', err, latencyMs: Date.now() - startTime }));
       console.error('[Refine] Error:', err);
     }
     logAiRequest({ route: 'ai/refine', requestId, outcome, latencyMs: Date.now() - startTime, code: err?.code });

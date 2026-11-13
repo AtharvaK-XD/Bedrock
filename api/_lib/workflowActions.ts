@@ -15,7 +15,7 @@ import {
 } from './workflowAi.js';
 import { executeAiCompletion } from './ai.js';
 import { checkPromptInjection, releaseQuota, reserveQuota, sanitizeAndDelimitPrompt, sendQuotaDenied } from './security.js';
-import { clientAbortSignal, failureOutcome, getRequestId, isPaidUser, logAiRequest, sendAiFailure } from './aiHttp.js';
+import { aiDeadlineFrom, clientAbortSignal, failureOutcome, getRequestId, isPaidUser, logAiRequest, sendAiFailure } from './aiHttp.js';
 
 type Sql = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>;
 
@@ -153,7 +153,11 @@ export async function handleShared(req: VercelRequest, res: VercelResponse, sql:
 
 // ---- Signed-in actions ---------------------------------------------------------------------------------------
 
-export async function handleWorkflowAction(action: string, req: VercelRequest, res: VercelResponse, user: AuthenticatedUser, sql: Sql) {
+/**
+ * `requestStartedAt` (optional, epoch ms): when the request arrived, so the AI actions' 50 s budget also counts the
+ * sign-in and rate-limit time spent before this function (see aiDeadlineFrom). Defaults to now.
+ */
+export async function handleWorkflowAction(action: string, req: VercelRequest, res: VercelResponse, user: AuthenticatedUser, sql: Sql, requestStartedAt: number = Date.now()) {
   const body = (req.body && typeof req.body === 'object' ? req.body : {}) as Record<string, unknown>;
   const tier = tierOf(user);
   const method = req.method;
@@ -169,11 +173,11 @@ export async function handleWorkflowAction(action: string, req: VercelRequest, r
 
     case 'generate':
       if (method !== 'POST') return wrongMethod();
-      return handleGenerate(req, res, user, body, tier);
+      return handleGenerate(req, res, user, body, tier, requestStartedAt);
 
     case 'explain':
       if (method !== 'POST') return wrongMethod();
-      return handleExplain(req, res, user, body);
+      return handleExplain(req, res, user, body, requestStartedAt);
 
     case 'versions': {
       if (method !== 'GET') return wrongMethod();
@@ -345,7 +349,7 @@ export async function handleWorkflowAction(action: string, req: VercelRequest, r
 
 // ---- AI actions ----------------------------------------------------------------------------------------------
 
-async function handleGenerate(req: VercelRequest, res: VercelResponse, user: AuthenticatedUser, body: Record<string, unknown>, tier: ReturnType<typeof tierOf>) {
+async function handleGenerate(req: VercelRequest, res: VercelResponse, user: AuthenticatedUser, body: Record<string, unknown>, tier: ReturnType<typeof tierOf>, requestStartedAt: number) {
   const startTime = Date.now();
   const requestId = getRequestId(req);
   res.setHeader('X-Request-Id', requestId);
@@ -370,7 +374,7 @@ async function handleGenerate(req: VercelRequest, res: VercelResponse, user: Aut
       user.id,
       undefined,
       0.4,
-      { maxOutputTokens: 3_000, signal: clientAbortSignal(res) }
+      { deadlineAt: aiDeadlineFrom(requestStartedAt), maxOutputTokens: 3_000, signal: clientAbortSignal(res) }
     );
     answered = true;
     const proposal = parseAiJsonObject(text);
@@ -393,7 +397,7 @@ async function handleGenerate(req: VercelRequest, res: VercelResponse, user: Aut
   }
 }
 
-async function handleExplain(req: VercelRequest, res: VercelResponse, user: AuthenticatedUser, body: Record<string, unknown>) {
+async function handleExplain(req: VercelRequest, res: VercelResponse, user: AuthenticatedUser, body: Record<string, unknown>, requestStartedAt: number) {
   const startTime = Date.now();
   const requestId = getRequestId(req);
   res.setHeader('X-Request-Id', requestId);
@@ -416,7 +420,7 @@ async function handleExplain(req: VercelRequest, res: VercelResponse, user: Auth
       user.id,
       undefined,
       0.3,
-      { maxOutputTokens: 2_000, signal: clientAbortSignal(res) }
+      { deadlineAt: aiDeadlineFrom(requestStartedAt), maxOutputTokens: 2_000, signal: clientAbortSignal(res) }
     );
     answered = true;
     const parsed = parseAiJsonObject(text);

@@ -13,6 +13,8 @@ import {
   recordAiFailureTrace,
   usageFields,
   failureOutcome,
+  aiDeadlineFrom,
+  afterResponse,
 } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { getUseCaseProfile, classifyUseCase, normalizeQuestions } from '../_lib/useCaseProfiles.js';
@@ -72,6 +74,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let answeredBy: string | undefined;
   try {
     const { text, model, usage } = await executeAiCompletion(safePrompt, systemPrompt, user?.id, undefined, undefined, {
+      // One AI budget counted from the request's arrival, so sign-in and quota time cannot push it past Vercel's 60 s
+      deadlineAt: aiDeadlineFrom(startTime),
       maxOutputTokens: AI_OUTPUT_BUDGET.questions,
       signal: clientAbortSignal(res),
     });
@@ -91,14 +95,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (user?.id) {
-      await recordExecutionTrace({
+      // Recorded after the answer: the response never waits on a database write
+      afterResponse(recordExecutionTrace({
         userId: user.id,
         nodeOrigin: 'Wizard.generateQuestions',
         modelTarget: model,
         tokensUsed: tokensForTrace(usage, 400),
         latencyMs: Date.now() - startTime,
         status: 'success',
-      });
+      }));
     }
 
     logAiRequest({ route: 'ai/generate-questions', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model, ...usageFields(usage) });
@@ -110,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Refund only when no provider answered. An answer that was paid for but unusable (cut off, rejected) keeps
       // its unit: otherwise repeating such a request would run paid model calls for free.
       if (!answeredBy) await releaseQuota(quota);
-      await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Wizard.generateQuestions', err, latencyMs: Date.now() - startTime, model: answeredBy });
+      afterResponse(recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Wizard.generateQuestions', err, latencyMs: Date.now() - startTime, model: answeredBy }));
       console.error('[GenerateQuestions] Error:', err);
     }
     logAiRequest({ route: 'ai/generate-questions', requestId, outcome: aborted ? 'aborted' : 'fallback', latencyMs: Date.now() - startTime, code: err?.code });

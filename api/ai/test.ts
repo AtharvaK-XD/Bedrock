@@ -14,6 +14,9 @@ import {
   recordAiFailureTrace,
   usageFields,
   failureOutcome,
+  aiDeadlineFrom,
+  afterResponse,
+  TRUNCATED_ANSWER_MESSAGE,
 } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { BEDROCK_UNIVERSAL_GUARDRAILS, resolveDomainGuardrails } from '../_lib/aiPrompts.js';
@@ -97,6 +100,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   checkPromptInjection(prompt, user?.id, ip);
 
   const wantsStream = Boolean(body.stream || req.query?.stream === 'true' || req.headers.accept?.includes('text/event-stream'));
+  // One AI budget counted from the request's arrival, so sign-in and quota time cannot push it past Vercel's 60 s
+  const deadlineAt = aiDeadlineFrom(startTime);
 
   let answered = false;
   try {
@@ -119,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         },
         undefined,
-        { maxOutputTokens, signal }
+        { deadlineAt, maxOutputTokens, signal }
       );
       answered = true;
 
@@ -127,37 +132,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const tokens = tokensForTrace(usage, Math.max(100, Math.round(text.length / 4)));
 
       if (user?.id) {
-        await recordExecutionTrace({
+        // Recorded after the answer: the final event never waits on a database write
+        afterResponse(recordExecutionTrace({
           userId: user.id,
           nodeOrigin: 'Tester.test',
           modelTarget: model,
           tokensUsed: tokens,
           latencyMs: latency,
           status: 'success',
-        });
+        }));
       }
 
-      res.write(`data: ${JSON.stringify({ done: true, text, modelTarget: model, latencyMs: latency, tokensUsed: tokens, status: 'success', ...(truncated ? { truncated: true } : {}), ...jsonFields(wantsJson, text) })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, text, modelTarget: model, latencyMs: latency, tokensUsed: tokens, status: 'success', ...(truncated ? { truncated: true, message: TRUNCATED_ANSWER_MESSAGE } : {}), ...jsonFields(wantsJson, text) })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
       logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, stream: true, ...(truncated ? { truncated: true } : {}), ...usageFields(usage) });
       return;
     }
 
-    const { text, model, truncated, usage } = await executeAiCompletion(prompt, systemPrompt, user?.id, undefined, undefined, { maxOutputTokens, signal });
+    const { text, model, truncated, usage } = await executeAiCompletion(prompt, systemPrompt, user?.id, undefined, undefined, { deadlineAt, maxOutputTokens, signal });
     answered = true;
     const latency = Date.now() - startTime;
     const tokens = tokensForTrace(usage, Math.max(100, Math.round(text.length / 4)));
 
     if (user?.id) {
-      await recordExecutionTrace({
+      afterResponse(recordExecutionTrace({
         userId: user.id,
         nodeOrigin: 'Tester.test',
         modelTarget: model,
         tokensUsed: tokens,
         latencyMs: latency,
         status: 'success',
-      });
+      }));
     }
 
     logAiRequest({ route: 'ai/test', requestId, outcome: 'success', latencyMs: latency, model, ...(truncated ? { truncated: true } : {}), ...usageFields(usage) });
@@ -178,7 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Refund only when no provider answered. An answer that was paid for but unusable (cut off, rejected) keeps
       // its unit: otherwise repeating such a request would run paid model calls for free.
       if (!answered) await releaseQuota(quota);
-      await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Tester.test', err, latencyMs: Date.now() - startTime });
+      afterResponse(recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Tester.test', err, latencyMs: Date.now() - startTime }));
       console.error('[Tester] Error:', err);
     }
     logAiRequest({ route: 'ai/test', requestId, outcome, latencyMs: Date.now() - startTime, code: err?.code, stream: wantsStream });

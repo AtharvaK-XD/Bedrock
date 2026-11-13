@@ -1,7 +1,37 @@
 import crypto from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { AiCompletionError, type AiErrorCode, type TokenUsage } from './ai.js';
+import { waitUntil } from '@vercel/functions';
+import { AiCompletionError, AI_DEFAULT_BUDGET_MS, type AiErrorCode, type TokenUsage } from './ai.js';
 import { recordExecutionTrace, isPaidTier } from './security.js';
+
+/**
+ * The time by which a route's AI work must be finished, counted from when the request ARRIVED (not from when the AI
+ * call starts). Sign-in, rate limits and the quota check run first and, on a cold database, can take several seconds;
+ * counting the 50 s budget from the AI call let the whole request run past Vercel's 60 s limit (a non-JSON 504 and a
+ * lost quota refund). synthesize already did this; every AI route now shares the rule.
+ */
+export function aiDeadlineFrom(requestStartedAt: number): number {
+  return requestStartedAt + AI_DEFAULT_BUDGET_MS;
+}
+
+/**
+ * Runs bookkeeping (usage traces) after the answer instead of before it, so the answer never waits on a database
+ * write: a slow database can no longer delay, or push past Vercel's 60 s limit, an answer that was already paid for.
+ * On Vercel, waitUntil keeps the function alive until the task settles; elsewhere the task simply runs. Never throws.
+ */
+export function afterResponse(task: Promise<unknown>): void {
+  const settled = task.then(
+    () => undefined,
+    (err: unknown) => {
+      console.error('[AI] Background bookkeeping failed:', (err as { message?: string } | null)?.message || err);
+    }
+  );
+  try {
+    waitUntil(settled);
+  } catch {
+    // Not on Vercel's runtime: the task runs anyway
+  }
+}
 
 /** Maximum input sizes (characters) accepted by the AI endpoints. */
 export const INPUT_LIMITS = {
@@ -15,6 +45,13 @@ export const INPUT_LIMITS = {
   testPrompt: 20_000,
   testSystemPrompt: 10_000,
 } as const;
+
+/**
+ * Sent next to `truncated: true` in a stream's final event, so a client can tell the user why the end may be missing.
+ * A `message` on an event with `done: true` and no `error` / `code` is not read as a failure by the website's clients.
+ */
+export const TRUNCATED_ANSWER_MESSAGE =
+  'The answer reached its length limit, so its end may be missing. Try a shorter request, or ask for less at once.';
 
 /** True for a signed-in, non-guest user on a paid plan (paid users get larger rate limits). One rule for every AI route. */
 export function isPaidUser(user: { subscriptionTier?: string | null; isGuest?: boolean } | null | undefined): boolean {

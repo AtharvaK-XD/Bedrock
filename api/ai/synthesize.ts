@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../_lib/auth.js';
 import { sanitizeAndDelimitPrompt, checkPromptInjection, reserveQuota, releaseQuota, sendQuotaDenied, recordExecutionTrace } from '../_lib/security.js';
-import { executeAiCompletion, AI_DEFAULT_BUDGET_MS, AI_OUTPUT_BUDGET, sumUsage, tokensForTrace } from '../_lib/ai.js';
+import { executeAiCompletion, AI_OUTPUT_BUDGET, sumUsage, tokensForTrace } from '../_lib/ai.js';
 import {
   INPUT_LIMITS,
   readTextField,
@@ -14,6 +14,9 @@ import {
   recordAiFailureTrace,
   usageFields,
   failureOutcome,
+  aiDeadlineFrom,
+  afterResponse,
+  TRUNCATED_ANSWER_MESSAGE,
 } from '../_lib/aiHttp.js';
 import { enforceRateLimit, getClientIp } from '../_lib/rateLimiter.js';
 import { buildSynthesisSystemPrompt, FINAL_INTEGRITY_CHECK } from '../_lib/aiPrompts.js';
@@ -176,7 +179,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const wantsStream = Boolean(body.stream || req.query.stream === 'true' || req.headers.accept?.includes('text/event-stream'));
 
   // One budget for the whole request (initial call + any repair), under Vercel's 60 s function limit
-  const deadlineAt = startTime + AI_DEFAULT_BUDGET_MS;
+  const deadlineAt = aiDeadlineFrom(startTime);
   // Stops the paid provider call when the user closes the tab or cancels
   const signal = clientAbortSignal(res);
 
@@ -218,14 +221,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (user?.id) {
-        await recordExecutionTrace({
+        // Recorded after the answer: the final event never waits on a database write
+        afterResponse(recordExecutionTrace({
           userId: user.id,
           nodeOrigin: 'Wizard.synthesize',
           modelTarget: model,
           tokensUsed: tokensForTrace(usage, Math.max(500, Math.round(text.length / 3.5))),
           latencyMs: Date.now() - startTime,
           status: 'success',
-        });
+        }));
       }
 
       res.write(`data: ${JSON.stringify({
@@ -238,7 +242,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         missingSections: streamValidation.missingSections,
         promptText: streamedText.trim(),
         // Only present when the answer was cut off at the output limit
-        ...(truncated ? { truncated: true } : {}),
+        ...(truncated ? { truncated: true, message: TRUNCATED_ANSWER_MESSAGE } : {}),
       })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
@@ -307,14 +311,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const finalValidation = validateSynthesisOutput(finalText, targetType, rawIdea);
 
     if (user?.id) {
-      await recordExecutionTrace({
+      afterResponse(recordExecutionTrace({
         userId: user.id,
         nodeOrigin: 'Wizard.synthesize',
         modelTarget: effectiveModel,
         tokensUsed: tokensForTrace(totalUsage, Math.max(500, Math.round(finalText.length / 3.5))),
         latencyMs: Date.now() - startTime,
         status: 'success',
-      });
+      }));
     }
 
     logAiRequest({ route: 'ai/synthesize', requestId, outcome: 'success', latencyMs: Date.now() - startTime, model: effectiveModel, ...(finalTruncated ? { truncated: true } : {}), ...usageFields(totalUsage) });
@@ -340,7 +344,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Refund only when no provider answered. An answer that was paid for but unusable (cut off, rejected) keeps
       // its unit: otherwise repeating such a request would run paid model calls for free.
       if (!answered) await releaseQuota(quota);
-      await recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Wizard.synthesize', err, latencyMs: Date.now() - startTime });
+      afterResponse(recordAiFailureTrace({ userId: user?.id, nodeOrigin: 'Wizard.synthesize', err, latencyMs: Date.now() - startTime }));
       console.error('[Synthesize] Error:', err);
     }
     logAiRequest({ route: 'ai/synthesize', requestId, outcome, latencyMs: Date.now() - startTime, code: err?.code, stream: wantsStream });

@@ -38,6 +38,8 @@ function sendWorkflowLimitReached(res: VercelResponse) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // When the request arrived: the AI actions' time budget counts from here, sign-in time included
+  const requestStartedAt = Date.now();
   // Branching v2: opening a shared link needs no sign-in (its own per-IP limit is inside)
   const action = typeof req.query?.action === 'string' ? req.query.action : '';
   if (action === 'shared') {
@@ -57,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Branching v2 actions (validate, generate, explain, versions, restore, share, runs, stats)
   if (action) {
-    return handleWorkflowAction(action, req, res, user, sql);
+    return handleWorkflowAction(action, req, res, user, sql, requestStartedAt);
   }
 
   // GET /api/workflows

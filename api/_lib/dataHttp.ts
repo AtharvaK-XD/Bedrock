@@ -163,10 +163,35 @@ export function isDailyTraceLimit(err: unknown): boolean {
 }
 
 /**
+ * True when a database call ran past its time limit (DB_QUERY_TIMEOUT_MS in db.ts). The driver wraps the failed fetch
+ * ("Error connecting to database: TimeoutError ...", with the original as `sourceError`); a timeout while reading the
+ * answer arrives unwrapped. Kept here, not in db.ts, because many tests replace db.ts with a mock of getDb only.
+ */
+export function isDbTimeoutError(err: unknown): boolean {
+  const e = err as { name?: unknown; sourceError?: { name?: unknown } } | null;
+  return e?.name === 'TimeoutError' || e?.sourceError?.name === 'TimeoutError';
+}
+
+/** Seconds a client is asked to wait after a database timeout. */
+export const DB_TIMEOUT_RETRY_AFTER_SECONDS = 5;
+
+/**
  * Sends a 500 for a failed database call. The driver's error text (table and column names,
  * constraint details) is logged server-side only and never returned to the client.
+ * A database that did not answer in time gets 503 + Retry-After instead (code DATABASE_TIMEOUT): it is a passing
+ * condition worth retrying, not a bug. Before the time limit existed such a request hung until Vercel's 504.
  */
 export function sendDbFailure(res: VercelResponse, logTag: string, errorTitle: string, err: unknown) {
+  if (isDbTimeoutError(err)) {
+    console.error(logTag, 'database did not answer in time');
+    res.setHeader('Retry-After', String(DB_TIMEOUT_RETRY_AFTER_SECONDS));
+    return res.status(503).json({
+      error: errorTitle,
+      code: 'DATABASE_TIMEOUT',
+      message: 'The service is slow to answer right now. Please try again in a few seconds.',
+      retryAfterSeconds: DB_TIMEOUT_RETRY_AFTER_SECONDS,
+    });
+  }
   console.error(logTag, err);
   return res.status(500).json({ error: errorTitle, message: 'Something went wrong on our side. Please try again.' });
 }
