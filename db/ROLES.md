@@ -94,3 +94,12 @@ These grants are inside a block that runs only when the tables exist, so `roles.
 database without 0021 (a half-applied rights run would leave the app without rights, because every run first revokes
 everything). Run `node db/migrate.mjs roles --yes --host <host>` again right after applying 0021.
 The final check now has 20 lines; the last three are these tables (they show `ok` when the table does not exist yet).
+
+## What the role's time limits are (and are not)
+`statement_timeout = 20s`, `lock_timeout = 5s`, `idle_in_transaction_session_timeout = 30s` (set on the role by
+`roles.sql`) stop a runaway query or a stuck transaction from the APP. They are not a security wall: Postgres lets every
+role change its own session settings (`SET statement_timeout = 0`, even `ALTER ROLE bedrock_app RESET ...`), so
+someone holding a leaked `bedrock_app` string could lift them for their own connection. What a leaked key can NOT do is
+proven in `tests/db/roles.local.test.ts`: read `pg_authid` or `password_hash`, create or change roles, grant itself
+rights, drop / alter / truncate tables, delete accounts or payment records directly. A leaked key is still an
+emergency: `db/RUNBOOK.md` section 1.

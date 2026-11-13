@@ -25,6 +25,8 @@ export const FEATURES = [
   ['0017', 'fast paging of the prompts and workflows lists'],
   ['0018', 'onboarding answers (birth date, referral source) are saved'],
   ['0019', 'paid orders survive account deletion'],
+  ['0020', 'paid plans last 30 days per payment (plan end date)'],
+  ['0021', 'Branching v2: version history, run stats and share links'],
 ];
 
 export async function collectReadiness(sql, { dir }) {
@@ -68,6 +70,19 @@ export async function collectReadiness(sql, { dir }) {
     }
     if (g.has_delete && !(await sql.query(`SELECT has_function_privilege('bedrock_app', 'delete_user_data(text)', 'EXECUTE') AS ok`))[0].ok) {
       out.problems.push('bedrock_app cannot run delete_user_data(): "delete my account" would fail (run db/roles.sql).');
+    }
+    // A new migration's tables without their grants = the feature answers 503 (the usual "forgot to re-run roles").
+    const [p] = await sql.query(`SELECT
+      to_regclass('public."WorkflowRun"') IS NOT NULL AS has_v2,
+      to_regclass('public."User"') IS NOT NULL
+        AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'User' AND column_name = 'plan_expires_at') AS has_expiry`);
+    if (p.has_v2) {
+      const [v] = await sql.query(`SELECT has_table_privilege('bedrock_app', '"WorkflowVersion"', 'INSERT')
+        AND has_table_privilege('bedrock_app', '"WorkflowRun"', 'INSERT') AND has_table_privilege('bedrock_app', '"WorkflowShare"', 'INSERT') AS ok`);
+      if (!v.ok) out.problems.push('bedrock_app has no rights on the Branching v2 tables (0021): version history, share links and stats answer 503 (run db/roles.sql).');
+    }
+    if (p.has_expiry && !(await sql.query(`SELECT has_column_privilege('bedrock_app', '"User"', 'plan_expires_at', 'UPDATE') AS ok`))[0].ok) {
+      out.problems.push('bedrock_app cannot set plan_expires_at (0020): payments are applied without an end date (run db/roles.sql).');
     }
   }
   if (me.name !== 'bedrock_app' && !me.powerful) out.notes.push(`This connection is the role "${me.name}", not bedrock_app.`);

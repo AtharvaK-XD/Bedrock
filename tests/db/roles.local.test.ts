@@ -187,3 +187,51 @@ describe.skipIf(!PGlite)('db/roles.sql on in-memory Postgres', () => {
     });
   });
 });
+
+describe.skipIf(!PGlite)('launch checks for bedrock_app (CHG launch audit)', () => {
+  it('cannot read password hashes of database roles or create / change roles', async () => {
+    const d = new PGlite();
+    await migrateUp(d, new Set<string>());
+    await d.query(`CREATE TABLE schema_migrations(name text primary key)`);
+    await d.query('CREATE ROLE bedrock_app');
+    await runSql(d, readDbFile('roles.sql'));
+    await d.query('SET ROLE bedrock_app');
+    for (const q of [
+      'SELECT rolpassword FROM pg_authid',
+      'CREATE ROLE intruder',
+      'ALTER ROLE bedrock_app SUPERUSER',
+      // NOT listed: `ALTER ROLE bedrock_app RESET statement_timeout`. Postgres lets every role change its OWN session
+      // defaults (and SET them per session), so the time limits are a safety net, not a security wall (db/ROLES.md).
+      'GRANT DELETE ON "User" TO bedrock_app',
+      'ALTER TABLE "PaymentRecord" DROP CONSTRAINT "PaymentRecord_user_id_fkey"',
+      'DROP TABLE "WorkflowRun"',
+      'TRUNCATE "PaymentRecord"',
+      'DELETE FROM "PaymentRecord"',
+    ]) {
+      expect(await errorOf(d, q), q).toMatch(/permission denied|must be owner|must be superuser|must have CREATEROLE|insufficient privilege/i);
+    }
+    await d.query('RESET ROLE');
+    await d.close();
+  });
+
+  it('applying a later migration WITHOUT re-running roles.sql keeps the app able to run every function', async () => {
+    // launch-day mistake: 0021 applied, `roles` forgotten. CREATE OR REPLACE keeps grants, so account deletion and the
+    // usage limit keep working; only the NEW tables are refused (the API answers 503 FEATURE_NOT_READY for them).
+    const d = new PGlite();
+    const a = new Set<string>();
+    await migrateUp(d, a, '0020');
+    await d.query(`CREATE TABLE schema_migrations(name text primary key)`);
+    await d.query('CREATE ROLE bedrock_app');
+    await runSql(d, readDbFile('roles.sql'));
+    await migrateUp(d, a, '0021');
+    await d.query(`INSERT INTO "User"(id,email,password_hash,name,updated_at) VALUES ('ul','l@x.test','x','l',now())`);
+    await d.query('SET ROLE bedrock_app');
+    expect(await errorOf(d, `SELECT reserve_quota('q1', 'ul', '203.0.113.1', 'generation', '/x', 10)`)).toBeNull();
+    expect(await errorOf(d, `SELECT * FROM trace_totals('ul')`)).toBeNull();
+    expect(await errorOf(d, `SELECT * FROM purge_old_logs()`)).toBeNull();
+    expect(await errorOf(d, `SELECT * FROM delete_user_data('ul')`)).toBeNull();
+    expect(await errorOf(d, `SELECT 1 FROM "WorkflowRun" LIMIT 1`)).toMatch(/permission denied/);
+    await d.query('RESET ROLE');
+    await d.close();
+  });
+});

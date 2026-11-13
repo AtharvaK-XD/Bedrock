@@ -22,6 +22,18 @@ Plain steps for Atharva. Agents never run these against production. Neon console
    do not mark it as dev, and delete the branch when you are done.
 4. Either restore production from that point in the Neon console (everything after that time is lost), or copy the
    missing rows back. Decide with the Database session; never guess.
+   **Payments are live: a full restore also erases every payment made after the restore point** (the customer was
+   charged by Razorpay, but the order row and the paid plan disappear). Before restoring production:
+   a. Create a Neon branch of production as it is NOW (the "after" copy). If Neon offers to keep a backup of the
+      current state during the restore, keep it too.
+   b. After the restore, compare "PaymentRecord" in the "after" copy with production: every row with
+      `status = 'captured'` and `updated_at` after the restore point must be copied back, and its account's
+      `subscription_tier`, `plan` and `plan_expires_at` set again (ask the Database session for the exact statements;
+      never re-run the payment by hand in Razorpay).
+   c. Cross-check Razorpay dashboard -> Payments for the same time range: every captured payment must have its row.
+   d. Accounts created after the restore point are also gone: their owners must sign in again (Clerk keeps them);
+      their saved prompts and workflows from that window are only in the "after" copy.
+   Restoring only the broken table's rows (copy back) avoids all of this: prefer it when the damage is limited.
 5. Find the cause before redeploying the API.
 
 ### 2b. Recovery drill (do it ONCE before launch, then every 3 months). Takes about 20 minutes, changes nothing in production.
@@ -34,6 +46,7 @@ Goal: prove that a restore works and learn how long it takes, BEFORE you need it
    - `node db/migrate.mjs status`  -> every migration the live site has is `applied`, none `CHECK`.
    - `node db/check-schema.mjs`    -> `0 difference(s) found`; note `users`, `traces`, `security_logs`.
    - `node db/stats.mjs`           -> no errors. (Counts should be close to production's at that moment.)
+   - `node db/readiness.mjs`       -> `READY`, or only the items you already know about (one screen, read only).
 4. Compare the three counts with production (`stats.mjs` there, read only). A small difference is normal (writes since the chosen time).
 5. DELETE the drill branch (it contains real user data) and close the PowerShell window.
 6. Fill in: window ______ days; branch created in ______ s; counts matched: yes / no; date ______; done by ______.
