@@ -29,12 +29,15 @@ import {
   HardDrive,
   Info,
   AlertTriangle,
+  Lock,
 } from 'lucide-react';
 import { AgentIcon, PerplexityLogo } from '../components/ui/ModelLogos';
 import { subscribeToUpdates, checkForUpdates, applyUpdate, CURRENT_APP_VERSION } from '../lib/updater';
 import type { UpdateStatus } from '../lib/updater';
 import { isDesktopApp } from '../lib/platform';
 import { getModelGroups, type ModelGroup } from '../lib/modelCatalog';
+import { isModelAllowedForTier, getModelRequiredTier } from '../lib/subscriptionTiers';
+import { UpgradeModal } from '../components/ui/UpgradeModal';
 import { fetchAnthropicModels, ANTHROPIC_MODELS_EVENT } from '../lib/anthropicModels';
 import { syncAllConfiguredModels, DYNAMIC_MODELS_UPDATED_EVENT } from '../lib/dynamicModelDiscovery';
 import { checkProviderKey, type KeyCheckResult } from '../lib/keyCheck';
@@ -194,6 +197,12 @@ export default function Settings() {
     status: 'idle' | 'deleting' | 'error' | 'success';
     message?: string;
   }>({ status: 'idle' });
+  const [upgradeModal, setUpgradeModal] = useState<{
+    isOpen: boolean;
+    featureName?: string;
+    requiredTier?: 'pro' | 'ultimate';
+    reason?: string;
+  }>({ isOpen: false });
 
   useDialogBehavior(
     deleteDialogRef,
@@ -940,6 +949,9 @@ export default function Settings() {
                                 </div>
                                 {group.models.map((model) => {
                                   const isSelected = modelSettings.defaultModel === model.id;
+                                  const isAllowed = isModelAllowedForTier(model.id, profile?.plan);
+                                  const reqTier = getModelRequiredTier(model.id);
+
                                   return (
                                     <button
                                       key={model.id}
@@ -947,6 +959,16 @@ export default function Settings() {
                                       role="option"
                                       aria-selected={isSelected}
                                       onClick={() => {
+                                        if (!isAllowed) {
+                                          setUpgradeModal({
+                                            isOpen: true,
+                                            featureName: model.name,
+                                            requiredTier: reqTier === 'ultimate' ? 'ultimate' : 'pro',
+                                            reason: `${model.name} is reserved for ${reqTier.toUpperCase()} Plan members ($${reqTier === 'ultimate' ? '50' : '20'} / month). Upgrade your plan to set it as default.`,
+                                          });
+                                          setModelDropdownOpen(false);
+                                          return;
+                                        }
                                         updateModel({ defaultModel: model.id });
                                         setModelDropdownOpen(false);
                                       }}
@@ -960,8 +982,15 @@ export default function Settings() {
                                         <span className="truncate">{model.name}</span>
                                       </div>
                                       <div className="flex shrink-0 items-center gap-2">
-                                        {model.tag && <span className={cn('rounded-full border px-2 py-0.5 text-[9px]', model.tagColor)}>{model.tag}</span>}
-                                        {isSelected && <Check className="h-3.5 w-3.5 text-copper-400" />}
+                                        {!isAllowed ? (
+                                          <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-mono text-zinc-400">
+                                            <Lock className="h-2.5 w-2.5 text-zinc-400" />
+                                            <span className="uppercase">{reqTier}</span>
+                                          </span>
+                                        ) : (
+                                          model.tag && <span className={cn('rounded-full border px-2 py-0.5 text-[9px]', model.tagColor)}>{model.tag}</span>
+                                        )}
+                                        {isSelected && isAllowed && <Check className="h-3.5 w-3.5 text-copper-400" />}
                                       </div>
                                     </button>
                                   );
@@ -1711,6 +1740,14 @@ export default function Settings() {
           </div>
         )}
       </AnimatePresence>
+
+      <UpgradeModal
+        isOpen={upgradeModal.isOpen}
+        onClose={() => setUpgradeModal({ isOpen: false })}
+        featureName={upgradeModal.featureName}
+        requiredTier={upgradeModal.requiredTier}
+        reason={upgradeModal.reason}
+      />
     </PageTransition>
   );
 }

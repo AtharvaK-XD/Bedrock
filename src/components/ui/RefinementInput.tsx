@@ -1,12 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus } from 'lucide-react';
+import { Plus, Lock, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AI_AGENTS, AgentIcon } from './RichInput';
-import { getModelRequiredTier } from '../../lib/subscriptionTiers';
+import { getModelRequiredTier, isModelAllowedForTier } from '../../lib/subscriptionTiers';
 import { Button as StatefulButton } from './stateful-button';
 import { usePromptQuota } from '../../lib/usePromptQuota';
 import { QuotaLimitModal } from './QuotaLimitModal';
+import { UpgradeModal } from './UpgradeModal';
+import { useUserProfile } from '../../lib/useUserProfile';
+import { isDesktopApp } from '../../lib/platform';
 import { playUiAudio } from '../../lib/appSettings';
 import { showToast } from '../../lib/notify';
 
@@ -23,10 +26,17 @@ const DEFAULT_PLACEHOLDERS = [
 ];
 
 export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
+  const { profile } = useUserProfile();
   const [input, setInput] = useState('');
-  const [model, setModel] = useState('Gemini 2.5 Flash');
+  const [model, setModel] = useState('Auto-select Best Model');
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const [upgradeModal, setUpgradeModal] = useState<{
+    isOpen: boolean;
+    featureName?: string;
+    requiredTier?: 'pro' | 'ultimate';
+    reason?: string;
+  }>({ isOpen: false });
   
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -90,6 +100,21 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [input, files.length]);
+
+  // Ensure the selected model is permitted for the active tier
+  useEffect(() => {
+    if (!profile || isDesktopApp()) return;
+    const currentModelEntry = AI_AGENTS.flatMap((a) => a.models).find(
+      (m) => m.name === model || m.id === model
+    );
+    if (currentModelEntry && !isModelAllowedForTier(currentModelEntry.id, profile.plan)) {
+      const fallback =
+        AI_AGENTS.flatMap((a) => a.models).find((m) =>
+          isModelAllowedForTier(m.id, profile.plan)
+        ) || AI_AGENTS[0].models[0];
+      setModel(fallback.name);
+    }
+  }, [profile, model]);
 
   const [placeholderText, setPlaceholderText] = useState("");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -292,27 +317,50 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                           </div>
                           {agent.models.map((m) => {
                             const reqTier = m.tier || getModelRequiredTier(m.id);
+                            const isAllowed = isModelAllowedForTier(m.id, profile?.plan);
+                            const isSelected = model === m.name;
+
                             return (
                               <button
                                 key={m.id}
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  if (!isAllowed) {
+                                    setUpgradeModal({
+                                      isOpen: true,
+                                      featureName: m.name,
+                                      requiredTier: reqTier === 'ultimate' ? 'ultimate' : 'pro',
+                                      reason: `${m.name} is reserved for ${reqTier.toUpperCase()} Plan members ($${reqTier === 'ultimate' ? '50' : '20'} / month). Upgrade your plan to get full access.`,
+                                    });
+                                    setIsModelDropdownOpen(false);
+                                    return;
+                                  }
                                   setModel(m.name);
                                   setIsModelDropdownOpen(false);
                                 }}
                                 className={cn(
                                   "w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left rounded-lg transition-colors font-mono cursor-pointer",
-                                  model === m.name ? "bg-copper-500/20 text-copper-300 font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
+                                  isSelected ? "bg-copper-500/20 text-copper-300 font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white"
                                 )}
                               >
                                 <div className="flex items-center gap-2 min-w-0">
                                   <AgentIcon agent={agent} model={m.id} className="w-3.5 h-3.5 shrink-0" badgeClassName="w-4 h-4" />
                                   <span className="truncate">{m.name}</span>
                                 </div>
-                                <span className="text-[10px] font-mono text-teal-400 uppercase shrink-0">
-                                  {reqTier}
-                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                                  {!isAllowed ? (
+                                    <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1 shrink-0">
+                                      <Lock className="w-2.5 h-2.5 text-zinc-400" />
+                                      <span className="uppercase">{reqTier}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-mono text-teal-400 uppercase shrink-0">
+                                      {reqTier}
+                                    </span>
+                                  )}
+                                  {isSelected && isAllowed && <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
+                                </div>
                               </button>
                             );
                           })}
@@ -397,6 +445,14 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         timeUntilSession={timeUntilSession}
         timeUntilWeekly={timeUntilWeekly}
         isWeeklyLimitReached={isWeeklyLimitReached}
+      />
+
+      <UpgradeModal
+        isOpen={upgradeModal.isOpen}
+        onClose={() => setUpgradeModal({ isOpen: false })}
+        featureName={upgradeModal.featureName}
+        requiredTier={upgradeModal.requiredTier}
+        reason={upgradeModal.reason}
       />
     </motion.form>
   );
