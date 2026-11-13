@@ -2939,7 +2939,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                             onNodeDataChange(activeNode.id, { modelId });
                             return;
                           }
-                          if (!isModelAllowedForTier(modelId, profile?.plan)) {
+                          if (!isDesktopApp() && !isModelAllowedForTier(modelId, profile?.plan)) {
                             const req = getModelRequiredTier(modelId);
                             setUpgradeModal({
                               isOpen: true,
@@ -3022,7 +3022,7 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                       });
                       return;
                     }
-                    const isAllowed = isModelAllowedForTier(activeNode.data.modelId, profile?.plan);
+                    const isAllowed = isDesktopApp() || isModelAllowedForTier(activeNode.data.modelId, profile?.plan);
                     if (!isAllowed) {
                       const req = getModelRequiredTier(activeNode.data.modelId);
                       setUpgradeModal({

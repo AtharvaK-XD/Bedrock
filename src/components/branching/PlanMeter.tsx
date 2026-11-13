@@ -24,7 +24,7 @@ export function PlanMeter({ count, limit, planLabel, onClick }: PlanMeterProps) 
 
   if (!limited) {
     return (
-      <span className={className} title="Your plan has no node limit">
+      <span className={className} title={`${count} ${count === 1 ? 'node' : 'nodes'} on canvas`}>
         {label}
       </span>
     );

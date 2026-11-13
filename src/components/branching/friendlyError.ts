@@ -63,7 +63,7 @@ export function explainNodeError(raw: string | undefined, nodeType?: string): Fr
     return {
       title: 'This model needs a higher plan',
       message: tidy(text),
-      fix: 'Pick a free model in the node settings, or upgrade your plan.',
+      fix: 'Pick a free model in the node settings, configure your API key in Settings, or upgrade your plan.',
     };
   }
   if (/failed to fetch|network|offline|econn|enotfound|timed? ?out|timeout/.test(lower)) {

@@ -14,29 +14,31 @@ if not token:
     sys.exit(1)
 
 repos = ['AtharvaK-XD/Bedrock', 'Bedrockxai/Bedrock']
-tag_name = 'v1.4.6'
-release_title = 'Bedrock v1.4.6 - Universal Dynamic Model Discovery, Direct BYOK Adapters & Production Security Hardening'
-body = """# Bedrock v1.4.6 - Universal Dynamic Model Discovery, Direct BYOK Adapters & Production Security Hardening
+tag_name = 'v1.4.7'
+release_title = 'Bedrock v1.4.7 - Branching v2 Visual Engine, 15 Starter Recipes & Sandboxed Web Worker Execution'
+body = """# Bedrock v1.4.7 - Branching v2 Visual Engine, 15 Starter Recipes & Sandboxed Web Worker Execution
 
 The unified workstation for frontier prompt engineering. Synthesize autonomous agent directives, orchestrate visual DAG workflows, and benchmark across 10 AI providers.
 
-### What's New in v1.4.6:
-- **Universal Dynamic Model Discovery across 10 BYOK Providers (Desktop Only)**: Automatic background query and discovery of available models for OpenAI, Anthropic, Google Gemini, Groq, OpenRouter, Mistral, xAI, DeepSeek, Ollama, and Cohere. When user enters their API key in Desktop Settings or Wizard, Bedrock dynamically queries provider endpoints and creates live model options in the picker.
-- **Native Discovered Model Execution**: Discovered BYOK models execute directly through dedicated adapters (OpenAI-compatible for Mistral, xAI, DeepSeek; v2 chat API for Cohere; Anthropic; Gemini) preserving the exact discovered model IDs without fallback replacements.
-- **Zero-CORS Desktop Security Header Alignment**: Updated Electron CSP with `connect-src` allowlists for all frontier provider APIs (`api.mistral.ai`, `api.x.ai`, `api.deepseek.com`, and `api.cohere.com`).
-- **Production Domain Hardening (`bedrockxai.com`)**: Verified and locked down production domain security, strictly enforced authorized parties (`CLERK_AUTHORIZED_PARTIES`), updated Gemini discovery to secure header authentication (`x-goog-api-key`), and enhanced regex secret scrubbing in telemetry and prompt inputs.
+### What's New in v1.4.7:
+- **Branching v2 Interactive Studio**: Full visual execution for all 15 node types with Run All, Step-by-Step debugging, Pause/Stop, and live animated execution rings and wire particle streams.
+- **Smart Condition Builder**: Multi-rule groups (ALL/ANY), nested JSON path extraction, 24 condition operators, and an instant zero-token "Try it" local evaluator.
+- **Interactive Breakpoints ("Ask Me")**: Human-in-the-loop modal pauses pipeline execution to collect user input directly into workflow runtime state.
+- **15 Curated Starter Recipes**: Practical templates categorized into Simple, Intermediate, and Advanced (Mood Router, Product Description Factory, Meeting Notes to Task Table, Code Review Gate, and more).
+- **Web Worker Code Sandbox Isolation**: Hardened sandbox code runner executing custom JavaScript inside dedicated Web Workers with automatic frame fallback, 3-second hard timeout, and CSP `worker-src blob:;` protection against process starvation.
+- **100% BYOK Desktop Freedom**: The desktop workstation remains 100% subscription-free, allowing unlimited visual nodes, unlimited templates, and local encrypted key storage without plan gates.
 
 ### Desktop Downloads:
-- **Windows Installer**: [Bedrock Setup 1.4.6.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.6/Bedrock.Setup.1.4.6.exe)
-- **Windows Portable / Direct**: [Bedrock-Setup.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.6/Bedrock-Setup.exe)
-- **macOS Desktop Build**: Dedicated release available at [v1.4.6-mac](https://github.com/AtharvaK-XD/Bedrock/releases/tag/v1.4.6-mac) (`Bedrock-Mac.dmg` / `Bedrock-Mac.zip`)
+- **Windows Installer**: [Bedrock Setup 1.4.7.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.7/Bedrock.Setup.1.4.7.exe)
+- **Windows Portable / Direct**: [Bedrock-Setup.exe](https://github.com/AtharvaK-XD/Bedrock/releases/download/v1.4.7/Bedrock-Setup.exe)
+- **macOS Desktop Build**: Dedicated release available at [v1.4.7-mac](https://github.com/AtharvaK-XD/Bedrock/releases/tag/v1.4.7-mac) (`Bedrock-Mac.dmg` / `Bedrock-Mac.zip`)
 """
 
 assets = [
-    ('release/Bedrock Setup 1.4.6.exe', 'Bedrock Setup 1.4.6.exe', 'application/vnd.microsoft.portable-executable'),
-    ('release/Bedrock-Setup-1.4.6.exe', 'Bedrock-Setup-1.4.6.exe', 'application/vnd.microsoft.portable-executable'),
+    ('release/Bedrock Setup 1.4.7.exe', 'Bedrock Setup 1.4.7.exe', 'application/vnd.microsoft.portable-executable'),
+    ('release/Bedrock-Setup-1.4.7.exe', 'Bedrock-Setup-1.4.7.exe', 'application/vnd.microsoft.portable-executable'),
     ('release/Bedrock-Setup.exe', 'Bedrock-Setup.exe', 'application/vnd.microsoft.portable-executable'),
-    ('release/Bedrock Setup 1.4.6.exe.blockmap', 'Bedrock Setup 1.4.6.exe.blockmap', 'application/octet-stream'),
+    ('release/Bedrock Setup 1.4.7.exe.blockmap', 'Bedrock Setup 1.4.7.exe.blockmap', 'application/octet-stream'),
     ('release/latest.yml', 'latest.yml', 'text/yaml'),
 ]
 
