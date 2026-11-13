@@ -24,7 +24,7 @@ const BANNER_THEMES = [
     radial1: 'from-copper-500/30 via-emerald-500/10 to-transparent',
     radial2: 'from-copper-600/20 via-transparent to-transparent',
     gridColor: '#4FB0A1',
-    meshOpacity: 'opacity-25',
+    meshOpacity: 'opacity-35',
     accentColor: 'text-copper-300',
     badgeBorder: 'border-copper-500/30',
     dotBg: 'bg-copper-400',
@@ -36,7 +36,7 @@ const BANNER_THEMES = [
     radial1: 'from-emerald-400/30 via-teal-500/10 to-transparent',
     radial2: 'from-emerald-600/20 via-transparent to-transparent',
     gridColor: '#34d399',
-    meshOpacity: 'opacity-25',
+    meshOpacity: 'opacity-35',
     accentColor: 'text-emerald-300',
     badgeBorder: 'border-emerald-500/30',
     dotBg: 'bg-emerald-400',
@@ -48,7 +48,7 @@ const BANNER_THEMES = [
     radial1: 'from-indigo-500/30 via-purple-500/10 to-transparent',
     radial2: 'from-purple-600/20 via-transparent to-transparent',
     gridColor: '#818cf8',
-    meshOpacity: 'opacity-25',
+    meshOpacity: 'opacity-35',
     accentColor: 'text-indigo-300',
     badgeBorder: 'border-indigo-500/30',
     dotBg: 'bg-indigo-400',
@@ -60,7 +60,7 @@ const BANNER_THEMES = [
     radial1: 'from-amber-500/30 via-orange-500/10 to-transparent',
     radial2: 'from-amber-600/20 via-transparent to-transparent',
     gridColor: '#fbbf24',
-    meshOpacity: 'opacity-25',
+    meshOpacity: 'opacity-35',
     accentColor: 'text-amber-300',
     badgeBorder: 'border-amber-500/30',
     dotBg: 'bg-amber-400',
@@ -360,9 +360,43 @@ export default function Profile() {
             )}>
               <div className={cn("absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] transition-all duration-500", activeTheme.radial1)} />
               <div className={cn("absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_var(--tw-gradient-stops))] transition-all duration-500", activeTheme.radial2)} />
-            </div>
-            
 
+              {/* Tech blueprint grid theme */}
+              <div 
+                className={cn("absolute inset-0 pointer-events-none transition-opacity duration-300", activeTheme.meshOpacity)} 
+                style={{
+                  backgroundImage: `linear-gradient(to right, ${activeTheme.gridColor} 1px, transparent 1px), linear-gradient(to bottom, ${activeTheme.gridColor} 1px, transparent 1px)`,
+                  backgroundSize: '32px 32px',
+                  maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 70%, rgba(0,0,0,0) 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 70%, rgba(0,0,0,0) 100%)',
+                }}
+              />
+
+              {/* Neural Prompt Graph decorative curves */}
+              <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="bannerLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor={activeTheme.gridColor} stopOpacity="0.2" />
+                    <stop offset="50%" stopColor={activeTheme.gridColor} stopOpacity="0.8" />
+                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0.4" />
+                  </linearGradient>
+                </defs>
+                <path d="M -50 130 C 140 40, 280 160, 460 80 C 640 0, 820 140, 1000 60 C 1180 -20, 1340 100, 1520 40" fill="none" stroke="url(#bannerLineGrad)" strokeWidth="1.5" strokeDasharray="5 5" />
+                <path d="M 40 180 C 200 90, 400 200, 620 90 C 840 -20, 1040 150, 1260 70" fill="none" stroke={activeTheme.gridColor} strokeWidth="1" opacity="0.4" />
+                <circle cx="460" cy="80" r="3.5" fill={activeTheme.gridColor} />
+                <circle cx="1000" cy="60" r="4" fill="#ffffff" opacity="0.9" />
+                <circle cx="620" cy="90" r="3" fill={activeTheme.gridColor} />
+              </svg>
+
+              {/* Telemetry watermark */}
+              <div className="absolute top-4 right-6 hidden md:flex items-center gap-2 text-[10px] font-mono text-copper-300/40 tracking-widest uppercase select-none pointer-events-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-copper-400/60 animate-pulse" />
+                <span>BEDROCK ARCHITECTURE // WORKSTATION NODE</span>
+              </div>
+
+              {/* Top specular edge highlight */}
+              <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-copper-400/40 to-transparent pointer-events-none" />
+            </div>
           </div>
 
           {/* Profile Header Content (Elevated above banner at z-30 to prevent clipping) */}
