@@ -319,10 +319,11 @@ export default function Wizard() {
         });
         openApiKeyModal(keyMsg);
       } else {
+        const isBusy = err?.code === 'AI_BUSY' || err?.code === 'AI_ALL_PROVIDERS_FAILED' || err?.statusCode === 503;
         setErrorBanner({
           type: 'general',
-          title: err?.code === 'AI_BUSY' ? 'AI is busy' : 'Synthesis Failed',
-          message: err?.message || 'An error occurred while synthesizing prompt. Please try again.',
+          title: isBusy ? 'AI Providers Busy' : (err?.title || 'Synthesis Failed'),
+          message: err?.message || 'Bedrock could not complete that request right now. Please try again in a moment.',
         });
       }
     } finally {

@@ -1128,6 +1128,9 @@ Produce the bespoke, publication-grade prompt document adhering strictly to this
       throw err;
     }
     console.warn('[Bedrock] Server synthesis not available, falling back:', err);
+    if (!serverError) {
+      serverError = err instanceof ApiError ? err : new ApiError(err?.message || "Bedrock couldn't complete that request right now. Please try again in a moment.", false, 'Bedrock Cloud', 503);
+    }
   }
 
   // 2. Client fallback if client keys configured (Strictly Desktop App only)

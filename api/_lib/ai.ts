@@ -8,10 +8,57 @@ export interface QuestionOutput {
 import { getModelTuning } from './modelTuning.js';
 
 // Server keys only. VITE_* variables are for the browser bundle and must never hold a provider secret.
+const keyCooldownMap = new Map<string, number>();
+
+export function isKeyInCooldown(key: string): boolean {
+  const until = keyCooldownMap.get(key);
+  if (!until) return false;
+  if (Date.now() > until) {
+    keyCooldownMap.delete(key);
+    return false;
+  }
+  return true;
+}
+
+export function recordKeyCooldown(key: string, cooldownMs = 60_000): void {
+  keyCooldownMap.set(key, Date.now() + cooldownMs);
+}
+
+/**
+ * Returns all configured API keys for a provider.
+ * Supports comma/newline/space-separated strings in [PROVIDER]_API_KEY or [PROVIDER]_API_KEYS,
+ * as well as numbered suffixes ([PROVIDER]_API_KEY_1, [PROVIDER]_API_KEY_2, ...).
+ * Allows multi-account pooling and seamless automatic failover on launch day.
+ */
+export function getApiKeysForProvider(provider: 'groq' | 'gemini' | 'openrouter'): string[] {
+  const prefix = provider.toUpperCase() + '_API_KEY';
+  const rawList: (string | undefined)[] = [
+    process.env[`${prefix}S`],
+    process.env[prefix],
+  ];
+  for (let i = 1; i <= 10; i++) {
+    rawList.push(process.env[`${prefix}_${i}`]);
+  }
+  const result: string[] = [];
+  for (const raw of rawList) {
+    if (!raw || typeof raw !== 'string') continue;
+    const parts = raw.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
+    for (const p of parts) {
+      if (!result.includes(p)) result.push(p);
+    }
+  }
+  return result;
+}
+
 function getApiKey(provider: 'groq' | 'gemini' | 'openrouter'): string {
-  if (provider === 'groq') return process.env.GROQ_API_KEY || '';
-  if (provider === 'gemini') return process.env.GEMINI_API_KEY || '';
-  return process.env.OPENROUTER_API_KEY || '';
+  const keys = getApiKeysForProvider(provider);
+  if (keys.length === 0) return '';
+  const active = keys.filter((k) => !isKeyInCooldown(k));
+  if (active.length > 0) {
+    const idx = Math.floor(Math.random() * active.length);
+    return active[idx];
+  }
+  return keys[0];
 }
 
 /** Tokens a call really used, as reported by the provider (not a guess from the text length). */
@@ -338,7 +385,7 @@ async function withTransientRetry<T>(
 }
 
 /**
- * Calls Groq chat completions with optional streaming
+ * Calls Groq chat completions with optional streaming and multi-key pooling
  */
 async function callGroq(
   prompt: string,
@@ -350,8 +397,8 @@ async function callGroq(
   maxTokens = DEFAULT_MAX_OUTPUT_TOKENS,
   signal?: AbortSignal
 ): Promise<ProviderResult> {
-  const key = getApiKey('groq');
-  if (!key) throw new Error('GROQ_API_KEY is not configured on the server.');
+  const allKeys = getApiKeysForProvider('groq');
+  if (allKeys.length === 0) throw new Error('GROQ_API_KEY is not configured on the server.');
 
   const messages: any[] = [];
   if (systemPrompt) {
@@ -360,141 +407,47 @@ async function callGroq(
   messages.push({ role: 'user', content: prompt });
 
   const isStreaming = typeof onToken === 'function';
+  const candidateKeys = allKeys.filter((k) => !isKeyInCooldown(k));
+  const keysToTry = candidateKeys.length > 0 ? candidateKeys : allKeys;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  const unlink = linkSignal(controller, signal);
-
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature,
-        stream: isStreaming,
-        ...(isGptOssModel(model)
-          ? { max_tokens: maxTokens + GPT_OSS_REASONING_HEADROOM_TOKENS, reasoning_effort: 'low', include_reasoning: false }
-          : { max_tokens: maxTokens }),
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new ProviderHttpError(`Groq API returned ${res.status}: ${clip(err)}`, res.status, providerRetryAfterSeconds(res, err));
-    }
-
-    if (isStreaming && res.body) {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
-      let buffer = '';
-      let truncated = false;
-      let usage: TokenUsage | undefined;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data: ')) continue;
-          const dataStr = trimmed.slice(6);
-          if (dataStr === '[DONE]') continue;
-          try {
-            const json = JSON.parse(dataStr);
-            const chunk = json.choices?.[0]?.delta?.content || '';
-            if (json.choices?.[0]?.finish_reason === 'length') truncated = true;
-            usage = openAiUsage(json) ?? usage;
-            if (chunk) {
-              accumulated += chunk;
-              onToken(chunk);
-            }
-          } catch {
-            // ignore malformed SSE line
-          }
-        }
-      }
-      return { text: accumulated, truncated, usage };
-    }
-
-    const data = await res.json();
-    return {
-      text: data.choices?.[0]?.message?.content || '',
-      truncated: data.choices?.[0]?.finish_reason === 'length',
-      usage: openAiUsage(data),
-    };
-  } finally {
-    clearTimeout(timeoutId);
-    unlink();
-  }
-}
-
-/**
- * Calls Google Gemini REST API with optional SSE streaming
- */
-async function callGemini(
-  prompt: string,
-  systemPrompt?: string,
-  model = 'gemini-flash-lite-latest',
-  onToken?: (token: string) => void,
-  temperature = 0.55,
-  timeoutMs = PROVIDER_TIMEOUT_MS,
-  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS,
-  signal?: AbortSignal
-): Promise<ProviderResult> {
-  const key = getApiKey('gemini');
-  if (!key) throw new Error('GEMINI_API_KEY is not configured on the server.');
-
-  const candidates = (model === 'gemini-2.5-flash' || model === 'gemini-1.5-flash')
-    ? ['gemini-flash-lite-latest', 'gemini-flash-latest']
-    : [model, 'gemini-flash-lite-latest', 'gemini-flash-latest'];
-
-  const isStreaming = typeof onToken === 'function';
   let lastError: Error | null = null;
-  // The model fallbacks share one time budget so three candidates cannot take 3x the timeout
-  const providerDeadline = Date.now() + timeoutMs;
 
-  for (const m of candidates) {
-    const attemptMs = providerDeadline - Date.now();
-    if (attemptMs < 1_000) break;
+  for (let i = 0; i < keysToTry.length; i++) {
+    const key = keysToTry[i];
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), attemptMs);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     const unlink = linkSignal(controller, signal);
 
     try {
-      // The key travels in a header (documented by Google), not in the URL where proxies and logs keep it
-      const endpoint = isStreaming ? 'streamGenerateContent?alt=sse' : 'generateContent';
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:${endpoint}`;
-      const body: any = {
-        contents: [{ parts: [{ text: prompt }] }],
-        // Without a limit the answer (and the billed thinking tokens) is unbounded
-        generationConfig: { temperature, maxOutputTokens: maxTokens + GEMINI_THINKING_HEADROOM_TOKENS },
-      };
-      if (systemPrompt) {
-        body.systemInstruction = { parts: [{ text: systemPrompt }] };
-      }
-
-      const res = await fetch(url, {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify(body),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature,
+          stream: isStreaming,
+          ...(isGptOssModel(model)
+            ? { max_tokens: maxTokens + GPT_OSS_REASONING_HEADROOM_TOKENS, reasoning_effort: 'low', include_reasoning: false }
+            : { max_tokens: maxTokens }),
+        }),
         signal: controller.signal,
       });
 
       if (!res.ok) {
         const err = await res.text();
-        lastError = new ProviderHttpError(`Gemini API returned ${res.status}: ${clip(err)}`, res.status, providerRetryAfterSeconds(res, err));
-        if (res.status === 503 || res.status === 404) continue;
-        throw lastError;
+        const retryAfter = providerRetryAfterSeconds(res, err);
+        const httpError = new ProviderHttpError(`Groq API returned ${res.status}: ${clip(err)}`, res.status, retryAfter);
+        if (res.status === 429 || KEY_LEVEL_STATUSES.has(res.status)) {
+          recordKeyCooldown(key, (retryAfter || 60) * 1000);
+          console.warn(`[Groq Key Pool] Key ending in ...${key.slice(-4)} failed with status ${res.status}. Rotating to next key in pool...`);
+          lastError = httpError;
+          if (i < keysToTry.length - 1) continue;
+        }
+        throw httpError;
       }
 
       if (isStreaming && res.body) {
@@ -519,32 +472,171 @@ async function callGemini(
             if (dataStr === '[DONE]') continue;
             try {
               const json = JSON.parse(dataStr);
-              const chunk = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
-              if (json.candidates?.[0]?.finishReason === 'MAX_TOKENS') truncated = true;
-              usage = geminiUsage(json) ?? usage;
+              const chunk = json.choices?.[0]?.delta?.content || '';
+              if (json.choices?.[0]?.finish_reason === 'length') truncated = true;
+              usage = openAiUsage(json) ?? usage;
               if (chunk) {
                 accumulated += chunk;
                 onToken(chunk);
               }
             } catch {
-              // ignore malformed line
+              // ignore malformed SSE line
             }
           }
         }
-        if (accumulated) return { text: accumulated, truncated, usage };
+        return { text: accumulated, truncated, usage };
       }
 
       const data = await res.json();
       return {
-        text: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
-        truncated: data.candidates?.[0]?.finishReason === 'MAX_TOKENS',
-        usage: geminiUsage(data),
+        text: data.choices?.[0]?.message?.content || '',
+        truncated: data.choices?.[0]?.finish_reason === 'length',
+        usage: openAiUsage(data),
       };
     } catch (e: any) {
       lastError = e;
+      if (i < keysToTry.length - 1 && (e instanceof ProviderHttpError && (e.status === 429 || KEY_LEVEL_STATUSES.has(e.status)))) {
+        continue;
+      }
+      throw e;
     } finally {
       clearTimeout(timeoutId);
       unlink();
+    }
+  }
+
+  throw lastError || new Error('All Groq keys failed.');
+}
+
+/**
+ * Calls Google Gemini REST API with optional SSE streaming and multi-key pooling
+ */
+async function callGemini(
+  prompt: string,
+  systemPrompt?: string,
+  model = 'gemini-flash-lite-latest',
+  onToken?: (token: string) => void,
+  temperature = 0.55,
+  timeoutMs = PROVIDER_TIMEOUT_MS,
+  maxTokens = DEFAULT_MAX_OUTPUT_TOKENS,
+  signal?: AbortSignal
+): Promise<ProviderResult> {
+  const allKeys = getApiKeysForProvider('gemini');
+  if (allKeys.length === 0) throw new Error('GEMINI_API_KEY is not configured on the server.');
+
+  const candidateKeys = allKeys.filter((k) => !isKeyInCooldown(k));
+  const keysToTry = candidateKeys.length > 0 ? candidateKeys : allKeys;
+
+  const candidates = (model === 'gemini-2.5-flash' || model === 'gemini-1.5-flash')
+    ? ['gemini-flash-lite-latest', 'gemini-flash-latest']
+    : [model, 'gemini-flash-lite-latest', 'gemini-flash-latest'];
+
+  const isStreaming = typeof onToken === 'function';
+  let lastError: Error | null = null;
+  // The model fallbacks share one time budget so three candidates cannot take 3x the timeout
+  const providerDeadline = Date.now() + timeoutMs;
+
+  for (let k = 0; k < keysToTry.length; k++) {
+    const key = keysToTry[k];
+    let keyFailedWithQuota = false;
+
+    for (const m of candidates) {
+      const attemptMs = providerDeadline - Date.now();
+      if (attemptMs < 1_000) break;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), attemptMs);
+      const unlink = linkSignal(controller, signal);
+
+      try {
+        // The key travels in a header (documented by Google), not in the URL where proxies and logs keep it
+        const endpoint = isStreaming ? 'streamGenerateContent?alt=sse' : 'generateContent';
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:${endpoint}`;
+        const body: any = {
+          contents: [{ parts: [{ text: prompt }] }],
+          // Without a limit the answer (and the billed thinking tokens) is unbounded
+          generationConfig: { temperature, maxOutputTokens: maxTokens + GEMINI_THINKING_HEADROOM_TOKENS },
+        };
+        if (systemPrompt) {
+          body.systemInstruction = { parts: [{ text: systemPrompt }] };
+        }
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          const retryAfter = providerRetryAfterSeconds(res, err);
+          lastError = new ProviderHttpError(`Gemini API returned ${res.status}: ${clip(err)}`, res.status, retryAfter);
+          if (res.status === 429 || KEY_LEVEL_STATUSES.has(res.status)) {
+            recordKeyCooldown(key, (retryAfter || 60) * 1000);
+            console.warn(`[Gemini Key Pool] Key ending in ...${key.slice(-4)} failed with status ${res.status}. Rotating to next key in pool...`);
+            keyFailedWithQuota = true;
+            break;
+          }
+          if (res.status === 503 || res.status === 404) continue;
+          throw lastError;
+        }
+
+        if (isStreaming && res.body) {
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let accumulated = '';
+          let buffer = '';
+          let truncated = false;
+          let usage: TokenUsage | undefined;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data: ')) continue;
+              const dataStr = trimmed.slice(6);
+              if (dataStr === '[DONE]') continue;
+              try {
+                const json = JSON.parse(dataStr);
+                const chunk = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                if (json.candidates?.[0]?.finishReason === 'MAX_TOKENS') truncated = true;
+                usage = geminiUsage(json) ?? usage;
+                if (chunk) {
+                  accumulated += chunk;
+                  onToken(chunk);
+                }
+              } catch {
+                // ignore malformed line
+              }
+            }
+          }
+          if (accumulated) return { text: accumulated, truncated, usage };
+        }
+
+        const data = await res.json();
+        return {
+          text: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
+          truncated: data.candidates?.[0]?.finishReason === 'MAX_TOKENS',
+          usage: geminiUsage(data),
+        };
+      } catch (e: any) {
+        lastError = e;
+      } finally {
+        clearTimeout(timeoutId);
+        unlink();
+      }
+    }
+
+    if (keyFailedWithQuota && k < keysToTry.length - 1) {
+      continue;
+    }
+    if (!keyFailedWithQuota && lastError === null) {
+      break;
     }
   }
 
@@ -552,7 +644,7 @@ async function callGemini(
 }
 
 /**
- * Calls OpenRouter REST API with optional streaming
+ * Calls OpenRouter REST API with optional streaming and multi-key pooling
  */
 async function callOpenRouter(
   prompt: string,
@@ -564,8 +656,11 @@ async function callOpenRouter(
   maxTokens = DEFAULT_MAX_OUTPUT_TOKENS,
   signal?: AbortSignal
 ): Promise<ProviderResult> {
-  const key = getApiKey('openrouter');
-  if (!key) throw new Error('OPENROUTER_API_KEY is not configured on the server.');
+  const allKeys = getApiKeysForProvider('openrouter');
+  if (allKeys.length === 0) throw new Error('OPENROUTER_API_KEY is not configured on the server.');
+
+  const candidateKeys = allKeys.filter((k) => !isKeyInCooldown(k));
+  const keysToTry = candidateKeys.length > 0 ? candidateKeys : allKeys;
 
   const messages: any[] = [];
   if (systemPrompt) {
@@ -574,82 +669,102 @@ async function callOpenRouter(
   messages.push({ role: 'user', content: prompt });
 
   const isStreaming = typeof onToken === 'function';
+  let lastError: Error | null = null;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  const unlink = linkSignal(controller, signal);
+  for (let i = 0; i < keysToTry.length; i++) {
+    const key = keysToTry[i];
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const unlink = linkSignal(controller, signal);
 
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${key}`,
-        'HTTP-Referer': 'https://bedrockxai.com',
-        'X-Title': 'Bedrock',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-        stream: isStreaming,
-      }),
-      signal: controller.signal,
-    });
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+          'HTTP-Referer': 'https://bedrockxai.com',
+          'X-Title': 'Bedrock',
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature,
+          max_tokens: maxTokens,
+          stream: isStreaming,
+        }),
+        signal: controller.signal,
+      });
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new ProviderHttpError(`OpenRouter API returned ${res.status}: ${clip(err)}`, res.status, providerRetryAfterSeconds(res, err));
-    }
+      if (!res.ok) {
+        const err = await res.text();
+        const retryAfter = providerRetryAfterSeconds(res, err);
+        const httpError = new ProviderHttpError(`OpenRouter API returned ${res.status}: ${clip(err)}`, res.status, retryAfter);
+        if (res.status === 429 || KEY_LEVEL_STATUSES.has(res.status)) {
+          recordKeyCooldown(key, (retryAfter || 60) * 1000);
+          console.warn(`[OpenRouter Key Pool] Key ending in ...${key.slice(-4)} failed with status ${res.status}. Rotating to next key in pool...`);
+          lastError = httpError;
+          if (i < keysToTry.length - 1) continue;
+        }
+        throw httpError;
+      }
 
-    if (isStreaming && res.body) {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
-      let buffer = '';
-      let truncated = false;
-      let usage: TokenUsage | undefined;
+      if (isStreaming && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+        let buffer = '';
+        let truncated = false;
+        let usage: TokenUsage | undefined;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data: ')) continue;
-          const dataStr = trimmed.slice(6);
-          if (dataStr === '[DONE]') continue;
-          try {
-            const json = JSON.parse(dataStr);
-            const chunk = json.choices?.[0]?.delta?.content || '';
-            if (json.choices?.[0]?.finish_reason === 'length') truncated = true;
-            usage = openAiUsage(json) ?? usage;
-            if (chunk) {
-              accumulated += chunk;
-              onToken(chunk);
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const dataStr = trimmed.slice(6);
+            if (dataStr === '[DONE]') continue;
+            try {
+              const json = JSON.parse(dataStr);
+              const chunk = json.choices?.[0]?.delta?.content || '';
+              if (json.choices?.[0]?.finish_reason === 'length') truncated = true;
+              usage = openAiUsage(json) ?? usage;
+              if (chunk) {
+                accumulated += chunk;
+                onToken(chunk);
+              }
+            } catch {
+              // ignore
             }
-          } catch {
-            // ignore
           }
         }
+        return { text: accumulated, truncated, usage };
       }
-      return { text: accumulated, truncated, usage };
-    }
 
-    const data = await res.json();
-    return {
-      text: data.choices?.[0]?.message?.content || '',
-      truncated: data.choices?.[0]?.finish_reason === 'length',
-      usage: openAiUsage(data),
-    };
-  } finally {
-    clearTimeout(timeoutId);
-    unlink();
+      const data = await res.json();
+      return {
+        text: data.choices?.[0]?.message?.content || '',
+        truncated: data.choices?.[0]?.finish_reason === 'length',
+        usage: openAiUsage(data),
+      };
+    } catch (e: any) {
+      lastError = e;
+      if (i < keysToTry.length - 1 && (e instanceof ProviderHttpError && (e.status === 429 || KEY_LEVEL_STATUSES.has(e.status)))) {
+        continue;
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeoutId);
+      unlink();
+    }
   }
+
+  throw lastError || new Error('All OpenRouter keys failed.');
 }
 
 import {

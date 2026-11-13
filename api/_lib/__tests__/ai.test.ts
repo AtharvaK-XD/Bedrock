@@ -822,4 +822,34 @@ describe('AI core Phase 2', () => {
       expect(error.model).toMatch(/Groq/);
     });
   });
+
+  describe('multi-key pooling and failover', () => {
+    it('parses comma-separated and numbered keys into provider key pool', async () => {
+      const { getApiKeysForProvider } = await import('../ai.js');
+      vi.stubEnv('GROQ_API_KEY', 'key_a, key_b; key_c');
+      vi.stubEnv('GROQ_API_KEY_2', 'key_d');
+      const keys = getApiKeysForProvider('groq');
+      expect(keys).toEqual(['key_a', 'key_b', 'key_c', 'key_d']);
+    });
+
+    it('automatically fails over to next key when first key hits 429 rate limit', async () => {
+      vi.stubEnv('GROQ_API_KEY', 'first-key-rate-limited, second-key-works');
+      vi.stubEnv('GEMINI_API_KEY', '');
+      vi.stubEnv('OPENROUTER_API_KEY', '');
+
+      // First key gets 429
+      fetchMock.mockResolvedValueOnce(errBody(429, 'rate limit exceeded'));
+      // Second key succeeds
+      fetchMock.mockResolvedValueOnce(chatBody('recovered on second key'));
+
+      const result = await executeAiCompletion('test prompt', 'system directive');
+      expect(result.text).toBe('recovered on second key');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      const firstCallAuth = fetchMock.mock.calls[0][1]?.headers?.Authorization;
+      const secondCallAuth = fetchMock.mock.calls[1][1]?.headers?.Authorization;
+      expect(firstCallAuth).toBe('Bearer first-key-rate-limited');
+      expect(secondCallAuth).toBe('Bearer second-key-works');
+    });
+  });
 });
