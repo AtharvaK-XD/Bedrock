@@ -52,12 +52,31 @@ export function NodePalette({ styles, onAdd }: NodePaletteProps) {
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClick = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const groups = useMemo(() => getPaletteGroups().map((g) => ({ ...g, entries: g.entries.filter((e) => styles[e.id]) })), [styles]);
   const results = useMemo(() => searchCatalog(query).filter((e) => styles[e.id]), [query, styles]);
 
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus();
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSearchOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [searchOpen]);
 
   useEffect(() => () => {
@@ -96,9 +115,12 @@ export function NodePalette({ styles, onAdd }: NodePaletteProps) {
     <div
       data-tour="palette"
       onWheel={(e) => e.stopPropagation()}
-      className="absolute top-6 right-6 flex flex-col items-end gap-2 z-20 nowheel nopan nodrag"
+      className={cn(
+        'absolute top-6 right-6 flex flex-col items-end gap-2 nowheel nopan nodrag',
+        searchOpen ? 'z-50' : 'z-20'
+      )}
     >
-      <div className="relative">
+      <div className="relative" ref={searchContainerRef}>
         <button
           type="button"
           onClick={() => setSearchOpen((o) => !o)}
@@ -114,7 +136,7 @@ export function NodePalette({ styles, onAdd }: NodePaletteProps) {
         </button>
 
         {searchOpen && (
-          <div className="absolute right-[60px] top-0 w-[300px] rounded-2xl border border-white/10 bg-sf-16181d/95 backdrop-blur-2xl shadow-2xl p-3 space-y-2 z-30">
+          <div className="absolute right-[60px] top-0 w-[300px] rounded-2xl border border-white/10 bg-sf-16181d/95 backdrop-blur-2xl shadow-2xl p-3 space-y-2 z-50">
             <input
               ref={inputRef}
               value={query}
