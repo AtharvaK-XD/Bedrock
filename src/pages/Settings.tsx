@@ -948,7 +948,7 @@ export default function Settings() {
                                 </div>
                                 {group.models.map((model) => {
                                   const isSelected = modelSettings.defaultModel === model.id;
-                                  const isAllowed = isModelAllowedForTier(model.id, profile?.plan);
+                                  const isAllowed = isDesktop || isModelAllowedForTier(model.id, profile?.plan);
                                   const reqTier = getModelRequiredTier(model.id);
 
                                   return (
@@ -958,7 +958,7 @@ export default function Settings() {
                                       role="option"
                                       aria-selected={isSelected}
                                       onClick={() => {
-                                        if (!isAllowed) {
+                                        if (!isDesktop && !isAllowed) {
                                           setUpgradeModal({
                                             isOpen: true,
                                             featureName: model.name,
@@ -981,15 +981,19 @@ export default function Settings() {
                                         <span className="truncate">{model.name}</span>
                                       </div>
                                       <div className="flex shrink-0 items-center gap-2">
-                                        {!isAllowed ? (
-                                          <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-mono text-zinc-400">
-                                            <Lock className="h-2.5 w-2.5 text-zinc-400" />
-                                            <span className="uppercase">{reqTier}</span>
-                                          </span>
+                                        {!isDesktop ? (
+                                          !isAllowed ? (
+                                            <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-mono text-zinc-400">
+                                              <Lock className="h-2.5 w-2.5 text-zinc-400" />
+                                              <span className="uppercase">{reqTier}</span>
+                                            </span>
+                                          ) : (
+                                            model.tag && <span className={cn('rounded-full border px-2 py-0.5 text-[9px]', model.tagColor)}>{model.tag}</span>
+                                          )
                                         ) : (
                                           model.tag && <span className={cn('rounded-full border px-2 py-0.5 text-[9px]', model.tagColor)}>{model.tag}</span>
                                         )}
-                                        {isSelected && isAllowed && <Check className="h-3.5 w-3.5 text-copper-400" />}
+                                        {isSelected && (isDesktop || isAllowed) && <Check className="h-3.5 w-3.5 text-copper-400" />}
                                       </div>
                                     </button>
                                   );
@@ -1740,13 +1744,15 @@ export default function Settings() {
         )}
       </AnimatePresence>
 
-      <UpgradeModal
-        isOpen={upgradeModal.isOpen}
-        onClose={() => setUpgradeModal({ isOpen: false })}
-        featureName={upgradeModal.featureName}
-        requiredTier={upgradeModal.requiredTier}
-        reason={upgradeModal.reason}
-      />
+      {!isDesktop && (
+        <UpgradeModal
+          isOpen={upgradeModal.isOpen}
+          onClose={() => setUpgradeModal({ isOpen: false })}
+          featureName={upgradeModal.featureName}
+          requiredTier={upgradeModal.requiredTier}
+          reason={upgradeModal.reason}
+        />
+      )}
     </PageTransition>
   );
 }

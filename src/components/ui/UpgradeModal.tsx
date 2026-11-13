@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Check, X, ArrowRight, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isDesktopApp } from '../../lib/platform';
 
 export interface UpgradeModalProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ export function UpgradeModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || isDesktopApp()) return null;
 
   const isUltimate = requiredTier === 'ultimate';
   const planTitle = isUltimate ? 'Ultimate Plan' : 'Pro Plan';

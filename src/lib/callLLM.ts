@@ -1014,7 +1014,7 @@ export async function callLLMWithMeta(
   }
 
 
-  if (effectiveModelId && effectiveModelId !== 'auto' && !isModelAllowedForTier(effectiveModelId, userPlan)) {
+  if (!isDesktopApp() && effectiveModelId && effectiveModelId !== 'auto' && !isModelAllowedForTier(effectiveModelId, userPlan)) {
     const required = getModelRequiredTier(effectiveModelId);
     throw new ApiError(
       `Access Denied: ${effectiveModelId} requires an active ${required.toUpperCase()} Plan. Please upgrade to unlock.`,

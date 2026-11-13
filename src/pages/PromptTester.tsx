@@ -112,29 +112,31 @@ export default function PromptTester() {
       }
     }
 
-    // Strict subscription tier gate for Duel models
-    const allowed1 = isModelAllowedForTier(model1Id, profile?.plan);
-    if (!allowed1) {
-      const req1 = getModelRequiredTier(model1Id);
-      setUpgradeModal({
-        isOpen: true,
-        featureName: `Model: ${model1Id}`,
-        requiredTier: req1 === 'ultimate' ? 'ultimate' : 'pro',
-        reason: `Model ${model1Id} is restricted to ${req1.toUpperCase()} subscribers. Upgrade your plan to run dual benchmarks with this frontier model.`,
-      });
-      return;
-    }
+    if (!isDesktop) {
+      // Strict subscription tier gate for Duel models
+      const allowed1 = isModelAllowedForTier(model1Id, profile?.plan);
+      if (!allowed1) {
+        const req1 = getModelRequiredTier(model1Id);
+        setUpgradeModal({
+          isOpen: true,
+          featureName: `Model: ${model1Id}`,
+          requiredTier: req1 === 'ultimate' ? 'ultimate' : 'pro',
+          reason: `Model ${model1Id} is restricted to ${req1.toUpperCase()} subscribers. Upgrade your plan to run dual benchmarks with this frontier model.`,
+        });
+        return;
+      }
 
-    const allowed2 = isModelAllowedForTier(model2Id, profile?.plan);
-    if (!allowed2) {
-      const req2 = getModelRequiredTier(model2Id);
-      setUpgradeModal({
-        isOpen: true,
-        featureName: `Model: ${model2Id}`,
-        requiredTier: req2 === 'ultimate' ? 'ultimate' : 'pro',
-        reason: `Model ${model2Id} is restricted to ${req2.toUpperCase()} subscribers. Upgrade your plan to run dual benchmarks with this frontier model.`,
-      });
-      return;
+      const allowed2 = isModelAllowedForTier(model2Id, profile?.plan);
+      if (!allowed2) {
+        const req2 = getModelRequiredTier(model2Id);
+        setUpgradeModal({
+          isOpen: true,
+          featureName: `Model: ${model2Id}`,
+          requiredTier: req2 === 'ultimate' ? 'ultimate' : 'pro',
+          reason: `Model ${model2Id} is restricted to ${req2.toUpperCase()} subscribers. Upgrade your plan to run dual benchmarks with this frontier model.`,
+        });
+        return;
+      }
     }
 
     setIsTesting(true);
@@ -331,7 +333,7 @@ export default function PromptTester() {
                 const freeModels = currentAgent.models.filter((m: any) => (m.tier || getModelRequiredTier(m.id)) === 'free');
 
                 const renderItem = (m: any, tier: 'ultimate' | 'pro' | 'free') => {
-                  const isAllowed = isModelAllowedForTier(m.id, profile?.plan);
+                  const isAllowed = isDesktop || isModelAllowedForTier(m.id, profile?.plan);
                   const required = m.tier || getModelRequiredTier(m.id);
                   return (
                     <button
@@ -349,7 +351,7 @@ export default function PromptTester() {
                           setActiveDropdown(null);
                           return;
                         }
-                        if (!isAllowed) {
+                        if (!isDesktop && !isAllowed) {
                           setUpgradeModal({
                             isOpen: true,
                             featureName: m.name,
@@ -372,21 +374,31 @@ export default function PromptTester() {
                         <span className="truncate">{m.name}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                        {!isAllowed ? (
-                          <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
-                            <Lock className="w-2.5 h-2.5 text-zinc-400" />
-                            <span className="uppercase">{required}</span>
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-mono font-medium text-teal-400 uppercase tracking-wide">
-                            {tier}
-                          </span>
+                        {!isDesktop && (
+                          !isAllowed ? (
+                            <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                              <Lock className="w-2.5 h-2.5 text-zinc-400" />
+                              <span className="uppercase">{required}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono font-medium text-teal-400 uppercase tracking-wide">
+                              {tier}
+                            </span>
+                          )
                         )}
-                        {currentModel.id === m.id && isAllowed && <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
+                        {currentModel.id === m.id && (isDesktop || isAllowed) && <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
                       </div>
                     </button>
                   );
                 };
+
+                if (isDesktop) {
+                  return (
+                    <div className="flex flex-col gap-0.5">
+                      {currentAgent.models.map((m: any) => renderItem(m, 'free'))}
+                    </div>
+                  );
+                }
 
                 return (
                   <div className="flex flex-col gap-1.5">
@@ -756,13 +768,15 @@ export default function PromptTester() {
         </div>
       </div>
 
-      <UpgradeModal
-        isOpen={upgradeModal.isOpen}
-        onClose={() => setUpgradeModal({ isOpen: false })}
-        featureName={upgradeModal.featureName}
-        requiredTier={upgradeModal.requiredTier}
-        reason={upgradeModal.reason}
-      />
+      {!isDesktop && (
+        <UpgradeModal
+          isOpen={upgradeModal.isOpen}
+          onClose={() => setUpgradeModal({ isOpen: false })}
+          featureName={upgradeModal.featureName}
+          requiredTier={upgradeModal.requiredTier}
+          reason={upgradeModal.reason}
+        />
+      )}
     </PageTransition>
   );
 }

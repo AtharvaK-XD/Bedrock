@@ -1356,13 +1356,15 @@ export default function Library() {
         />
 
         {/* Upgrade Modal for Tier Limits */}
-        <UpgradeModal
-          isOpen={upgradeModal.isOpen}
-          onClose={() => setUpgradeModal({ isOpen: false })}
-          featureName={upgradeModal.featureName}
-          requiredTier={upgradeModal.requiredTier}
-          reason={upgradeModal.reason}
-        />
+        {!isDesktop && (
+          <UpgradeModal
+            isOpen={upgradeModal.isOpen}
+            onClose={() => setUpgradeModal({ isOpen: false })}
+            featureName={upgradeModal.featureName}
+            requiredTier={upgradeModal.requiredTier}
+            reason={upgradeModal.reason}
+          />
+        )}
       </div>
     </PageTransition>
   );

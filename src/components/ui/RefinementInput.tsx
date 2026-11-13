@@ -316,8 +316,9 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                             <span>{agent.name}</span>
                           </div>
                           {agent.models.map((m) => {
+                            const isDesktop = isDesktopApp();
                             const reqTier = m.tier || getModelRequiredTier(m.id);
-                            const isAllowed = isModelAllowedForTier(m.id, profile?.plan);
+                            const isAllowed = isDesktop || isModelAllowedForTier(m.id, profile?.plan);
                             const isSelected = model === m.name;
 
                             return (
@@ -326,7 +327,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!isAllowed) {
+                                  if (!isDesktop && !isAllowed) {
                                     setUpgradeModal({
                                       isOpen: true,
                                       featureName: m.name,
@@ -349,17 +350,19 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                                   <span className="truncate">{m.name}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                                  {!isAllowed ? (
-                                    <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1 shrink-0">
-                                      <Lock className="w-2.5 h-2.5 text-zinc-400" />
-                                      <span className="uppercase">{reqTier}</span>
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] font-mono text-teal-400 uppercase shrink-0">
-                                      {reqTier}
-                                    </span>
+                                  {!isDesktop && (
+                                    !isAllowed ? (
+                                      <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1 shrink-0">
+                                        <Lock className="w-2.5 h-2.5 text-zinc-400" />
+                                        <span className="uppercase">{reqTier}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-mono text-teal-400 uppercase shrink-0">
+                                        {reqTier}
+                                      </span>
+                                    )
                                   )}
-                                  {isSelected && isAllowed && <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
+                                  {isSelected && (isDesktop || isAllowed) && <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
                                 </div>
                               </button>
                             );
@@ -447,13 +450,15 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
         isWeeklyLimitReached={isWeeklyLimitReached}
       />
 
-      <UpgradeModal
-        isOpen={upgradeModal.isOpen}
-        onClose={() => setUpgradeModal({ isOpen: false })}
-        featureName={upgradeModal.featureName}
-        requiredTier={upgradeModal.requiredTier}
-        reason={upgradeModal.reason}
-      />
+      {!isDesktopApp() && (
+        <UpgradeModal
+          isOpen={upgradeModal.isOpen}
+          onClose={() => setUpgradeModal({ isOpen: false })}
+          featureName={upgradeModal.featureName}
+          requiredTier={upgradeModal.requiredTier}
+          reason={upgradeModal.reason}
+        />
+      )}
     </motion.form>
   );
 }

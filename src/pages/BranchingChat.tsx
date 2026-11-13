@@ -2963,7 +2963,8 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                         }}
                         renderOption={(model) => {
                           const currentAgent = AI_AGENTS.find(a => a.id === activeNode.data.agentId) || AI_AGENTS[0];
-                          const isAllowed = isModelAllowedForTier(model.id, profile?.plan);
+                          const isDesktop = isDesktopApp();
+                          const isAllowed = isDesktop || isModelAllowedForTier(model.id, profile?.plan);
                           const reqTier = getModelRequiredTier(model.id);
                           return (
                             <div className="flex items-center justify-between w-full">
@@ -2971,15 +2972,17 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                                 <AgentIcon agent={currentAgent} model={model.id} className="w-3.5 h-3.5" badgeClassName="w-4 h-4" />
                                 <span className="font-mono text-xs truncate">{model.name}</span>
                               </div>
-                              {!isAllowed ? (
-                                <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1 shrink-0 ml-1">
-                                  <Lock className="w-2.5 h-2.5 text-zinc-400" />
-                                  <span className="uppercase">{reqTier}</span>
-                                </span>
-                              ) : (
-                                <span className="text-[10px] font-mono text-teal-400 uppercase shrink-0 ml-1">
-                                  {reqTier}
-                                </span>
+                              {!isDesktop && (
+                                !isAllowed ? (
+                                  <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1 shrink-0 ml-1">
+                                    <Lock className="w-2.5 h-2.5 text-zinc-400" />
+                                    <span className="uppercase">{reqTier}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-mono text-teal-400 uppercase shrink-0 ml-1">
+                                    {reqTier}
+                                  </span>
+                                )
                               )}
                             </div>
                           );
@@ -3157,13 +3160,15 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
       />
       <Confetti burst={confettiBurst} />
 
-      <UpgradeModal
-        isOpen={upgradeModal.isOpen}
-        onClose={() => setUpgradeModal({ isOpen: false })}
-        featureName={upgradeModal.featureName}
-        requiredTier={upgradeModal.requiredTier}
-        reason={upgradeModal.reason}
-      />
+      {!isDesktopApp() && (
+        <UpgradeModal
+          isOpen={upgradeModal.isOpen}
+          onClose={() => setUpgradeModal({ isOpen: false })}
+          featureName={upgradeModal.featureName}
+          requiredTier={upgradeModal.requiredTier}
+          reason={upgradeModal.reason}
+        />
+      )}
     </div>
     </RunStateContext.Provider>
   );

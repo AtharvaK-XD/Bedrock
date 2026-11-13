@@ -581,13 +581,16 @@ export function RichInput({
               <AgentIcon agent={selectedAgent} model={selectedModel.id} className="w-4 h-4" badgeClassName="w-4 h-4" />
               <span className="text-zinc-500 text-xs">Model:</span>
               <span className="font-mono text-xs">{selectedModel.name}</span>
-              <span className="text-[10px] font-mono text-teal-400 uppercase">
-                {((selectedModel as AgentModel).tier || getModelRequiredTier(selectedModel.id))}
-              </span>
+              {!isDesktopApp() && (
+                <span className="text-[10px] font-mono text-teal-400 uppercase">
+                  {((selectedModel as AgentModel).tier || getModelRequiredTier(selectedModel.id))}
+                </span>
+              )}
               <span className="text-[10px] text-zinc-500">▾</span>
             </button>
 
             {activeDropdown === 'model' && (() => {
+              const isDesktop = isDesktopApp();
               const ultimateModels = selectedAgent.models.filter(
                 (m) => ((m as AgentModel).tier || getModelRequiredTier(m.id)) === 'ultimate'
               );
@@ -599,7 +602,7 @@ export function RichInput({
               );
 
               const renderModelButton = (model: AgentModel, tierType: 'ultimate' | 'pro' | 'free') => {
-                const isAllowed = isModelAllowedForTier(model.id, profile?.plan);
+                const isAllowed = isDesktop || isModelAllowedForTier(model.id, profile?.plan);
                 const required = model.tier || getModelRequiredTier(model.id);
                 const isSelected = selectedModelId === model.id;
 
@@ -608,7 +611,7 @@ export function RichInput({
                     key={model.id}
                     type="button"
                     onClick={() => {
-                      if (!isAllowed) {
+                      if (!isDesktop && !isAllowed) {
                         setUpgradeModal({
                           isOpen: true,
                           featureName: model.name,
@@ -618,7 +621,7 @@ export function RichInput({
                         setActiveDropdown(null);
                         return;
                       }
-                      if (isDesktopApp() && !isModelKeyConfigured(model.id, selectedAgentId)) {
+                      if (isDesktop && !isModelKeyConfigured(model.id, selectedAgentId)) {
                         setApiKeyModal({
                           isOpen: true,
                           modelId: model.id,
@@ -648,15 +651,17 @@ export function RichInput({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
-                      {!isAllowed ? (
-                        <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
-                          <Lock className="w-2.5 h-2.5 text-zinc-400" />
-                          <span className="uppercase">{required}</span>
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-mono font-medium text-teal-400 uppercase tracking-wide">
-                          {tierType}
-                        </span>
+                      {!isDesktop && (
+                        !isAllowed ? (
+                          <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5 text-zinc-400" />
+                            <span className="uppercase">{required}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono font-medium text-teal-400 uppercase tracking-wide">
+                            {tierType}
+                          </span>
+                        )
                       )}
                       {isSelected && isAllowed && <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
                     </div>
@@ -682,37 +687,47 @@ export function RichInput({
                     data-lenis-prevent="true"
                     onWheel={(e) => e.stopPropagation()}
                   >
-                    {/* Ultimate Tier Models */}
-                    {ultimateModels.length > 0 && (
-                      <div className="flex flex-col gap-0.5 mb-1.5">
-                        <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-teal-400">
-                          <span>Ultimate Tier</span>
-                          <span className="text-[9px] font-mono text-zinc-500 font-normal">$50/mo</span>
-                        </div>
-                        {ultimateModels.map((m) => renderModelButton(m as AgentModel, 'ultimate'))}
-                      </div>
-                    )}
-
-                    {/* Pro Tier Models */}
-                    {proModels.length > 0 && (
-                      <div className="flex flex-col gap-0.5 mb-1.5">
-                        <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-teal-400">
-                          <span>Pro Tier</span>
-                          <span className="text-[9px] font-mono text-zinc-500 font-normal">$20/mo</span>
-                        </div>
-                        {proModels.map((m) => renderModelButton(m as AgentModel, 'pro'))}
-                      </div>
-                    )}
-
-                    {/* Free Tier Models */}
-                    {freeModels.length > 0 && (
+                    {isDesktop ? (
+                      /* Desktop Mode: 100% Free BYOK model catalog with zero tier grouping or pricing */
                       <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-teal-400">
-                          <span>Free Tier</span>
-                          <span className="text-[9px] font-mono text-zinc-500 font-normal">$0/mo</span>
-                        </div>
-                        {freeModels.map((m) => renderModelButton(m as AgentModel, 'free'))}
+                        {selectedAgent.models.map((m) => renderModelButton(m as AgentModel, 'free'))}
                       </div>
+                    ) : (
+                      /* Web Mode: Tiered sections with pricing and plan badges */
+                      <>
+                        {/* Ultimate Tier Models */}
+                        {ultimateModels.length > 0 && (
+                          <div className="flex flex-col gap-0.5 mb-1.5">
+                            <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-teal-400">
+                              <span>Ultimate Tier</span>
+                              <span className="text-[9px] font-mono text-zinc-500 font-normal">$50/mo</span>
+                            </div>
+                            {ultimateModels.map((m) => renderModelButton(m as AgentModel, 'ultimate'))}
+                          </div>
+                        )}
+
+                        {/* Pro Tier Models */}
+                        {proModels.length > 0 && (
+                          <div className="flex flex-col gap-0.5 mb-1.5">
+                            <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-teal-400">
+                              <span>Pro Tier</span>
+                              <span className="text-[9px] font-mono text-zinc-500 font-normal">$20/mo</span>
+                            </div>
+                            {proModels.map((m) => renderModelButton(m as AgentModel, 'pro'))}
+                          </div>
+                        )}
+
+                        {/* Free Tier Models */}
+                        {freeModels.length > 0 && (
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-teal-400">
+                              <span>Free Tier</span>
+                              <span className="text-[9px] font-mono text-zinc-500 font-normal">$0/mo</span>
+                            </div>
+                            {freeModels.map((m) => renderModelButton(m as AgentModel, 'free'))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -838,13 +853,15 @@ export function RichInput({
         isWeeklyLimitReached={isWeeklyLimitReached}
       />
 
-      <UpgradeModal
-        isOpen={upgradeModal.isOpen}
-        onClose={() => setUpgradeModal({ isOpen: false })}
-        featureName={upgradeModal.featureName}
-        requiredTier={upgradeModal.requiredTier}
-        reason={upgradeModal.reason}
-      />
+      {!isDesktopApp() && (
+        <UpgradeModal
+          isOpen={upgradeModal.isOpen}
+          onClose={() => setUpgradeModal({ isOpen: false })}
+          featureName={upgradeModal.featureName}
+          requiredTier={upgradeModal.requiredTier}
+          reason={upgradeModal.reason}
+        />
+      )}
 
       <ApiKeyPromptModal
         isOpen={apiKeyModal.isOpen}
