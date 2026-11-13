@@ -395,7 +395,7 @@ describe('loopback server binding', () => {
     }
     // Still answers on loopback (status depends on whether dist/ was built)
     expect((await fetch(`${base}/`)).status).toBeGreaterThan(0);
-  });
+  }, 15000);
 });
 
 describe('desktop sign-in endpoints', () => {

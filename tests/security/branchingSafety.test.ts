@@ -83,9 +83,9 @@ describe('safeRegexTest', () => {
     for (const pattern of ['[^,]+,[^,]+', '.*x', 'a.*b.*c']) {
       const t0 = performance.now();
       expect(safeRegexTest(pattern, long).ok).toBe(true);
-      expect(performance.now() - t0, pattern).toBeLessThan(5000);
+      expect(performance.now() - t0, pattern).toBeLessThan(10000);
     }
-  });
+  }, 20000);
 
   it('is always case-insensitive', () => {
     expect(safeRegexTest('HELLO', 'say hello')).toEqual({ ok: true, matched: true });

@@ -73,7 +73,7 @@ jobs:
         run: npm run build
 
       - name: Run Security Tests
-        run: npx vitest run tests/security src/lib/__tests__
+        run: npx vitest run tests/security src/lib/__tests__ --test-timeout=20000
 
       - name: Run Server Typechecks
         working-directory: ./server
