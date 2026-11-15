@@ -1,0 +1,11 @@
+# robots.txt for https://bedrockxai.com
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /api/
+Disallow: /sso-callback
+Disallow: /popup-auth
+Disallow: /browser-auth
+Disallow: /browser-auth-callback
+
+Sitemap: https://bedrockxai.com/sitemap.xml
