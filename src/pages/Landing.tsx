@@ -1,8 +1,8 @@
-import { lazy, Suspense, useEffect, useRef } from 'react';
+import { useState, lazy, Suspense, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthCard } from '../components/auth/AuthCard';
-import { Shield, Cpu, Layout, Layers, Database, Globe, Terminal, ExternalLink } from 'lucide-react';
-import { AppleLogo, WindowsLogo, LinkedInLogo, GitHubLogo } from '../components/ui/ModelLogos';
+import { Shield, Cpu, Layout, Layers, Database, Globe, Plus } from 'lucide-react';
+import { AppleLogo, WindowsLogo } from '../components/ui/ModelLogos';
 import { PageTransition } from '../components/layout/PageTransition';
 // three.js is large, so the 3D background loads after the page is usable.
 const Scene3D = lazy(() => import('../components/landing/Scene3D').then((m) => ({ default: m.Scene3D })));
@@ -28,9 +28,41 @@ const RevealText = ({ text, className, containerClassName }: { text: string, cla
   </span>
 );
 
+const FAQS = [
+  {
+    q: "What is Bedrock?",
+    a: "Bedrock is an engineering-grade prompt and agent workstation. It combines multi-agent synthesis, visual DAG branching, real-time multi-model benchmarking, and native multi-target exports into a single unified developer environment."
+  },
+  {
+    q: "Is Bedrock completely free to use?",
+    a: "Yes. The native desktop workstation (macOS and Windows) is 100% free with BYOK (Bring Your Own Key) freedom—meaning zero subscription paywalls, zero model throttling, and unlimited local workflows. The web version includes generous free access, with optional Pro and Ultimate cloud tiers for hosted serverless infrastructure."
+  },
+  {
+    q: "How does Visual DAG Branching work?",
+    a: "Visual Branching allows you to orchestrate non-linear prompt pipelines as a directed acyclic graph (DAG). You can connect condition routers, dynamic variable stores, iterative self-correction loops, and multi-model consensus merges without writing custom orchestration code."
+  },
+  {
+    q: "Which AI models and providers can I run?",
+    a: "Bedrock supports 10+ frontier and open-source models, including Anthropic Claude 3.7 Sonnet, OpenAI GPT-4o, Google Gemini 2.5, DeepSeek-R1, Meta Llama 3.3, and Qwen, via direct provider APIs (Anthropic, OpenAI, Google AI Studio, Groq, OpenRouter, and Perplexity)."
+  },
+  {
+    q: "How does Bedrock protect my API keys and privacy?",
+    a: "In the desktop app, your API keys and prompts are stored strictly on your local machine and never transmitted to Bedrock servers. Requests communicate directly with your selected AI provider endpoints via secure encrypted TLS."
+  },
+  {
+    q: "What formats can I export my prompts and pipelines into?",
+    a: "Bedrock compiles prompts into 15+ production-ready formats with one click, including native .cursorrules, CLAUDE.md, Windsurf Cascade, GitHub Copilot instructions, Vercel AI SDK routes, Python Anthropic/OpenAI SDK clients, and raw cURL payloads."
+  },
+  {
+    q: "Which operating systems and platforms are supported?",
+    a: "Bedrock is available as a native desktop application for Windows (.exe with automated background updates), macOS (.dmg for Apple Silicon and Intel), and directly in your browser as a responsive web app."
+  }
+];
+
 export default function Landing() {
   const containerRef = useRef<HTMLDivElement>(null);
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const { isLoggedIn, isLoaded } = useAuth();
   const navigate = useNavigate();
 
@@ -407,70 +439,46 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Architect & Creator Dossier */}
-        <section className="relative z-10 w-full py-24 px-6 sm:px-12 max-w-6xl mx-auto">
-          <div className="rounded-3xl p-8 sm:p-12 bg-sf-0a0a0a/90 border border-white/10 backdrop-blur-xl relative overflow-hidden group hover:border-white/20 transition-all duration-500 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-copper-500/5 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-10">
-              <div className="max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono tracking-wider uppercase text-copper-400 bg-copper-500/10 border border-copper-500/20 mb-4">
-                  <Terminal className="w-3.5 h-3.5" />
-                  System Architect &amp; Founder
-                </div>
-                <h3 className="text-3xl sm:text-4xl font-display font-medium text-white mb-4 tracking-tight">
-                  Engineered by Atharva Kulkarni
-                </h3>
-                <p className="text-gray-400 text-sm sm:text-base font-light leading-relaxed mb-6">
-                  Bedrock was created from the ground up as an uncompromising prompt engineering workstation. Every DAG node, schema migration, and distributed telemetry pipe is built for engineers and architects who treat AI system prompts as production software.
-                </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <a
-                    href="https://www.linkedin.com/in/atharva-kulkarni-a16a5a3b9/"
-                    target="_blank"
-                    rel="noopener noreferrer"
+        {/* Transparent FAQs (Floating Directly Over 3D Canvas) */}
+        <section className="relative z-10 w-full py-32 px-6 sm:px-12 max-w-5xl mx-auto">
+          <div className="reveal-container mb-16">
+            <h2 className="font-display text-4xl sm:text-6xl md:text-7xl tracking-tight text-white mb-6">
+              <RevealText text="Frequently Asked Questions." />
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-400 font-light max-w-2xl">
+              <RevealText text="Everything you need to know about the Bedrock workstation, model routing, local privacy, and pipeline orchestration." />
+            </p>
+          </div>
+
+          <div className="divide-y divide-white/10 border-t border-b border-white/10">
+            {FAQS.map((faq, idx) => {
+              const isOpen = openFaq === idx;
+              return (
+                <div key={idx} className="transition-colors">
+                  <button
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    className="w-full py-7 flex items-center justify-between text-left gap-6 group cursor-pointer focus:outline-none"
                     data-cursor="hover"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium text-white bg-white/5 border border-white/10 hover:bg-[#0A66C2]/20 hover:border-[#0A66C2]/40 transition-all duration-200"
+                    aria-expanded={isOpen}
                   >
-                    <LinkedInLogo className="w-4 h-4 text-[#0A66C2]" />
-                    LinkedIn &amp; Launch Posts
-                    <ExternalLink className="w-3 h-3 text-gray-500" />
-                  </a>
-                  <a
-                    href="https://github.com/AtharvaK-XD"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-cursor="hover"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium text-white bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/30 transition-all duration-200"
-                  >
-                    <GitHubLogo className="w-4 h-4 text-white" />
-                    GitHub (@AtharvaK-XD)
-                    <ExternalLink className="w-3 h-3 text-gray-500" />
-                  </a>
-                  <a
-                    href="https://atharva-portfolio-self.vercel.app/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-cursor="hover"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white transition-all duration-200"
-                  >
-                    <Globe className="w-4 h-4 text-copper-400" />
-                    Portfolio
-                    <ExternalLink className="w-3 h-3 text-gray-500" />
-                  </a>
+                    <span className="text-xl sm:text-2xl font-display font-medium text-white/90 group-hover:text-copper-400 transition-colors">
+                      {faq.q}
+                    </span>
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-white/10 text-gray-400 group-hover:text-white group-hover:border-white/30 transition-all duration-300",
+                      isOpen && "border-copper-500/50 text-copper-400 rotate-45 bg-copper-500/10"
+                    )}>
+                      <Plus className="w-4 h-4" />
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="pb-8 pt-1 text-gray-400 font-light text-base sm:text-lg leading-relaxed max-w-4xl animate-in fade-in duration-200">
+                      {faq.a}
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="shrink-0 w-full lg:w-auto flex flex-col p-6 rounded-2xl bg-black/60 border border-white/5 font-mono text-xs text-gray-400 space-y-2.5">
-                <div className="text-copper-400 font-semibold tracking-wider pb-1 border-b border-white/5">ARCHITECT TELEMETRY</div>
-                <div className="flex justify-between gap-6"><span>ARCHITECT:</span><span className="text-white font-medium">Atharva Kulkarni</span></div>
-                <div className="flex justify-between gap-6"><span>SYSTEM:</span><span className="text-white">Bedrock (bedrockxai.com)</span></div>
-                <div className="flex justify-between gap-6"><span>WORKSTATION:</span><span className="text-emerald-400">100% BYOK Freedom</span></div>
-                <div className="flex justify-between gap-6"><span>PIPELINE:</span><span className="text-white">Multi-Model DAG v2</span></div>
-                <div className="pt-2 text-emerald-400 flex items-center gap-2 border-t border-white/5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  PRODUCTION ACTIVE // LIVE
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </section>
 
