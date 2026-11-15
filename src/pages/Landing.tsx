@@ -475,42 +475,68 @@ export default function Landing() {
         </section>
 
         {/* Minimal Footer */}
-        <footer className="relative z-10 w-full py-12 px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-500 font-light border-t border-white/5">
-          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-            <p>© 2026 Bedrock. All rights reserved.</p>
-            <span className="hidden sm:inline text-gray-700">·</span>
-            <p className="text-gray-400">
-              Architected &amp; built by <a href="https://www.linkedin.com/in/atharva-kulkarni-a16a5a3b9/" target="_blank" rel="noopener noreferrer" className="text-copper-400 hover:text-copper-300 font-medium transition-colors">Atharva Kulkarni</a>
-            </p>
+        <footer className="relative z-10 w-full py-12 px-6 sm:px-12 flex flex-col items-center justify-between text-sm text-gray-500 font-light border-t border-white/5 gap-8">
+          {/* LaunchBuff Featured Showcase */}
+          <div className="flex flex-col items-center justify-center gap-2">
+            <a
+              href="https://launchbuff.com/products/bedrock-8pw783"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-cursor="hover"
+              title="Featured on LaunchBuff"
+              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(230,127,0,0.45)]"
+            >
+              <img
+                src="https://launchbuff.com/badge-featured-dark.svg"
+                alt="Featured on LaunchBuff"
+                width={256}
+                height={80}
+                className="h-12 sm:h-14 w-auto object-contain select-none"
+                draggable={false}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/logos/badge-featured-dark.svg';
+                }}
+              />
+            </a>
           </div>
-          <div className="flex flex-wrap justify-center gap-6 mt-4 sm:mt-0">
-            <a 
-              href="https://www.linkedin.com/in/atharva-kulkarni-a16a5a3b9/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              data-cursor="hover" 
-              className="hover:text-white transition-colors"
-            >
-              LinkedIn
-            </a>
-            <a 
-              href={SOURCE_REPO_URL} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              data-cursor="hover" 
-              className="hover:text-white transition-colors"
-            >
-              GitHub
-            </a>
-            <Link to="/pricing" data-cursor="hover" className="hover:text-white transition-colors">
-              Pricing
-            </Link>
-            <Link to="/privacy" data-cursor="hover" className="hover:text-white transition-colors">
-              Privacy
-            </Link>
-            <Link to="/terms" data-cursor="hover" className="hover:text-white transition-colors">
-              Terms
-            </Link>
+
+          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/5">
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+              <p>© 2026 Bedrock. All rights reserved.</p>
+              <span className="hidden sm:inline text-gray-700">·</span>
+              <p className="text-gray-400">
+                Architected &amp; built by <a href="https://www.linkedin.com/in/atharva-kulkarni-a16a5a3b9/" target="_blank" rel="noopener noreferrer" className="text-copper-400 hover:text-copper-300 font-medium transition-colors">Atharva Kulkarni</a>
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-6 mt-4 sm:mt-0">
+              <a 
+                href="https://www.linkedin.com/in/atharva-kulkarni-a16a5a3b9/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                data-cursor="hover" 
+                className="hover:text-white transition-colors"
+              >
+                LinkedIn
+              </a>
+              <a 
+                href={SOURCE_REPO_URL} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                data-cursor="hover" 
+                className="hover:text-white transition-colors"
+              >
+                GitHub
+              </a>
+              <Link to="/pricing" data-cursor="hover" className="hover:text-white transition-colors">
+                Pricing
+              </Link>
+              <Link to="/privacy" data-cursor="hover" className="hover:text-white transition-colors">
+                Privacy
+              </Link>
+              <Link to="/terms" data-cursor="hover" className="hover:text-white transition-colors">
+                Terms
+              </Link>
+            </div>
           </div>
         </footer>
 
