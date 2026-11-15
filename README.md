@@ -31,6 +31,7 @@ Universal prompt engineering studio, visual orchestration canvas, and multi-mode
   - [Compiling and Packaging](#compiling-and-packaging)
 - [Testing and Verification](#testing-and-verification)
 - [Project Directory Layout](#project-directory-layout)
+- [Community and Indexing](#community-and-indexing)
 - [License](#license)
 
 ---
@@ -372,6 +373,14 @@ Bedrock/
 ├── package.json            # Dependencies, scripts, and build metadata
 └── vercel.json             # Deployment headers, serverless configuration, and CSP
 ```
+
+---
+
+## Community and Indexing
+
+[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/AtharvaK-XD/badge.svg)](https://hub.xerj.org/contributors/AtharvaK-XD)
+
+Bedrock is indexed on [XERJ Corpus Hub](https://hub.xerj.org/contributors/AtharvaK-XD) for prompt engineering and agent architecture research.
 
 ---
 
