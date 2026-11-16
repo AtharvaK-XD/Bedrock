@@ -527,6 +527,27 @@ export default function Landing() {
                 }}
               />
             </a>
+
+            <a
+              href="https://fazier.com/launches/bedrockxai.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-cursor="hover"
+              title="Featured on Fazier"
+              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(75,87,119,0.6)]"
+            >
+              <img
+                src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=dark"
+                alt="Featured on Fazier"
+                width={182}
+                height={43}
+                className="h-11 sm:h-12 w-auto object-contain select-none"
+                draggable={false}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/logos/fazier-badge.svg';
+                }}
+              />
+            </a>
           </div>
 
           <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/5">
