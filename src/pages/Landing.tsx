@@ -548,6 +548,27 @@ export default function Landing() {
                 }}
               />
             </a>
+
+            <a
+              href="https://twelve.tools"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-cursor="hover"
+              title="Featured on Twelve Tools"
+              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(255,255,255,0.35)]"
+            >
+              <img
+                src="https://twelve.tools/badge0-white.svg"
+                alt="Featured on Twelve Tools"
+                width={148}
+                height={40}
+                className="h-11 sm:h-12 w-auto object-contain select-none rounded-lg"
+                draggable={false}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/logos/twelve-tools-badge.svg';
+                }}
+              />
+            </a>
           </div>
 
           <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/5">
