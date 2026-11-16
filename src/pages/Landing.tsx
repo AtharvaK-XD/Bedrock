@@ -550,7 +550,7 @@ export default function Landing() {
             </a>
 
             <a
-              href="https://twelve.tools"
+              href="https://twelve.tools/bedrockxai"
               target="_blank"
               rel="noopener noreferrer"
               data-cursor="hover"
