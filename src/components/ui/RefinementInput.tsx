@@ -453,7 +453,10 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
       {!isDesktopApp() && (
         <UpgradeModal
           isOpen={upgradeModal.isOpen}
-          onClose={() => setUpgradeModal({ isOpen: false })}
+          onClose={() => {
+            setUpgradeModal({ isOpen: false });
+            setModel('Auto-select Best Model');
+          }}
           featureName={upgradeModal.featureName}
           requiredTier={upgradeModal.requiredTier}
           reason={upgradeModal.reason}

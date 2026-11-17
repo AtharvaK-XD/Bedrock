@@ -1,6 +1,6 @@
 import { ANTHROPIC_MODELS_EVENT } from '../../lib/anthropicModels';
 import { getCachedProviderModels, DYNAMIC_MODELS_UPDATED_EVENT } from '../../lib/dynamicModelDiscovery';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Plus, Check, Lock } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { IdeaPayload } from '../../lib/mockApi';
@@ -335,12 +335,23 @@ export function RichInput({
         }
       }
 
-      if (!isDesktop && isLimitReached) {
-        setShowQuotaModal(true);
-        return;
-      }
-
       if (!isDesktop) {
+        if (selectedModelId !== 'auto' && !isModelAllowedForTier(selectedModelId, profile?.plan)) {
+          const req = getModelRequiredTier(selectedModelId);
+          setUpgradeModal({
+            isOpen: true,
+            featureName: selectedModel.name,
+            requiredTier: req === 'ultimate' ? 'ultimate' : 'pro',
+            reason: `${selectedModel.name} requires an active ${req.toUpperCase()} Plan. Upgrade your plan to get full access.`,
+          });
+          return;
+        }
+
+        if (isLimitReached) {
+          setShowQuotaModal(true);
+          return;
+        }
+
         const allowed = recordPromptUsage(1);
         if (!allowed) {
           setShowQuotaModal(true);
@@ -381,6 +392,19 @@ export function RichInput({
     requiredTier?: 'pro' | 'ultimate';
     reason?: string;
   }>({ isOpen: false });
+
+  const resetToUniversal = useCallback(() => {
+    setSelectedAgentId('universal');
+    setSelectedModelId('auto');
+  }, []);
+
+  // Safety fallback: On web, ensure unentitled models cannot remain selected
+  useEffect(() => {
+    if (isDesktop) return;
+    if (selectedModelId !== 'auto' && !isModelAllowedForTier(selectedModelId, profile?.plan)) {
+      resetToUniversal();
+    }
+  }, [isDesktop, profile?.plan, selectedModelId, resetToUniversal]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -538,32 +562,55 @@ export function RichInput({
                   data-lenis-prevent="true"
                   onWheel={(e) => e.stopPropagation()}
                 >
-                  {activeAiAgents.map((agent) => (
-                    <button
-                      key={agent.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedAgentId(agent.id);
-                        const firstAllowed = agent.models.find((m) => isModelAllowedForTier(m.id, profile?.plan)) || agent.models[0];
-                        setSelectedModelId(firstAllowed.id);
-                        // Once user selects the provider, immediately open model chooser!
-                        setActiveDropdown('model');
-                      }}
-                      className={cn(
-                        "w-full flex items-center justify-between gap-3 px-3 py-2 text-left rounded-xl transition-all duration-150",
-                        selectedAgentId === agent.id ? "bg-white/10 text-white" : "hover:bg-white/5 text-zinc-300 hover:text-white"
-                      )}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <AgentIcon agent={agent} className="w-5 h-5 shrink-0" badgeClassName="w-5 h-5" />
-                        <div className="min-w-0">
-                          <div className="text-xs sm:text-sm font-medium truncate">{agent.name}</div>
-                          <div className="text-[11px] text-zinc-500 mt-0.5 truncate">{agent.description}</div>
+                  {activeAiAgents.map((agent) => {
+                    const hasAllowed = isDesktop || agent.models.some((m) => isModelAllowedForTier(m.id, profile?.plan));
+                    const minRequired = agent.models.some(m => ((m as AgentModel).tier || getModelRequiredTier(m.id)) === 'pro') ? 'pro' : 'ultimate';
+
+                    return (
+                      <button
+                        key={agent.id}
+                        type="button"
+                        onClick={() => {
+                          if (!isDesktop && !hasAllowed) {
+                            setUpgradeModal({
+                              isOpen: true,
+                              featureName: agent.name,
+                              requiredTier: minRequired,
+                              reason: `${agent.name} models require an active ${minRequired.toUpperCase()} Plan ($${minRequired === 'ultimate' ? '50' : '20'} / month). Upgrade your plan to get full access.`,
+                            });
+                            setActiveDropdown(null);
+                            return;
+                          }
+                          setSelectedAgentId(agent.id);
+                          const firstAllowed = agent.models.find((m) => isModelAllowedForTier(m.id, profile?.plan)) || agent.models[0];
+                          setSelectedModelId(firstAllowed.id);
+                          // Once user selects the provider, immediately open model chooser!
+                          setActiveDropdown('model');
+                        }}
+                        className={cn(
+                          "w-full flex items-center justify-between gap-3 px-3 py-2 text-left rounded-xl transition-all duration-150",
+                          selectedAgentId === agent.id ? "bg-white/10 text-white" : "hover:bg-white/5 text-zinc-300 hover:text-white"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <AgentIcon agent={agent} className="w-5 h-5 shrink-0" badgeClassName="w-5 h-5" />
+                          <div className="min-w-0">
+                            <div className="text-xs sm:text-sm font-medium truncate">{agent.name}</div>
+                            <div className="text-[11px] text-zinc-500 mt-0.5 truncate">{agent.description}</div>
+                          </div>
                         </div>
-                      </div>
-                      {selectedAgentId === agent.id && <Check className="w-4 h-4 text-teal-400 shrink-0" />}
-                    </button>
-                  ))}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {!isDesktop && !hasAllowed && (
+                            <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                              <Lock className="w-2.5 h-2.5 text-zinc-400" />
+                              <span className="uppercase">{minRequired}</span>
+                            </span>
+                          )}
+                          {selectedAgentId === agent.id && <Check className="w-4 h-4 text-teal-400 shrink-0" />}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -856,7 +903,10 @@ export function RichInput({
       {!isDesktopApp() && (
         <UpgradeModal
           isOpen={upgradeModal.isOpen}
-          onClose={() => setUpgradeModal({ isOpen: false })}
+          onClose={() => {
+            setUpgradeModal({ isOpen: false });
+            resetToUniversal();
+          }}
           featureName={upgradeModal.featureName}
           requiredTier={upgradeModal.requiredTier}
           reason={upgradeModal.reason}

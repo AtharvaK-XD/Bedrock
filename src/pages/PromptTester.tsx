@@ -283,6 +283,20 @@ export default function PromptTester() {
                           errorMessage: `Please configure your API key for ${a.name} to benchmark with this provider.`
                         });
                       }
+                      if (!isDesktop) {
+                        const hasAllowed = a.models.some((m) => isModelAllowedForTier(m.id, profile?.plan));
+                        if (!hasAllowed) {
+                          const minReq = a.models.some(m => ((m as any).tier || getModelRequiredTier(m.id)) === 'pro') ? 'pro' : 'ultimate';
+                          setUpgradeModal({
+                            isOpen: true,
+                            featureName: a.name,
+                            requiredTier: minReq,
+                            reason: `${a.name} is reserved for ${minReq.toUpperCase()} Plan members. Upgrade to benchmark with this provider.`,
+                          });
+                          setActiveDropdown(null);
+                          return;
+                        }
+                      }
                       setAgentId(a.id);
                       const firstAllowed = a.models.find((m) => isModelAllowedForTier(m.id, profile?.plan)) || a.models[0];
                       setModelId(firstAllowed.id);
@@ -771,7 +785,17 @@ export default function PromptTester() {
       {!isDesktop && (
         <UpgradeModal
           isOpen={upgradeModal.isOpen}
-          onClose={() => setUpgradeModal({ isOpen: false })}
+          onClose={() => {
+            setUpgradeModal({ isOpen: false });
+            if (!isModelAllowedForTier(model1Id, profile?.plan)) {
+              setAgent1Id('gemini');
+              setModel1Id('gemini-3.5-flash-lite');
+            }
+            if (!isModelAllowedForTier(model2Id, profile?.plan)) {
+              setAgent2Id(defaultGroqAgent.id);
+              setModel2Id('qwen/qwen3.8-27b');
+            }
+          }}
           featureName={upgradeModal.featureName}
           requiredTier={upgradeModal.requiredTier}
           reason={upgradeModal.reason}
