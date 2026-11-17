@@ -284,7 +284,7 @@ export default function PromptTester() {
                         });
                       }
                       if (!isDesktop) {
-                        const hasAllowed = a.models.some((m) => isModelAllowedForTier(m.id, profile?.plan));
+                        const hasAllowed = a.models.some((m) => isModelAllowedForTier(m.id, profile?.plan, (m as any).tier));
                         if (!hasAllowed) {
                           const minReq = a.models.some(m => ((m as any).tier || getModelRequiredTier(m.id)) === 'pro') ? 'pro' : 'ultimate';
                           setUpgradeModal({
@@ -298,7 +298,7 @@ export default function PromptTester() {
                         }
                       }
                       setAgentId(a.id);
-                      const firstAllowed = a.models.find((m) => isModelAllowedForTier(m.id, profile?.plan)) || a.models[0];
+                      const firstAllowed = a.models.find((m) => isModelAllowedForTier(m.id, profile?.plan, (m as any).tier)) || a.models[0];
                       setModelId(firstAllowed.id);
                       setActiveDropdown(dropdownId === 'agent1' ? 'model1' : 'model2');
                     }}
@@ -347,7 +347,7 @@ export default function PromptTester() {
                 const freeModels = currentAgent.models.filter((m: any) => (m.tier || getModelRequiredTier(m.id)) === 'free');
 
                 const renderItem = (m: any, tier: 'ultimate' | 'pro' | 'free') => {
-                  const isAllowed = isDesktop || isModelAllowedForTier(m.id, profile?.plan);
+                  const isAllowed = isDesktop || isModelAllowedForTier(m.id, profile?.plan, m.tier);
                   const required = m.tier || getModelRequiredTier(m.id);
                   return (
                     <button

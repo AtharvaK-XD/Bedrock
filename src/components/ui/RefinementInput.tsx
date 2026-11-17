@@ -107,10 +107,10 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
     const currentModelEntry = AI_AGENTS.flatMap((a) => a.models).find(
       (m) => m.name === model || m.id === model
     );
-    if (currentModelEntry && !isModelAllowedForTier(currentModelEntry.id, profile.plan)) {
+    if (currentModelEntry && !isModelAllowedForTier(currentModelEntry.id, profile.plan, currentModelEntry.tier)) {
       const fallback =
         AI_AGENTS.flatMap((a) => a.models).find((m) =>
-          isModelAllowedForTier(m.id, profile.plan)
+          isModelAllowedForTier(m.id, profile.plan, m.tier)
         ) || AI_AGENTS[0].models[0];
       setModel(fallback.name);
     }
@@ -318,7 +318,7 @@ export function RefinementInput({ onSubmit, className }: RefinementInputProps) {
                           {agent.models.map((m) => {
                             const isDesktop = isDesktopApp();
                             const reqTier = m.tier || getModelRequiredTier(m.id);
-                            const isAllowed = isDesktop || isModelAllowedForTier(m.id, profile?.plan);
+                            const isAllowed = isDesktop || isModelAllowedForTier(m.id, profile?.plan, m.tier);
                             const isSelected = model === m.name;
 
                             return (

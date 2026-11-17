@@ -563,7 +563,7 @@ export function RichInput({
                   onWheel={(e) => e.stopPropagation()}
                 >
                   {activeAiAgents.map((agent) => {
-                    const hasAllowed = isDesktop || agent.models.some((m) => isModelAllowedForTier(m.id, profile?.plan));
+                    const hasAllowed = isDesktop || agent.models.some((m) => isModelAllowedForTier(m.id, profile?.plan, (m as AgentModel).tier));
                     const minRequired = agent.models.some(m => ((m as AgentModel).tier || getModelRequiredTier(m.id)) === 'pro') ? 'pro' : 'ultimate';
 
                     return (
@@ -582,7 +582,7 @@ export function RichInput({
                             return;
                           }
                           setSelectedAgentId(agent.id);
-                          const firstAllowed = agent.models.find((m) => isModelAllowedForTier(m.id, profile?.plan)) || agent.models[0];
+                          const firstAllowed = agent.models.find((m) => isModelAllowedForTier(m.id, profile?.plan, (m as AgentModel).tier)) || agent.models[0];
                           setSelectedModelId(firstAllowed.id);
                           // Once user selects the provider, immediately open model chooser!
                           setActiveDropdown('model');
@@ -649,7 +649,7 @@ export function RichInput({
               );
 
               const renderModelButton = (model: AgentModel, tierType: 'ultimate' | 'pro' | 'free') => {
-                const isAllowed = isDesktop || isModelAllowedForTier(model.id, profile?.plan);
+                const isAllowed = isDesktop || isModelAllowedForTier(model.id, profile?.plan, (model as AgentModel).tier);
                 const required = model.tier || getModelRequiredTier(model.id);
                 const isSelected = selectedModelId === model.id;
 

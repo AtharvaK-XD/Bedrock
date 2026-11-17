@@ -157,11 +157,10 @@ export function getModelRequiredTier(modelId: string): 'free' | 'pro' | 'ultimat
 
   // 2. Pro Tier Models (Fast frontier, coding specialists, reasoning workhorses)
   if (
-    m.includes('claude-sonnet') ||
-    m.includes('claude-3-7-sonnet') ||
-    m.includes('claude-3.7-sonnet') ||
-    m.includes('claude-3-5-sonnet') ||
-    m.includes('claude-haiku') ||
+    m.includes('claude') ||
+    m.includes('anthropic') ||
+    m.includes('haiku') ||
+    m.includes('sonnet') ||
     m.includes('gpt-6.1-sol') ||
     m.includes('gpt-6-sol') ||
     m.includes('gpt-6-luna') ||
@@ -198,11 +197,15 @@ export function getModelRequiredTier(modelId: string): 'free' | 'pro' | 'ultimat
 /**
  * Evaluates whether a model is permitted under the user's active subscription plan.
  */
-export function isModelAllowedForTier(modelId: string, userPlan?: string | null): boolean {
+export function isModelAllowedForTier(
+  modelId: string,
+  userPlan?: string | null,
+  declaredTier?: 'free' | 'pro' | 'ultimate'
+): boolean {
   if (isDesktopApp()) return true;
 
   const userTier = normalizeTier(userPlan);
-  const required = getModelRequiredTier(modelId);
+  const required = declaredTier || getModelRequiredTier(modelId);
 
   if (userTier === 'ultimate') return true;
   if (userTier === 'pro') return required !== 'ultimate';
