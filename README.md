@@ -224,7 +224,6 @@ Bedrock is built with security controls enforced across operating system, networ
 7. **Identity Verification & Session Safety**:
    - RSA-SHA256 (`RS256`) cryptographic signature verification for Clerk JWT tokens.
    - Strict `azp` validation against configured origin allowlists.
-   - Safe redirect URL validation preventing open-redirect vulnerabilities.
 8. **Automated Secret Leak Scanning**:
    - Pre-commit and CI secret scanning inspecting 18+ high-entropy credential patterns across the repository.
 
