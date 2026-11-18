@@ -18,9 +18,11 @@ Universal prompt engineering studio, visual orchestration canvas, and multi-mode
   - [5. Prompt Blueprint Library](#5-prompt-blueprint-library)
   - [6. Execution History and Trace Archive](#6-execution-history-and-trace-archive)
 - [Universal Dynamic BYOK Model Discovery](#universal-dynamic-byok-model-discovery)
+- [Subscription Tiers & Frontier Model Entitlements](#subscription-tiers--frontier-model-entitlements)
 - [15 Production Export Targets](#15-production-export-targets)
 - [System Architecture and Data Flow](#system-architecture-and-data-flow)
 - [Security and Resilience Architecture](#security-and-resilience-architecture)
+- [Latest Release Highlights (v1.4.9)](#latest-release-highlights-v149)
 - [Desktop Releases and Installation](#desktop-releases-and-installation)
 - [Getting Started and Local Development](#getting-started-and-local-development)
   - [Prerequisites](#prerequisites)
@@ -31,7 +33,7 @@ Universal prompt engineering studio, visual orchestration canvas, and multi-mode
   - [Compiling and Packaging](#compiling-and-packaging)
 - [Testing and Verification](#testing-and-verification)
 - [Project Directory Layout](#project-directory-layout)
-- [Community and Indexing](#community-and-indexing)
+- [Featured Directories & Community](#featured-directories--community)
 - [License](#license)
 
 ---
@@ -98,16 +100,17 @@ Graph-based visual pipeline orchestration powered by `@xyflow/react`.
   6. `Terminal Node`: Captures and formats final synthesized outputs.
   7. `Evaluator Node`: Tests outputs against rubric assertions.
   8. `Merge Node`: Unifies parallel execution branches into a consolidated payload.
-- **Execution Engine**: Topological DAG sorting, real-time node animation, single-step execution mode, rule builder, pipeline validation diagnostics, and version history snapshots.
+- **Execution Engine**: Topological DAG sorting, real-time node animation, single-step execution mode, Rule Builder, Pipeline Doctor (automated cyclic loop, disconnected input, and orphan terminal diagnostic checks), version history snapshots, and read-only shareable links (`/app/branching?shared=<token>`).
+- **Tiered Canvas Capacities**: Free tier (up to 5 nodes), Pro (up to 10 nodes), Ultimate (up to 20 nodes), and Desktop Workstation (unlimited nodes with zero restrictions).
 
 ### 4. Multi-Model Benchmark Arena
 Comparative evaluation engine executing identical prompts across frontier LLMs in parallel.
-- **Concurrent Dispatch**: Simultaneous execution across two competing models.
+- **Concurrent Dispatch**: Simultaneous execution across two competing models or local Ollama instances.
 - **Telemetry Analysis**:
   - Time to First Token (TTFT) responsiveness measurement.
   - Token generation throughput rates.
   - Comparative token utilization efficiency.
-- **Visual Diff Engine**: Word-level diff visualizer highlighting structural differences, formatting variance, and prompt adherence.
+- **Side-by-Side Visual Diff**: Color-coded word-level diff viewer highlighting syntax deviations, structural compliance, reasoning density, and formatting variance in real time.
 
 ### 5. Prompt Blueprint Library
 Curated collection of 50+ battle-tested prompt blueprints covering software engineering, architecture, database design, and cloud security.
@@ -134,6 +137,26 @@ Bedrock v1.4.9 operates without hardcoded model lists. In Desktop Workstation mo
 - **Ollama**: Connects to local `http://127.0.0.1:11434/api/tags` to discover pulled GGUF models.
 
 All discovered models dispatch directly to their native upstream provider endpoints with zero parameter translation or silent model substitution.
+
+---
+
+## Subscription Tiers & Frontier Model Entitlements
+
+Bedrock provides dual operational modes tailored for individual engineers and teams:
+
+| Tier | Price | Model Access | DAG Nodes | Quota & Limits | Primary Target |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Desktop Workstation** | **$0.00** | 100% unrestricted BYOK across all providers & local Ollama | Unlimited | Zero rate limits, zero telemetry gates | Engineers seeking full privacy, local inference, and hardware-encrypted credentials |
+| **Web Free** | **$0.00** | Universal Auto-Router, Gemini 3.5 Flash Lite, Groq GPT-OSS 120B/20B, Gemma 4 26B, OpenRouter Free | Up to 5 nodes | 10 syntheses / 5h window | Fast experimentation and prompt generation without providing API keys |
+| **Web Pro** | **$20/mo** (`₹1,700/mo`) | Claude Sonnet 5.5, Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude 3.5 Haiku, GPT-6.1 Sol, GPT-6 Luna, DeepSeek R1, Grok 4.7, o3-mini, Gemini 2.5 Pro | Up to 10 nodes | Unlimited daily prompts, high-concurrency queue | Full-stack developers building agentic workflows and coding assistants |
+| **Web Ultimate** | **$50/mo** (`₹4,250/mo`) | Claude Opus 5.5, GPT-6 Astra, OpenAI o1, Gemini 4 Argon (1M+ Context), Llama 3.1 405B, Sonar Reasoning Pro | Up to 20 nodes | Unlimited prompts, VIP priority execution queue | Software architects and teams evaluating frontier reasoning and large-scale DAG pipelines |
+
+### Gating and Fallback Protocol
+- **Strict Entitlement Enforcement**: When browsing models on the web app, restricted models and providers display visual Lock indicators (`🔒 PRO` or `🔒 ULTIMATE`).
+- **Modal Dismissal Safety Invariant**: Attempting to select an unentitled model opens the `UpgradeModal`. Dismissing the modal (via close button **`×`**, backdrop click, or Escape) automatically falls back to:
+  - **Provider**: `Universal`
+  - **Model**: `Auto-select Best Model` (`auto`)
+- **Web Runtime Guard**: A reactive safety hook actively scans selected model states; if an unentitled model ID is detected on a free plan, it instantaneously auto-selects back to `Universal` and `auto`.
 
 ---
 
@@ -226,6 +249,17 @@ Bedrock is built with security controls enforced across operating system, networ
    - Strict `azp` validation against configured origin allowlists.
 8. **Automated Secret Leak Scanning**:
    - Pre-commit and CI secret scanning inspecting 18+ high-entropy credential patterns across the repository.
+
+---
+
+## Latest Release Highlights (v1.4.9)
+
+- **Tiered Frontier Model Hierarchy**: Full entitlement integration across Free, Pro ($20/mo), and Ultimate ($50/mo) tiers with active lock badges, modal gating, and automatic fallback to `Universal` & `auto` on dismissal.
+- **Multi-Model Benchmark Arena**: Parallel prompt execution engine comparing Time to First Token (TTFT), token throughput, and word-level visual semantic diffs between competing frontier models.
+- **Visual Branching Canvas (DAG v2)**: 8 specialized node types (Persona, Prompt, Data Store, Condition Router, Code Script, Terminal, Evaluator, Merge), live step-by-step animation, topological sorting, Pipeline Doctor diagnostics, and read-only shareable links (`/app/branching?shared=<token>`).
+- **Hardware-Backed Keystore**: Zero plaintext API key storage on disk; desktop keys are encrypted using Windows DPAPI (`CryptProtectData`) and macOS Keychain Services.
+- **15 Ready-to-Ship Export Targets**: Comprehensive export to `.cursorrules`, `CLAUDE.md`, `.windsurfrules`, `.github/copilot-instructions.md`, Vercel AI SDK, LangChain, native TypeScript/Python SDKs, and XML directives.
+- **Landing Experience Refinements**: Transparent floating FAQ section with interactive accordion physics, updated verified listing badges, and responsive design across desktop and mobile.
 
 ---
 
@@ -375,11 +409,39 @@ Bedrock/
 
 ---
 
-## Community and Indexing
+## Featured Directories & Community
 
-[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/AtharvaK-XD/badge.svg)](https://hub.xerj.org/contributors/AtharvaK-XD)
+Bedrock is indexed and featured across major software launch platforms and AI developer communities:
 
-Bedrock is indexed on [XERJ Corpus Hub](https://hub.xerj.org/contributors/AtharvaK-XD) for prompt engineering and agent architecture research.
+<div align="center">
+  <br />
+  <a href="https://www.producthunt.com/products/bedrock-6?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-bedrock-7" target="_blank" rel="noopener noreferrer">
+    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1316648&theme=dark" alt="Bedrock on Product Hunt" width="220" />
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://launchbuff.com/products/bedrock-8pw783" target="_blank" rel="noopener noreferrer">
+    <img src="https://launchbuff.com/badge-featured-dark.svg" alt="Featured on LaunchBuff" width="180" />
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://fazier.com/launches/bedrockxai.com" target="_blank" rel="noopener noreferrer">
+    <img src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=dark" alt="Featured on Fazier" width="180" />
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://twelve.tools/bedrockxai" target="_blank" rel="noopener noreferrer">
+    <img src="https://twelve.tools/badge0-white.svg" alt="Featured on Twelve Tools" width="140" />
+  </a>
+  <br /><br />
+  <a href="https://hub.xerj.org/contributors/AtharvaK-XD" target="_blank" rel="noopener noreferrer">
+    <img src="https://hub.xerj.org/contributors/AtharvaK-XD/badge.svg" alt="XERJ Corpus Hub contributor" />
+  </a>
+  <br /><br />
+</div>
+
+- **[Product Hunt](https://www.producthunt.com/products/bedrock-6)**: Featured prompt engineering studio and visual orchestration canvas.
+- **[LaunchBuff](https://launchbuff.com/products/bedrock-8pw783)**: Featured developer workstation and prompt compilation platform.
+- **[Fazier](https://fazier.com/launches/bedrockxai.com)**: Official featured launch for prompt synthesis and multi-model arena testing.
+- **[Twelve Tools](https://twelve.tools/bedrockxai)**: Verified AI tool profile and prompt studio directory listing.
+- **[XERJ Corpus Hub](https://hub.xerj.org/contributors/AtharvaK-XD)**: Indexed corpus for prompt engineering benchmarks and agent directives.
 
 ---
 
