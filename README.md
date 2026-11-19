@@ -83,7 +83,6 @@ The core studio turning raw functional requirements into structured production p
   - Coding Assistant Rulebooks (`.cursorrules`, `CLAUDE.md`, `.windsurfrules`, GitHub Copilot)
   - Full-Stack Architecture Blueprints (REST/tRPC endpoints, SQL migrations, error envelopes)
   - Terminal CLI Tool Directives (POSIX flags, exit codes, streaming patterns)
-  - Technical Specifications and Scope of Work documents
 - **Scoping Interview**: Analyzes initial ideas and dynamically asks 3–4 clarifying questions covering database design, authentication models, and edge-case handling.
 - **Dual-Pane Refinement Studio**:
   - *Left Pane*: Conversational modification studio for targeted prompt adjustments.
