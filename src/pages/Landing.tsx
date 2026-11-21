@@ -293,7 +293,94 @@ export default function Landing() {
         </section>
 
         {/* Text Reveal Statement Section */}
-        <section className="relative z-10 w-full min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 py-32">
+        <section className="relative z-10 w-full min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 py-24 sm:py-32">
+          {/* Launch & Community Showcase */}
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-12 sm:mb-16 z-20">
+            <a
+              href="https://www.producthunt.com/products/bedrock-6?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-bedrock-7"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-cursor="hover"
+              title="Bedrock on Product Hunt"
+              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(255,97,84,0.45)]"
+            >
+              <img
+                src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1316648&theme=dark&t=1794771424840"
+                alt="Bedrock - The layer between your idea and your build. | Product Hunt"
+                width={250}
+                height={54}
+                className="h-11 sm:h-12 w-auto object-contain select-none"
+                draggable={false}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/logos/producthunt-badge.svg';
+                }}
+              />
+            </a>
+
+            <a
+              href="https://launchbuff.com/products/bedrock-8pw783"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-cursor="hover"
+              title="Featured on LaunchBuff"
+              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(230,127,0,0.45)]"
+            >
+              <img
+                src="https://launchbuff.com/badge-featured-dark.svg"
+                alt="Featured on LaunchBuff"
+                width={256}
+                height={80}
+                className="h-11 sm:h-12 w-auto object-contain select-none"
+                draggable={false}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/logos/badge-featured-dark.svg';
+                }}
+              />
+            </a>
+
+            <a
+              href="https://fazier.com/launches/bedrockxai.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-cursor="hover"
+              title="Featured on Fazier"
+              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(75,87,119,0.6)]"
+            >
+              <img
+                src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=dark"
+                alt="Featured on Fazier"
+                width={182}
+                height={43}
+                className="h-11 sm:h-12 w-auto object-contain select-none"
+                draggable={false}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/logos/fazier-badge.svg';
+                }}
+              />
+            </a>
+
+            <a
+              href="https://twelve.tools/bedrockxai"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-cursor="hover"
+              title="Featured on Twelve Tools"
+              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(255,255,255,0.35)]"
+            >
+              <img
+                src="https://twelve.tools/badge0-white.svg"
+                alt="Featured on Twelve Tools"
+                width={148}
+                height={40}
+                className="h-11 sm:h-12 w-auto object-contain select-none rounded-lg"
+                draggable={false}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/logos/twelve-tools-badge.svg';
+                }}
+              />
+            </a>
+          </div>
+
           <div className="reveal-container max-w-5xl mx-auto text-center flex flex-col gap-12">
             <h2 className="font-display font-medium text-4xl md:text-6xl leading-tight tracking-tight text-white flex flex-wrap justify-center gap-x-3 gap-y-2 md:gap-x-4">
               <RevealText text="Stop guessing with LLMs." />
@@ -483,95 +570,8 @@ export default function Landing() {
         </section>
 
         {/* Minimal Footer */}
-        <footer className="relative z-10 w-full py-12 px-6 sm:px-12 flex flex-col items-center justify-between text-sm text-gray-500 font-light border-t border-white/5 gap-8">
-          {/* Launch & Community Showcase */}
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-            <a
-              href="https://www.producthunt.com/products/bedrock-6?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-bedrock-7"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-cursor="hover"
-              title="Bedrock on Product Hunt"
-              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(255,97,84,0.45)]"
-            >
-              <img
-                src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1316648&theme=dark&t=1794771424840"
-                alt="Bedrock - The layer between your idea and your build. | Product Hunt"
-                width={250}
-                height={54}
-                className="h-11 sm:h-12 w-auto object-contain select-none"
-                draggable={false}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/logos/producthunt-badge.svg';
-                }}
-              />
-            </a>
-
-            <a
-              href="https://launchbuff.com/products/bedrock-8pw783"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-cursor="hover"
-              title="Featured on LaunchBuff"
-              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(230,127,0,0.45)]"
-            >
-              <img
-                src="https://launchbuff.com/badge-featured-dark.svg"
-                alt="Featured on LaunchBuff"
-                width={256}
-                height={80}
-                className="h-11 sm:h-12 w-auto object-contain select-none"
-                draggable={false}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/logos/badge-featured-dark.svg';
-                }}
-              />
-            </a>
-
-            <a
-              href="https://fazier.com/launches/bedrockxai.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-cursor="hover"
-              title="Featured on Fazier"
-              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(75,87,119,0.6)]"
-            >
-              <img
-                src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=dark"
-                alt="Featured on Fazier"
-                width={182}
-                height={43}
-                className="h-11 sm:h-12 w-auto object-contain select-none"
-                draggable={false}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/logos/fazier-badge.svg';
-                }}
-              />
-            </a>
-
-            <a
-              href="https://twelve.tools/bedrockxai"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-cursor="hover"
-              title="Featured on Twelve Tools"
-              className="group relative inline-flex items-center transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_24px_rgba(255,255,255,0.35)]"
-            >
-              <img
-                src="https://twelve.tools/badge0-white.svg"
-                alt="Featured on Twelve Tools"
-                width={148}
-                height={40}
-                className="h-11 sm:h-12 w-auto object-contain select-none rounded-lg"
-                draggable={false}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/logos/twelve-tools-badge.svg';
-                }}
-              />
-            </a>
-          </div>
-
-          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/5">
+        <footer className="relative z-10 w-full py-12 px-6 sm:px-12 flex flex-col items-center justify-between text-sm text-gray-500 font-light border-t border-white/5">
+          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
               <p>© 2026 Bedrock. All rights reserved.</p>
               <span className="hidden sm:inline text-gray-700">·</span>
