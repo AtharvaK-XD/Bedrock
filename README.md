@@ -82,7 +82,6 @@ The core studio turning raw functional requirements into structured production p
 - **Target Deployment Archetypes**: Pre-configured archetypes for:
   - Coding Assistant Rulebooks (`.cursorrules`, `CLAUDE.md`, `.windsurfrules`, GitHub Copilot)
   - Full-Stack Architecture Blueprints (REST/tRPC endpoints, SQL migrations, error envelopes)
-  - Terminal CLI Tool Directives (POSIX flags, exit codes, streaming patterns)
 - **Scoping Interview**: Analyzes initial ideas and dynamically asks 3–4 clarifying questions covering database design, authentication models, and edge-case handling.
 - **Dual-Pane Refinement Studio**:
   - *Left Pane*: Conversational modification studio for targeted prompt adjustments.
