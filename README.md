@@ -133,7 +133,6 @@ Bedrock v1.4.9 operates without hardcoded model lists. In Desktop Workstation mo
 - **Groq**: Queries current low-latency LPUs including Llama 3.3, Mixtral, and DeepSeek-R1 Distill.
 - **OpenRouter**: Comprehensive querying of hundreds of frontier models and open-weight checkpoints.
 - **Anthropic, OpenAI, Mistral, xAI, Perplexity**: Native discovery and parameter validation.
-- **Ollama**: Connects to local `http://127.0.0.1:11434/api/tags` to discover pulled GGUF models.
 
 All discovered models dispatch directly to their native upstream provider endpoints with zero parameter translation or silent model substitution.
 
