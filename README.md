@@ -34,7 +34,7 @@ Universal prompt engineering studio, visual orchestration canvas, and multi-mode
 - [Testing and Verification](#testing-and-verification)
 - [Project Directory Layout](#project-directory-layout)
 - [Featured Directories & Community](#featured-directories--community)
-- [License](#license)
+
 
 ---
 
