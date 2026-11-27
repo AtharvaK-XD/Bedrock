@@ -114,26 +114,26 @@ export default function PromptTester() {
 
     if (!isDesktop) {
       // Strict subscription tier gate for Duel models
-      const allowed1 = isModelAllowedForTier(model1Id, profile?.plan);
+      const allowed1 = isModelAllowedForTier(model1Id, profile?.plan, (model1 as any)?.tier);
       if (!allowed1) {
-        const req1 = getModelRequiredTier(model1Id);
+        const req1 = (model1 as any)?.tier || getModelRequiredTier(model1Id);
         setUpgradeModal({
           isOpen: true,
-          featureName: `Model: ${model1Id}`,
+          featureName: `Model: ${model1?.name || model1Id}`,
           requiredTier: req1 === 'ultimate' ? 'ultimate' : 'pro',
-          reason: `Model ${model1Id} is restricted to ${req1.toUpperCase()} subscribers. Upgrade your plan to run dual benchmarks with this frontier model.`,
+          reason: `Model ${model1?.name || model1Id} is restricted to ${req1.toUpperCase()} subscribers. Upgrade your plan to run dual benchmarks with this frontier model.`,
         });
         return;
       }
 
-      const allowed2 = isModelAllowedForTier(model2Id, profile?.plan);
+      const allowed2 = isModelAllowedForTier(model2Id, profile?.plan, (model2 as any)?.tier);
       if (!allowed2) {
-        const req2 = getModelRequiredTier(model2Id);
+        const req2 = (model2 as any)?.tier || getModelRequiredTier(model2Id);
         setUpgradeModal({
           isOpen: true,
-          featureName: `Model: ${model2Id}`,
+          featureName: `Model: ${model2?.name || model2Id}`,
           requiredTier: req2 === 'ultimate' ? 'ultimate' : 'pro',
-          reason: `Model ${model2Id} is restricted to ${req2.toUpperCase()} subscribers. Upgrade your plan to run dual benchmarks with this frontier model.`,
+          reason: `Model ${model2?.name || model2Id} is restricted to ${req2.toUpperCase()} subscribers. Upgrade your plan to run dual benchmarks with this frontier model.`,
         });
         return;
       }
@@ -787,11 +787,11 @@ export default function PromptTester() {
           isOpen={upgradeModal.isOpen}
           onClose={() => {
             setUpgradeModal({ isOpen: false });
-            if (!isModelAllowedForTier(model1Id, profile?.plan)) {
+            if (!isModelAllowedForTier(model1Id, profile?.plan, (model1 as any)?.tier)) {
               setAgent1Id('gemini');
               setModel1Id('gemini-3.5-flash-lite');
             }
-            if (!isModelAllowedForTier(model2Id, profile?.plan)) {
+            if (!isModelAllowedForTier(model2Id, profile?.plan, (model2 as any)?.tier)) {
               setAgent2Id(defaultGroqAgent.id);
               setModel2Id('qwen/qwen3.8-27b');
             }

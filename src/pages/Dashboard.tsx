@@ -202,7 +202,7 @@ export default function Dashboard() {
                     {isFree ? (
                       <span>Session: <strong className="text-white font-mono">{sessionPrompts}/{sessionLimit}</strong> prompts used ({sessionPercent}%). Resets in <strong className="text-copper-300 font-mono">{timeUntilSession}</strong>.</span>
                     ) : (
-                      <span>All frontier models, automated evals, and unlimited DAG pipeline nodes unlocked.</span>
+                      <span>All frontier models, automated evals, and expanded DAG pipeline nodes unlocked.</span>
                     )}
                   </p>
                 </div>

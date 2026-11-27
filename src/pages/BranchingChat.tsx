@@ -2940,11 +2940,13 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                             onNodeDataChange(activeNode.id, { modelId });
                             return;
                           }
-                          if (!isDesktopApp() && !isModelAllowedForTier(modelId, profile?.plan)) {
-                            const req = getModelRequiredTier(modelId);
+                          const currentAgent = AI_AGENTS.find(a => a.id === activeNode.data.agentId) || AI_AGENTS[0];
+                          const selectedModelObj = currentAgent.models.find(m => m.id === modelId);
+                          if (!isDesktopApp() && !isModelAllowedForTier(modelId, profile?.plan, (selectedModelObj as any)?.tier)) {
+                            const req = (selectedModelObj as any)?.tier || getModelRequiredTier(modelId);
                             setUpgradeModal({
                               isOpen: true,
-                              featureName: `Model ${modelId}`,
+                              featureName: `Model ${selectedModelObj?.name || modelId}`,
                               requiredTier: req === 'ultimate' ? 'ultimate' : 'pro',
                               reason: `This model requires an active ${req.toUpperCase()} subscription. Upgrade your plan to use it in pipelines.`,
                             });
@@ -3026,14 +3028,16 @@ function FlowEditor({ initialWorkflow, onBackToDashboard }: FlowEditorProps) {
                       });
                       return;
                     }
-                    const isAllowed = isDesktopApp() || isModelAllowedForTier(activeNode.data.modelId, profile?.plan);
+                    const nodeAgent = AI_AGENTS.find(a => a.id === activeNode.data.agentId);
+                    const nodeModel = nodeAgent?.models?.find((m: any) => m.id === activeNode.data.modelId);
+                    const isAllowed = isDesktopApp() || isModelAllowedForTier(activeNode.data.modelId, profile?.plan, (nodeModel as any)?.tier);
                     if (!isAllowed) {
-                      const req = getModelRequiredTier(activeNode.data.modelId);
+                      const req = (nodeModel as any)?.tier || getModelRequiredTier(activeNode.data.modelId);
                       setUpgradeModal({
                         isOpen: true,
-                        featureName: `Model ${activeNode.data.modelId}`,
+                        featureName: `Model ${nodeModel?.name || activeNode.data.modelId}`,
                         requiredTier: req === 'ultimate' ? 'ultimate' : 'pro',
-                        reason: `Model ${activeNode.data.modelId} requires an active ${req.toUpperCase()} subscription. Upgrade your plan to execute this node.`,
+                        reason: `Model ${nodeModel?.name || activeNode.data.modelId} requires an active ${req.toUpperCase()} subscription. Upgrade your plan to execute this node.`,
                       });
                       return;
                     }

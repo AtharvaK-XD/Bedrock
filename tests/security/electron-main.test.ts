@@ -117,7 +117,7 @@ beforeAll(async () => {
   // Up to 10 s: the full suite runs many files in parallel
   for (let i = 0; i < 500 && !state.loadedUrl; i++) await new Promise((r) => setTimeout(r, 20));
   base = new URL(state.loadedUrl).origin;
-}, 20_000);
+}, 60_000);
 
 afterAll(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
 
