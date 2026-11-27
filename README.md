@@ -75,8 +75,7 @@ The operational control room for throughput monitoring and health observability.
 - **KPI Metrics**: Real-time tracking of total prompt compilations, input/output token usage, average latency, and 99.9% availability status.
 - **Network Topology Visualizer**: Live interactive node graph displaying routing connectivity and circuit status across LLM providers.
 - **Activity Calendar**: 52-week contribution heatmap charting prompt iteration frequency throughout the year.
-- **Recent Artifacts Feed**: Instant-jump list to inspect, copy, or resume editing recent prompts.
-
+  
 ### 2. Prompt Generator and Refinement Studio
 The core studio turning raw functional requirements into structured production prompts.
 - **Target Deployment Archetypes**: Pre-configured archetypes for:
